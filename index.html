@@ -1,0 +1,1006 @@
+﻿<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link id="linkTheme" rel="stylesheet" href="css/normal.css" rel="external nofollow" />
+<link rel="stylesheet" type="text/css" href="3rd/jquery.alerts.css?v=2" />
+<link rel="stylesheet" type="text/css" href="3rd/easyui/themes/metro/easyui.css">
+<link rel="stylesheet" type="text/css" href="3rd/easyui/themes/icon.css">
+
+<style>
+
+td { text-align: center; vertical-align: middle; cursor: pointer; font-size: 40px; }
+div { font-size: 40px; }
+
+.kbspace1
+{
+    padding: 0; margin: 0; border: 0; height: 50px;
+    background: #ffffff;
+    background: -webkit-linear-gradient(rgba(255,255,255,0),rgba(255,255,255,1));
+    background: -moz-linear-gradient(top,rgba(255,255,255,0) 0%,rgba(255,255,255,1) 100%); /*FireFox*/
+    background: -o-linear-gradient(top,rgba(255,255,255,0) 0%,rgba(255,255,255,1) 100%);  /* Opear */
+    background: -ms-linear-gradient(rgba(255,255,255,0),rgba(255,255,255,1)); /*IE10及IE10+*/
+}
+.kbspace2
+{
+    padding: 0; margin: 0; height: 20px; border: 1px solid white;
+    background-color: white; filter: alpha(Opacity=100); -moz-opacity: 1; opacity: 1;
+}
+
+#divStats .tdBttn { color: #787878; border: 1px solid #c3aa8f; }
+#divStats .tdSelBttn { color: black; background-color: #faf3e8; border: 1px solid #aa8833; }
+
+#tblKeyboard td, #tblGameBoard td { font-size: 50px; }
+#tblKeyboard td { width: 110px; height: 105px; }
+#tblGameBoard td { width: 95px; height: 95px; }
+
+#tbl3C3R td.td3C3R_t { font-size: 36px; width: 100px; }
+#tbl3C3R td.td3C3R_v { font-size: 40px; width: 80px; border-left: 0; }
+#tbl3C3R td.td3C3R_s { font-size: 10px; width: 23px; border: 0 }
+
+#tblSysButtons td 
+{
+	width: 123px;
+	height: 70px;
+    line-height: 70px;
+    text-align: center;
+    vertical-align: middle;
+	font-size: 36px;
+}
+
+#tblSysButtons #trBttnEmpty td 
+{
+	height: 3px;
+    line-height: 3px;
+	font-size: 3px;
+}
+
+#tblQueue td { width: 58px; height: 58px; font-size: 36px; }
+
+#tblColumns { margin-bottom: 5px }
+#tblColumns td { border: 0; height: 60px; padding: 3px 10px }
+#tblColumns td.Title { width: 120px; }
+#tblColumns td.Value { width: 60px; }
+
+td.tdBttn { padding: 1px 20px; width: 100px; height: 60px }
+td.Empty { background-color: white; border: 0 }
+td.Space { width: 8px; font-size: 8px; padding: 0 }
+
+#divStatsGroups { margin-top: 10px; }
+#tblStatsGroups { width: 100%; }
+#tblStatsGroups td { text-align: left; padding: 2px 0 3px 12px; }
+
+#tblStatsGroups td.SGCNumber { font-size: 40px; }
+#tblSGButtons { width: 100%; margin-top: 3px }
+
+.divStatsSumListItem
+{  
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%; 
+    height: 48px;
+    font-size: 36px;
+}
+#tblStatsSum { width: 100%; }
+#tblStatsSum .tdStatsSumListItem { text-align: left; }
+#divStatsSumLists { width: 100% }
+
+#tdStatsBisectionOE, #tdStatsBisectionBS { padding-left: 20px }
+.tdStatsBisectionValue { text-align: left; }
+
+#tblStatsTitleBar td, #tblFilesTitleBar td, #tblViewNumTitleBar td { border: 1px solid #aa8833; border-right: 0; font-size: 40px; background-color: #f3efe3 }
+#tblStatsTitleBar td:first-child, #tblFilesTitleBar td:first-child, #tblViewNumTitleBar td:first-child { border-left: 0 }
+#tdStatsTitle, #tdFilesTitle, #tdViewNumTitle { color: #aa8833; padding: 3px 0 5px 0; }
+
+#tblStatsNumbers td { border-bottom: 1px solid #bbbbbb; }
+#tblStatsNumbers tr:first-child td { padding: 8px 0; border-top: 1px solid #cf8f28; border-bottom: 1px solid #cf8f28; }
+#tblStatsNumbers tr:last-child td { border-bottom: 1px solid #cf8f28; }
+#tblStatsNumbers .tdStatsNumSecond { border-left: 1px solid #cf8f28; }
+.tdStatsNumber { color: #8f5f38 } 
+
+#divFinishedLong { font-size: 40px }
+
+#divCover { font-size: 40px; }
+#divNumbers { padding: 20px; }
+
+.tdHide { font-family: Arial }
+#tblKeyboard #tdKSwitch, #tblGameBoard #tdBSwitch { font-size: 40px }
+
+#divColumns { margin-bottom: 8px; font-size: 40px; padding: 0 10px; }  
+#divFinishedLong { margin-bottom: 18px }
+
+.divDialog { border: 18px solid #e8e3d3; }
+.bttnDialog { width: 200px; height: 70px; line-height: 70px; color: #aa8833; border: 1px solid #aa8833; }
+
+#divImport { position: fixed; top: 0px; z-index:90; width: 100%; height: 100%; }
+#divConfig { position: fixed; top: 0px; z-index:91; width: 100%; height: 100%;  padding-top: 90px }
+.divDialogTitle { width: 100%; height: 80px; text-align: center; padding: 10px; border-bottom: 1px solid #aa8833; 
+                  color: #aa8833; background-color: #f3efe3; }
+
+#divBetsManage { position: fixed; top: 0px; z-index: 93; width: 100%; height: 100%;  padding-top: 200px }
+#divTools { position: fixed; top: 0px; z-index: 95; width: 100%; height: 100%;  padding-top: 200px }
+
+#txtClipboard { font-size: 36px; border: 0 } 
+#txtTools { font-size: 36px; font-family: Arial; border: 0 } 
+#tblImport .tdSpec { font-size: 36px; text-align: left; padding: 8px 0 3px 0; }
+#tblImport #tdTxt { border: 1px solid #aa8833; }
+
+#tblConfig .tdSpec { font-size: 40px; text-align: left; padding: 8px 0 3px 0; }
+
+#tblMainStatsGames, #tblStatsGames { width: 100%; }
+#tblMainStatsGames td, #tblStatsGames td { font-size: 36px; padding: 0 20px; }
+#tblMainStatsGames tr:first-child td, #tblStatsGames tr:first-child td { padding: 8px 20px; }
+
+#tblStatsGames { border-top: 1px solid #8f8f8f; border-bottom: 1px solid #8f8f8f; }
+#tblStatsGames td { color: black; }
+#tblStatsGames tr:first-child td { border-bottom: 1px solid #8f8f8f; }
+#tblStatsGames tr:last-child td { border-bottom: 1px solid #8f8f8f; }
+
+#tblStatsCRDCompare { width: 100%; }
+#tblStatsCRDCompare td { font-size: 40px; padding: 0 20px; }
+#tblStatsCRDCompare tr:first-child td { padding: 8px 20px; }
+
+#tblStatsCRDCompare { border-top: 1px solid #8f8f8f; border-bottom: 1px solid #8f8f8f; }
+#tblStatsCRDCompare td { color: black; }
+#tblStatsCRDCompare tr:first-child td { border-bottom: 1px solid #8f8f8f; }
+#tblStatsCRDCompare tr:last-child td { border-bottom: 1px solid #8f8f8f; }
+
+#tblStatsColRowSum1 td { border-right: 1px solid #8f8f8f; border-bottom: 1px solid #8f8f8f; }
+#tblStatsColRowSum1 tr:first-child td { border-top: 1px solid #8f8f8f; }
+#tblStatsColRowSum1 td:first-child { border-left: 1px solid #8f8f8f; }
+#tblStatsColRowSum { background-color: #5f5f5f }
+#tblStatsColRowSum td { font-size: 36px;  background-color: white; padding: 3px 0; }
+.tdStatsCRSColT { width: 13%; }
+.tdStatsCRSCol { width: 10.875%; }
+#tblStatsColRowSum tr:first-child td { color: #aa8833; }
+#tblStatsColRowSum td:first-child { color: #af7955; }
+
+
+#tblStatsGames .tdWon { color: #c37f7f; }
+#tblStatsGames .tdDrew { color: #939393; }
+#tblStatsGames .tdLost { color: #7fc37f; }
+
+#tblStatsFrequency td { width: 12.5%; font-size: 36px; border-right: 1px solid #bbbbbb; }
+
+#tblStatsFrequency tr:first-child td
+{
+    color: #aa8833; border-top: 1px solid #aa8833; border-bottom: 1px solid #aa8833; padding: 3px 0 5px 0;
+}
+
+#tblStatsFrequency tr:last-child td
+{
+    border-bottom: 1px solid #aa8833;
+}
+
+#tblStatsFrequency td:last-child 
+{
+    border-right: 0;
+}
+
+
+.txtStatsNumZero { color: #799f79 }
+
+#tblStatsRoundBet { border: 1px solid #cf8f28; border-left: 0; border-right: 0; width: 100%; margin-bottom: 8px }
+#tblStatsRoundBet td { border-bottom: 1px solid #8f8f8f; font-size: 40px; padding: 3px 8px; text-align: center; }
+#tblStatsRoundBet td:first-child { color: #aa8833; border-right: 1px solid #cf8f28; width: 100px; text-align: center; } 
+#tblStatsRoundBet tr:first-child td { color: #aa8833; border-bottom: 1px solid #cf8f28; padding: 6px 0 } 
+#tblStatsRoundBet tr:last-child td { border-bottom: 0; } 
+
+#tblStatsRoundSum, #tblStatsNumCount { width: 100%; border: 1px solid #cf8f28 }  
+#tblStatsRoundSum { border-left: 0; border-right: 0 }  
+#tblStatsRoundSum { border-left: 0; border-right: 0; border-top: 0 }  
+#tblStatsRoundSum td { padding: 0 10px; font-size: 40px; border-bottom: 1px solid #8f8f8f; }
+#tblStatsRoundSum tr:last-child td { border-bottom: 0; }
+#tblStatsRoundSum td.tdSFTitle, #tblStatsNumCount td.tdSFTitle { color: #ab8b30; border-left: 1px solid #cf8f28 }
+#tblStatsRoundSum td:first-child { border-left: 0; }
+#tblStatsRoundSum td:first-child, #tblStatsRoundSum td.tdSRSColumn { border-right: 1px solid #cf8f28; }
+#tblStatsRoundSum td:last-child { border-right: 0; }
+#trSRSTitle1 td, #trSRSTitle2 td { color: #aa8833; border-top: 1px solid #cf8f28; border-bottom: 1px solid #cf8f28; padding: 2px 0; }
+#trSRSTitle1 td { border-bottom: 0; }
+.divStatsTitle { font-size: 40px; color: #aa8833; padding: 13px 18px 13px 13px }
+#divStatsOther div:first-child div:first-child { padding-top: 0px }
+
+#tblStatsCRExplore { width: 100%; }
+#tblStatsCRExplore td { font-size: 40px; }
+
+#tblStatsLongs td { border: 1px solid #cf8f28; border-bottom: 0; border-left: 0; width: 12.5% }
+#tblStatsLongs tr:first-child td { color: #aa8833; }
+#tblStatsLongs td:last-child { border-right: 0; }
+#tblStatsLongs tr:last-child td { font-size: 32px; border-bottom: 1px solid #cf8f28; border-top: 0; padding: 8px 0; }
+#tblStatsLongs #tdSLT  { border-bottom: 1px solid #cf8f28 }
+#tblStatsLongsBttns { width: 100%; padding-top: 10px; }
+#tblStatsLongsBttns .tdSLBttnsT { text-align: left; color: #aa8833; padding-left: 10px }
+#divMaxDistanceTops { padding: 0 18px; }
+
+#divFilesBottomMain { border-top: 1px solid #aa8833; background-color: #f8f7f5; }
+#tblFilesButtons td { width: 200px; padding: 3px 10px 5px 10px } 
+
+.tdSBEnabled { color: #aa8833; background-color: white; border: 1px solid #aa8833 }
+.tdSBDisabled { color: #bbbbbb; background-color: white; border: 1px solid #bbbbbb }
+
+#tdBttnStatsGamesConfig, #tdBttnStatsQuit, #tdBttnViewNumQuit { color: #aa8833; border: 1px solid #aa8833; }
+
+.datagrid-btable td { text-align: left; }
+
+#divFilesMain .datagrid-header td,
+#divFilesMain .datagrid-body td,
+#divFilesMain .datagrid-footer td 
+{
+  border-width: 0 1px 0 0;
+  border-style: solid;
+}
+
+#divFilesMain .datagrid-header { border-width: 0 0 1px 0;  border-style: solid; }
+#divFilesMain .datagrid-btable { border-bottom: 1px solid #bbb; }
+
+#tblConfig .datagrid-header { border-bottom: 1px solid #aa8833; }
+
+#tdBetsConfig, #tdRndsConfig, #tdACROptConfig  { border: 1px solid #aaa }
+#tdBetsManage { border: 1px solid #aa8833 }
+
+#tblBetsBttns { width: 320px; }  
+
+#tblViewNum td { width: 10%; height: 70px; }
+#tblViewNum .tdNormal { border: 1px solid #ccaa88; background-color: white; }
+#tblViewNum .tdHighlight { border: 1px solid #aa8833; background-color: #ffe2b2; }
+#tblViewNum .tdEmpty { border: 0; background-color: white; }
+#tblViewNum .tdZero { border: 1px solid #ccaa88; background-color: #c7ecbe; }
+
+.bttnSystem { height: 60px; line-height: 60px; color: #aa8833; border: 1px solid #aa8833; }
+.bttnPlay { width: 130px; }
+.bttnTools { width: 180px; }
+.bttnStatsDist { width: 200px; }
+
+#tblPlayBttns .tdSBEnabled { color: #aa8833; background-color: white; border: 1px solid #aa8833 }
+#tblPlayBttns .tdSBDisabled { color: #bbbbbb; background-color: white; border: 1px solid #bbbbbb }
+
+.divStatsDistances0 { width: 100%; height: 180px; }
+.divStatsDistances1, .divStatsCRC1 { width: 100%; height: 290px; }
+#divStatsDistances0, #divStatsDistances1, #divStatsCRC0, #divStatsCRC1 { width: 100%; height: 100%; }
+
+.tdStatsCRC0 { width: 41%; height: 270px; padding: 10px 5px 0 5px; }
+.tdStatsCRCT0 { font-size: 36px; color: #995539; padding: 10px 5px 0 0px; text-align: right; vertical-align: top; }
+.tdStatsCRCT01 { width: 11%; }
+.tdStatsCRCT02 { width: 8%; }
+
+#divStatsDistDetail, #divStatsCRCDetail { position: fixed; top: 0px; z-index: 50; width: 100%; height: 100%; padding-top: 200px }
+#divStatsDistDetailDraw, #divStatsCRCDetailDraw { border-left: 0; border-right: 0; width: 100%; height: 1000px; }
+
+.tdSRCTitle { font-size: 36px; color: #995539; vertical-align: top; padding: 8px 0px; width: 12%; }
+.tdSRC { font-size: 36px; word-break: break-all; word-wrap: break-word; text-align: left; padding: 8px 0px 8px 10px; width: 88%; }
+.SRCMore { border-top: 1px solid #aa8833; }
+.numFirstZero { color: #ff9933; }
+.numFirst { color: #3399ff; }
+
+#tblStatsCRExplore td { border-right: 1px solid #5f5f5f; border-bottom: 1px solid #5f5f5f; vertical-align: top; padding: 5px }
+#tblStatsCRExplore tr:first-child td { border-top: 1px solid #5f5f5f; }
+#tblStatsCRExplore td:first-child { border-left: 1px solid #5f5f5f; }
+#tblStatsCRExplore td table td { border: 0; }
+#tblStatsCRExplore td table tr:first-child td { border: 0; }
+#tblStatsCRExplore td table td:first-child { border: 0; }
+
+#tdStatsCRE1 { width: 30%; }
+#tdStatsCRE2 { width: 25%; }
+#tdStatsCRE3 { width: 45%; text-align: left; line-height: 60px; }
+#tblStatsCRExplore #tdStatsCRE3 { padding: 20px 30px; }
+.CREWin { color: #388858; }
+.CREDraw { color: #a3a3a3; }
+.CRELose { color: #d3c3b3; }
+
+</style>
+
+<script type="text/javascript" src="3rd/jquery-3.3.1.min.js"></script>
+<script type="text/javascript" src="3rd/clipboard.min.js"></script>
+<script type="text/javascript" src="3rd/easyui/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="3rd/jquery.alerts.js"></script>
+<script type="text/javascript" src="js/common.js?v=3"></script>
+<script type="text/javascript" src="js/process.js?v=2"></script>
+<script type="text/javascript" src="js/message.js?v=2"></script>
+
+<script language="javascript">
+</script>
+
+</head>
+<body onload="OnPageInit()" style="padding: 0; margin :0; ">
+    <div id="divMain" style="width: 100%">
+        <div id="divMainTop" style="position: fixed; z-index: 5; right: 0px; top:0px; width: 100%; background-color: white" onclick="OnSeperate3C3RClick()">
+            <div style="padding: 12px 8px">
+                <table cellpadding="0" cellspacing="0" border="0" id="tbl3C3R">
+                    <tr>
+                        <td id="tdT3C3R0">第1组</td><td id="td3C3R0">0</td><td class="td3C3R_s">&nbsp;</td>
+                        <td id="tdT3C3R1">第2组</td><td id="td3C3R1">0</td><td class="td3C3R_s">&nbsp;</td>
+                        <td id="tdT3C3R2">第3组</td><td id="td3C3R2">0</td><td class="td3C3R_s">&nbsp;</td>
+                        <td id="tdT3C3R3">第1行</td><td id="td3C3R3">0</td><td class="td3C3R_s">&nbsp;</td>
+                        <td id="tdT3C3R4">第2行</td><td id="td3C3R4">0</td><td class="td3C3R_s">&nbsp;</td>
+                        <td id="tdT3C3R5">第3行</td><td id="td3C3R5">0</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div id="divMainMiddle" style="position:absolute; z-index:0; top: 90px; padding: 0; margin: 0; width: 100%">
+            <div id="divColumns">
+                <div style="height: 8px" id="divBlank"></div>
+                <table cellpadding="0" cellspacing="2" border="0" id="tblColumns" style="width: 100%">
+                    <tr id="trColumns0">
+                        <td id="tdColumnsT0"></td><td id="tdColumnsV0"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT1"></td><td id="tdColumnsV1"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT2"></td><td id="tdColumnsV2"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT3"></td><td id="tdColumnsV3"></td>
+                    </tr>
+                    <tr id="trColumns1">
+                        <td id="tdColumnsT4"></td><td id="tdColumnsV4"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT5"></td><td id="tdColumnsV5"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT6"></td><td id="tdColumnsV6"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT7"></td><td id="tdColumnsV7"></td>
+                    </tr>
+                    <tr id="trColumns2">
+                        <td id="tdColumnsT8"></td><td id="tdColumnsV8"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT9"></td><td id="tdColumnsV9"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT10"></td><td id="tdColumnsV10"></td><td class="Space Empty">&nbsp;</td>
+                        <td id="tdColumnsT11"></td><td id="tdColumnsV11"></td>
+                    </tr>
+                </table>
+                <table cellpadding="0" cellspacing="0" border="0" style="width: 100%">
+                    <tr>
+                        <td><div id="divColumnsBttns"></div></td>
+                        <td style="width: 100px">
+                            <table cellpadding="0" cellspacing="0" border="0" style="width: 100%">
+                                <tr><td class="tdBttn" onclick="OnViewNum()">...</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                
+            </div>
+
+            <div id="divFinishedLong" style="padding: 10px"></div>
+
+            <table cellpadding="0" cellspacing="5" border="0" id="tblQueue" onclick="OnSysExpand()">
+                <tr id="trRow1">
+                    <td id="td0" class="tdRed"></td><td id="td1"></td><td id="td2"></td><td id="td3"></td><td id="td4"></td>
+                    <td id="td5"></td><td id="td6"></td><td id="td7"></td><td id="td8"></td><td id="td9"></td>
+                    <td id="td10"></td><td id="td11"></td><td id="td12"></td><td id="td13"></td><td id="td14"></td>
+                </tr>
+                <tr id="trRow2">
+                    <td id="td15"></td><td id="td16"></td><td id="td17"></td><td id="td18"></td><td id="td19"></td>
+                    <td id="td20"></td><td id="td21"></td><td id="td22"></td><td id="td23"></td><td id="td24"></td>
+                    <td id="td25"></td><td id="td26"></td><td id="td27"></td><td id="td28"></td><td id="td29"></td>
+                </tr>
+                <tr id="trRow3">
+                    <td id="td30"></td><td id="td31"></td><td id="td32"></td><td id="td33"></td><td id="td34"></td>
+                    <td id="td35"></td><td id="td36"></td><td id="td37"></td><td id="td38"></td><td id="td39"></td>
+                    <td id="td40"></td><td id="td41"></td><td id="td42"></td><td id="td43"></td><td id="td44"></td>
+                </tr>
+                <tr id="trRow4">
+                    <td id="td45"></td><td id="td46"></td><td id="td47"></td><td id="td48"></td><td id="td49"></td>
+                    <td id="td50"></td><td id="td51"></td><td id="td52"></td><td id="td53"></td><td id="td54"></td>
+                    <td id="td55"></td><td id="td56"></td><td id="td57"></td><td id="td58"></td><td id="td59"></td>
+                </tr>
+                <tr id="trRow5">
+                    <td id="td60"></td><td id="td61"></td><td id="td62"></td><td id="td63"></td><td id="td64"></td>
+                    <td id="td65"></td><td id="td66"></td><td id="td67"></td><td id="td68"></td><td id="td69"></td>
+                    <td id="td70"></td><td id="td71"></td><td id="td72"></td><td id="td73"></td><td id="td74"></td>
+                </tr>
+                <tr id="trRow6">
+                    <td id="td75"></td><td id="td76"></td><td id="td77"></td><td id="td78"></td><td id="td79"></td>
+                    <td id="td80"></td><td id="td81"></td><td id="td82"></td><td id="td83"></td><td id="td84"></td>
+                    <td id="td85"></td><td id="td86"></td><td id="td87"></td><td id="td88"></td><td id="td89"></td>
+                </tr>
+                <tr id="trRow7">
+                    <td id="td90"></td><td id="td91"></td><td id="td92"></td><td id="td93"></td><td id="td94"></td>
+                    <td id="td95"></td><td id="td96"></td><td id="td97"></td><td id="td98"></td><td id="td99"></td>
+                    <td id="td100" colspan="5">&nbsp;</td>
+                </tr>
+            </table>
+
+            <div id="divStatsGroups">
+                <div style="height: 13px"></div>
+                <table cellpadding="0" cellspacing="0" id="tblStatsGroups">
+                    <tr>
+                        <td id="tdStatsGroupsCol" width="53%"></td>
+                        <td id="tdStatsGroupsRow"></td>
+                    </tr>
+                </table>
+                <table cellpadding="0" cellspacing="0" id="tblStatsBisections">
+                    <tr>
+                        <td id="tdStatsBisectionRB">红黑</td><td id="tdStatsBisectionRBValue" class="tdStatsBisectionValue"></td>
+                        <td id="tdStatsBisectionOE">单双</td><td id="tdStatsBisectionOEValue" class="tdStatsBisectionValue"></td>
+                        <td id="tdStatsBisectionBS">大小</td><td id="tdStatsBisectionBSValue" class="tdStatsBisectionValue"></td>
+                    </tr>
+                </table>
+                <div id="divStatsGroupsBttns"></div>
+            </div>
+
+            <div id="divMainStatsSum" style="display: none">
+                <div id="divStatsSumLists"></div>
+                <div id="divStatsSumBttns"></div>
+            </div>
+
+            <div id="divMainStatsGames"></div>
+
+        </div>
+
+        <div id="divMainBottom" style="position: fixed; bottom: 0px; z-index: 9; width: 100%;">
+            <div class="kbspace1">&nbsp;</div>
+            <div class="kbspace2">&nbsp;</div>
+            <div style="background-color: white; width: 100%">
+                <table cellpadding="0" cellspacing="10" border="0" style="width: 100%" id="tblSysButtons">
+                    <tr id="trBttnMore">
+                        <td id="tdBttnTheme">NA</td>
+                        <td id="tdBttnPlay">播放</td>
+                        <td id="tdBttnExport">导出</td>
+                        <td id="tdBttnImport">导入</td>
+                        <td id="tdBttnSave">保存</td>
+                        <td id="tdBttnManage">数据</td>
+                        <td id="tdBttnConfig">配置</td>
+                    </tr>
+                    <tr id="trBttnEmpty">
+                        <td colspan="7">&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td id="tdBttnRestore">恢复</td>
+                        <td id="tdBttnStatsGames">打法</td>
+                        <td id="tdBttnStatsColRow">行组</td>
+                        <td id="tdBttnStatsFrequencies">频率</td>
+                        <td id="tdBttnStatsDistances">距离</td>
+                        <td id="tdBttnStatsColRowDig">细化</td>
+                        <td id="tdBttnStatistics">统计</td>
+                    </tr>
+                </table>
+            </div>
+            <div style="height: 15px; width: 100%; background-color: white;">&nbsp;</div>
+            <div id="divKeyboard" style="width: 100%">
+                <table cellpadding="0" cellspacing="2" id="tblKeyboard">
+                    <tr>
+                        <td id="tdK1" onclick="OnAddNum(1)">1</td><td id="tdK2" onclick="OnAddNum(2)">2</td><td id="tdK3" onclick="OnAddNum(3)">3</td>
+                        <td id="tdK4" onclick="OnAddNum(4)">4</td><td id="tdK5" onclick="OnAddNum(5)">5</td><td id="tdK6" onclick="OnAddNum(6)">6</td>
+                        <td id="tdK7" onclick="OnAddNum(7)">7</td><td id="tdK8" onclick="OnAddNum(8)">8</td><td id="tdK9" onclick="OnAddNum(9)">9</td>
+                    </tr>
+                    <tr>
+                        <td id="tdK10" onclick="OnAddNum(10)">10</td><td id="tdK11" onclick="OnAddNum(11)">11</td><td id="tdK12" onclick="OnAddNum(12)">12</td>
+                        <td id="tdK13" onclick="OnAddNum(13)">13</td><td id="tdK14" onclick="OnAddNum(14)">14</td><td id="tdK15" onclick="OnAddNum(15)">15</td>
+                        <td id="tdK16" onclick="OnAddNum(16)">16</td><td id="tdK17" onclick="OnAddNum(17)">17</td><td id="tdK18" onclick="OnAddNum(18)">18</td>
+                    </tr>
+                    <tr>
+                        <td id="tdK19" onclick="OnAddNum(19)">19</td><td id="tdK20" onclick="OnAddNum(20)">20</td><td id="tdK21" onclick="OnAddNum(21)">21</td>
+                        <td id="tdK22" onclick="OnAddNum(22)">22</td><td id="tdK23" onclick="OnAddNum(23)">23</td><td id="tdK24" onclick="OnAddNum(24)">24</td>
+                        <td id="tdK25" onclick="OnAddNum(25)">25</td><td id="tdK26" onclick="OnAddNum(26)">26</td><td id="tdK27" onclick="OnAddNum(27)">27</td>
+                    </tr>
+                    <tr>
+                        <td id="tdK28" onclick="OnAddNum(28)">28</td><td id="tdK29" onclick="OnAddNum(29)">29</td><td id="tdK30" onclick="OnAddNum(30)">30</td>
+                        <td id="tdK31" onclick="OnAddNum(31)">31</td><td id="tdK32" onclick="OnAddNum(32)">32</td><td id="tdK33" onclick="OnAddNum(33)">33</td>
+                        <td id="tdK34" onclick="OnAddNum(34)">34</td><td id="tdK35" onclick="OnAddNum(35)">35</td><td id="tdK36" onclick="OnAddNum(36)">36</td>
+                    </tr>
+                    <tr>
+                        <td id="tdKEsc" onclick="OnEscape()" class="tdGreen">esc</td>
+                        <td id="tdK0" onclick="OnAddNum(0)" colspan="2">0</td>
+                        <td id="tdKDel" onclick="OnDelNum()" colspan="2" class="tdGreen">&larr;</td>
+                        <td id="tdKFw" onclick="OnForward()" class="tdGreen">&rarr;</td>
+                        <td id="tdKSwitch" onclick="OnSwitchInput(0)" colspan="2" class="tdGreen">switch</td>
+                        <td id="tdKHide" onclick="OnHideKeyboard()" class="tdHide tdGreen">x</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="divGameBoard" style="width: 100%">
+                <table cellpadding="0" cellspacing="2" id="tblGameBoard">
+                    <tr>
+                        <td id="tdB3" onclick="OnAddNum(3)">3</td><td id="tdB6" onclick="OnAddNum(6)">6</td><td id="tdB9" onclick="OnAddNum(9)">9</td>
+                        <td id="tdB12" onclick="OnAddNum(12)">12</td><td id="tdB15" onclick="OnAddNum(15)">15</td><td id="tdB18" onclick="OnAddNum(18)">18</td>
+                        <td id="tdB21" onclick="OnAddNum(21)">21</td><td id="tdB24" onclick="OnAddNum(24)">24</td><td id="tdB27" onclick="OnAddNum(27)">27</td>
+                        <td id="tdB30" onclick="OnAddNum(30)">30</td><td id="tdB33" onclick="OnAddNum(33)">33</td><td id="tdB36" onclick="OnAddNum(36)">36</td>
+                    </tr>
+                    <tr>
+                        <td id="tdB2" onclick="OnAddNum(2)">2</td><td id="tdB5" onclick="OnAddNum(5)">5</td><td id="tdB8" onclick="OnAddNum(8)">8</td>
+                        <td id="tdB11" onclick="OnAddNum(11)">11</td><td id="tdB14" onclick="OnAddNum(14)">14</td><td id="tdB17" onclick="OnAddNum(17)">17</td>
+                        <td id="tdB20" onclick="OnAddNum(20)">20</td><td id="tdB23" onclick="OnAddNum(23)">23</td><td id="tdB26" onclick="OnAddNum(26)">26</td>
+                        <td id="tdB29" onclick="OnAddNum(29)">29</td><td id="tdB32" onclick="OnAddNum(32)">32</td><td id="tdB35" onclick="OnAddNum(35)">35</td>
+                    </tr>
+                    <tr>
+                        <td id="tdB1" onclick="OnAddNum(1)">1</td><td id="tdB4" onclick="OnAddNum(4)">4</td><td id="tdB7" onclick="OnAddNum(7)">7</td>
+                        <td id="tdB10" onclick="OnAddNum(10)">10</td><td id="tdB13" onclick="OnAddNum(13)">13</td><td id="tdB16" onclick="OnAddNum(16)">16</td>
+                        <td id="tdB19" onclick="OnAddNum(19)">19</td><td id="tdB22" onclick="OnAddNum(22)">22</td><td id="tdB25" onclick="OnAddNum(25)">25</td>
+                        <td id="tdB28" onclick="OnAddNum(28)">28</td><td id="tdB31" onclick="OnAddNum(31)">31</td><td id="tdB34" onclick="OnAddNum(34)">34</td>
+                    </tr>
+                    <tr>
+                        <td id="tdBEsc" onclick="OnEscape()" colspan="2" class="tdGreen">esc</td>
+                        <td id="tdB0" onclick="OnAddNum(0)" colspan="3">0</td>
+                        <td id="tdBDel" onclick="OnDelNum()" colspan="2" class="tdGreen">&larr;</td>
+                        <td id="tdBFw" onclick="OnForward()" class="tdGreen">&rarr;</td>
+                        <td id="tdBSwitch" onclick="OnSwitchInput(1)" colspan="3" class="tdGreen">switch</td>
+                        <td id="tdBHide" onclick="OnHideKeyboard()" class="tdHide tdGreen">x</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div id="divShowKeyboard" style="position: fixed; right: 0px; bottom: 0px; z-index: 10; 
+            width: 100px; height: 100px; display:none" onclick="OnShowKeyboard()"></div>
+    </div>
+
+    <div id="divImport" style="display: none; padding-top: 200px">
+        <div class="divDialog" style="padding: 20px 0 10px 0; background-color: white; margin: 0 auto; width: 780px;">
+            <table cellpadding="0" cellspacing="30" style="width: 700px; margin: 0 auto;" id="tblImport">
+                <tr id="trSpecImport"><td class="tdSpec">请在下面的编辑框内准备好数据，然后按导入：</td></tr>
+                <tr><td id="tdTxt"><textarea style="width: 100%; height: 200px" id="txtClipboard"></textarea></td></tr>
+                <tr>
+                    <td style="text-align: center">
+                        <table cellpadding="0" cellspacing="20" border="0" style="margin: auto">
+                            <tr>
+                                <td class="bttnDialog" id="tdBttnDoImport" onclick="OnImport()">导入</td>
+                                <td class="bttnDialog" style="width: 250px" id="tdBttnDoFileImport" onclick="OnFileImport()">数据导入</td>
+                                <td class="bttnDialog" onclick="OnImportOK()">退出</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div id="divConfig" style="display: none;">
+        <div class="divDialog" style="background-color: white; margin: 0 auto; width: 880px;">
+            <div class="divDialogTitle">打法配置</div>
+            <div style="padding: 10px 0 0 0;">
+                <table cellpadding="0" cellspacing="20" style="width: 100%; margin: 0 auto;" id="tblConfig">
+                    <tr>
+                        <td id="tdBetsConfig" width="70%" height="600" style="text-align: center">
+                            <table id="dgGameBets" data-options="header:'#hhh',border:false,fit:true,fitColumns:true,scrollbarSize:0">
+                                <thead>
+                                    <tr>
+                                        <th data-options="field:'chkGameBets',checkbox:true"></th>
+                                        <th data-options="field:'v',width:300,sortable:false,formatter:FormatBetCol">打法</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </td>
+                        <td id="tdRndsConfig" width="*%" style="text-align: center">
+                            <table id="dgGameRnds" data-options="header:'#hhh',border:false,fit:true,fitColumns:true,scrollbarSize:0">
+                                <thead>
+                                    <tr>
+                                        <th data-options="field:'chkGameRnds',checkbox:true"></th>
+                                        <th data-options="field:'v',width:150,sortable:false,formatter:FormatRndCol,align:'center'">轮</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td id="tdACROptConfig" colspan="2" height="230">
+                            <table id="dgARCOption" data-options="header:'#hhh',border:false,fit:true,fitColumns:true,scrollbarSize:0">
+                                <thead>
+                                    <tr>
+                                        <th data-options="field:'chkARCOption',checkbox:true"></th>
+                                        <th data-options="field:'v',width:300,sortable:false">行组选项</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: center">
+                            <table cellpadding="0" cellspacing="20" border="0" style="margin: auto">
+                                <tr>
+                                    <td class="bttnDialog" onclick="OnConfigOK()">确定</td>
+                                    <td class="bttnDialog" onclick="OnConfigCancel()">取消</td>
+                                    <td class="bttnDialog" onclick="OnConfigManage()">管理</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="divBetsManage" style="display: none;">
+        <div class="divDialog" style="background-color: white; margin: 0 auto; width: 910px;">
+            <div class="divDialogTitle">打法管理</div>
+            <div style="padding: 30px;">
+                <table cellpadding="0" cellspacing="10" style="width: 100%; margin: 0 auto;" id="tblBetsManage">
+                    <tr>
+                        <td id="tdBetsManage" width="60%" height="880" style="text-align: center">
+                            <table id="dgBetsManage" data-options="header:'#hhh',border:false,fit:true,fitColumns:true,scrollbarSize:0">
+                                <thead>
+                                    <tr>
+                                        <th data-options="field:'v',width:100,sortable:false,formatter:FormatBetCol">打法</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </td>
+                        <td id="tdBetsBttns" width="*%" style="vertical-align: top; text-align: center">
+                            <table cellpadding="0" cellspacing="20" border="0" style="margin: auto" id="tblBetsBttns">
+                                <tr><td class="bttnDialog" onclick="OnBetsManageAdd()">添加</td></tr>
+                                <tr><td class="bttnDialog tdSBDisabled" id="tdBttnBetsManageDel" onclick="OnBetsManageDel()">删除</td></tr>
+                                <tr><td class="bttnDialog" onclick="OnBetsManageRestoreDefault()">预定义回归</td></tr>
+                                <tr><td class="bttnDialog" onclick="OnBetsManageOK()">完成</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="divTools" style="display: none;">
+        <div class="divDialog" style="background-color: white; margin: 0 auto; width: 90%;">
+            <div class="divDialogTitle">数据文本整理工具</div>
+            <div style="padding: 40px 30px;">
+                <textarea style="width: 100%; height: 600px; border: 1px solid #aa8833" id="txtTools"></textarea>
+            </div>
+            <div style="padding: 0px 30px 20px 30px">
+                <input class="easyui-checkbox" id="chkBR" label="保留换行">
+            </div>
+            <div style="text-align: center; width: 100%; padding: 0 0 20px 0">
+                <table cellpadding="0" cellspacing="20" border="0" style="margin: 0 auto; ">
+                    <tr>
+                        <td class="bttnSystem bttnTools" id="tdBttnToolsTrim" onclick="OnToolsTrim()">整理</td>
+                        <td class="bttnSystem bttnTools" id="tdBttnToolsRevert" onclick="OnToolsRevert()">反序</td>
+                        <td class="bttnSystem bttnTools" id="tdBttnToolsCopy" onclick="OnToolsCopy()">复制</td>
+                        <td class="bttnSystem bttnTools" id="tdBttnToolsExit" onclick="OnToolsExit()">退出</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="divStats" style="display: none; ">
+        <div id="divStatsTop" style="z-index: 35; position: fixed; right: 0px; top:0px; width: 100%;
+            background-color: white;">
+            <table cellpadding="0" cellspacing="0" style="width: 100%;" id="tblStatsTitleBar">
+                <tr>
+                    <td style="width: 91%; text-align: center" id="tdStatsTitle">统计数据</td>
+                    <td style="width: 9%; height: 80px; font-family: Arial" onclick="OnQuitStats()">x</td>
+                </tr>
+            </table>
+        </div>
+        <div id="divStatsMiddle" style="position:absolute; top: 0; z-index: 30; width: 100%; height: 100%;
+            background-color: white;">
+            <div style="height: 97px">&nbsp;</div>
+            <div id="divStatsGames"></div>
+            <div id="divStatsFrequencies">
+                <div id="divStatsFrequenciesDetail" style="width: 100%; height: 100%; display: none">
+                    <div id="divStatsFrequencyDetailBttns" style="padding: 10px 20px"></div>
+                    <div onclick="OnSwitchStatsFrequenciesDrawDetail(0)">
+                        <canvas id="cvFrequenciesDetail" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                </div>
+                <div id="divStatsFrequenciesDraw" onclick="OnSwitchStatsFrequenciesDrawDetail(1)" style="width: 100%; height: 100%">
+                    <canvas id="cvFrequencies" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                </div>
+            </div>
+            <div id="divStatsDistances">
+                <div id="divStatsDistances0">
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(0)">
+                        <canvas id="cvDist0" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(1)">
+                        <canvas id="cvDist1" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(2)">
+                        <canvas id="cvDist2" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(3)">
+                        <canvas id="cvDist3" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(4)">
+                        <canvas id="cvDist4" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(5)">
+                        <canvas id="cvDist5" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(6)">
+                        <canvas id="cvDist6" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances0" onclick="OnStatsDistances8Click(7)">
+                        <canvas id="cvDist7" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                </div>
+                <div id="divStatsDistances1" style="display: none">
+                    <div class="divStatsDistances1" onclick="OnStatsDistanceClick(0)">
+                        <canvas id="cvDist10" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances1" onclick="OnStatsDistanceClick(1)">
+                        <canvas id="cvDist11" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances1" onclick="OnStatsDistanceClick(2)">
+                        <canvas id="cvDist12" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div class="divStatsDistances1" onclick="OnStatsDistanceClick(3)">
+                        <canvas id="cvDist13" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                    </div>
+                    <div style="width: 100%; height: 100px">
+                        <table cellpadding="0" cellspacing="10" border="0" style="margin: 0 auto;">
+                            <tr>
+                                <td class="bttnSystem bttnStatsDist" id="tdBttnStatsDistReturn" onclick="OnStatsDistance1Return()">返回</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="divStatsColRow">
+                <div id="divStatsColRowBttns"></div>
+                <div id="divStatsColRowDetail" style="word-wrap:break-word; padding: 10px 10px 10px 10px">
+                </div>
+                <div id="divStatsColRowChart" style="word-wrap:break-word; padding: 3px 10px 10px 10px">
+                    <div id="divStatsCRC0">
+                        <table id="tblStatsCRC" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td class="tdStatsCRCT0 tdStatsCRCT01">一组</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(0)">
+                                    <canvas id="cvCRC0" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                                <td class="tdStatsCRCT0 tdStatsCRCT02">1行</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(4)">
+                                    <canvas id="cvCRC4" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="tdStatsCRCT0 tdStatsCRCT01">二组</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(1)">
+                                    <canvas id="cvCRC1" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                                <td class="tdStatsCRCT0 tdStatsCRCT02">2行</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(5)">
+                                    <canvas id="cvCRC5" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="tdStatsCRCT0 tdStatsCRCT01">三组</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(2)">
+                                    <canvas id="cvCRC2" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                                <td class="tdStatsCRCT0 tdStatsCRCT02">3行</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(6)">
+                                    <canvas id="cvCRC6" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="tdStatsCRCT0 tdStatsCRCT01">组</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(3)">
+                                    <canvas id="cvCRC3" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                                <td class="tdStatsCRCT0 tdStatsCRCT02">行</td>
+                                <td class="tdStatsCRC0" onclick="OnStatsCRC8Click(7)">
+                                    <canvas id="cvCRC7" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div id="divStatsColRowSum" style="word-wrap:break-word; padding: 10px 10px 10px 10px">
+                    <div id="divStatsCRSTable"></div>
+                    <div id="divStatsCRExplore" style="padding: 20px 0 10px 0">
+                        <table id="tblStatsCRExplore" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td>行组</td>
+                                <td>轮次</td>
+                                <td>筹码10元输赢</td>
+                            </tr>
+                            <tr>
+                                <td height="500" id="tdStatsCRE1">
+                                    <table id="dgStatsCREColRows" data-options="showHeader:false,border:false,fit:true,fitColumns:true,scrollbarSize:0">
+                                        <thead>
+                                            <tr>
+                                                <th data-options="field:'chkStatsCREColRows',checkbox:true"></th>
+                                                <th data-options="field:'v',width:50,sortable:false">行组</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </td>
+                                <td id="tdStatsCRE2">
+                                    <table id="dgStatsCRERounds" data-options="showHeader:false,border:false,fit:true,fitColumns:true,scrollbarSize:0">
+                                        <thead>
+                                            <tr>
+                                                <th data-options="field:'chkStatsCRERounds',checkbox:true"></th>
+                                                <th data-options="field:'v',width:50,sortable:false">轮次</th>
+                                            </tr>
+                                        </thead>
+                                    </table>
+                                </td>
+                                <td id="tdStatsCRE3">
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="divStatsColRowDig" style="word-wrap:break-word; padding: 0px 20px 20px 20px">
+                <div id="divStatsCRDOptBttns"></div>
+                <div id="divStatsCRDCompare" style="padding: 10px 0">
+                    <table cellpadding="0" cellspacing="0" border="0" style="width: 100%">
+                        <tr>
+                            <td width="130">开始</td>
+                            <td><div id="divStatsCRDRoundStartBttns"></div></td>
+                        </tr>
+                        <tr>
+                            <td>几轮</td>
+                            <td><div id="divStatsCRDRoundBetBttns"></div></td>
+                        </tr>
+                    </table>
+                    <div id="divStatsCRDCompareList" style="padding: 15px 0"></div>
+                </div>
+                <div id="divStatsCRDDetail">
+
+                </div>
+            </div>
+            <div id="divStatsOther">
+                <div id="divStatsOtherBttns"></div>
+                <div style="height: 15px">&nbsp;</div>
+                <div id="divStatsOtherLongs">
+                    <div id="divStatsOtherLongsContents"></div>
+                    <table cellpadding="0" cellspacing="0" border="0" id="tblStatsLongsBttns">
+                        <tr>
+                            <td class="tdSLBttnsT">长套后轮次：</td>
+                            <td><div id="divStatsLongsBetBttns"></div></td>
+                        </tr>
+                        <tr>
+                            <td class="tdSLBttnsT">长套轮次：</td>
+                            <td><div id="divStatsLongsBttns"></div></td>
+                        </tr>
+                    </table>
+                </div>
+                <div id="divStatsOtherNumbers">
+                    <div id="divStatsOtherNumbersContents"></div>
+                    <div class="divStatsTitle">最大距离前五名：</div>
+                    <div id="divMaxDistanceTops"></div>
+                </div>
+                <div id="divStatsOtherRounds">
+                    <div class="divStatsTitle" onclick="OnStatsRoundsClick(0)">轮次参考数据</div>
+                    <div id="divStatsRoundBet">
+                        <div id="divStatsRoundBetC"></div>
+                    </div>
+                    <div class="divStatsTitle" onclick="OnStatsRoundsClick(1)">轮次统计数据</div>
+                    <div id="divStatsRoundSum"></div>
+                </div>
+            </div>
+        </div>
+        <div id="divStatsBottom" style="position: fixed; bottom: 0px; z-index: 39; width: 100%;
+            background-color: white;">
+            <div style="height: 25px">&nbsp;</div>
+            <div id="divStatsScopeBttns"></div>
+            <div id="divStatsFrequencyScopeBttns"></div>
+            <table cellpadding="0" cellspacing="10" border="0" style="width: 100%">
+                <tr>
+                    <td style="width: 100%"><div id="divStatsBttns"></div></td>
+                </tr>
+            </table>
+            <div id="divPlayBttns" style="display: none">
+                <table cellpadding="0" cellspacing="0" border="0" style="margin: auto">
+                    <tr>
+                        <td>
+                            <table cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td id="tdPlayCount" style="text-align: right">10</td>
+                                    <td>/</td>
+                                    <td id="tdPlayTotal" style="text-align: left">20</td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="width: 10px; font-size: 10px">&nbsp;</td>
+                        <td>
+                            <table cellpadding="0" cellspacing="10" border="0" id="tblPlayBttns">
+                                <tr>
+                                    <td class="bttnSystem bttnPlay" id="tdBttnPlayStart" onclick="OnPlayStart()">开始</td>
+                                    <td class="bttnSystem bttnPlay" id="tdBttnPlayPauseContinue" onclick="OnPlayPauseContinue()" style="display: none">暂停</td>
+                                    <td class="bttnSystem bttnPlay" id="tdBttnPlayStop" onclick="OnPlayStop()">结束</td>
+                                    <td class="bttnSystem bttnPlay" id="tdBttnPlayScope" onclick="OnPlayScope()">全部</td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="width: 10px; font-size: 10px">&nbsp;</td>
+                        <td id="tdPlaySpeedBttns"></td>
+                    </tr>
+                </table>
+            </div>
+            <div style="height: 10px">&nbsp;</div>
+        </div>
+    </div>
+
+    <div id="divStatsDistDetail" style="display: none;">
+        <div id="divStatsDistDetailDraw" class="divDialog" onclick="OnHideStatsDistDetail()">
+            <canvas id="cvDist" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+        </div>
+    </div>
+
+    <div id="divStatsCRCDetail" style="display: none;">
+        <div id="divStatsCRCDetailDraw" class="divDialog" onclick="OnHideStatsCRCDetail()">
+            <canvas id="cvCRC" style="background-color: white; width: 100%; height: 100%">您当前的版本不支持</canvas>
+        </div>
+    </div>
+
+    <div id="divPlayScope" style="padding: 500px 0 0 0; position:absolute; top: 0; z-index: 60; width: 100%; height: 100%; display: none">
+        <div class="divDialog" style="padding: 20px 0 10px 0; background-color: white; margin: 0 auto; width: 95%;">
+            <table cellpadding="0" cellspacing="30" style="width: 100%; margin: 0 auto;">
+                <tr><td class="tdSpec">请选择播放区间的长度：</td></tr>
+                <tr><td style="padding: 30px 0 0 0;"><div id="divPlayScopeBttns"></div></td></tr>
+                <tr>
+                    <td style="text-align: center">
+                        <table cellpadding="0" cellspacing="20" border="0" style="margin: auto">
+                            <tr>
+                                <td class="bttnDialog" id="tdBttnPlayScopeOK" onclick="OnPlayScopeOK()">确定</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div id="divFiles" style="position:absolute; top: 0; z-index: 70; width: 100%; height: 100%;
+            background-color: white; display: none">
+        <div id="divFilesTop" style="z-index: 75; position: fixed; right: 0px; top:0px; width: 100%;">
+            <table cellpadding="0" cellspacing="0" style="width: 100%;" id="tblFilesTitleBar">
+                <tr>
+                    <td style="width: 91%; text-align: center" id="tdFilesTitle">统计数据</td>
+                    <td style="width: 9%; height: 80px; font-family: Arial" onclick="OnHideFiles()">x</td>
+                </tr>
+            </table>
+        </div>
+        <div style="width: 100%; height: 90px">&nbsp;</div>
+
+        <div id="divFilesMain" style="z-index: 71; position: fixed; width: 100%; background-color: white;">
+            <table id="dgFiles" data-options="header:'#hh',border:false,fit:true,fitColumns:true,scrollbarSize:30">
+                <thead>
+                    <tr>
+                        <th data-options="field:'n',width:430,sortable:true">名称</th>
+                        <th data-options="field:'c',width:80,sortable:true">量</th>
+                        <th data-options="field:'t',width:280,sortable:true,formatter:FormatTimeCol">时间</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        <div id="divFilesBottom" style="z-index: 79; position: fixed; right: 0px; bottom:0px; width: 100%; height: auto;">
+            <div style="background-color: white; height: 10px">&nbsp;</div>
+            <div id="divFilesBottomMain" style="width: 100%; height: auto; margin: 0 auto; padding: 10px 5px">
+                <table cellpadding="0" cellspacing="15" border="0" id="tblFilesButtons" style="margin: 0 auto; ">
+                    <tr>
+                        <td id="tdBttnFileOpen">打开</td>
+                        <td id="tdBttnFileRename">更名</td>
+                        <td id="tdBttnFileDelete">删除</td>
+                        <td id="tdBttnFileImport">导入</td>
+                        <td id="tdBttnFileExport">导出</td>
+                        <td id="tdBttnTools" onclick="OnTools()">工具</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="divViewNum" style="z-index: 20; position: fixed; right: 0px; top:0px; width: 100%; height: 100%;
+            background-color: white; display: none; ">
+
+        <div id="divViewNumTop" style="z-index: 25; position: fixed; right: 0px; top:0px; width: 100%;
+            background-color: white;">
+            <table cellpadding="0" cellspacing="0" style="width: 100%;" id="tblViewNumTitleBar">
+                <tr>
+                    <td style="width: 91%; text-align: center" id="tdViewNumTitle">号码查看</td>
+                    <td style="width: 9%; height: 80px; font-family: Arial" onclick="OnQuitViewNum()">x</td>
+                </tr>
+            </table>
+        </div>
+        <div id="divViewNumMain" style="position:absolute; top: 0; z-index: 21; width: 100%; height: 100%;
+            background-color: white;">
+            <div style="height: 100px">&nbsp;</div>
+            <div id="divViewNumC"></div>
+            <div style="height: 300px">&nbsp;</div>
+        </div>
+
+        <div id="divViewNumBottom" style="z-index: 29; position: fixed; right: 0px; bottom:0px;
+        width: 100%; height: auto; background-color: white;">
+            <div style="background-color: white; height: 10px">&nbsp;</div>
+
+            <table cellpadding="0" cellspacing="10" border="0" style="width: 100%">
+                <tr>
+                    <td style="width: 87%"><div id="divViewNumBttns"></div></td>
+                    <td style="width: 13%">
+                        <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; height: 60px">
+                            <tr><td id="tdBttnViewNumQuit" onclick="OnQuitViewNum()">退出</td></tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

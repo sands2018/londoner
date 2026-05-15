@@ -1,0 +1,48 @@
+.txtZero { color: #a3a3a3 }
+
+#tblKeyboard, #tblGameBoard { background-color: #dfdfdf; border: 0; }
+#tblKeyboard td, #tblGameBoard td { border: 0; }
+#tblKeyboard td, #tblGameBoard td { color: #a3a3a3; }
+#tblQueue td { color: #999999; }
+#tblKeyboard td.tdRed, #tblGameBoard td.tdRed, #tblQueue td.tdRed { background-color: white }
+#tblKeyboard td.tdBlack, #tblGameBoard td.tdBlack, #tblQueue td.tdBlack { background-color: white }
+#tblKeyboard td.tdGreen, #tblGameBoard td.tdGreen, #tblQueue td.tdGreen { background-color: white }
+
+#tbl3C3R td { padding: 8px 0px; border: 1px solid #dfdfdf; }
+#tbl3C3R td.td3C3RT { color: #9f9f9f; background-color: white }
+#tbl3C3R td.td3C3RV { color: #9f9f9f; background-color: white }
+#tbl3C3R td.td3C3RT5 { color: #9f9f9f; background-color: white }
+#tbl3C3R td.td3C3RV5 { color: #9f9f9f; background-color: white }
+#tbl3C3R td.td3C3RT6 { color: #9f9f9f; background-color: white }
+#tbl3C3R td.td3C3RV6 { color: #9f9f9f; background-color: white }
+
+#tblSysButtons .tdSBEnabled { color: #a3a3a3; background-color: white; border: 1px solid #d3d3d3 }
+#tblSysButtons .tdSBDisabled { color: #e3e3e3; background-color: white; border: 1px solid #e3e3e3 }
+
+#tblColumns td.TActive { color: #a3a3a3; background-color: #f8f8f8; }
+#tblColumns td.TInactive { color: #cfcfcf; background-color: #ffffff; }
+#tblColumns td.VActive { color: #a3a3a3; background-color: #f8f8f8; }
+#tblColumns td.VInactive { color: #cfcfcf; background-color: #ffffff; }
+
+.tdBttn { color: #cfcfcf; border: 1px solid #e9e9e9; }
+.tdSelBttn { color: #9f9f9f; background-color: #f9f9f3; border: 1px solid #d3d3d3; }
+
+#tblStatsGroups { border-top: 1px solid #d3d3d3; border-bottom: 1px solid #d3d3d3; }
+#tblStatsGroups td:first-child { border-right: 1px solid #d3d3d3; }
+.SGCTitle { color: #9f9f9f; }
+.SGCNumber { color: #9f9f9f; }
+#tblStatsBisections { padding: 10px 3px; width: 100%; color: #9f9f9f; }
+
+#tblStatsSum { border: 1px solid #d3d3d3; border-bottom: 0; width: 100%; margin: 13px 0 8px 0 }
+#tblStatsSum td { color: #a3a3a3; border-bottom: 1px solid #d3d3d3; font-size: 36px; padding: 3px 8px; text-align: center; }
+#tblStatsSum td:first-child { border-right: 1px solid #d3d3d3; width: 100px; text-align: center; } 
+#tblStatsSum .tdTotal { font-family:Arial; font-size: 40px; color: #a3a3a3; font-weight: bold; padding: 0px 18px } 
+#tblStatsSum .tdZero { font-family:Arial; font-size: 40px; color: #a3a3a3; font-weight: bold; padding: 0px 18px }
+
+#tblMainStatsGames { border-top: 1px solid #d3d3d3; border-bottom: 1px solid #d3d3d3; }
+#tblMainStatsGames td { color: #a3a3a3; }
+#tblMainStatsGames tr:first-child td { border-bottom: 1px solid #d3d3d3; }
+#tblMainStatsGames tr:last-child td { border-bottom: 1px solid #d3d3d3; }
+
+#divFinishedLong { color: #a3a3a3; }
+#divFinishedLong .txtLongCount { color: #a3a3a3; }

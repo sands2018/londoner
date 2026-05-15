@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{52A8B40A-A2E1-4DC4-9D06-07AED5DF39C0}</ProjectGuid>
+    <RootNamespace>roulette</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="..\3rd\clipboard.min.js" />
+    <None Include="..\3rd\easyui\jquery.easyui.min.js" />
+    <None Include="..\3rd\easyui\jquery.easyui.mobile.js" />
+    <None Include="..\3rd\easyui\themes\icon.css" />
+    <None Include="..\3rd\easyui\themes\metro\accordion.css" />
+    <None Include="..\3rd\easyui\themes\metro\calendar.css" />
+    <None Include="..\3rd\easyui\themes\metro\checkbox.css" />
+    <None Include="..\3rd\easyui\themes\metro\combo.css" />
+    <None Include="..\3rd\easyui\themes\metro\combobox.css" />
+    <None Include="..\3rd\easyui\themes\metro\datagrid.css" />
+    <None Include="..\3rd\easyui\themes\metro\datalist.css" />
+    <None Include="..\3rd\easyui\themes\metro\datebox.css" />
+    <None Include="..\3rd\easyui\themes\metro\dialog.css" />
+    <None Include="..\3rd\easyui\themes\metro\easyui.css" />
+    <None Include="..\3rd\easyui\themes\metro\filebox.css" />
+    <None Include="..\3rd\easyui\themes\metro\layout.css" />
+    <None Include="..\3rd\easyui\themes\metro\linkbutton.css" />
+    <None Include="..\3rd\easyui\themes\metro\menu.css" />
+    <None Include="..\3rd\easyui\themes\metro\menubutton.css" />
+    <None Include="..\3rd\easyui\themes\metro\messager.css" />
+    <None Include="..\3rd\easyui\themes\metro\numberbox.css" />
+    <None Include="..\3rd\easyui\themes\metro\pagination.css" />
+    <None Include="..\3rd\easyui\themes\metro\panel.css" />
+    <None Include="..\3rd\easyui\themes\metro\passwordbox.css" />
+    <None Include="..\3rd\easyui\themes\metro\progressbar.css" />
+    <None Include="..\3rd\easyui\themes\metro\propertygrid.css" />
+    <None Include="..\3rd\easyui\themes\metro\radiobutton.css" />
+    <None Include="..\3rd\easyui\themes\metro\searchbox.css" />
+    <None Include="..\3rd\easyui\themes\metro\sidemenu.css" />
+    <None Include="..\3rd\easyui\themes\metro\slider.css" />
+    <None Include="..\3rd\easyui\themes\metro\spinner.css" />
+    <None Include="..\3rd\easyui\themes\metro\splitbutton.css" />
+    <None Include="..\3rd\easyui\themes\metro\switchbutton.css" />
+    <None Include="..\3rd\easyui\themes\metro\tabs.css" />
+    <None Include="..\3rd\easyui\themes\metro\tagbox.css" />
+    <None Include="..\3rd\easyui\themes\metro\textbox.css" />
+    <None Include="..\3rd\easyui\themes\metro\tooltip.css" />
+    <None Include="..\3rd\easyui\themes\metro\tree.css" />
+    <None Include="..\3rd\easyui\themes\metro\validatebox.css" />
+    <None Include="..\3rd\easyui\themes\metro\window.css" />
+    <None Include="..\3rd\jquery-3.3.1.min.js" />
+    <None Include="..\3rd\jquery.alerts.css" />
+    <None Include="..\3rd\jquery.alerts.js" />
+    <None Include="..\3rd\jquery.easyui.min.js" />
+    <None Include="..\css\color.css" />
+    <None Include="..\css\debug.css" />
+    <None Include="..\css\grey.css" />
+    <None Include="..\css\normal.css" />
+    <None Include="..\index.html" />
+    <None Include="..\js\common.js" />
+    <None Include="..\js\message.js" />
+    <None Include="..\js\process.js" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

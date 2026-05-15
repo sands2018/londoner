@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="..\index.html" />
+    <None Include="..\js\common.js">
+      <Filter>js</Filter>
+    </None>
+    <None Include="..\3rd\clipboard.min.js">
+      <Filter>3rd</Filter>
+    </None>
+    <None Include="..\css\color.css">
+      <Filter>css</Filter>
+    </None>
+    <None Include="..\css\debug.css">
+      <Filter>css</Filter>
+    </None>
+    <None Include="..\css\normal.css">
+      <Filter>css</Filter>
+    </None>
+    <None Include="..\css\grey.css">
+      <Filter>css</Filter>
+    </None>
+    <None Include="..\js\message.js">
+      <Filter>js</Filter>
+    </None>
+    <None Include="..\js\process.js">
+      <Filter>js</Filter>
+    </None>
+    <None Include="..\3rd\jquery.alerts.css">
+      <Filter>3rd</Filter>
+    </None>
+    <None Include="..\3rd\jquery.alerts.js">
+      <Filter>3rd</Filter>
+    </None>
+    <None Include="..\3rd\jquery-3.3.1.min.js">
+      <Filter>3rd</Filter>
+    </None>
+    <None Include="..\3rd\jquery.easyui.min.js">
+      <Filter>3rd</Filter>
+    </None>
+    <None Include="..\3rd\easyui\jquery.easyui.min.js">
+      <Filter>3rd\easyui</Filter>
+    </None>
+    <None Include="..\3rd\easyui\jquery.easyui.mobile.js">
+      <Filter>3rd\easyui</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\icon.css">
+      <Filter>3rd\easyui\themes</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\accordion.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\calendar.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\checkbox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\combo.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\combobox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\datagrid.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\datalist.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\datebox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\dialog.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\easyui.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\filebox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\layout.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\linkbutton.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\menu.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\menubutton.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\messager.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\numberbox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\pagination.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\panel.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\passwordbox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\progressbar.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\propertygrid.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\radiobutton.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\searchbox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\sidemenu.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\slider.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\spinner.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\splitbutton.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\switchbutton.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\tabs.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\tagbox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\textbox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\tooltip.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\tree.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\validatebox.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+    <None Include="..\3rd\easyui\themes\metro\window.css">
+      <Filter>3rd\easyui\themes\metro</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="js">
+      <UniqueIdentifier>{023f1ca7-f6a6-486e-a65e-6970123999c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd">
+      <UniqueIdentifier>{3d6e88a7-515d-4463-af24-b1a167394005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="css">
+      <UniqueIdentifier>{aa8d50f8-df78-4e39-89c1-3c9b70afb49b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\easyui">
+      <UniqueIdentifier>{21aa781d-f610-496e-baf3-b60075900c40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\easyui\themes">
+      <UniqueIdentifier>{7e4e6679-ae6f-4c1a-906c-0200e1dcf00c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rd\easyui\themes\metro">
+      <UniqueIdentifier>{6dd7fe11-5e9e-4d7f-8d45-44c2fa0aa317}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

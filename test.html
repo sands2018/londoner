@@ -1,0 +1,21 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<input type="button" onClick='copyUrls(this)' value="方式二">
+<textarea id="txtTemp" style="width: 500px; height: 300px"></textarea>
+
+<script language="javascript">
+    function copyUrls(that)
+ {
+	var txt = document.getElementById("txtTemp");
+	txt.value = "";
+	txt.select();
+	document.execCommand('paste')
+    }
+</script>
+</body>
+</html>
