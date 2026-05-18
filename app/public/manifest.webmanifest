@@ -1,0 +1,21 @@
+{
+  "name": "Londoner",
+  "short_name": "Londoner",
+  "description": "Roulette tracking and quick input tool.",
+  "id": "/londoner/",
+  "start_url": "/londoner/",
+  "scope": "/londoner/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "fullscreen", "browser"],
+  "orientation": "any",
+  "background_color": "#f3f2ee",
+  "theme_color": "#f3f2ee",
+  "icons": [
+    {
+      "src": "/londoner/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

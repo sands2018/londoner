@@ -2,3 +2,8 @@ __vs.sln/.vs
 __vs.sln/roulette.VC.*
 __vs.sln/roulette.sdf
 __vs.sln/roulette.opensdf
+node_modules/
+dist/
+app/node_modules/
+app/dist/
+app/vite-dev*.log
