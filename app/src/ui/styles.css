@@ -2015,6 +2015,39 @@ button:disabled {
   gap: 8px;
 }
 
+.tools-panel {
+  max-height: min(82dvh, 680px);
+  width: min(92dvw, 620px);
+}
+
+.tools-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.tools-textarea {
+  min-height: min(44dvh, 360px);
+}
+
+.tools-check {
+  align-items: center;
+  color: #6d604f;
+  display: inline-flex;
+  font-size: var(--data-row-font-size);
+  gap: 8px;
+  width: max-content;
+}
+
+.tools-check input {
+  accent-color: var(--dialog-check-color);
+  height: 18px;
+  width: 18px;
+}
+
+.tools-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .modal-actions {
   display: grid;
   gap: 6px;

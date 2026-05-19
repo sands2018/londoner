@@ -208,6 +208,9 @@ export function App() {
   const [configViewOpen, setConfigViewOpen] = useState(false);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsText, setToolsText] = useState("");
+  const [toolsKeepBreaks, setToolsKeepBreaks] = useState(false);
   const [importMode, setImportMode] = useState<"current" | "files">("current");
   const [dialogMessage, setDialogMessage] = useState("");
   const [noticeDialog, setNoticeDialog] = useState<NoticeDialog | null>(null);
@@ -472,6 +475,58 @@ export function App() {
     setDataText("");
     setDialogMessage("");
     setActiveDialog("import");
+  }
+
+  function openToolsDialog() {
+    setToolsText("");
+    setToolsKeepBreaks(false);
+    setToolsOpen(true);
+  }
+
+  function normalizeToolsText() {
+    const lines = toolsKeepBreaks ? toolsText.split(/\r?\n/) : [toolsText];
+    const normalizedLines: string[] = [];
+    const invalidTokens: string[] = [];
+
+    for (const line of lines) {
+      const parsed = parseNumbersText(line);
+      invalidTokens.push(...parsed.invalidTokens);
+      const text = formatNumbers(parsed.numbers);
+      if (toolsKeepBreaks || text) {
+        normalizedLines.push(text);
+      }
+    }
+
+    if (invalidTokens.length > 0) {
+      setNoticeDialog({
+        title: "整理数据文本",
+        message: `存在无效数字：${invalidTokens.slice(0, 5).join("、")}`,
+      });
+      return;
+    }
+
+    setToolsText(toolsKeepBreaks ? normalizedLines.join("\n") : normalizedLines.join(","));
+  }
+
+  function reverseToolsText() {
+    const parsed = parseNumbersText(toolsText);
+    if (parsed.invalidTokens.length > 0) {
+      setNoticeDialog({
+        title: "整理数据文本",
+        message: `存在无效数字：${parsed.invalidTokens.slice(0, 5).join("、")}`,
+      });
+      return;
+    }
+
+    setToolsText(formatNumbers([...parsed.numbers].reverse()));
+  }
+
+  async function copyToolsText() {
+    const copied = await copyTextToClipboard(toolsText);
+    setNoticeDialog({
+      title: "整理数据文本",
+      message: copied ? "已复制到剪贴板。" : "数据复制失败，请检查浏览器剪贴板权限。",
+    });
   }
 
   function importData() {
@@ -1205,7 +1260,7 @@ export function App() {
             <button disabled={sortedSessions.length === 0} onClick={() => void exportSessions(selectedSessions)} type="button">
               导出
             </button>
-            <button onClick={() => openPendingFeature("工具")} type="button">工具</button>
+            <button onClick={openToolsDialog} type="button">工具</button>
           </footer>
         </section>
       ) : null}
@@ -1927,6 +1982,38 @@ export function App() {
               </aside>
             </div>
           </section>
+        </div>
+      ) : null}
+
+      {toolsOpen ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-panel tools-panel">
+            <div className="modal-head">
+              <strong>数据文本整理工具</strong>
+              <button className="close-button" onClick={() => setToolsOpen(false)} type="button">X</button>
+            </div>
+            <div className="tools-stack">
+              <textarea
+                className="data-textarea tools-textarea"
+                onChange={(event) => setToolsText(event.target.value)}
+                value={toolsText}
+              />
+              <label className="tools-check">
+                <input
+                  checked={toolsKeepBreaks}
+                  onChange={(event) => setToolsKeepBreaks(event.target.checked)}
+                  type="checkbox"
+                />
+                保留换行
+              </label>
+              <div className="modal-actions tools-actions">
+                <button onClick={normalizeToolsText} type="button">整理</button>
+                <button onClick={reverseToolsText} type="button">反序</button>
+                <button onClick={() => void copyToolsText()} type="button">复制</button>
+                <button onClick={() => setToolsOpen(false)} type="button">退出</button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
