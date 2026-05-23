@@ -1989,7 +1989,7 @@ export function App() {
                     <strong>{numbers.length}</strong>
                     <strong>{sessionRoi.bet}</strong>
                     <strong>{sessionRoi.win}</strong>
-                    <strong style={{ color: sessionRoi.roi >= 0 ? "#5f9a70" : "#b85a3a" }}>{sessionRoi.roi >= 0 ? "+" : ""}{sessionRoi.roi.toFixed(1)}%</strong>
+                    <strong style={{ color: sessionRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{sessionRoi.roi >= 0 ? "+" : ""}{sessionRoi.roi.toFixed(1)}%</strong>
                   </div>
                 </div>
 
