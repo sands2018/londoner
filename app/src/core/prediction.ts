@@ -1,0 +1,210 @@
+import { getNumberColRows, getColRowLabel, type RouletteNumber, type ColRowIndex } from "./roulette";
+
+/** 历史间隔窗口: 最近20次出现 */
+export const GAP_WINDOW = 20;
+/** 极端分位: 超过95%的历史最大间隔 */
+export const EXTREME_PCT = 0.95;
+/** 最少等待轮数 */
+export const MIN_GAP = 5;
+/** 建议追号轮数 */
+export const CHASE_LENGTH = 4;
+/** 建议翻倍策略 */
+export const PROGRESSION = [1, 2, 4, 8];
+
+export interface ColdSignal {
+  index: ColRowIndex;
+  label: string;
+  /** 当前连续未出现的轮数 */
+  currentGap: number;
+  /** 历史95%分位阈值 */
+  threshold: number;
+  /** 超出阈值的轮数 */
+  excess: number;
+  /** 建议追号长度 */
+  chaseLength: number;
+  /** 建议翻倍策略 */
+  progression: number[];
+}
+
+function extractGaps(numbers: readonly RouletteNumber[], targetIndex: number): number[] {
+  const gaps: number[] = [];
+  let lastSeen = -1;
+  for (let r = 0; r < numbers.length; r++) {
+    const value = numbers[r];
+    if (value === 0) continue;
+    const hits = getNumberColRows(value).map((h) => h as number);
+    if (!hits.includes(targetIndex)) continue;
+    if (lastSeen >= 0) gaps.push(r - lastSeen - 1);
+    lastSeen = r;
+  }
+  return gaps;
+}
+
+function getPercentile(sorted: number[], pct: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * pct))];
+}
+
+function analyzeOne(
+  numbers: readonly RouletteNumber[],
+  index: ColRowIndex,
+): ColdSignal | null {
+  const gaps = extractGaps(numbers, index);
+  const recentGaps = gaps.slice(-GAP_WINDOW);
+  if (recentGaps.length < 5) return null;
+
+  const sorted = [...recentGaps].sort((a, b) => a - b);
+  const threshold = getPercentile(sorted, EXTREME_PCT);
+
+  // 当前gap
+  let lastSeen = -1;
+  for (let r = numbers.length - 1; r >= 0; r--) {
+    const value = numbers[r];
+    if (value === 0) continue;
+    if (getNumberColRows(value).map((h) => h as number).includes(index)) {
+      lastSeen = r;
+      break;
+    }
+  }
+  const currentGap = lastSeen >= 0 ? numbers.length - lastSeen - 1 : numbers.length;
+
+  // 极端条件: 超过95%分位+2, 且>=5轮
+  if (currentGap >= threshold + 2 && currentGap >= MIN_GAP) {
+    return {
+      index,
+      label: getColRowLabel(index),
+      currentGap,
+      threshold,
+      excess: currentGap - threshold,
+      chaseLength: CHASE_LENGTH,
+      progression: PROGRESSION,
+    };
+  }
+
+  return null;
+}
+
+export class ColdReversalEngine {
+  analyze(numbers: readonly RouletteNumber[]): ColdSignal[] {
+    if (numbers.length < 10) return [];
+    const indices: ColRowIndex[] = [0, 1, 2, 3, 4, 5];
+    const signals: ColdSignal[] = [];
+    for (const i of indices) {
+      const s = analyzeOne(numbers, i);
+      if (s) signals.push(s);
+    }
+    return signals.sort((a, b) => b.excess - a.excess);
+  }
+
+  // 兼容旧接口
+  train(_numbers: readonly RouletteNumber[]): void {}
+  predict(numbers: readonly RouletteNumber[]): ColdSignal[] {
+    return this.analyze(numbers);
+  }
+}
+
+/** 计算ROI: 模拟冷门反转追号, 返回 {bet, win, roi} */
+export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; win: number; roi: number } {
+  let bet = 0, win = 0;
+  const lastSeen = [-1, -1, -1, -1, -1, -1];
+  const activeChases: { ci: number; startRound: number; chaseLen: number }[] = [];
+
+  for (let r = 0; r < numbers.length; r++) {
+    const value = numbers[r];
+    const hitCis = value !== 0 ? getNumberColRows(value).map((h) => h as number) : [];
+    const remaining: typeof activeChases = [];
+
+    for (const c of activeChases) {
+      const bi = r - c.startRound;
+      if (bi >= c.chaseLen) continue;
+      const amt = PROGRESSION[bi] ?? PROGRESSION[PROGRESSION.length - 1];
+      bet += amt;
+      if (hitCis.includes(c.ci)) { win += amt * 3; }
+      else if (bi + 1 < c.chaseLen) remaining.push(c);
+    }
+    activeChases.length = 0;
+    activeChases.push(...remaining);
+    for (const ci of hitCis) lastSeen[ci] = r;
+    if (r < 10) continue;
+
+    for (let ci = 0; ci < 6; ci++) {
+      const cg = lastSeen[ci] >= 0 ? r - lastSeen[ci] - 1 : r;
+      const allGaps: number[] = [];
+      let last = -1;
+      for (let rr = 0; rr < r; rr++) {
+        if (numbers[rr] === 0) continue;
+        if (!getNumberColRows(numbers[rr]).map((h) => h as number).includes(ci)) continue;
+        if (last >= 0) allGaps.push(rr - last - 1);
+        last = rr;
+      }
+      const recentGaps = allGaps.slice(-GAP_WINDOW);
+      if (recentGaps.length < 5) continue;
+      const sorted = [...recentGaps].sort((a, b) => a - b);
+      const threshold = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * EXTREME_PCT))];
+      if (cg < threshold + 2 || cg < MIN_GAP) continue;
+      if (activeChases.some((c) => c.ci === ci)) continue;
+      activeChases.push({ ci, startRound: r + 1, chaseLen: CHASE_LENGTH });
+    }
+  }
+  const roi = bet > 0 ? ((win - bet) / bet * 100) : 0;
+  return { bet, win, roi };
+}
+
+export class PredictionTracker {
+  private records: Array<{ hitIndices: Set<number>; sortedIndices: number[] }> = [];
+  private maxHistory = 200;
+
+  record(signals: ColdSignal[], actualNumber: RouletteNumber): void {
+    if (actualNumber === 0) return;
+    const hitIndices = new Set(getNumberColRows(actualNumber).map((h) => h as number));
+    const sortedIndices = signals.map((s) => s.index);
+    this.records.push({ hitIndices, sortedIndices });
+    if (this.records.length > this.maxHistory) this.records.shift();
+  }
+
+  getAccuracy(): { top1: number; top2: number; top3: number; averageRank: number } {
+    if (this.records.length === 0) return { top1: 0, top2: 0, top3: 0, averageRank: 0 };
+    let top1Hits = 0, top2Hits = 0, top3Hits = 0, totalRank = 0, totalHits = 0;
+    for (const { hitIndices, sortedIndices } of this.records) {
+      for (const hitIdx of hitIndices) {
+        const rank = sortedIndices.indexOf(hitIdx);
+        if (rank >= 0) {
+          if (rank === 0) top1Hits += 1;
+          if (rank <= 1) top2Hits += 1;
+          if (rank <= 2) top3Hits += 1;
+          totalRank += rank + 1;
+          totalHits += 1;
+        }
+      }
+    }
+    return {
+      top1: totalHits > 0 ? top1Hits / totalHits : 0,
+      top2: totalHits > 0 ? top2Hits / totalHits : 0,
+      top3: totalHits > 0 ? top3Hits / totalHits : 0,
+      averageRank: totalHits > 0 ? totalRank / totalHits : 0,
+    };
+  }
+
+  getFormattedAccuracy(): { top1: string; top2: string; top3: string; averageRank: string } {
+    const acc = this.getAccuracy();
+    return {
+      top1: (acc.top1 * 100).toFixed(1) + "%",
+      top2: (acc.top2 * 100).toFixed(1) + "%",
+      top3: (acc.top3 * 100).toFixed(1) + "%",
+      averageRank: acc.averageRank.toFixed(2),
+    };
+  }
+
+  get count(): number { return this.records.length; }
+
+  backfill(engine: ColdReversalEngine, numbers: readonly RouletteNumber[]): void {
+    this.records = [];
+    for (let i = 10; i < numbers.length; i++) {
+      if (numbers[i] === 0) continue;
+      const sigs = engine.predict(numbers.slice(0, i));
+      if (sigs.length > 0) this.record(sigs, numbers[i]);
+    }
+  }
+
+  clear(): void { this.records = []; }
+}

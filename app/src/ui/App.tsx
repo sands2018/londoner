@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   getNumberColor,
+  getNumberColRows,
   isRouletteNumber,
+  type ColRowIndex,
   type RouletteNumber,
 } from "../core/roulette";
 import { Keyboard } from "lucide-react";
@@ -60,6 +62,17 @@ import {
 } from "../core/otherStats";
 import { LocalStorageAdapter } from "../storage/localStorageAdapter";
 import type { SavedSession } from "../storage/storage";
+import {
+  CHASE_LENGTH,
+  ColdReversalEngine,
+  computeRoi,
+  EXTREME_PCT,
+  GAP_WINDOW,
+  MIN_GAP,
+  PredictionTracker,
+  PROGRESSION,
+  type ColdSignal,
+} from "../core/prediction";
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
@@ -180,6 +193,7 @@ export function App() {
   const [distanceViewOpen, setDistanceViewOpen] = useState(false);
   const [refineViewOpen, setRefineViewOpen] = useState(false);
   const [otherViewOpen, setOtherViewOpen] = useState(false);
+  const [predictionViewOpen, setPredictionViewOpen] = useState(false);
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
@@ -233,6 +247,47 @@ export function App() {
   const [gameSortField, setGameSortField] = useState<GameSortField>("won");
   const [gameSortDirection, setGameSortDirection] = useState<GameSortDirection>("desc");
   const [gameSettingsRevision, setGameSettingsRevision] = useState(0);
+
+  // 预测引擎初始化
+  const predictionEngine = useMemo(() => new ColdReversalEngine(), []);
+  const predictionTracker = useMemo(() => new PredictionTracker(), []);
+
+  const predictions = useMemo(() => {
+    if (numbers.length < 10) return [];
+    return predictionEngine.analyze(numbers);
+  }, [numbers, predictionEngine]);
+
+  const predictionAccuracy = predictionTracker.getFormattedAccuracy();
+  const predictionRecordCount = predictionTracker.count;
+
+  const sessionRoi = useMemo(() => computeRoi(numbers), [numbers]);
+
+  // 直接从号码推算追号状态 — 不存独立state, 永远同步
+  const signalDisplay = useMemo(() => {
+    const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number }> = [];
+    if (predictions.length === 0) return items;
+
+    for (const s of predictions) {
+      let firstTriggerRound = numbers.length;
+      for (let r = numbers.length - 1; r >= 10; r--) {
+        const engine = new ColdReversalEngine();
+        const sigs = engine.analyze(numbers.slice(0, r));
+        if (!sigs.some((ss) => ss.index === s.index)) { firstTriggerRound = r + 1; break; }
+      }
+      const chaseLen = s.chaseLength;
+      const startedAt = firstTriggerRound + 1;
+      const done = numbers.length - startedAt + 1;
+
+      if (done <= 0) {
+        items.push({ ci: s.index, label: s.label, round: 1, betAmt: 1, isNew: true, currentGap: s.currentGap, threshold: s.threshold });
+      } else if (done < chaseLen) {
+        const nr = done + 1;
+        items.push({ ci: s.index, label: s.label, round: nr, betAmt: [1,2,4,8][nr-1]??8, isNew: false, currentGap: s.currentGap, threshold: s.threshold });
+      }
+    }
+    return items;
+  }, [predictions, numbers]);
+
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
   const effectiveOtherScope = otherScope < 0 ? numbers.length : otherScope;
@@ -277,6 +332,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (loaded && numbers.length >= 10) {
+      predictionTracker.backfill(predictionEngine, numbers);
+    }
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (loaded) {
       void storage.saveCurrent(numbers);
     }
@@ -306,8 +367,18 @@ export function App() {
     }
   }, [currentSessionId]);
 
+  function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
+    const sorted = [...predictions].sort((a, b) => b.excess - a.excess);
+    const index = sorted.findIndex((p) => p.index === item.index);
+    return Math.min(3, index);
+  }
+
   function addNumber(value: RouletteNumber) {
-    setNumbers((current) => [...current, value]);
+    if (predictions.length > 0 && value !== 0) {
+      predictionTracker.record(predictions, value);
+    }
+
+    setNumbers([...numbers, value]);
     setRedoNumbers([]);
   }
 
@@ -318,7 +389,7 @@ export function App() {
     setNumbers(numbers.slice(0, -1));
     setRedoNumbers([...redoNumbers, removed]);
   }
-
+      const newLen = numbers.length - 1;
   function redo() {
     const restored = redoNumbers.at(-1);
     if (restored === undefined) return;
@@ -389,7 +460,7 @@ export function App() {
     });
     await refreshSessions();
     setLastSavedNumbers(numbers);
-    setNoticeDialog({ title: "保存成功", message: `保存“${currentSession.name}”成功。` });
+    setNoticeDialog({ title: "保存成功", message: `保存"${currentSession.name}"成功。` });
   }
 
   async function persistSession(name: string, existingId?: string) {
@@ -404,7 +475,7 @@ export function App() {
     setCurrentSessionId(id);
     setLastSavedNumbers(numbers);
     setActiveDialog(null);
-    setNoticeDialog({ title: "保存成功", message: `保存“${name}”成功。` });
+    setNoticeDialog({ title: "保存成功", message: `保存"${name}"成功。` });
   }
 
   async function saveSession() {
@@ -594,7 +665,7 @@ export function App() {
         await storage.renameSession(session.id, name);
         await refreshSessions();
         setSelectedSessionIds([session.id]);
-        setNoticeDialog({ title: "重命名成功", message: `“${session.name}”重命名为“${name}”成功。` });
+        setNoticeDialog({ title: "重命名成功", message: `"${session.name}"重命名为"${name}"成功。` });
       },
     });
   }
@@ -636,17 +707,28 @@ export function App() {
   }
 
   function importFilesFromText() {
-    let imported: SavedSession[];
+    let result: { imported: SavedSession[]; skipped: number };
     try {
-      imported = parseSessionImport(dataText, sessions);
+      result = parseSessionImport(dataText, sessions);
     } catch (error) {
       setDialogMessage(error instanceof Error ? error.message : "数据格式不正确，请检查。");
       return;
     }
 
+    const { imported, skipped } = result;
+    if (imported.length === 0) {
+      setNoticeDialog({ title: "数据导入", message: `没有新数据可导入。${skipped > 0 ? ` ${skipped} 条重名已跳过。` : ""}` });
+      setActiveDialog(null);
+      return;
+    }
+
+    let confirmMsg = `将导入 ${imported.length} 条数据`;
+    if (skipped > 0) confirmMsg += `，${skipped} 条重名将跳过`;
+    confirmMsg += "，确定要导入吗？";
+
     setConfirmDialog({
       title: "数据导入",
-      message: `将导入 ${imported.length} 条保存的数据，确定要导入吗？`,
+      message: confirmMsg,
       confirmText: "导入",
       onConfirm: async () => {
         for (const session of imported) {
@@ -654,7 +736,9 @@ export function App() {
         }
         await refreshSessions();
         setActiveDialog(null);
-        setNoticeDialog({ title: "数据导入", message: `已导入 ${imported.length} 条保存的数据。` });
+        let doneMsg = `已导入 ${imported.length} 条数据`;
+        if (skipped > 0) doneMsg += `，${skipped} 条重名未导入`;
+        setNoticeDialog({ title: "数据导入", message: doneMsg + "。" });
       },
     });
   }
@@ -833,6 +917,16 @@ export function App() {
     setDistanceViewOpen(false);
     setRefineViewOpen(false);
     setOtherViewOpen(true);
+  }
+
+  function openPredictionView() {
+    setGameViewOpen(false);
+    setColRowViewOpen(false);
+    setFrequencyViewOpen(false);
+    setDistanceViewOpen(false);
+    setRefineViewOpen(false);
+    setOtherViewOpen(false);
+    setPredictionViewOpen(true);
   }
 
   function toggleBetSelection(bet: number[]) {
@@ -1102,6 +1196,30 @@ export function App() {
         </div>
       </section>
 
+      {signalDisplay.length > 0 ? (
+        <section className="prediction-signal-area" aria-label="预测信号">
+          {signalDisplay.map((item) => (
+            <div
+              className={`prediction-signal-item ${item.isNew ? "" : "chase-active"}`}
+              key={item.ci}
+              onClick={openPredictionView}
+              role="button"
+              tabIndex={0}
+            >
+              <strong className="prediction-signal-label">{item.label}</strong>
+              <span className="prediction-chase">
+                <span className="prediction-dots">
+                  {[1,2,3,4].map((n) => (
+                    <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
+                  ))}
+                </span>
+                <span style={{ color: "#555", fontSize: 14, fontWeight: 500 }}>{item.betAmt}</span>
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
@@ -1114,7 +1232,7 @@ export function App() {
           <button onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
           <button onClick={openConfigView} type="button">配置</button>
-          <span className="dock-placeholder" aria-hidden="true" />
+          <button onClick={openPredictionView} type="button">预测</button>
           <button onClick={openGameView} type="button">打法</button>
           <button onClick={openColRowView} type="button">行组</button>
           <button onClick={openFrequencyView} type="button">频率</button>
@@ -1385,6 +1503,7 @@ export function App() {
               </button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
+              <button onClick={openPredictionView} type="button">预测</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -1457,6 +1576,7 @@ export function App() {
               <button className="selected" type="button">频率</button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
+              <button onClick={openPredictionView} type="button">预测</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -1839,6 +1959,73 @@ export function App() {
             </div>
           </footer>
         </section>
+      ) : null}
+
+      {predictionViewOpen ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <section className="prediction-screen" aria-label="冷门反转">
+            <div className="modal-head">
+              <strong>冷门反转</strong>
+              <button className="close-button" onClick={() => setPredictionViewOpen(false)} type="button">x</button>
+            </div>
+            <div className="prediction-body">
+              <p className="prediction-desc">当某个行组太久没出、超出历史常规范围时触发信号</p>
+            {signalDisplay.length === 0 ? (
+              <div className="prediction-empty">
+                <p>暂无冷门信号</p>
+                <p className="muted-text">当前数据: {numbers.length} 轮</p>
+                <p className="muted-text">当某个行组连续未出现超过历史{Math.round(EXTREME_PCT * 100)}%分位时触发</p>
+              </div>
+            ) : (
+              <>
+                <div className="prediction-roi-table">
+                  <div className="prediction-roi-row">
+                    <span>数据量</span>
+                    <span>总投入</span>
+                    <span>总赢回</span>
+                    <span>ROI</span>
+                  </div>
+                  <div className="prediction-roi-row">
+                    <strong>{numbers.length}</strong>
+                    <strong>{sessionRoi.bet}</strong>
+                    <strong>{sessionRoi.win}</strong>
+                    <strong style={{ color: sessionRoi.roi >= 0 ? "#5f9a70" : "#b85a3a" }}>{sessionRoi.roi >= 0 ? "+" : ""}{sessionRoi.roi.toFixed(1)}%</strong>
+                  </div>
+                </div>
+
+                <div className="cold-strategy-bar">
+                  <span>追{CHASE_LENGTH}轮</span>
+                  <span>翻倍 {PROGRESSION.join(" → ")}</span>
+                  <span>基准 {GAP_WINDOW}次 {Math.round(EXTREME_PCT * 100)}%分位</span>
+                </div>
+
+                <div className="cold-signal-list">
+                  {signalDisplay.map((item) => (
+                    <div className="cold-signal-card" key={item.ci}>
+                      <strong className="cold-signal-label">{item.label}</strong>
+                      <div className="cold-signal-body">
+                        <div className="cold-signal-row">
+                          <span>历史{Math.round(EXTREME_PCT * 100)}%上限 <strong>{item.threshold}</strong> 轮</span>
+                        </div>
+                        <div className="cold-signal-row">
+                          <span>已 <strong>{item.currentGap}</strong> 轮未出</span>
+                          <span className="prediction-dots">
+                            {[1,2,3,4].map((n) => (
+                              <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
+                            ))}
+                          </span>
+                          <span>押<strong>{item.betAmt}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+              </>
+            )}
+          </div>
+          </section>
+        </div>
       ) : null}
 
       {configViewOpen ? (
@@ -2271,7 +2458,7 @@ function validateSessionName(name: string, sessions: SavedSession[], currentId?:
   return duplicated ? "该名称已经存在，请重新输入" : null;
 }
 
-function parseSessionImport(text: string, existingSessions: SavedSession[]): SavedSession[] {
+function parseSessionImport(text: string, existingSessions: SavedSession[]): { imported: SavedSession[]; skipped: number } {
   const raw = JSON.parse(text) as unknown;
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new Error("数据格式不正确，请检查。");
@@ -2279,17 +2466,23 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): Sav
 
   const names = new Set(existingSessions.map((session) => session.name.toLowerCase()));
   const incomingNames = new Set<string>();
+  const imported: SavedSession[] = [];
+  let skipped = 0;
 
-  return raw.map((item, index) => {
+  for (let index = 0; index < raw.length; index += 1) {
+    const item = raw[index];
     if (!isImportItem(item)) throw new Error("数据格式不正确，请检查。");
 
     const name = item.Name.trim();
     const nameError = validateSessionName(name, existingSessions);
-    if (nameError) throw new Error(nameError === "该名称已经存在，请重新输入" ? `“${name}”重名了。` : nameError);
+    if (nameError && nameError !== "该名称已经存在，请重新输入") {
+      throw new Error(nameError);
+    }
 
     const normalizedName = name.toLowerCase();
     if (names.has(normalizedName) || incomingNames.has(normalizedName)) {
-      throw new Error(`“${name}”重名了。`);
+      skipped += 1;
+      continue;
     }
     incomingNames.add(normalizedName);
 
@@ -2299,13 +2492,15 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): Sav
     }
 
     const time = typeof item.tms === "number" && Number.isFinite(item.tms) ? item.tms : Date.now() + index;
-    return {
+    imported.push({
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
       numbers: parsed.numbers,
       updatedAt: new Date(time).toISOString(),
-    };
-  });
+    });
+  }
+
+  return { imported, skipped };
 }
 
 function isImportItem(item: unknown): item is { Name: string; Numbers: string; tms?: number } {

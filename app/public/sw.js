@@ -1,4 +1,4 @@
-const CACHE_NAME = "londoner-shell-v4";
+const CACHE_NAME = "londoner-shell-v5";
 const APP_SHELL = ["/londoner/", "/londoner/manifest.webmanifest", "/londoner/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {

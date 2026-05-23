@@ -13,8 +13,14 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
+// SW temporarily disabled during development
+// if ("serviceWorker" in navigator) {
+//   window.addEventListener("load", () => {
+//     void navigator.serviceWorker.register("/londoner/sw.js", { scope: "/londoner/" });
+//   });
+// }
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/londoner/sw.js", { scope: "/londoner/" });
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) reg.unregister();
   });
 }

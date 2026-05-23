@@ -7,3 +7,7 @@ dist/
 app/node_modules/
 app/dist/
 app/vite-dev*.log
+app/scripts/
+data/
+sands_history*.txt
+app/test-results/
