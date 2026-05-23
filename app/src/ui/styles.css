@@ -72,6 +72,8 @@
   text-rendering: optimizeLegibility;
   text-size-adjust: none;
   -webkit-text-size-adjust: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html {
@@ -80,6 +82,24 @@ html {
   line-height: 1.2;
   text-size-adjust: none;
   -webkit-text-size-adjust: none;
+}
+
+html.android {
+  --weight-regular: 400;
+  --weight-list: 400;
+  --weight-ui: 500;
+  --weight-emphasis: 500;
+  --weight-strong: 600;
+  --font-adjust: -1px;
+}
+
+html.android .app-shell {
+  zoom: 0.92;
+}
+
+html.android .prediction-screen {
+  max-width: 520px;
+  width: 100dvw;
 }
 
 * {
@@ -2430,7 +2450,7 @@ button:disabled {
   color: #8a7e74;
   font-size: 13px;
   line-height: 1.5;
-  margin: 4px 0 8px;
+  margin: 4px 0 2px;
   padding: 0 4px;
 }
 
