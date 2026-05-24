@@ -2,6 +2,8 @@
 
 Modern rebuild of a roulette statistics and prediction tool. Vite + React 19 + TypeScript SPA deployed to GitHub Pages at `/londoner/`.
 
+> **Architecture & feature docs**: See `docs/architecture.md` (codebase overview) and `docs/prediction-models.md` (prediction engine details). These files are maintained alongside the code.
+
 ## Quick start
 
 ```powershell

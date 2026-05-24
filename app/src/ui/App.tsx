@@ -66,13 +66,17 @@ import {
   CHASE_LENGTH,
   ColdReversalEngine,
   computeRoi,
+  computeRhythmRoi,
   EXTREME_PCT,
   GAP_WINDOW,
   MIN_GAP,
   PredictionTracker,
   PROGRESSION,
+  RhythmEngine,
   type ColdSignal,
+  type RhythmSignal,
 } from "../core/prediction";
+import { checkWaveRecovery, computePeakSma, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
@@ -194,6 +198,7 @@ export function App() {
   const [refineViewOpen, setRefineViewOpen] = useState(false);
   const [otherViewOpen, setOtherViewOpen] = useState(false);
   const [predictionViewOpen, setPredictionViewOpen] = useState(false);
+  const [rhythmDetailOpen, setRhythmDetailOpen] = useState(false);
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
@@ -249,24 +254,92 @@ export function App() {
   const [gameSettingsRevision, setGameSettingsRevision] = useState(0);
 
   // 预测引擎初始化
-  const predictionEngine = useMemo(() => new ColdReversalEngine(), []);
+  const coldEngine = useMemo(() => new ColdReversalEngine(), []);
+  const rhythmEngine = useMemo(() => new RhythmEngine(), []);
   const predictionTracker = useMemo(() => new PredictionTracker(), []);
 
   const predictions = useMemo(() => {
     if (numbers.length < 10) return [];
-    return predictionEngine.analyze(numbers);
-  }, [numbers, predictionEngine]);
+    return coldEngine.analyze(numbers);
+  }, [numbers, coldEngine]);
+
+  const rhythmSignals = useMemo(() => {
+    if (numbers.length < 15) return [];
+    return rhythmEngine.analyze(numbers);
+  }, [numbers, rhythmEngine]);
 
   const predictionAccuracy = predictionTracker.getFormattedAccuracy();
   const predictionRecordCount = predictionTracker.count;
 
   const sessionRoi = useMemo(() => computeRoi(numbers), [numbers]);
+  const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
+
+  // 波浪恢复: 每个行组独立追踪波浪状态
+  const rhythmPausedCis = useMemo(() => {
+    const paused = new Set<number>();
+    const ls = [-1,-1,-1,-1,-1,-1];
+    const ac: {ci:number;sr:number;cl:number}[]=[];
+    const recovery: WaveRecoveryState[] = Array.from({length:6},()=>createRecoveryState());
+
+    for(let r=0;r<numbers.length;r++){
+      const v=numbers[r];const hc=v!==0?getNumberColRows(v):[];
+      const rm:typeof ac=[];
+      for(const c of ac){
+        const bi=r-c.sr;if(bi>=c.cl)continue;
+        const amt=[1,2,4][bi]??4;
+        if(hc.includes(c.ci as ColRowIndex)){}
+        else if(bi+1<c.cl)rm.push(c);
+        else {
+          // 追号失败, 记录波浪状态
+          const gaps = extractGaps(numbers.slice(0,r),c.ci);
+          recovery[c.ci] = createRecoveryState();
+          recovery[c.ci].paused = true;
+          recovery[c.ci].failSma = computePeakSma(gaps);
+          recovery[c.ci].failRound = r;
+          recovery[c.ci].phase = 0;
+        }
+      }
+      ac.length=0;ac.push(...rm);
+      for(const ci of hc)ls[ci]=r;
+      if(r<15)continue;
+
+      // 检查波浪恢复
+      for(let ci=0;ci<6;ci++){
+        if(recovery[ci].paused){
+          const gaps = extractGaps(numbers.slice(0,r),ci);
+          if(checkWaveRecovery(recovery[ci],gaps,r)){
+            recovery[ci].paused = false;
+          }
+        }
+      }
+
+      // 决定哪些ci当前被暂停
+      paused.clear();
+      for(let ci=0;ci<6;ci++){
+        if(recovery[ci].paused) paused.add(ci);
+      }
+
+      for(let ci=0;ci<6;ci++){
+        if(paused.has(ci))continue;
+        const cg=ls[ci]>=0?r-ls[ci]-1:r;
+        if(cg<1||cg>6)continue;
+        if(ac.some(c=>c.ci===ci))continue;
+        const engine=new RhythmEngine();
+        const sigs=engine.analyze(numbers.slice(0,r));
+        if(!sigs.some(s=>s.index===ci))continue;
+        const sig = sigs.find(s=>s.index===ci)!;
+        ac.push({ci,sr:r+1,cl:sig.chaseLength});
+      }
+    }
+    return paused;
+  }, [numbers]);
 
   // 直接从号码推算追号状态 — 不存独立state, 永远同步
   const signalDisplay = useMemo(() => {
-    const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number }> = [];
-    if (predictions.length === 0) return items;
+    const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number; peak: number; chaseLen: number; kind: "cold" | "rhythm" }> = [];
+    if (predictions.length === 0 && rhythmSignals.length === 0) return items;
 
+    // 冷门反转信号
     for (const s of predictions) {
       let firstTriggerRound = numbers.length;
       for (let r = numbers.length - 1; r >= 10; r--) {
@@ -279,14 +352,37 @@ export function App() {
       const done = numbers.length - startedAt + 1;
 
       if (done <= 0) {
-        items.push({ ci: s.index, label: s.label, round: 1, betAmt: 1, isNew: true, currentGap: s.currentGap, threshold: s.threshold });
+        items.push({ ci: s.index, label: s.label, round: 1, betAmt: 1, isNew: true, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen: 4, kind: "cold" });
       } else if (done < chaseLen) {
         const nr = done + 1;
-        items.push({ ci: s.index, label: s.label, round: nr, betAmt: [1,2,4,8][nr-1]??8, isNew: false, currentGap: s.currentGap, threshold: s.threshold });
+        items.push({ ci: s.index, label: s.label, round: nr, betAmt: [1,2,4,8][nr-1]??8, isNew: false, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen: 4, kind: "cold" });
       }
     }
+
+    // 节奏追号信号 (按行组永久停)
+    for (const s of rhythmSignals) {
+      if (rhythmPausedCis.has(s.index)) continue;
+      let firstTriggerRound = numbers.length;
+      for (let r = numbers.length - 1; r >= 15; r--) {
+        const engine = new RhythmEngine();
+        const sigs = engine.analyze(numbers.slice(0, r));
+        if (!sigs.some((ss) => ss.index === s.index)) { firstTriggerRound = r + 1; break; }
+      }
+      const chaseLen = s.chaseLength;
+      const startedAt = firstTriggerRound + 1;
+      const done = numbers.length - startedAt + 1;
+
+      if (done <= 0) {
+        items.push({ ci: s.index, label: s.label, round: 1, betAmt: 1, isNew: true, currentGap: s.currentGap, threshold: 0, peak: s.peak, chaseLen: s.chaseLength, kind: "rhythm" });
+      } else if (done < chaseLen) {
+        const nr = done + 1;
+        const rProg = s.chaseLength <= 3 ? [1,2,4] : [1,2,4,8];
+        items.push({ ci: s.index, label: s.label, round: nr, betAmt: rProg[nr-1]??4, isNew: false, currentGap: s.currentGap, threshold: 0, peak: s.peak, chaseLen: s.chaseLength, kind: "rhythm" });
+      }
+    }
+
     return items;
-  }, [predictions, numbers]);
+  }, [predictions, rhythmSignals, numbers, rhythmPausedCis]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -333,7 +429,7 @@ export function App() {
 
   useEffect(() => {
     if (loaded && numbers.length >= 10) {
-      predictionTracker.backfill(predictionEngine, numbers);
+      predictionTracker.backfill(coldEngine, numbers);
     }
   }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -929,6 +1025,16 @@ export function App() {
     setPredictionViewOpen(true);
   }
 
+  function openRhythmDetail() {
+    setGameViewOpen(false);
+    setColRowViewOpen(false);
+    setFrequencyViewOpen(false);
+    setDistanceViewOpen(false);
+    setRefineViewOpen(false);
+    setOtherViewOpen(false);
+    setRhythmDetailOpen(true);
+  }
+
   function toggleBetSelection(bet: number[]) {
     const key = formatGameBet(bet);
     setSelectedBetKeys((current) =>
@@ -1200,16 +1306,16 @@ export function App() {
         <section className="prediction-signal-area" aria-label="预测信号">
           {signalDisplay.map((item) => (
             <div
-              className={`prediction-signal-item ${item.isNew ? "" : "chase-active"}`}
-              key={item.ci}
-              onClick={openPredictionView}
+              className={`prediction-signal-item ${item.isNew ? "" : "chase-active"} ${item.kind === "rhythm" ? "rhythm-signal" : ""}`}
+              key={`${item.kind}-${item.ci}`}
+              onClick={item.kind === "rhythm" ? openRhythmDetail : openPredictionView}
               role="button"
               tabIndex={0}
             >
               <strong className="prediction-signal-label">{item.label}</strong>
               <span className="prediction-chase">
                 <span className="prediction-dots">
-                  {[1,2,3,4].map((n) => (
+                  {Array.from({length: item.chaseLen}, (_, i) => i + 1).map((n) => (
                     <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
                   ))}
                 </span>
@@ -1995,22 +2101,25 @@ export function App() {
 
                 <div className="cold-strategy-bar">
                   <span>追{CHASE_LENGTH}轮</span>
-                  <span>翻倍 {PROGRESSION.join(" → ")}</span>
+                  <span>翻倍 {PROGRESSION.join("-")}</span>
                   <span>基准 {GAP_WINDOW}次 {Math.round(EXTREME_PCT * 100)}%分位</span>
                 </div>
 
                 <div className="cold-signal-list">
                   {signalDisplay.map((item) => (
-                    <div className="cold-signal-card" key={item.ci}>
+                    <div className={`cold-signal-card ${item.kind==="rhythm"?"rhythm-card":""}`} key={`${item.kind}-${item.ci}`}>
                       <strong className="cold-signal-label">{item.label}</strong>
                       <div className="cold-signal-body">
                         <div className="cold-signal-row">
-                          <span>历史{Math.round(EXTREME_PCT * 100)}%上限 <strong>{item.threshold}</strong> 轮</span>
+                          {item.kind==="cold"
+                            ? <span>历史{Math.round(EXTREME_PCT * 100)}%上限 <strong>{item.threshold}</strong> 轮</span>
+                            : <span>间隔 = {item.peak}</span>
+                          }
                         </div>
                         <div className="cold-signal-row">
                           <span>已 <strong>{item.currentGap}</strong> 轮未出</span>
                           <span className="prediction-dots">
-                            {[1,2,3,4].map((n) => (
+                            {Array.from({length: item.chaseLen}, (_, i) => i + 1).map((n) => (
                               <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
                             ))}
                           </span>
@@ -2024,6 +2133,63 @@ export function App() {
               </>
             )}
           </div>
+          </section>
+        </div>
+      ) : null}
+
+      {rhythmDetailOpen ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <section className="prediction-screen rhythm-detail" aria-label="节奏追号">
+            <div className="modal-head">
+              <strong>节奏追号</strong>
+              <button className="close-button" onClick={() => setRhythmDetailOpen(false)} type="button">x</button>
+            </div>
+            <div className="prediction-body">
+              <p className="prediction-desc">间隔1-4自适应入场，集中度≥62%触发，1-2-4追打2-3轮，失败一次停，按波浪自适应恢复</p>
+              <div className="prediction-roi-table">
+                <div className="prediction-roi-row">
+                  <span>数据量</span>
+                  <span>总投入</span>
+                  <span>总赢回</span>
+                  <span>ROI</span>
+                </div>
+                <div className="prediction-roi-row">
+                  <strong>{numbers.length}</strong>
+                  <strong>{rhythmRoi.bet}</strong>
+                  <strong>{rhythmRoi.win}</strong>
+                  <strong style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
+                </div>
+              </div>
+              {signalDisplay.filter(item=>item.kind==="rhythm").length === 0 ? (
+                <div className="prediction-empty">
+                  <p>暂无节奏信号</p>
+                </div>
+              ) : (
+                <>
+                  <div className="cold-signal-list">
+                    {signalDisplay.filter(item=>item.kind==="rhythm").map((item) => (
+                      <div className="cold-signal-card rhythm-card" key={`r-${item.ci}`}>
+                        <strong className="cold-signal-label">{item.label}</strong>
+                        <div className="cold-signal-body">
+                          <div className="cold-signal-row">
+                            <span>间隔 = {item.peak}</span>
+                          </div>
+                          <div className="cold-signal-row">
+                            <span>已 <strong>{item.currentGap}</strong> 轮未出</span>
+                            <span className="prediction-dots">
+                              {Array.from({length: item.chaseLen}, (_, i) => i + 1).map((n) => (
+                                <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
+                              ))}
+                            </span>
+                            <span>押<strong>{item.betAmt}</strong></span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </section>
         </div>
       ) : null}

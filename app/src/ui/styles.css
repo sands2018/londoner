@@ -2409,14 +2409,14 @@ button:disabled {
 
 .prediction-roi-table {
   background: #ffffff;
-  border: 1px solid #e0d8d8;
+  border: 1px solid #d0d8cc;
   border-radius: 6px;
   overflow: hidden;
 }
 
 .prediction-roi-row {
   align-items: center;
-  border-bottom: 1px solid #f0e8e8;
+  border-bottom: 1px solid #e8ece4;
   display: grid;
   gap: 4px;
   grid-template-columns: repeat(4, 1fr);
@@ -2429,7 +2429,7 @@ button:disabled {
 }
 
 .prediction-roi-row span {
-  color: #8a6b5b;
+  color: #6b7a65;
   font-size: 14px;
 }
 
@@ -2861,27 +2861,83 @@ button:disabled {
 }
 
 .prediction-signal-item {
-  align-items: center;
-  background: #ebe6e6;
-  border: 1px solid #ded8d8;
+  align-items: stretch;
+  border: 1px solid #c0d0bc;
   border-radius: 5px;
   cursor: pointer;
   display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
-  max-width: calc((100% - 8px) / 3);
-  min-width: 0;
-  padding: 6px 10px;
+  flex: 0 0 calc((100% - 8px) / 3);
+  overflow: hidden;
   touch-action: manipulation;
 }
 
-.prediction-signal-item:active {
-  background: #e2dcdc;
+/* 冷门反转 = 冷色调 (绿) */
+.prediction-signal-label {
+  align-items: center;
+  background: #d4dcd0;
+  color: #4a6040;
+  display: flex;
+  flex: 0 0 40px;
+  font-size: 15px;
+  font-weight: var(--weight-emphasis);
+  justify-content: center;
+  min-height: 34px;
+  white-space: nowrap;
 }
 
-.prediction-signal-item.chase-active {
-  background: #e6dede;
-  border-color: #d4cccc;
+.prediction-signal-item .prediction-chase {
+  align-items: center;
+  background: #eef4ea;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  justify-content: space-around;
+  min-height: 34px;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.prediction-signal-item:active .prediction-chase {
+  background: #e4ece2;
+}
+
+.prediction-signal-item.chase-active .prediction-chase {
+  background: #e4ece2;
+}
+
+.prediction-signal-item.chase-active .prediction-signal-label {
+  background: #c8d4c0;
+}
+
+/* 节奏追号 = 暖色调 (粉) */
+.prediction-signal-item.rhythm-signal {
+  border-color: #d8c8c8;
+}
+
+.prediction-signal-item.rhythm-signal .prediction-signal-label {
+  background: #e0d6d6;
+  color: #7a4a48;
+}
+
+.prediction-signal-item.rhythm-signal .prediction-chase {
+  background: #f2eeee;
+}
+
+.prediction-signal-item.rhythm-signal.chase-active .prediction-chase {
+  background: #eadede;
+}
+
+.prediction-signal-item.rhythm-signal.chase-active .prediction-signal-label {
+  background: #d4c8c8;
+}
+
+.prediction-signal-item.rhythm-signal .prediction-dot {
+  border-color: #c0a8a8;
+}
+
+.prediction-signal-item.rhythm-signal .prediction-dot.filled {
+  background: #b89898;
+  border-color: #b89898;
 }
 
 .prediction-chase {
@@ -2896,7 +2952,7 @@ button:disabled {
 }
 
 .prediction-dot {
-  border: 1.5px solid #c4b0b0;
+  border: 1.5px solid #a0b8a0;
   border-radius: 50%;
   display: inline-block;
   height: 12px;
@@ -2904,11 +2960,11 @@ button:disabled {
 }
 
 .prediction-dot.filled {
-  background: #b89898;
-  border-color: #b89898;
+  background: #8aaa8a;
+  border-color: #8aaa8a;
 }
 
-.prediction-signal-label {
+.prediction-signal-label-legacy {
   color: #8a3a38;
   font-size: 16px;
   font-weight: var(--weight-emphasis);
@@ -2918,13 +2974,13 @@ button:disabled {
 /* 冷门反转卡片 */
 .cold-strategy-bar {
   align-items: center;
-  background: #f8f5f5;
-  border: 1px solid #e0d8d8;
+  background: #f5f3f0;
+  border: 1px solid #e0dcd6;
   border-radius: 6px;
-  color: #8a6b5b;
+  color: #8a7e74;
   display: flex;
   font-size: 13px;
-  font-weight: var(--weight-ui);
+  font-weight: var(--weight-regular);
   gap: 16px;
   justify-content: center;
   padding: 8px 12px;
@@ -2938,7 +2994,7 @@ button:disabled {
 .cold-signal-card {
   align-items: center;
   background: #ffffff;
-  border: 1px solid #d8d2c6;
+  border: 1px solid #c0d4bc;
   border-radius: 6px;
   display: grid;
   gap: 0;
@@ -2946,11 +3002,41 @@ button:disabled {
   overflow: hidden;
 }
 
+/* 节奏追号卡片 = 暖色调覆盖 */
+.cold-signal-card.rhythm-card .cold-signal-label {
+  background: #fdf5f0;
+  border-right-color: #d4a08a;
+  color: #995539;
+}
+
+.cold-signal-card.rhythm-card {
+  border-color: #e0d0c8;
+}
+
+.rhythm-detail .cold-strategy-bar,
+.rhythm-bar {
+  background: #f5f3f0;
+  border-color: #e0dcd6;
+  color: #8a7e74;
+}
+
+.rhythm-card .prediction-dot,
+.rhythm-detail .prediction-dot {
+  border-color: #c0a8a8;
+}
+
+.rhythm-card .prediction-dot.filled,
+.rhythm-detail .prediction-dot.filled {
+  background: #b89898;
+  border-color: #b89898;
+}
+
+/* 冷门反转卡片 = 冷色调(默认) */
 .cold-signal-label {
   align-items: center;
-  background: #fdf5f0;
-  border-right: 1px solid #d4a08a;
-  color: #995539;
+  background: #eef4ea;
+  border-right: 1px solid #b0c8a8;
+  color: #4a7040;
   display: flex;
   font-size: 20px;
   font-weight: var(--weight-emphasis);

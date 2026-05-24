@@ -1,4 +1,5 @@
 import { getNumberColRows, getColRowLabel, type RouletteNumber, type ColRowIndex } from "./roulette";
+import { computePeakStats, extractGaps as waveExtractGaps } from "./wave";
 
 /** 历史间隔窗口: 最近20次出现 */
 export const GAP_WINDOW = 20;
@@ -26,18 +27,8 @@ export interface ColdSignal {
   progression: number[];
 }
 
-function extractGaps(numbers: readonly RouletteNumber[], targetIndex: number): number[] {
-  const gaps: number[] = [];
-  let lastSeen = -1;
-  for (let r = 0; r < numbers.length; r++) {
-    const value = numbers[r];
-    if (value === 0) continue;
-    const hits = getNumberColRows(value).map((h) => h as number);
-    if (!hits.includes(targetIndex)) continue;
-    if (lastSeen >= 0) gaps.push(r - lastSeen - 1);
-    lastSeen = r;
-  }
-  return gaps;
+function extractGapsLocal(numbers: readonly RouletteNumber[], targetIndex: number): number[] {
+  return waveExtractGaps(numbers, targetIndex);
 }
 
 function getPercentile(sorted: number[], pct: number): number {
@@ -49,7 +40,7 @@ function analyzeOne(
   numbers: readonly RouletteNumber[],
   index: ColRowIndex,
 ): ColdSignal | null {
-  const gaps = extractGaps(numbers, index);
+  const gaps = extractGapsLocal(numbers, index);
   const recentGaps = gaps.slice(-GAP_WINDOW);
   if (recentGaps.length < 5) return null;
 
@@ -103,6 +94,81 @@ export class ColdReversalEngine {
   }
 }
 
+// ====== 节奏追号 自适应峰值 ======
+
+/** 集中度阈值 */
+const RHYTHM_MIN_PCT = 0.62;
+/** 翻倍策略 (最多3轮) */
+const RHYTHM_PROG = [1, 2, 4];
+
+export interface RhythmSignal {
+  index: ColRowIndex;
+  label: string;
+  /** 当前gap */
+  currentGap: number;
+  /** 峰值k */
+  peak: number;
+  /** 峰值±1集中度 */
+  concentration: number;
+  /** 建议追号长度 */
+  chaseLength: number;
+  /** 翻倍策略 */
+  progression: number[];
+}
+
+function analyzeRhythm(
+  numbers: readonly RouletteNumber[],
+  index: ColRowIndex,
+): RhythmSignal | null {
+  const gaps = extractGapsLocal(numbers, index);
+  if (gaps.length < 8) return null;
+
+  const stats = computePeakStats(gaps);
+  if (!stats || stats.conc < RHYTHM_MIN_PCT) return null;
+
+  let lastSeen = -1;
+  for (let r = numbers.length - 1; r >= 0; r--) {
+    const value = numbers[r];
+    if (value === 0) continue;
+    if (getNumberColRows(value).map((h) => h as number).includes(index)) {
+      lastSeen = r;
+      break;
+    }
+  }
+  const currentGap = lastSeen >= 0 ? numbers.length - lastSeen - 1 : numbers.length;
+  // 自适应入场: gap必须等于峰值
+  if (currentGap !== stats.peak) return null;
+
+  const chaseLen = stats.zoneLen; // 自适应: 区间宽度(2-3轮)
+  return {
+    index,
+    label: getColRowLabel(index),
+    currentGap,
+    peak: stats.peak,
+    concentration: stats.conc,
+    chaseLength: chaseLen,
+    progression: RHYTHM_PROG.slice(0, chaseLen),
+  };
+}
+
+export class RhythmEngine {
+  analyze(numbers: readonly RouletteNumber[]): RhythmSignal[] {
+    if (numbers.length < 15) return [];
+    const indices: ColRowIndex[] = [0, 1, 2, 3, 4, 5];
+    const signals: RhythmSignal[] = [];
+    for (const i of indices) {
+      const s = analyzeRhythm(numbers, i);
+      if (s) signals.push(s);
+    }
+    return signals.sort((a, b) => b.concentration - a.concentration);
+  }
+
+  train(_numbers: readonly RouletteNumber[]): void {}
+  predict(numbers: readonly RouletteNumber[]): RhythmSignal[] {
+    return this.analyze(numbers);
+  }
+}
+
 /** 计算ROI: 模拟冷门反转追号, 返回 {bet, win, roi} */
 export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; win: number; roi: number } {
   let bet = 0, win = 0;
@@ -144,6 +210,43 @@ export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; w
       if (cg < threshold + 2 || cg < MIN_GAP) continue;
       if (activeChases.some((c) => c.ci === ci)) continue;
       activeChases.push({ ci, startRound: r + 1, chaseLen: CHASE_LENGTH });
+    }
+  }
+  const roi = bet > 0 ? ((win - bet) / bet * 100) : 0;
+  return { bet, win, roi };
+}
+
+/** 计算节奏追号ROI (自适应峰值, 按行组永久停) */
+export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: number; win: number; roi: number } {
+  let bet = 0, win = 0;
+  const ls = [-1, -1, -1, -1, -1, -1];
+  const ac: { ci: number; sr: number; cl: number }[] = [];
+  const paused = [false, false, false, false, false, false];
+
+  for (let r = 0; r < numbers.length; r++) {
+    const v = numbers[r];
+    const hc = v !== 0 ? getNumberColRows(v).map((h) => h as number) : [];
+    const rm: typeof ac = [];
+    for (const c of ac) {
+      const bi = r - c.sr; if (bi >= 3) continue;
+      const amt = RHYTHM_PROG[bi] ?? RHYTHM_PROG[RHYTHM_PROG.length - 1]; bet += amt;
+      if (hc.includes(c.ci)) { win += amt * 3; }
+      else if (bi + 1 < 3) rm.push(c);
+      else paused[c.ci] = true;
+    }
+    ac.length = 0; ac.push(...rm);
+    for (const ci of hc) ls[ci] = r;
+    if (r < 15) continue;
+    for (let ci = 0; ci < 6; ci++) {
+      if (paused[ci]) continue;
+      const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r;
+      if (cg < 1 || cg > 6) continue;
+      if (ac.some((c) => c.ci === ci)) continue;
+      const gaps = extractGapsLocal(numbers.slice(0, r), ci);
+      const stats = computePeakStats(gaps);
+      if (!stats || stats.conc < RHYTHM_MIN_PCT) continue;
+      if (cg !== stats.peak) continue;
+      ac.push({ ci, sr: r + 1, cl: stats.zoneLen });
     }
   }
   const roi = bet > 0 ? ((win - bet) / bet * 100) : 0;
