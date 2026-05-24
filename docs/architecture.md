@@ -118,6 +118,19 @@ Single large component (~2500 lines) containing all app state and layout:
 
 **Prediction integration**: Both engines run via `useMemo`. Signal display derived from engine output + wave recovery state. Detail modals for each strategy.
 
+### State Architecture & Undo/Redo
+
+**Critical design rule**: All prediction-related state MUST be derived from `numbers`, never stored independently. This ensures undo/redo works correctly.
+
+- `numbers` is the single source of truth — a `RouletteNumber[]` in React state
+- `undo()` removes the last number, `redo()` restores it
+- All derived data (predictions, signals, ROI, paused state, chase display) is computed via `useMemo` with `numbers` in the dependency array
+- There is NO separate state for active chases, signal history, or pause tracking — everything is recomputed from `numbers` on every render
+- The `rhythmPausedCis` hook replays the entire session history to determine which col/rows are currently paused (wave recovery state)
+- `signalDisplay` replays engine analysis at each historical step to determine when each signal first fired and what chase round it's on
+
+**When adding new features**: Never introduce separate state for prediction data. Always compute from `numbers` in a `useMemo`. This guarantees undo/redo consistency with zero additional code.
+
 ### `styles.css`
 
 CSS custom properties for all design tokens. Responsive with media queries for:

@@ -253,6 +253,106 @@ export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: num
   return { bet, win, roi };
 }
 
+/** 节奏追号逐行组明细统计 */
+export interface RhythmDetailRow { ci: number; label: string; successes: number; failures: number; roi: number; trend: "up" | "down" | "flat"; }
+
+export function computeRhythmDetailStats(numbers: readonly RouletteNumber[]): RhythmDetailRow[] {
+  const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
+  const ciData = Array.from({ length: 6 }, () => ({ bet: 0, win: 0, successes: 0, failures: 0, timeline: [] as { round: number; bet: number; win: number }[] }));
+  const ls = [-1, -1, -1, -1, -1, -1];
+  const ac: { ci: number; sr: number; cl: number; totalBet: number }[] = [];
+  const paused = [false, false, false, false, false, false];
+  for (let r = 0; r < numbers.length; r++) {
+    const v = numbers[r]; const hc = v !== 0 ? getNumberColRows(v).map((h) => h as number) : [];
+    const rm: typeof ac = [];
+    for (const c of ac) {
+      const bi = r - c.sr; if (bi >= c.cl) continue;
+      const amt = RHYTHM_PROG[bi] ?? RHYTHM_PROG[RHYTHM_PROG.length - 1];
+      c.totalBet += amt; ciData[c.ci].bet += amt;
+      if (hc.includes(c.ci)) { ciData[c.ci].win += amt * 3; ciData[c.ci].successes += 1; ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: amt * 3 }); }
+      else if (bi + 1 < c.cl) rm.push(c);
+      else { ciData[c.ci].failures += 1; ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: 0 }); paused[c.ci] = true; }
+    }
+    ac.length = 0; ac.push(...rm);
+    for (const ci of hc) ls[ci] = r;
+    if (r < 15) continue;
+    for (let ci = 0; ci < 6; ci++) {
+      if (paused[ci]) continue;
+      const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r; if (cg < 1 || cg > 6) continue;
+      if (ac.some((c) => c.ci === ci)) continue;
+      const gaps = extractGapsLocal(numbers.slice(0, r), ci);
+      const stats = computePeakStats(gaps);
+      if (!stats || stats.conc < RHYTHM_MIN_PCT) continue;
+      if (cg !== stats.peak) continue;
+      ac.push({ ci, sr: r + 1, cl: stats.zoneLen, totalBet: 0 });
+    }
+  }
+  return labels.map((label, ci) => { const d = ciData[ci]; const roi = d.bet > 0 ? ((d.win - d.bet) / d.bet * 100) : 0; let trend: "up" | "down" | "flat" = "flat"; if (d.timeline.length >= 4) { const mid = Math.floor(d.timeline.length / 2); let fb = 0, fw = 0, sb = 0, sw = 0; for (let i = 0; i < mid; i++) { fb += d.timeline[i].bet; fw += d.timeline[i].win; } for (let i = mid; i < d.timeline.length; i++) { sb += d.timeline[i].bet; sw += d.timeline[i].win; } const fRoi = fb > 0 ? (fw - fb) / fb : 0; const sRoi = sb > 0 ? (sw - sb) / sb : 0; if (sRoi > fRoi + 0.05) trend = "up"; else if (sRoi < fRoi - 0.05) trend = "down"; } return { ci, label, successes: d.successes, failures: d.failures, roi, trend }; });
+}
+
+/** 长套逐行组明细统计 */
+export function computeColdDetailStats(numbers: readonly RouletteNumber[]): RhythmDetailRow[] {
+  const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
+  const ciData = Array.from({ length: 6 }, () => ({
+    bet: 0, win: 0, successes: 0, failures: 0,
+    timeline: [] as { round: number; bet: number; win: number }[],
+  }));
+  const ls = [-1, -1, -1, -1, -1, -1];
+  const ac: { ci: number; sr: number; cl: number; totalBet: number }[] = [];
+
+  for (let r = 0; r < numbers.length; r++) {
+    const v = numbers[r];
+    const hc = v !== 0 ? getNumberColRows(v).map((h) => h as number) : [];
+    const rm: typeof ac = [];
+    for (const c of ac) {
+      const bi = r - c.sr; if (bi >= c.cl) continue;
+      const amt = PROGRESSION[bi] ?? PROGRESSION[PROGRESSION.length - 1];
+      c.totalBet += amt;
+      ciData[c.ci].bet += amt;
+      if (hc.includes(c.ci)) {
+        ciData[c.ci].win += amt * 3;
+        ciData[c.ci].successes += 1;
+        ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: amt * 3 });
+      } else if (bi + 1 < c.cl) {
+        rm.push(c);
+      } else {
+        ciData[c.ci].failures += 1;
+        ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: 0 });
+      }
+    }
+    ac.length = 0; ac.push(...rm);
+    for (const ci of hc) ls[ci] = r;
+    if (r < 10) continue;
+    for (let ci = 0; ci < 6; ci++) {
+      const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r;
+      const gaps = extractGapsLocal(numbers.slice(0, r), ci);
+      const recentGaps = gaps.slice(-GAP_WINDOW);
+      if (recentGaps.length < 5) continue;
+      const sorted = [...recentGaps].sort((a, b) => a - b);
+      const threshold = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * EXTREME_PCT))];
+      if (cg < threshold + 2 || cg < MIN_GAP) continue;
+      if (ac.some((c) => c.ci === ci)) continue;
+      ac.push({ ci, sr: r + 1, cl: CHASE_LENGTH, totalBet: 0 });
+    }
+  }
+  return labels.map((label, ci) => {
+    const d = ciData[ci];
+    const roi = d.bet > 0 ? ((d.win - d.bet) / d.bet * 100) : 0;
+    let trend: "up" | "down" | "flat" = "flat";
+    if (d.timeline.length >= 4) {
+      const mid = Math.floor(d.timeline.length / 2);
+      let fb = 0, fw = 0, sb = 0, sw = 0;
+      for (let i = 0; i < mid; i++) { fb += d.timeline[i].bet; fw += d.timeline[i].win; }
+      for (let i = mid; i < d.timeline.length; i++) { sb += d.timeline[i].bet; sw += d.timeline[i].win; }
+      const fRoi = fb > 0 ? (fw - fb) / fb : 0;
+      const sRoi = sb > 0 ? (sw - sb) / sb : 0;
+      if (sRoi > fRoi + 0.05) trend = "up";
+      else if (sRoi < fRoi - 0.05) trend = "down";
+    }
+    return { ci, label, successes: d.successes, failures: d.failures, roi, trend };
+  });
+}
+
 export class PredictionTracker {
   private records: Array<{ hitIndices: Set<number>; sortedIndices: number[] }> = [];
   private maxHistory = 200;
