@@ -2439,6 +2439,49 @@ button:disabled {
   font-weight: var(--weight-emphasis);
 }
 
+.overview-cards {
+  display: grid;
+  gap: 10px;
+}
+
+.overview-card {
+  background: #ffffff;
+  border: 1px solid #d8d2c6;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  touch-action: manipulation;
+}
+
+.overview-card:active {
+  background: #f5f2ee;
+}
+
+.overview-card-title {
+  font-size: 16px;
+  font-weight: var(--weight-emphasis);
+}
+
+.overview-cold {
+  background: #eef4ea;
+  border-color: #c0d4bc;
+}
+.overview-cold .overview-card-title { color: #4a7040; }
+.overview-cold .prediction-roi-table { border-color: #c0d4bc; }
+.overview-cold .prediction-roi-row { border-bottom-color: #d8e4d4; }
+.overview-cold .prediction-roi-row span { color: #6b7a65; }
+
+.overview-rhythm {
+  background: #f2eeee;
+  border-color: #d8c8c8;
+}
+.overview-rhythm .overview-card-title { color: #7a4a48; }
+.overview-rhythm .prediction-roi-table { border-color: #d8c8c8; }
+.overview-rhythm .prediction-roi-row { border-bottom-color: #e8dcdc; }
+.overview-rhythm .prediction-roi-row span { color: #7a6b65; }
+
 .prediction-screen .modal-head {
   align-items: center;
   border-radius: 10px 10px 0 0;

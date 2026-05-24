@@ -199,6 +199,7 @@ export function App() {
   const [otherViewOpen, setOtherViewOpen] = useState(false);
   const [predictionViewOpen, setPredictionViewOpen] = useState(false);
   const [rhythmDetailOpen, setRhythmDetailOpen] = useState(false);
+  const [predictionOverviewOpen, setPredictionOverviewOpen] = useState(false);
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
@@ -1338,7 +1339,7 @@ export function App() {
           <button onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
           <button onClick={openConfigView} type="button">配置</button>
-          <button onClick={openPredictionView} type="button">预测</button>
+          <button onClick={() => setPredictionOverviewOpen(true)} type="button">预测</button>
           <button onClick={openGameView} type="button">打法</button>
           <button onClick={openColRowView} type="button">行组</button>
           <button onClick={openFrequencyView} type="button">频率</button>
@@ -1609,7 +1610,7 @@ export function App() {
               </button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
-              <button onClick={openPredictionView} type="button">预测</button>
+              <button onClick={() => setPredictionOverviewOpen(true)} type="button">预测</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -1682,7 +1683,7 @@ export function App() {
               <button className="selected" type="button">频率</button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
-              <button onClick={openPredictionView} type="button">预测</button>
+              <button onClick={() => setPredictionOverviewOpen(true)} type="button">预测</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -2065,6 +2066,49 @@ export function App() {
             </div>
           </footer>
         </section>
+      ) : null}
+
+      {predictionOverviewOpen ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <section className="prediction-screen" aria-label="预测总览">
+            <div className="modal-head">
+              <strong>预测总览</strong>
+              <button className="close-button" onClick={() => setPredictionOverviewOpen(false)} type="button">x</button>
+            </div>
+            <div className="prediction-body">
+              <div className="overview-cards">
+                <div className="overview-card overview-cold" onClick={() => { setPredictionOverviewOpen(false); setPredictionViewOpen(true); }} role="button" tabIndex={0}>
+                  <strong className="overview-card-title">冷门反转</strong>
+                  <div className="prediction-roi-table" style={{ margin: 0 }}>
+                    <div className="prediction-roi-row">
+                      <span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <strong>{numbers.length}</strong>
+                      <strong>{sessionRoi.bet}</strong>
+                      <strong>{sessionRoi.win}</strong>
+                      <strong style={{ color: sessionRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{sessionRoi.roi >= 0 ? "+" : ""}{sessionRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                </div>
+                <div className="overview-card overview-rhythm" onClick={() => { setPredictionOverviewOpen(false); setRhythmDetailOpen(true); }} role="button" tabIndex={0}>
+                  <strong className="overview-card-title">节奏追号</strong>
+                  <div className="prediction-roi-table" style={{ margin: 0 }}>
+                    <div className="prediction-roi-row">
+                      <span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <strong>{numbers.length}</strong>
+                      <strong>{rhythmRoi.bet}</strong>
+                      <strong>{rhythmRoi.win}</strong>
+                      <strong style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       ) : null}
 
       {predictionViewOpen ? (
