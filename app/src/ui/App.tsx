@@ -231,6 +231,9 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
+  const [configTab, setConfigTab] = useState<"signal" | "game">("signal");
+  const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
+  const [draftRhythmRowsOnly, setDraftRhythmRowsOnly] = useState(rhythmRowsOnly);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -279,6 +282,7 @@ export function App() {
 
   const sessionRoi = useMemo(() => computeRoi(numbers), [numbers]);
   const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
+  const rhythmRowsOnlyRoi = useMemo(() => computeRhythmRoi(numbers, [3, 4, 5]), [numbers]);
   const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
@@ -416,6 +420,7 @@ export function App() {
     // 124信号 (波浪恢复)
     for (const s of rhythmSignals) {
       if (rhythmPausedCis.has(s.index)) continue;
+      if (rhythmRowsOnly && s.index < 3) continue;
       let firstTriggerRound = numbers.length;
       for (let r = numbers.length - 1; r >= 15; r--) {
         const engine = new RhythmEngine();
@@ -436,7 +441,7 @@ export function App() {
     }
 
     return items;
-  }, [predictions, rhythmSignals, numbers, rhythmPausedCis]);
+  }, [predictions, rhythmSignals, numbers, rhythmPausedCis, rhythmRowsOnly]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -1011,6 +1016,7 @@ export function App() {
 
   function openConfigView() {
     reloadGameConfigState();
+    setDraftRhythmRowsOnly(rhythmRowsOnly);
     setConfigViewOpen(true);
   }
 
@@ -1123,6 +1129,13 @@ export function App() {
   }
 
   function saveConfigView() {
+    if (configTab === "signal") {
+      setRhythmRowsOnly(draftRhythmRowsOnly);
+      localStorage.setItem("londoner.rhythmRowsOnly", draftRhythmRowsOnly ? "true" : "false");
+      setConfigViewOpen(false);
+      return;
+    }
+
     const selectedBets = allGameBets.filter((bet) => selectedBetKeys.includes(formatGameBet(bet)));
     if (selectedBets.length <= 0) {
       setNoticeDialog({ title: "打法配置", message: "至少要选择一个打法！" });
@@ -2324,6 +2337,10 @@ export function App() {
                         <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
                         <strong style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
                       </div>
+                      <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                        <span>ROI(仅行)</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
+                        <strong style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                      </div>
                     </div>
                   </div>
                   <div className="overview-card overview-cold" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
@@ -2361,12 +2378,16 @@ export function App() {
                 </>
               ) : (
                 <>
-                  <p className="prediction-desc">间隔1-4自适应入场，集中度≥62%触发，1-2-4追打2-3轮，失败一次停，按波浪自适应恢复</p>
+                  <p className="prediction-desc">间隔1-4自适应入场，集中度≥65%触发，1-2-4追打2-3轮，失败波浪恢复</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
                       <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
                       <strong style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                      <span>ROI(仅行)</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
+                      <strong style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                   <div className="detail-stats-table">
@@ -2444,12 +2465,43 @@ export function App() {
       ) : null}
 
       {configViewOpen ? (
-        <div className="config-backdrop" role="dialog" aria-modal="true" aria-label="打法配置">
+        <div className="config-backdrop" role="dialog" aria-modal="true" aria-label="配置">
           <section className="config-dialog">
             <header className="config-dialog-head">
-              <strong>打法配置</strong>
+              <strong>配置</strong>
               <button className="close-button" onClick={() => setConfigViewOpen(false)} type="button">x</button>
             </header>
+            <div className="stats-tabs">
+              <button className={configTab === "signal" ? "selected" : ""} onClick={() => setConfigTab("signal")} type="button">信号</button>
+              <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
+            </div>
+            {configTab === "signal" ? (
+              <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
+                <section className="config-card config-bets">
+                  <h2><span>124 信号范围</span></h2>
+                  <div style={{ padding: "10px 0" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={draftRhythmRowsOnly}
+                      onChange={() => setDraftRhythmRowsOnly(true)}
+                      style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
+                    />
+                    <span>仅行（排除组信号）</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={!draftRhythmRowsOnly}
+                      onChange={() => setDraftRhythmRowsOnly(false)}
+                      style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
+                    />
+                    <span>全部信号（行+组）</span>
+                  </label>
+                  </div>
+                </section>
+              </div>
+            ) : (
             <div className="config-body">
               <section className="config-card config-bets">
                 <h2>
@@ -2534,10 +2586,11 @@ export function App() {
                 </div>
               </section>
             </div>
+            )}
             <footer className="config-actions">
               <button onClick={saveConfigView} type="button">确定</button>
               <button onClick={() => setConfigViewOpen(false)} type="button">取消</button>
-              <button onClick={openBetsManage} type="button">管理</button>
+              {configTab === "game" ? <button onClick={openBetsManage} type="button">管理</button> : null}
             </footer>
           </section>
         </div>

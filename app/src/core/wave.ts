@@ -31,7 +31,7 @@ export interface PeakStats {
   sma: number;        // 峰值移动平均 (平滑后的趋势值)
 }
 
-export function computePeakStats(gaps: number[], windowGaps: number = 20): PeakStats | null {
+export function computePeakStats(gaps: number[], windowGaps: number = 18): PeakStats | null {
   const recent = gaps.slice(-windowGaps);
   if (recent.length < 8) return null;
 
@@ -85,8 +85,8 @@ export interface WaveRecoveryState {
 }
 
 /** 波浪恢复参数 */
-export const WAVE_RISE = 0.5;
-export const WAVE_MIN_RECOVER = 30;
+export const WAVE_RISE = 1.5;
+export const WAVE_MIN_RECOVER = 40;
 
 /** 检查波浪恢复: 返回true表示应该解禁 */
 export function checkWaveRecovery(

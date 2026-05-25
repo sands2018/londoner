@@ -99,7 +99,7 @@ export class ColdReversalEngine {
 // ====== 节奏追号 自适应峰值 ======
 
 /** 集中度阈值 */
-const RHYTHM_MIN_PCT = 0.62;
+const RHYTHM_MIN_PCT = 0.65;
 /** 翻倍策略 (最多3轮) */
 const RHYTHM_PROG = [1, 2, 4];
 
@@ -218,8 +218,9 @@ export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; w
   return { bet, win, roi };
 }
 
-/** 计算节奏追号ROI (自适应峰值, 波浪恢复) */
-export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: number; win: number; roi: number } {
+/** 计算节奏追号ROI (自适应峰值, 波浪恢复). allowedCis默认全六组, 可传入[3,4,5]仅行 */
+export function computeRhythmRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[]): { bet: number; win: number; roi: number } {
+  const cis = allowedCis ?? [0, 1, 2, 3, 4, 5];
   let bet = 0, win = 0;
   const ls = [-1, -1, -1, -1, -1, -1];
   const ac: { ci: number; sr: number; cl: number }[] = [];
@@ -258,7 +259,7 @@ export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: num
       }
     }
 
-    for (let ci = 0; ci < 6; ci++) {
+    for (const ci of cis) {
       if (recovery[ci].paused) continue;
       const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r;
       if (cg < 1 || cg > 6) continue;
