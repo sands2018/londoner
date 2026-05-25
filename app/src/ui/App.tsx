@@ -205,6 +205,7 @@ export function App() {
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "rhythm");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
+  const [waveTab, setWaveTab] = useState<"kline" | "spark">("kline");
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
   const [otherRoundTab, setOtherRoundTab] = useState<OtherRoundTab>("bet");
@@ -280,6 +281,25 @@ export function App() {
   const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
   const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
+
+  const waveKLineData = useMemo(() => {
+    const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
+    return labels.map((label, ci) => {
+      const gaps = extractGaps(numbers, ci);
+      const candles: { peak: number; zoneLo: number; zoneHi: number; sma: number }[] = [];
+      for (let i = 8; i <= gaps.length; i += 3) {
+        const stats = computePeakStats(gaps.slice(0, i));
+        if (!stats) continue;
+        candles.push({
+          peak: stats.peak,
+          zoneLo: Math.max(1, stats.peak - 1),
+          zoneHi: Math.min(6, stats.peak + 1),
+          sma: stats.sma,
+        });
+      }
+      return { label, candles: candles.slice(-40), hasData: candles.length >= 3 };
+    });
+  }, [numbers]);
 
   const waveHistory = useMemo(() => {
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
@@ -393,7 +413,7 @@ export function App() {
       }
     }
 
-    // 124信号 (按行组永久停)
+    // 124信号 (波浪恢复)
     for (const s of rhythmSignals) {
       if (rhythmPausedCis.has(s.index)) continue;
       let firstTriggerRound = numbers.length;
@@ -1267,44 +1287,94 @@ export function App() {
   function StatsWaveTab() {
     return (
       <div className="prediction-body" style={{padding:0}}>
-        <p className="prediction-desc" style={{padding:"0 18px"}}>峰值间隔的移动平均趋势。下降(绿)=节奏加快，上升(红)=节奏变慢，走平=稳定</p>
-        <div className="wave-grid" style={{padding:"0 10px"}}>
-          {waveHistory.map((wh, i) => {
-            const ws = waveSnapshot[i];
-            if (!wh.hasData) return null;
-            const maxSma = Math.max(...wh.points, 3);
-            const minSma = Math.min(...wh.points, 1);
-            const range = Math.max(maxSma - minSma, 0.5);
-            const w = 360, h = 64, padX = 0, padY = 4, baseline = h - padY;
-            const maxSlots = 59;
-            const stepX = w / maxSlots;
-            const yVal = (v: number) => padY + ((maxSma - v) / range) * (h - padY * 2);
-            const segments: { x1: number; y1: number; x2: number; y2: number; up: boolean }[] = [];
-            for (let j = 1; j < wh.points.length; j++) {
-              segments.push({ x1: padX + (j - 1) * stepX, y1: yVal(wh.points[j - 1]), x2: padX + j * stepX, y2: yVal(wh.points[j]), up: wh.points[j] <= wh.points[j - 1] });
-            }
-            return (
-              <div className="wave-card" key={wh.label}>
-                <div className="wave-card-head">
-                  <strong className="wave-card-label">{wh.label}</strong>
-                  <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
-                </div>
-                <svg className="wave-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
-                  <line x1={padX} x2={w-padX} y1={baseline} y2={baseline} stroke="#e8e4e0" strokeWidth="1" />
-                  {segments.map((seg, j) => {
-                    const color = seg.up ? "#5f9a7088" : "#b85a3a88";
-                    const pts = `${seg.x1.toFixed(1)},${seg.y1.toFixed(1)} ${seg.x2.toFixed(1)},${seg.y2.toFixed(1)} ${seg.x2.toFixed(1)},${baseline} ${seg.x1.toFixed(1)},${baseline}`;
-                    return <polygon key={j} points={pts} fill={color} />;
-                  })}
-                  {segments.map((seg, j) => {
-                    const color = seg.up ? "#5f9a70" : "#b85a3a";
-                    return <line key={`l${j}`} x1={seg.x1.toFixed(1)} y1={seg.y1.toFixed(1)} x2={seg.x2.toFixed(1)} y2={seg.y2.toFixed(1)} stroke={color} strokeWidth="2" />;
-                  })}
-                </svg>
-              </div>
-            );
-          })}
+        <div className="stats-tabs">
+          <button className={waveTab === "kline" ? "selected" : ""} onClick={() => setWaveTab("kline")} type="button">K线</button>
+          <button className={waveTab === "spark" ? "selected" : ""} onClick={() => setWaveTab("spark")} type="button">趋势</button>
         </div>
+        {waveTab === "kline" ? (
+          <>
+            <p className="prediction-desc" style={{padding:"0 18px"}}>每根竖线表示一个采样点的集中出现区间(peak±1)。竖线Y轴位置=偏差程度(峰值k)，长度=集中范围。绿=间隔缩短，红=间隔拉长</p>
+            <div className="wave-grid" style={{padding:"0 10px"}}>
+              {waveKLineData.map((wd, i) => {
+                if (!wd.hasData) return null;
+                const ws = waveSnapshot[i];
+                const w = 360, h = 80, padX = 4, padR = 4, padY = 6;
+                const yMin = 0.5, yMax = 6.5;
+                const yVal = (v: number) => padY + ((yMax - v) / (yMax - yMin)) * (h - padY * 2);
+                const barW = Math.max(2, (w - padX - padR) / wd.candles.length - 1);
+                return (
+                  <div className="wave-card" key={wd.label}>
+                    <div className="wave-card-head">
+                      <strong className="wave-card-label">{wd.label}</strong>
+                      <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
+                    </div>
+                    <svg className="wave-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
+                      {/* grid lines */}
+                      {[1,2,3,4,5,6].map((g) => (
+                        <line key={`g${g}`} x1={padX} x2={w - padR} y1={yVal(g)} y2={yVal(g)} stroke="#f0ece8" strokeWidth="0.5" />
+                      ))}
+                      {/* SMA line */}
+                      {wd.candles.length >= 2 && (() => {
+                        const smaPts = wd.candles.map((c, j) => `${(padX + j * (w - padX - padR) / (wd.candles.length - 1)).toFixed(1)},${yVal(c.sma).toFixed(1)}`).join(" ");
+                        return <polyline points={smaPts} fill="none" stroke="#9a8e82" strokeWidth="1.5" strokeDasharray="3,2" />;
+                      })()}
+                      {/* candles */}
+                      {wd.candles.map((c, j) => {
+                        const cx = padX + j * (w - padX - padR) / Math.max(1, wd.candles.length - 1);
+                        const yHi = yVal(c.zoneLo);
+                        const yLo = yVal(c.zoneHi);
+                        const up = j > 0 ? c.sma <= wd.candles[j - 1].sma : true;
+                        const color = up ? "#5f9a70" : "#b85a3a";
+                        return <line key={j} x1={cx} x2={cx} y1={yHi} y2={yLo} stroke={color} strokeWidth={barW} strokeLinecap="round" opacity="0.85" />;
+                      })}
+                    </svg>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="prediction-desc" style={{padding:"0 18px"}}>峰值间隔的移动平均趋势。下降(绿)=节奏加快，上升(红)=节奏变慢，走平=稳定</p>
+            <div className="wave-grid" style={{padding:"0 10px"}}>
+              {waveHistory.map((wh, i) => {
+                const ws = waveSnapshot[i];
+                if (!wh.hasData) return null;
+                const maxSma = Math.max(...wh.points, 3);
+                const minSma = Math.min(...wh.points, 1);
+                const range = Math.max(maxSma - minSma, 0.5);
+                const w = 360, h = 64, padX = 0, padY = 4, baseline = h - padY;
+                const maxSlots = 59;
+                const stepX = w / maxSlots;
+                const yVal = (v: number) => padY + ((maxSma - v) / range) * (h - padY * 2);
+                const segments: { x1: number; y1: number; x2: number; y2: number; up: boolean }[] = [];
+                for (let j = 1; j < wh.points.length; j++) {
+                  segments.push({ x1: padX + (j - 1) * stepX, y1: yVal(wh.points[j - 1]), x2: padX + j * stepX, y2: yVal(wh.points[j]), up: wh.points[j] <= wh.points[j - 1] });
+                }
+                return (
+                  <div className="wave-card" key={wh.label}>
+                    <div className="wave-card-head">
+                      <strong className="wave-card-label">{wh.label}</strong>
+                      <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
+                    </div>
+                    <svg className="wave-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
+                      <line x1={padX} x2={w-padX} y1={baseline} y2={baseline} stroke="#e8e4e0" strokeWidth="1" />
+                      {segments.map((seg, j) => {
+                        const color = seg.up ? "#5f9a7088" : "#b85a3a88";
+                        const pts = `${seg.x1.toFixed(1)},${seg.y1.toFixed(1)} ${seg.x2.toFixed(1)},${seg.y2.toFixed(1)} ${seg.x2.toFixed(1)},${baseline} ${seg.x1.toFixed(1)},${baseline}`;
+                        return <polygon key={j} points={pts} fill={color} />;
+                      })}
+                      {segments.map((seg, j) => {
+                        const color = seg.up ? "#5f9a70" : "#b85a3a";
+                        return <line key={`l${j}`} x1={seg.x1.toFixed(1)} y1={seg.y1.toFixed(1)} x2={seg.x2.toFixed(1)} y2={seg.y2.toFixed(1)} stroke={color} strokeWidth="2" />;
+                      })}
+                    </svg>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     );
   }

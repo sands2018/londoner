@@ -1,5 +1,5 @@
 import { getNumberColRows, getColRowLabel, type RouletteNumber, type ColRowIndex } from "./roulette";
-import { computePeakStats, extractGaps as waveExtractGaps } from "./wave";
+import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps as waveExtractGaps, type WaveRecoveryState } from "./wave";
 
 /** 历史间隔窗口: 最近N次出现 */
 export const GAP_WINDOW = 30;
@@ -218,12 +218,12 @@ export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; w
   return { bet, win, roi };
 }
 
-/** 计算节奏追号ROI (自适应峰值, 按行组永久停) */
+/** 计算节奏追号ROI (自适应峰值, 波浪恢复) */
 export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: number; win: number; roi: number } {
   let bet = 0, win = 0;
   const ls = [-1, -1, -1, -1, -1, -1];
   const ac: { ci: number; sr: number; cl: number }[] = [];
-  const paused = [false, false, false, false, false, false];
+  const recovery: WaveRecoveryState[] = Array.from({ length: 6 }, () => createRecoveryState());
 
   for (let r = 0; r < numbers.length; r++) {
     const v = numbers[r];
@@ -234,13 +234,32 @@ export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: num
       const amt = RHYTHM_PROG[bi] ?? RHYTHM_PROG[RHYTHM_PROG.length - 1]; bet += amt;
       if (hc.includes(c.ci)) { win += amt * 3; }
       else if (bi + 1 < c.cl) rm.push(c);
-      else paused[c.ci] = true;
+      else {
+        // 追号失败, 记录波浪状态
+        const gaps = extractGapsLocal(numbers.slice(0, r), c.ci);
+        recovery[c.ci] = createRecoveryState();
+        recovery[c.ci].paused = true;
+        recovery[c.ci].failSma = computePeakSma(gaps);
+        recovery[c.ci].failRound = r;
+        recovery[c.ci].phase = 0;
+      }
     }
     ac.length = 0; ac.push(...rm);
     for (const ci of hc) ls[ci] = r;
     if (r < 15) continue;
+
+    // 检查波浪恢复
     for (let ci = 0; ci < 6; ci++) {
-      if (paused[ci]) continue;
+      if (recovery[ci].paused) {
+        const gaps = extractGapsLocal(numbers.slice(0, r), ci);
+        if (checkWaveRecovery(recovery[ci], gaps, r)) {
+          recovery[ci].paused = false;
+        }
+      }
+    }
+
+    for (let ci = 0; ci < 6; ci++) {
+      if (recovery[ci].paused) continue;
       const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r;
       if (cg < 1 || cg > 6) continue;
       if (ac.some((c) => c.ci === ci)) continue;
@@ -263,7 +282,7 @@ export function computeRhythmDetailStats(numbers: readonly RouletteNumber[]): Rh
   const ciData = Array.from({ length: 6 }, () => ({ bet: 0, win: 0, successes: 0, failures: 0, timeline: [] as { round: number; bet: number; win: number }[] }));
   const ls = [-1, -1, -1, -1, -1, -1];
   const ac: { ci: number; sr: number; cl: number; totalBet: number }[] = [];
-  const paused = [false, false, false, false, false, false];
+  const recovery: WaveRecoveryState[] = Array.from({ length: 6 }, () => createRecoveryState());
   for (let r = 0; r < numbers.length; r++) {
     const v = numbers[r]; const hc = v !== 0 ? getNumberColRows(v).map((h) => h as number) : [];
     const rm: typeof ac = [];
@@ -273,13 +292,32 @@ export function computeRhythmDetailStats(numbers: readonly RouletteNumber[]): Rh
       c.totalBet += amt; ciData[c.ci].bet += amt;
       if (hc.includes(c.ci)) { ciData[c.ci].win += amt * 3; ciData[c.ci].successes += 1; ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: amt * 3 }); }
       else if (bi + 1 < c.cl) rm.push(c);
-      else { ciData[c.ci].failures += 1; ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: 0 }); paused[c.ci] = true; }
+      else {
+        ciData[c.ci].failures += 1; ciData[c.ci].timeline.push({ round: r, bet: c.totalBet, win: 0 });
+        const gaps = extractGapsLocal(numbers.slice(0, r), c.ci);
+        recovery[c.ci] = createRecoveryState();
+        recovery[c.ci].paused = true;
+        recovery[c.ci].failSma = computePeakSma(gaps);
+        recovery[c.ci].failRound = r;
+        recovery[c.ci].phase = 0;
+      }
     }
     ac.length = 0; ac.push(...rm);
     for (const ci of hc) ls[ci] = r;
     if (r < 15) continue;
+
+    // 检查波浪恢复
     for (let ci = 0; ci < 6; ci++) {
-      if (paused[ci]) continue;
+      if (recovery[ci].paused) {
+        const gaps = extractGapsLocal(numbers.slice(0, r), ci);
+        if (checkWaveRecovery(recovery[ci], gaps, r)) {
+          recovery[ci].paused = false;
+        }
+      }
+    }
+
+    for (let ci = 0; ci < 6; ci++) {
+      if (recovery[ci].paused) continue;
       const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r; if (cg < 1 || cg > 6) continue;
       if (ac.some((c) => c.ci === ci)) continue;
       const gaps = extractGapsLocal(numbers.slice(0, r), ci);
