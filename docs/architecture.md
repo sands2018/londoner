@@ -142,6 +142,22 @@ CSS custom properties for all design tokens. Responsive with media queries for:
 
 Android platform adjustments via `.android` class (zoom 0.92, font-weight tweaks).
 
+### Standard Tab Pattern
+
+Two visual schemes for all tab bars. Top-position tabs use the top scheme, bottom-position tabs use the bottom scheme.
+
+**Bottom tabs** — positioned at the bottom of the content area, selected tab connects upward:
+- *Gap-line variant*: Container `background: #cfc5b3`, buttons sit with 1px gaps that reveal the background as visible lines. Selected tab has white top border covering the line behind it.
+- *Clean variant*: Container `background: transparent; border-bottom: 1px solid #cfc5b3`. Unselected tabs have no visible borders. Selected tab has white bg with left/top/right borders, white bottom border covering the container line.
+- Both: `align-items: start`, `border-radius: 0 0 7px 7px` (rounded bottom)
+
+**Top tabs** — positioned at the top of the content area, selected tab connects downward:
+- Container `background: transparent; border-top: 1px solid #cfc5b3` (for clean) or `background: #cfc5b3` (for gap-line)
+- `align-items: end`, `border-radius: 7px 7px 0 0` (rounded top)
+- Selected tab uses `border-bottom`, `margin-bottom: -1px` — the vertical inverse of bottom tabs
+
+Shared: unselected `background: #e8e2d6`, selected `background: #fffdf9`, selected `color: #5a4020`, border color `#cfc5b3`, 1px button gaps, 7px corner radius. Selected tab always has `z-index: 1` and subtle `box-shadow`.
+
 ### `main.tsx`
 
 Entry point: font loading (Roboto + Noto Sans SC), React root render, Service Worker disabled during development.

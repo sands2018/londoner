@@ -200,6 +200,8 @@ export function App() {
   const [distanceViewOpen, setDistanceViewOpen] = useState(false);
   const [refineViewOpen, setRefineViewOpen] = useState(false);
   const [otherViewOpen, setOtherViewOpen] = useState(false);
+  const [statsViewOpen, setStatsViewOpen] = useState(false);
+  const [statsTab, setStatsTab] = useState("game");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "rhythm");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
@@ -1159,6 +1161,136 @@ export function App() {
     });
   }
 
+  // Stats tab content components (inside App for closure access)
+  function StatsFrequencyTab() {
+    return (
+      <div className={`frequency-body ${frequencyDetailKey === null ? "frequency-overview-body" : "frequency-detail-body"}`}>
+        {frequencyDetailKey === null ? (
+          <>
+            <FrequencyOverviewChart frequencyStats={frequencyStats} onSelect={(key:number) => setFrequencyDetailKey(key)} scopeIndex={frequencyScopeIndex} />
+            <div className="data-screen-actions frequency-scope-actions" style={{borderTop:0,padding:0,gridTemplateColumns:"repeat(6,1fr)"}}>
+              {frequencyScopes.map((value, index) => (
+                <button className={index === frequencyScopeIndex ? "selected" : ""} key={value} onClick={() => setFrequencyScopeIndex(index)} type="button">{value}</button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="data-screen-actions frequency-detail-actions" style={{borderTop:0,padding:0}}>
+              {frequencyDetailKeys.map((key) => (
+                <button className={key === frequencyDetailKey ? "selected" : ""} key={key} onClick={() => setFrequencyDetailKey(key)} type="button">{frequencyBandLabels[key]}</button>
+              ))}
+            </div>
+            <FrequencyDetailChart frequencyStats={frequencyStats} onBack={() => setFrequencyDetailKey(null)} selectedKey={frequencyDetailKey} />
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function StatsDistanceTab() {
+    return (
+      <div className="distance-body">
+        <DistanceOverviewChart distances={distanceStats} onSelect={(key:number) => setDistanceDetailKey(key)} />
+        {distanceDetailKey !== null ? (
+          <div className="distance-detail-backdrop" onClick={() => setDistanceDetailKey(null)} role="button" tabIndex={0}>
+            <DistanceSingleChart distances={distanceStats} selectedKey={distanceDetailKey} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function StatsColRowTab() {
+    const items = [0,1,2,4,5,6].map((key) => colRowStats.rows.find((item) => item.key === key)).filter((item): item is ColRowWave => Boolean(item));
+    return (
+      <div className="colrow-body">
+        <div className="stats-tabs">
+          <button className={colRowTab === "detail" ? "selected" : ""} onClick={() => setColRowTab("detail")} type="button">明细</button>
+          <button className={colRowTab === "chart" ? "selected" : ""} onClick={() => setColRowTab("chart")} type="button">统计图</button>
+          <button className={colRowTab === "summary" ? "selected" : ""} onClick={() => setColRowTab("summary")} type="button">统计数据</button>
+        </div>
+        {colRowTab === "detail" ? <ColRowDetailView items={items} /> : null}
+        {colRowTab === "chart" ? <ColRowChartView items={colRowStats.rows.slice(0, 8)} scope={effectiveColRowScope} /> : null}
+        {colRowTab === "summary" ? <ColRowSummaryView items={colRowStats.rows.slice(0, 8)} key={`cs-${colRowScope}-${numbers.length}`} results={colRowExploreResults} selectedRounds={colRowExploreRounds} selectedRows={colRowExploreRows} toggleRound={toggleColRowExploreRound} toggleRow={toggleColRowExploreRow} /> : null}
+        {colRowTab !== "detail" ? (
+          <div className="data-screen-actions colrow-scope-actions" style={{borderTop:0,padding:0}}>
+            {colRowScopes.map((value) => (<button className={value===colRowScope?"selected":""} key={value} onClick={()=>setColRowScope(value)} type="button">{value<0?"全部":value}</button>))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function StatsRefineTab() {
+    const rows = refineCompareRows;
+    return (
+      <div className="refine-body">
+        <div className="stats-tabs refine-tabs">
+          <button className={refineTab === "compare" ? "selected" : ""} onClick={() => setRefineTab("compare")} type="button">各行各组比较</button>
+          <button className={refineTab === "detail" ? "selected" : ""} onClick={() => setRefineTab("detail")} type="button">行组细化数据</button>
+        </div>
+        {refineTab === "compare" ? (
+          <div className="refine-compare">
+            <div className="refine-rounds">
+              <div className="refine-round-row"><span>从第几轮开始：</span>
+                <div className="data-screen-actions refine-round-actions" style={{borderTop:0,padding:0}}>
+                  {[0,1,2,3,4,5,6,7,8,9].map((value) => (<button className={value===refineRoundStart?"selected":""} key={value} onClick={()=>setRefineRoundStart(value)} type="button">{value}</button>))}
+                </div>
+              </div>
+              <div className="refine-round-row"><span>打几轮：</span>
+                <div className="data-screen-actions refine-round-actions" style={{borderTop:0,padding:0}}>
+                  {[1,2,3,4,5,6,7,8,9,10].map((value) => (<button className={value===refineRoundBet?"selected":""} key={value} onClick={()=>setRefineRoundBet(value)} type="button">{value}</button>))}
+                </div>
+              </div>
+            </div>
+            <table className="refine-table"><thead><tr>
+              <th><button onClick={()=>sortRefineView("name")} type="button">行组{refineSortField==="name"?<SortMark active direction={refineSortDirection}/>:null}</button></th>
+              <th><button onClick={()=>sortRefineView("succeeded")} type="button">成功{refineSortField==="succeeded"?<SortMark active direction={refineSortDirection}/>:null}</button></th>
+              <th>失败</th>
+              <th><button onClick={()=>sortRefineView("failureRate")} type="button">失败率{refineSortField==="failureRate"?<SortMark active direction={refineSortDirection}/>:null}</button></th>
+            </tr></thead><tbody>
+              {rows.map((item) => (<tr key={item.key}><th>{item.label}</th><td>{item.succeeded}</td><td>{item.failed}</td><td>{(item.failureRate*100).toFixed(2)}%</td></tr>))}
+            </tbody></table>
+          </div>
+        ) : (<div className="refine-detail-empty" />)}
+        <div className="data-screen-actions colrow-scope-actions" style={{borderTop:0,padding:0,marginTop:7}}>
+          {colRowScopes.map((value) => (<button className={value===refineScope?"selected":""} key={value} onClick={()=>setRefineScope(value)} type="button">{value<0?"全部":value}</button>))}
+        </div>
+      </div>
+    );
+  }
+
+  function StatsOtherTab() {
+    return (
+      <div className="other-body">
+        <div className="stats-tabs other-tabs">
+          <button className={otherTab==="longs"?"selected":""} onClick={()=>setOtherTab("longs")} type="button">追打</button>
+          <button className={otherTab==="numbers"?"selected":""} onClick={()=>setOtherTab("numbers")} type="button">号码</button>
+          <button className={otherTab==="rounds"?"selected":""} onClick={()=>setOtherTab("rounds")} type="button">轮次</button>
+        </div>
+        {otherTab === "longs" ? (
+          <div className="other-longs">
+            <table className="other-table other-longs-table"><thead><tr><th>次数</th>{otherLongStats.rounds.map((round)=>(<th key={round}>{round}</th>))}<th>NOT</th></tr></thead><tbody>
+              <tr><th rowSpan={2}>{otherLongStats.total}</th>{otherLongStats.wins.map((count,index)=>(<td key={otherLongStats.rounds[index]}>{count}</td>))}<td>{otherLongStats.misses}</td></tr>
+              <tr>{otherLongStats.percentages.map((percent,index)=>(<td key={index}>{formatPercent(percent)}</td>))}</tr>
+            </tbody></table>
+          </div>
+        ) : null}
+        {otherTab === "numbers" ? <div className="other-numbers"><table className="other-table other-numbers-table"><thead><tr><th onClick={()=>sortOtherNumbers("number")}>号码 <SortMark active={otherNumberSortField==="number"} direction={otherNumberSortDirection}/></th><th onClick={()=>sortOtherNumbers("distance")}>距离 <SortMark active={otherNumberSortField==="distance"} direction={otherNumberSortDirection}/></th><th onClick={()=>sortOtherNumbers("frequency")}>次数 <SortMark active={otherNumberSortField==="frequency"} direction={otherNumberSortDirection}/></th><th onClick={()=>sortOtherNumbers("number")}>号码</th><th onClick={()=>sortOtherNumbers("distance")}>距离</th><th onClick={()=>sortOtherNumbers("frequency")}>次数</th></tr></thead><tbody>{otherNumberStats.rows.map((row,index)=>(<tr key={index}><OtherNumberCells item={row.left}/><OtherNumberCells item={row.right}/></tr>))}</tbody></table><div className="other-max-distance"><strong>最大距离前五名：</strong>{otherNumberStats.maxDistances.map((item,index)=>(<span key={`${item.number}-${item.distance}-${index}`}>{item.number}：{item.distance}</span>))}</div></div> : null}
+        {otherTab === "rounds" ? (
+          <div className="other-rounds">
+            <div className="stats-tabs other-round-tabs"><button className={otherRoundTab==="bet"?"selected":""} onClick={()=>setOtherRoundTab("bet")} type="button">轮次参考数据</button><button className={otherRoundTab==="summary"?"selected":""} onClick={()=>setOtherRoundTab("summary")} type="button">轮次统计数据</button></div>
+            {otherRoundTab === "bet" ? <table className="other-table other-round-bet-table"><thead><tr><th>轮次</th><th>不出</th><th>概率</th>{otherRoundFailedRounds.map((round)=>(<th key={`f-${round}`}>F{round}</th>))}{otherRoundFailedRounds.map((round)=>(<th key={`fp-${round}`}>概率</th>))}</tr></thead><tbody>{otherRoundBetStats.map((item)=>(<tr key={item.round}><th>{item.round}</th><td>{item.notYet}</td><td>{formatPercent(item.notYetPercentage)}</td>{item.failed.map((count,index)=>(<td key={`f-${index}`}>{count}</td>))}{item.failedPercentages.map((percent,index)=>(<td key={`fp-${index}`}>{formatPercent(percent)}</td>))}</tr>))}</tbody></table> : <table className="other-table other-round-summary-table"><thead><tr><th rowSpan={2}>轮次</th><th colSpan={3}>组</th><th colSpan={3}>行</th><th colSpan={3}>全部</th></tr><tr><th>前</th><th>本轮</th><th>后</th><th>前</th><th>本轮</th><th>后</th><th>前</th><th>本轮</th><th>后</th></tr></thead><tbody>{otherRoundSummaryStats.map((item)=>(<tr key={item.round}><th>{item.round}</th><td>{item.group.before}</td><td>{item.group.current}</td><td>{item.group.after}</td><td>{item.row.before}</td><td>{item.row.current}</td><td>{item.row.after}</td><td>{item.all.before}</td><td>{item.all.current}</td><td>{item.all.after}</td></tr>))}</tbody></table>}
+          </div>
+        ) : null}
+        <div className="data-screen-actions colrow-scope-actions" style={{borderTop:0,padding:0,marginTop:8}}>
+          {colRowScopes.map((value) => (<button className={value===otherScope?"selected":""} key={value} onClick={()=>setOtherScope(value)} type="button">{value<0?"全部":value}</button>))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => !value)}>
@@ -1324,12 +1456,12 @@ export function App() {
           <button onClick={openDataDialog} type="button">数据</button>
           <button onClick={openConfigView} type="button">配置</button>
           <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
-          <button onClick={openGameView} type="button">打法</button>
-          <button onClick={openColRowView} type="button">行组</button>
-          <button onClick={openFrequencyView} type="button">频率</button>
-          <button onClick={openDistanceView} type="button">距离</button>
-          <button onClick={openRefineView} type="button">细化</button>
-          <button onClick={openOtherView} type="button">其它</button>
+          <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
+          <button onClick={() => { setStatsTab("colrow"); setStatsViewOpen(true); }} type="button">行组</button>
+          <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+          <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
+          <button onClick={() => { setStatsTab("refine"); setStatsViewOpen(true); }} type="button">细化</button>
+          <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
         </div>
 
         {keyboardMode === "keypad" ? (
@@ -2136,6 +2268,47 @@ export function App() {
             </div>
           </section>
         </div>
+      ) : null}
+
+      {statsViewOpen ? (
+        <section className="data-screen" aria-label="统计数据">
+          <header className="data-screen-head">
+            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
+            <button className="close-button title-close-button" onClick={() => setStatsViewOpen(false)} type="button">x</button>
+          </header>
+          <div className="stats-tab-body">
+            {statsTab === "game" && (
+              <div className="data-table-wrap">
+                <table className="data-table game-table">
+                  <thead><tr>
+                    <th onClick={() => sortGameView("name")}>名称 <SortMark active={gameSortField==="name"} direction={gameSortDirection} /></th>
+                    <th>完成</th><th onClick={() => sortGameView("won")}>赢 <SortMark active={gameSortField==="won"} direction={gameSortDirection} /></th>
+                    <th>平</th><th>输</th>
+                    <th onClick={() => sortGameView("balance")}>结算 <SortMark active={gameSortField==="balance"} direction={gameSortDirection} /></th>
+                    <th onClick={() => sortGameView("live")}>实时 <SortMark active={gameSortField==="live"} direction={gameSortDirection} /></th>
+                  </tr></thead>
+                  <tbody>
+                    {numbers.length===0 ? <tr><td className="data-empty" colSpan={7}>暂无可统计的数据</td></tr> :
+                     gameStats.map((item)=>(<tr key={item.name}><td>{item.name}</td><td>{item.completed}</td><td className="td-won">{item.won}</td><td className="td-drew">{item.drew}</td><td className="td-lost">{item.lost}</td><td>{item.balance}</td><td>{item.live}</td></tr>))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {statsTab === "colrow" && <StatsColRowTab />}
+            {statsTab === "freq" && <StatsFrequencyTab />}
+            {statsTab === "dist" && <StatsDistanceTab />}
+            {statsTab === "refine" && <StatsRefineTab />}
+            {statsTab === "other" && <StatsOtherTab />}
+          </div>
+          <footer className="data-screen-actions stats-nav-actions" aria-label="统计标签">
+            <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
+            <button className={statsTab==="colrow"?"selected":""} onClick={()=>setStatsTab("colrow")} type="button">行组</button>
+            <button className={statsTab==="freq"?"selected":""} onClick={()=>setStatsTab("freq")} type="button">频率</button>
+            <button className={statsTab==="dist"?"selected":""} onClick={()=>setStatsTab("dist")} type="button">距离</button>
+            <button className={statsTab==="refine"?"selected":""} onClick={()=>setStatsTab("refine")} type="button">细化</button>
+            <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
+          </footer>
+        </section>
       ) : null}
 
       {configViewOpen ? (
