@@ -79,7 +79,7 @@ import {
   type RhythmDetailRow,
   type RhythmSignal,
 } from "../core/prediction";
-import { checkWaveRecovery, computePeakSma, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
+import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
@@ -105,7 +105,7 @@ const keypadRows: RouletteNumber[][] = [
 type DialogName = "import" | "save" | null;
 type DataSortField = "name" | "count" | "time";
 type SortDirection = "asc" | "desc";
-type ColRowTab = "detail" | "chart" | "summary";
+type ColRowTab = "detail" | "chart" | "summary" | "compare";
 type RefineTab = "compare" | "detail";
 type OtherTab = "longs" | "numbers" | "rounds";
 type OtherRoundTab = "bet" | "summary";
@@ -280,6 +280,33 @@ export function App() {
   const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
   const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
+
+  const waveHistory = useMemo(() => {
+    const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
+    return labels.map((label, ci) => {
+      const gaps = extractGaps(numbers, ci);
+      const points: number[] = [];
+      for (let i = Math.max(8, gaps.length - 60); i <= gaps.length; i += 3) {
+        if (i < 8) continue;
+        points.push(computePeakSma(gaps.slice(0, i)));
+      }
+      return { label, points: points.slice(-60), hasData: points.length >= 3 };
+    });
+  }, [numbers]);
+
+  const waveSnapshot = useMemo(() => {
+    const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
+    return labels.map((label, ci) => {
+      const gaps = extractGaps(numbers, ci);
+      const stats = computePeakStats(gaps);
+      if (!stats) return { label, peak: 0, conc: 0, sma: 0, trend: "flat" as const, hasData: false };
+      const prevGaps = gaps.slice(0, -3);
+      const prevStats = prevGaps.length >= 8 ? computePeakStats(prevGaps) : null;
+      const prevSma = prevStats ? prevStats.sma : stats.sma;
+      const trend = stats.sma > prevSma + 0.1 ? "up" : stats.sma < prevSma - 0.1 ? "down" : "flat";
+      return { label, peak: stats.peak, conc: stats.conc, sma: stats.sma, trend, hasData: true };
+    });
+  }, [numbers]);
 
   // 波浪恢复: 每个行组独立追踪波浪状态
   const rhythmPausedCis = useMemo(() => {
@@ -1168,11 +1195,6 @@ export function App() {
         {frequencyDetailKey === null ? (
           <>
             <FrequencyOverviewChart frequencyStats={frequencyStats} onSelect={(key:number) => setFrequencyDetailKey(key)} scopeIndex={frequencyScopeIndex} />
-            <div className="data-screen-actions frequency-scope-actions" style={{borderTop:0,padding:0,gridTemplateColumns:"repeat(6,1fr)"}}>
-              {frequencyScopes.map((value, index) => (
-                <button className={index === frequencyScopeIndex ? "selected" : ""} key={value} onClick={() => setFrequencyScopeIndex(index)} type="button">{value}</button>
-              ))}
-            </div>
           </>
         ) : (
           <>
@@ -1209,28 +1231,12 @@ export function App() {
           <button className={colRowTab === "detail" ? "selected" : ""} onClick={() => setColRowTab("detail")} type="button">明细</button>
           <button className={colRowTab === "chart" ? "selected" : ""} onClick={() => setColRowTab("chart")} type="button">统计图</button>
           <button className={colRowTab === "summary" ? "selected" : ""} onClick={() => setColRowTab("summary")} type="button">统计数据</button>
+          <button className={colRowTab === "compare" ? "selected" : ""} onClick={() => setColRowTab("compare")} type="button">比较</button>
         </div>
         {colRowTab === "detail" ? <ColRowDetailView items={items} /> : null}
         {colRowTab === "chart" ? <ColRowChartView items={colRowStats.rows.slice(0, 8)} scope={effectiveColRowScope} /> : null}
         {colRowTab === "summary" ? <ColRowSummaryView items={colRowStats.rows.slice(0, 8)} key={`cs-${colRowScope}-${numbers.length}`} results={colRowExploreResults} selectedRounds={colRowExploreRounds} selectedRows={colRowExploreRows} toggleRound={toggleColRowExploreRound} toggleRow={toggleColRowExploreRow} /> : null}
-        {colRowTab !== "detail" ? (
-          <div className="data-screen-actions colrow-scope-actions" style={{borderTop:0,padding:0}}>
-            {colRowScopes.map((value) => (<button className={value===colRowScope?"selected":""} key={value} onClick={()=>setColRowScope(value)} type="button">{value<0?"全部":value}</button>))}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  function StatsRefineTab() {
-    const rows = refineCompareRows;
-    return (
-      <div className="refine-body">
-        <div className="stats-tabs refine-tabs">
-          <button className={refineTab === "compare" ? "selected" : ""} onClick={() => setRefineTab("compare")} type="button">各行各组比较</button>
-          <button className={refineTab === "detail" ? "selected" : ""} onClick={() => setRefineTab("detail")} type="button">行组细化数据</button>
-        </div>
-        {refineTab === "compare" ? (
+        {colRowTab === "compare" ? (
           <div className="refine-compare">
             <div className="refine-rounds">
               <div className="refine-round-row"><span>从第几轮开始：</span>
@@ -1250,12 +1256,54 @@ export function App() {
               <th>失败</th>
               <th><button onClick={()=>sortRefineView("failureRate")} type="button">失败率{refineSortField==="failureRate"?<SortMark active direction={refineSortDirection}/>:null}</button></th>
             </tr></thead><tbody>
-              {rows.map((item) => (<tr key={item.key}><th>{item.label}</th><td>{item.succeeded}</td><td>{item.failed}</td><td>{(item.failureRate*100).toFixed(2)}%</td></tr>))}
+              {refineCompareRows.map((item) => (<tr key={item.key}><th>{item.label}</th><td>{item.succeeded}</td><td>{item.failed}</td><td>{(item.failureRate*100).toFixed(2)}%</td></tr>))}
             </tbody></table>
           </div>
-        ) : (<div className="refine-detail-empty" />)}
-        <div className="data-screen-actions colrow-scope-actions" style={{borderTop:0,padding:0,marginTop:7}}>
-          {colRowScopes.map((value) => (<button className={value===refineScope?"selected":""} key={value} onClick={()=>setRefineScope(value)} type="button">{value<0?"全部":value}</button>))}
+        ) : null}
+      </div>
+    );
+  }
+
+  function StatsWaveTab() {
+    return (
+      <div className="prediction-body" style={{padding:0}}>
+        <p className="prediction-desc" style={{padding:"0 18px"}}>峰值间隔的移动平均趋势。下降(绿)=节奏加快，上升(红)=节奏变慢，走平=稳定</p>
+        <div className="wave-grid" style={{padding:"0 10px"}}>
+          {waveHistory.map((wh, i) => {
+            const ws = waveSnapshot[i];
+            if (!wh.hasData) return null;
+            const maxSma = Math.max(...wh.points, 3);
+            const minSma = Math.min(...wh.points, 1);
+            const range = Math.max(maxSma - minSma, 0.5);
+            const w = 360, h = 64, padX = 0, padY = 4, baseline = h - padY;
+            const maxSlots = 59;
+            const stepX = w / maxSlots;
+            const yVal = (v: number) => padY + ((maxSma - v) / range) * (h - padY * 2);
+            const segments: { x1: number; y1: number; x2: number; y2: number; up: boolean }[] = [];
+            for (let j = 1; j < wh.points.length; j++) {
+              segments.push({ x1: padX + (j - 1) * stepX, y1: yVal(wh.points[j - 1]), x2: padX + j * stepX, y2: yVal(wh.points[j]), up: wh.points[j] <= wh.points[j - 1] });
+            }
+            return (
+              <div className="wave-card" key={wh.label}>
+                <div className="wave-card-head">
+                  <strong className="wave-card-label">{wh.label}</strong>
+                  <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
+                </div>
+                <svg className="wave-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
+                  <line x1={padX} x2={w-padX} y1={baseline} y2={baseline} stroke="#e8e4e0" strokeWidth="1" />
+                  {segments.map((seg, j) => {
+                    const color = seg.up ? "#5f9a7088" : "#b85a3a88";
+                    const pts = `${seg.x1.toFixed(1)},${seg.y1.toFixed(1)} ${seg.x2.toFixed(1)},${seg.y2.toFixed(1)} ${seg.x2.toFixed(1)},${baseline} ${seg.x1.toFixed(1)},${baseline}`;
+                    return <polygon key={j} points={pts} fill={color} />;
+                  })}
+                  {segments.map((seg, j) => {
+                    const color = seg.up ? "#5f9a70" : "#b85a3a";
+                    return <line key={`l${j}`} x1={seg.x1.toFixed(1)} y1={seg.y1.toFixed(1)} x2={seg.x2.toFixed(1)} y2={seg.y2.toFixed(1)} stroke={color} strokeWidth="2" />;
+                  })}
+                </svg>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -1284,9 +1332,6 @@ export function App() {
             {otherRoundTab === "bet" ? <table className="other-table other-round-bet-table"><thead><tr><th>轮次</th><th>不出</th><th>概率</th>{otherRoundFailedRounds.map((round)=>(<th key={`f-${round}`}>F{round}</th>))}{otherRoundFailedRounds.map((round)=>(<th key={`fp-${round}`}>概率</th>))}</tr></thead><tbody>{otherRoundBetStats.map((item)=>(<tr key={item.round}><th>{item.round}</th><td>{item.notYet}</td><td>{formatPercent(item.notYetPercentage)}</td>{item.failed.map((count,index)=>(<td key={`f-${index}`}>{count}</td>))}{item.failedPercentages.map((percent,index)=>(<td key={`fp-${index}`}>{formatPercent(percent)}</td>))}</tr>))}</tbody></table> : <table className="other-table other-round-summary-table"><thead><tr><th rowSpan={2}>轮次</th><th colSpan={3}>组</th><th colSpan={3}>行</th><th colSpan={3}>全部</th></tr><tr><th>前</th><th>本轮</th><th>后</th><th>前</th><th>本轮</th><th>后</th><th>前</th><th>本轮</th><th>后</th></tr></thead><tbody>{otherRoundSummaryStats.map((item)=>(<tr key={item.round}><th>{item.round}</th><td>{item.group.before}</td><td>{item.group.current}</td><td>{item.group.after}</td><td>{item.row.before}</td><td>{item.row.current}</td><td>{item.row.after}</td><td>{item.all.before}</td><td>{item.all.current}</td><td>{item.all.after}</td></tr>))}</tbody></table>}
           </div>
         ) : null}
-        <div className="data-screen-actions colrow-scope-actions" style={{borderTop:0,padding:0,marginTop:8}}>
-          {colRowScopes.map((value) => (<button className={value===otherScope?"selected":""} key={value} onClick={()=>setOtherScope(value)} type="button">{value<0?"全部":value}</button>))}
-        </div>
       </div>
     );
   }
@@ -1460,7 +1505,6 @@ export function App() {
           <button onClick={() => { setStatsTab("colrow"); setStatsViewOpen(true); }} type="button">行组</button>
           <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
           <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
-          <button onClick={() => { setStatsTab("refine"); setStatsViewOpen(true); }} type="button">细化</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
         </div>
 
@@ -2297,15 +2341,30 @@ export function App() {
             {statsTab === "colrow" && <StatsColRowTab />}
             {statsTab === "freq" && <StatsFrequencyTab />}
             {statsTab === "dist" && <StatsDistanceTab />}
-            {statsTab === "refine" && <StatsRefineTab />}
+            {statsTab === "wave" && <StatsWaveTab />}
             {statsTab === "other" && <StatsOtherTab />}
           </div>
+          {statsTab === "colrow" && colRowTab !== "detail" && colRowTab !== "compare" ? (
+            <div className="data-screen-actions colrow-scope-actions" aria-label="行组统计范围" style={{borderTop:0,padding:"0 0 8px"}}>
+              {colRowScopes.map((value) => (<button className={value===colRowScope?"selected":""} key={value} onClick={()=>setColRowScope(value)} type="button">{value<0?"全部":value}</button>))}
+            </div>
+          ) : null}
+          {statsTab === "freq" && frequencyDetailKey === null ? (
+            <div className="data-screen-actions frequency-scope-actions" aria-label="频率统计范围" style={{borderTop:0,padding:"0 0 8px"}}>
+              {frequencyScopes.map((value, index) => (<button className={index === frequencyScopeIndex ? "selected" : ""} key={value} onClick={() => setFrequencyScopeIndex(index)} type="button">{value}</button>))}
+            </div>
+          ) : null}
+          {statsTab === "other" ? (
+            <div className="data-screen-actions colrow-scope-actions" aria-label="其它统计范围" style={{borderTop:0,padding:"0 0 8px"}}>
+              {colRowScopes.map((value) => (<button className={value===otherScope?"selected":""} key={value} onClick={()=>setOtherScope(value)} type="button">{value<0?"全部":value}</button>))}
+            </div>
+          ) : null}
           <footer className="data-screen-actions stats-nav-actions" aria-label="统计标签">
             <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
             <button className={statsTab==="colrow"?"selected":""} onClick={()=>setStatsTab("colrow")} type="button">行组</button>
             <button className={statsTab==="freq"?"selected":""} onClick={()=>setStatsTab("freq")} type="button">频率</button>
             <button className={statsTab==="dist"?"selected":""} onClick={()=>setStatsTab("dist")} type="button">距离</button>
-            <button className={statsTab==="refine"?"selected":""} onClick={()=>setStatsTab("refine")} type="button">细化</button>
+            <button className={statsTab==="wave"?"selected":""} onClick={()=>setStatsTab("wave")} type="button">波浪</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
           </footer>
         </section>

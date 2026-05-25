@@ -620,7 +620,7 @@ button:disabled {
 .dock-actions {
   display: var(--dock-actions-display);
   gap: var(--dock-action-gap);
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   margin: var(--dock-action-margin);
 }
 
@@ -3195,6 +3195,43 @@ button:disabled {
 .trend-up { color: #b85a3a; }
 .trend-down { color: #5f9a70; }
 .trend-flat { color: #9a958d; }
+
+.wave-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.wave-card {
+  background: #ffffff;
+  border: 1px solid #d8d2c6;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wave-card-head {
+  align-items: center;
+  border-bottom: 1px solid #f0e8e8;
+  display: flex;
+  gap: 4px;
+  padding: 2px 6px;
+}
+
+.wave-card-label {
+  color: #995539;
+  font-size: 13px;
+  font-weight: var(--weight-emphasis);
+}
+
+.wave-card-info {
+  color: #8a7e74;
+  font-size: 10px;
+}
+
+.wave-sparkline {
+  display: block;
+  height: 60px;
+  width: 100%;
+}
 
 .rhythm-detail .cold-strategy-bar,
 .rhythm-bar {
