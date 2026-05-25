@@ -11,5 +11,5 @@ app/scripts/
 data/
 sands_history*.txt
 app/test-results/
-HIStoryData/
+HistoryData/
 history_data.json
