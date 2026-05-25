@@ -1,12 +1,14 @@
 import { getNumberColRows, getColRowLabel, type RouletteNumber, type ColRowIndex } from "./roulette";
 import { computePeakStats, extractGaps as waveExtractGaps } from "./wave";
 
-/** 历史间隔窗口: 最近20次出现 */
-export const GAP_WINDOW = 20;
-/** 极端分位: 超过95%的历史最大间隔 */
-export const EXTREME_PCT = 0.95;
+/** 历史间隔窗口: 最近N次出现 */
+export const GAP_WINDOW = 30;
+/** 极端分位: 超过92%的历史最大间隔 */
+export const EXTREME_PCT = 0.92;
+/** 超出阈值的buffer */
+export const EXTREME_BUFFER = 3;
 /** 最少等待轮数 */
-export const MIN_GAP = 5;
+export const MIN_GAP = 6;
 /** 建议追号轮数 */
 export const CHASE_LENGTH = 4;
 /** 建议翻倍策略 */
@@ -60,7 +62,7 @@ function analyzeOne(
   const currentGap = lastSeen >= 0 ? numbers.length - lastSeen - 1 : numbers.length;
 
   // 极端条件: 超过95%分位+2, 且>=5轮
-  if (currentGap >= threshold + 2 && currentGap >= MIN_GAP) {
+  if (currentGap >= threshold + EXTREME_BUFFER && currentGap >= MIN_GAP) {
     return {
       index,
       label: getColRowLabel(index),
@@ -207,7 +209,7 @@ export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; w
       if (recentGaps.length < 5) continue;
       const sorted = [...recentGaps].sort((a, b) => a - b);
       const threshold = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * EXTREME_PCT))];
-      if (cg < threshold + 2 || cg < MIN_GAP) continue;
+      if (cg < threshold + EXTREME_BUFFER || cg < MIN_GAP) continue;
       if (activeChases.some((c) => c.ci === ci)) continue;
       activeChases.push({ ci, startRound: r + 1, chaseLen: CHASE_LENGTH });
     }
@@ -228,10 +230,10 @@ export function computeRhythmRoi(numbers: readonly RouletteNumber[]): { bet: num
     const hc = v !== 0 ? getNumberColRows(v).map((h) => h as number) : [];
     const rm: typeof ac = [];
     for (const c of ac) {
-      const bi = r - c.sr; if (bi >= 3) continue;
+      const bi = r - c.sr; if (bi >= c.cl) continue;
       const amt = RHYTHM_PROG[bi] ?? RHYTHM_PROG[RHYTHM_PROG.length - 1]; bet += amt;
       if (hc.includes(c.ci)) { win += amt * 3; }
-      else if (bi + 1 < 3) rm.push(c);
+      else if (bi + 1 < c.cl) rm.push(c);
       else paused[c.ci] = true;
     }
     ac.length = 0; ac.push(...rm);
@@ -330,7 +332,7 @@ export function computeColdDetailStats(numbers: readonly RouletteNumber[]): Rhyt
       if (recentGaps.length < 5) continue;
       const sorted = [...recentGaps].sort((a, b) => a - b);
       const threshold = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * EXTREME_PCT))];
-      if (cg < threshold + 2 || cg < MIN_GAP) continue;
+      if (cg < threshold + EXTREME_BUFFER || cg < MIN_GAP) continue;
       if (ac.some((c) => c.ci === ci)) continue;
       ac.push({ ci, sr: r + 1, cl: CHASE_LENGTH, totalBet: 0 });
     }

@@ -1500,11 +1500,14 @@ export function App() {
           <button onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
           <button onClick={openConfigView} type="button">配置</button>
+        </div>
+        <div className="dock-actions">
           <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
           <button onClick={() => { setStatsTab("colrow"); setStatsViewOpen(true); }} type="button">行组</button>
           <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
           <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
+          <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
         </div>
 
@@ -2266,7 +2269,7 @@ export function App() {
                 </div>
               ) : predictionTab === "cold" ? (
                 <>
-                  <p className="prediction-desc">行组连续未出现超过历史95%上限时触发，1-2-4-8追打4轮</p>
+                  <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">

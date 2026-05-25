@@ -8,23 +8,23 @@
 
 ### 原理
 
-当某个行组连续不出超过其历史 95% 分位时，属于极端偏离，大概率会回归——押它出现。
+当某个行组连续不出超过其历史 92% 分位 + 3 轮缓冲时，属于极端偏离，大概率会回归——押它出现。
 
 ### 参数
 
 | 参数 | 值 | 代码位置 |
 |---|---|---|
-| 统计窗口 | 最近 20 次出现 | `prediction.ts: GAP_WINDOW` |
-| 极端分位 | 95% | `prediction.ts: EXTREME_PCT` |
-| 缓冲 | 超过阈值 +2 轮 | `prediction.ts` analyzeOne() |
-| 最少等待 | 5 轮 | `prediction.ts: MIN_GAP` |
+| 统计窗口 | 最近 30 次出现 | `prediction.ts: GAP_WINDOW` |
+| 极端分位 | 92% | `prediction.ts: EXTREME_PCT` |
+| 缓冲 | 超过阈值 +3 轮 | `prediction.ts: EXTREME_BUFFER` |
+| 最少等待 | 6 轮 | `prediction.ts: MIN_GAP` |
 | 追号轮数 | 4 轮 | `prediction.ts: CHASE_LENGTH` |
 | 翻倍策略 | 1-2-4-8 | `prediction.ts: PROGRESSION` |
 
 ### 信号逻辑
 
-1. 对每个行组，取最近 20 个间隔，排序后取 95% 分位作为阈值
-2. 当前 gap >= 阈值 + 2 且 >= 5 轮 -> 触发信号
+1. 对每个行组，取最近 30 个间隔，排序后取 92% 分位作为阈值
+2. 当前 gap >= 阈值 + 3 且 >= 6 轮 -> 触发信号
 3. 建议 1-2-4-8 翻倍追 4 轮
 
 ### 引擎
@@ -35,7 +35,7 @@
 
 ### 历史表现
 
-103 组数据（排除 2026-02 异常月）整体 ROI +8.0%。
+144 组数据（全局）整体 ROI +3.83%，6/7 年份正收益。
 
 ---
 
@@ -55,7 +55,7 @@
 
 | 参数 | 值 | 代码位置 |
 |---|---|---|
-| 统计窗口 | 最近 20 次出现 | `prediction.ts: GAP_WINDOW` |
+| 统计窗口 | 最近 20 次出现 | `wave.ts: computePeakStats` windowGaps=20 |
 | 峰值范围 | k=1-4 只在这四个值中找峰值 | `prediction.ts` analyzeRhythm() |
 | 集中度阈值 | 62%（峰值 +/-1 区间） | `prediction.ts: RHYTHM_MIN_PCT` |
 | 追号长度 | 2-3 轮（自适应：区间宽度） | `prediction.ts` analyzeRhythm() |
