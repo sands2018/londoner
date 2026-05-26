@@ -487,31 +487,72 @@ export function App() {
       }
     }
 
-    // 124信号 (波浪恢复)
-    for (const s of rhythmSignals) {
-      if (rhythmPausedCis.has(s.index)) continue;
-      if (rhythmRowsOnly && s.index < 3) continue;
-      let firstTriggerRound = numbers.length;
-      for (let r = numbers.length - 1; r >= 15; r--) {
-        const engine = new RhythmEngine();
-        const sigs = engine.analyze(numbers.slice(0, r));
-        if (!sigs.some((ss) => ss.index === s.index)) { firstTriggerRound = r + 1; break; }
-      }
-      const chaseLen = s.chaseLength;
-      const startedAt = firstTriggerRound + 1;
-      const done = numbers.length - startedAt + 1;
+    // 124信号: 完整回放 active chase 状态
+    {
+      const labels124 = ["一组","二组","三组","1行","2行","3行"];
+      const ls = [-1,-1,-1,-1,-1,-1];
+      const ac: { ci: number; sr: number; cl: number; peak: number }[] = [];
+      const rec: WaveRecoveryState[] = Array.from({ length: 6 }, () => createRecoveryState());
+      const latestSignal: { ci: number; peak: number; cl: number }[] = Array.from({ length: 6 }, () => ({ ci: 0, peak: 0, cl: 0 }));
 
-      if (done <= 0) {
-        items.push({ ci: s.index, label: s.label, round: 1, betAmt: 1, isNew: true, currentGap: s.currentGap, threshold: 0, peak: s.peak, chaseLen: s.chaseLength, kind: "rhythm" });
-      } else if (done < chaseLen) {
-        const nr = done + 1;
-        const rProg = s.chaseLength <= 3 ? [1,2,4] : [1,2,4,8];
-        items.push({ ci: s.index, label: s.label, round: nr, betAmt: rProg[nr-1]??4, isNew: false, currentGap: s.currentGap, threshold: 0, peak: s.peak, chaseLen: s.chaseLength, kind: "rhythm" });
+      for (let r = 0; r < numbers.length; r++) {
+        const v = numbers[r];
+        const hc = v !== 0 ? getNumberColRows(v) : [];
+        const rm: typeof ac = [];
+        for (const c of ac) {
+          const bi = r - c.sr; if (bi >= c.cl) continue;
+          const amt = [1,2,4][bi] ?? 4;
+          if (hc.includes(c.ci as ColRowIndex)) { /* hit, chase done */ }
+          else if (bi + 1 < c.cl) rm.push(c);
+          else {
+            const gaps = extractGaps(numbers.slice(0, r), c.ci);
+            rec[c.ci] = createRecoveryState();
+            rec[c.ci].paused = true;
+            rec[c.ci].failSma = computePeakSma(gaps);
+            rec[c.ci].failRound = r;
+            rec[c.ci].phase = 0;
+          }
+        }
+        ac.length = 0; ac.push(...rm);
+        for (const ci of hc) ls[ci] = r;
+        if (r < 15) continue;
+        for (let ci = 0; ci < 6; ci++) {
+          if (rec[ci].paused) {
+            const gaps = extractGaps(numbers.slice(0, r), ci);
+            if (checkWaveRecovery(rec[ci], gaps, r)) rec[ci].paused = false;
+          }
+        }
+        for (let ci = 0; ci < 6; ci++) {
+          if (rec[ci].paused) continue;
+          const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r;
+          if (cg < 1 || cg > 6) continue;
+          if (ac.some((c) => c.ci === ci)) continue;
+          const gaps = extractGaps(numbers.slice(0, r), ci);
+          const stats = computePeakStats(gaps);
+          if (!stats || stats.conc < 0.65) continue;
+          if (cg !== stats.peak) continue;
+          ac.push({ ci, sr: r + 1, cl: stats.zoneLen, peak: stats.peak });
+          latestSignal[ci] = { ci, peak: stats.peak, cl: stats.zoneLen };
+        }
+      }
+
+      // Current active chases → signal display
+      for (const c of ac) {
+        if (rhythmRowsOnly && c.ci < 3) continue;
+        const label = labels124[c.ci];
+        const bi = numbers.length - c.sr + 1;
+        const nr = bi;
+        const prog = c.cl <= 3 ? [1,2,4] : [1,2,4,8];
+        const sig = latestSignal[c.ci];
+        items.push({
+          ci: c.ci as ColRowIndex, label, round: nr, betAmt: prog[nr - 1] ?? prog[prog.length - 1],
+          isNew: nr === 1, currentGap: 0, threshold: 0, peak: sig.peak, chaseLen: c.cl, kind: "rhythm",
+        });
       }
     }
 
     return items;
-  }, [predictions, rhythmSignals, numbers, rhythmPausedCis, rhythmRowsOnly, coldAdaptiveCis]);
+  }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -615,7 +656,6 @@ export function App() {
     setNumbers(numbers.slice(0, -1));
     setRedoNumbers([...redoNumbers, removed]);
   }
-      const newLen = numbers.length - 1;
   function redo() {
     const restored = redoNumbers.at(-1);
     if (restored === undefined) return;
