@@ -234,6 +234,9 @@ export function App() {
   const [configTab, setConfigTab] = useState<"signal" | "game">("signal");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [draftRhythmRowsOnly, setDraftRhythmRowsOnly] = useState(rhythmRowsOnly);
+  const [coldAdaptiveMode, setColdAdaptiveMode] = useState<string>(() => localStorage.getItem("londoner.coldAdaptiveMode") || "adaptiveRow");
+  const [draftColdAdaptiveMode, setDraftColdAdaptiveMode] = useState(coldAdaptiveMode);
+  const [allSavedSessions, setAllSavedSessions] = useState<SavedSession[]>([]);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -285,6 +288,72 @@ export function App() {
   const rhythmRowsOnlyRoi = useMemo(() => computeRhythmRoi(numbers, [3, 4, 5]), [numbers]);
   const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
+
+  // 长套自适应: 从历史session计算行/组累计ROI
+  const currentSessionName = useMemo(() => {
+    if (currentSessionId) {
+      const found = allSavedSessions.find((s) => s.id === currentSessionId);
+      if (found) return found.name;
+    }
+    return "";
+  }, [currentSessionId, allSavedSessions]);
+
+  // 长套自适应: 从同年、当前session之前的历史session计算行/组累计ROI
+  const coldAdaptiveCis = useMemo(() => {
+    if (coldAdaptiveMode === "off") return [0, 1, 2, 3, 4, 5] as const;
+    const currentYear = (() => {
+      const m = currentSessionName.match(/(\d{4})/);
+      if (m) return m[1];
+      return "";
+    })();
+    if (!currentYear || !currentSessionId) return [0, 1, 2, 3, 4, 5] as const;
+
+    // Sort by dateKey asc + originalIndex asc
+    const getDateKey = (name: string) => {
+      const m = name.match(/(\d{4})[-.]?(\d{2})[-.]?(\d{2})/);
+      if (m) return m[1] + m[2] + m[3];
+      const m2 = name.match(/(\d{4})(\d{2})(\d{2})/);
+      if (m2) return m2[1] + m2[2] + m2[3];
+      return "99999999";
+    };
+    // dateKey asc + originalIndex asc (matches backtesting sort)
+    const indexed = allSavedSessions.map((s, idx) => ({ s, idx }));
+    const sorted = indexed
+      .filter(({ s }) => (s.name.match(/(\d{4})/) || [""])[0] === currentYear)
+      .sort((a, b) => {
+        const dk = getDateKey(a.s.name).localeCompare(getDateKey(b.s.name));
+        if (dk !== 0) return dk;
+        return a.idx - b.idx;
+      });
+
+    // Find current session position
+    const curPos = sorted.findIndex(({ s }) => s.id === currentSessionId);
+    if (curPos < 0) return [0, 1, 2, 3, 4, 5] as const;
+
+    // Only accumulate sessions BEFORE current
+    let rowBet = 0, rowWin = 0, grpBet = 0, grpWin = 0;
+    for (let i = 0; i < curPos; i++) {
+      const s = sorted[i].s;
+      const r = computeRoi(s.numbers, [3, 4, 5]);
+      const g = computeRoi(s.numbers, [0, 1, 2]);
+      rowBet += r.bet; rowWin += r.win;
+      grpBet += g.bet; grpWin += g.win;
+    }
+
+    // Cold start / tie handling
+    if (rowBet === 0 && grpBet === 0) {
+      return (coldAdaptiveMode === "adaptiveRow" ? [3, 4, 5] : [0, 1, 2, 3, 4, 5]) as readonly number[];
+    }
+    const rowRoi = rowBet > 0 ? ((rowWin - rowBet) / rowBet) : 0;
+    const grpRoi = grpBet > 0 ? ((grpWin - grpBet) / grpBet) : 0;
+    if (rowRoi > grpRoi) return [3, 4, 5] as const;
+    if (grpRoi > rowRoi) return [0, 1, 2] as const;
+    // tie: rowRoi == grpRoi
+    return (coldAdaptiveMode === "adaptiveRow" ? [3, 4, 5] : [0, 1, 2, 3, 4, 5]) as readonly number[];
+  }, [coldAdaptiveMode, allSavedSessions, currentSessionName, currentSessionId]);
+  const coldRowsOnlyRoi = useMemo(() => computeRoi(numbers, [3, 4, 5]), [numbers]);
+  const coldGroupsOnlyRoi = useMemo(() => computeRoi(numbers, [0, 1, 2]), [numbers]);
+  const coldActiveRoi = useMemo(() => computeRoi(numbers, coldAdaptiveCis), [numbers, coldAdaptiveCis]);
 
   const waveKLineData = useMemo(() => {
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
@@ -399,6 +468,7 @@ export function App() {
 
     // 长套信号
     for (const s of predictions) {
+      if (!coldAdaptiveCis.includes(s.index)) continue;
       let firstTriggerRound = numbers.length;
       for (let r = numbers.length - 1; r >= 10; r--) {
         const engine = new ColdReversalEngine();
@@ -441,7 +511,7 @@ export function App() {
     }
 
     return items;
-  }, [predictions, rhythmSignals, numbers, rhythmPausedCis, rhythmRowsOnly]);
+  }, [predictions, rhythmSignals, numbers, rhythmPausedCis, rhythmRowsOnly, coldAdaptiveCis]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -484,6 +554,7 @@ export function App() {
       setLastSavedNumbers(savedNumbers);
       setLoaded(true);
     });
+    storage.listSessions().then(setAllSavedSessions);
   }, []);
 
   useEffect(() => {
@@ -554,7 +625,9 @@ export function App() {
   }
 
   async function refreshSessions() {
-    setSessions(await storage.listSessions());
+    const list = await storage.listSessions();
+    setSessions(list);
+    setAllSavedSessions(list);
   }
 
   function clearCurrentSession() {
@@ -1017,6 +1090,7 @@ export function App() {
   function openConfigView() {
     reloadGameConfigState();
     setDraftRhythmRowsOnly(rhythmRowsOnly);
+    setDraftColdAdaptiveMode(coldAdaptiveMode);
     setConfigViewOpen(true);
   }
 
@@ -1132,6 +1206,8 @@ export function App() {
     if (configTab === "signal") {
       setRhythmRowsOnly(draftRhythmRowsOnly);
       localStorage.setItem("londoner.rhythmRowsOnly", draftRhythmRowsOnly ? "true" : "false");
+      setColdAdaptiveMode(draftColdAdaptiveMode);
+      localStorage.setItem("londoner.coldAdaptiveMode", draftColdAdaptiveMode);
       setConfigViewOpen(false);
       return;
     }
@@ -2348,20 +2424,32 @@ export function App() {
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{sessionRoi.bet}</strong><strong>{sessionRoi.win}</strong>
-                        <strong style={{ color: sessionRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{sessionRoi.roi >= 0 ? "+" : ""}{sessionRoi.roi.toFixed(1)}%</strong>
+                        <strong>{numbers.length}</strong><strong>{coldActiveRoi.bet}</strong><strong>{coldActiveRoi.win}</strong>
+                        <strong style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                        <span>ROI(仅行)</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
+                        <strong style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : predictionTab === "cold" ? (
                 <>
-                  <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮</p>
+                  <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮。{coldAdaptiveMode !== "off" ? " 自适应"+ (coldAdaptiveMode === "adaptiveRow" ? "(冷启动押行)" : "") + "已启用" : ""}</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
-                      <strong>{numbers.length}</strong><strong>{sessionRoi.bet}</strong><strong>{sessionRoi.win}</strong>
-                      <strong style={{ color: sessionRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{sessionRoi.roi >= 0 ? "+" : ""}{sessionRoi.roi.toFixed(1)}%</strong>
+                      <strong>{numbers.length}</strong><strong>{coldActiveRoi.bet}</strong><strong>{coldActiveRoi.win}</strong>
+                      <strong style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                      <span>ROI(仅行)</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
+                      <strong style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                      <span>ROI(仅组)</span><span>{coldGroupsOnlyRoi.bet}</span><span>{coldGroupsOnlyRoi.win}</span>
+                      <strong style={{ color: coldGroupsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldGroupsOnlyRoi.roi >= 0 ? "+" : ""}{coldGroupsOnlyRoi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                   <div className="detail-stats-table">
@@ -2497,6 +2585,24 @@ export function App() {
                       style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
                     />
                     <span>全部信号（行+组）</span>
+                  </label>
+                  </div>
+                </section>
+                <section className="config-card config-bets">
+                  <h2><span>长套 自适应</span></h2>
+                  <p style={{ fontSize: "11px", color: "#8a7e74", padding: "4px 12px 0", margin: 0 }}>自适应仅对已保存的场次生效；未保存当前数据时按全六组显示。</p>
+                  <div style={{ padding: "10px 0" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={draftColdAdaptiveMode === "off"} onChange={() => setDraftColdAdaptiveMode("off")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
+                    <span>不切换（全六组）</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={draftColdAdaptiveMode === "adaptive"} onChange={() => setDraftColdAdaptiveMode("adaptive")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
+                    <span>自适应切换（行/组累计ROI择优）</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={draftColdAdaptiveMode === "adaptiveRow"} onChange={() => setDraftColdAdaptiveMode("adaptiveRow")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
+                    <span>自适应切换 + 冷启动押行</span>
                   </label>
                   </div>
                 </section>

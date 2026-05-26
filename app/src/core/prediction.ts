@@ -171,8 +171,9 @@ export class RhythmEngine {
   }
 }
 
-/** 计算ROI: 模拟冷门反转追号, 返回 {bet, win, roi} */
-export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; win: number; roi: number } {
+/** 计算ROI: 模拟冷门反转追号, 返回 {bet, win, roi}. allowedCis默认全六组 */
+export function computeRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[]): { bet: number; win: number; roi: number } {
+  const cis = allowedCis ?? [0, 1, 2, 3, 4, 5];
   let bet = 0, win = 0;
   const lastSeen = [-1, -1, -1, -1, -1, -1];
   const activeChases: { ci: number; startRound: number; chaseLen: number }[] = [];
@@ -195,7 +196,7 @@ export function computeRoi(numbers: readonly RouletteNumber[]): { bet: number; w
     for (const ci of hitCis) lastSeen[ci] = r;
     if (r < 10) continue;
 
-    for (let ci = 0; ci < 6; ci++) {
+    for (const ci of cis) {
       const cg = lastSeen[ci] >= 0 ? r - lastSeen[ci] - 1 : r;
       const allGaps: number[] = [];
       let last = -1;
