@@ -5,6 +5,8 @@ export interface SavedSession {
   name: string;
   numbers: RouletteNumber[];
   updatedAt: string;
+  /** 导入时的原始顺序索引, 用于自适应排序 tie-breaker */
+  importIndex?: number;
 }
 
 export interface StorageAdapter {

@@ -74,6 +74,8 @@ import {
   MIN_GAP,
   PredictionTracker,
   PROGRESSION,
+  RHYTHM_MIN_PCT,
+  RHYTHM_PROG,
   RhythmEngine,
   type ColdSignal,
   type RhythmDetailRow,
@@ -316,24 +318,28 @@ export function App() {
       if (m2) return m2[1] + m2[2] + m2[3];
       return "99999999";
     };
-    // dateKey asc + originalIndex asc (matches backtesting sort)
-    const indexed = allSavedSessions.map((s, idx) => ({ s, idx }));
-    const sorted = indexed
-      .filter(({ s }) => (s.name.match(/(\d{4})/) || [""])[0] === currentYear)
+    // dateKey asc + importIndex asc (matches backtesting sort)
+    const sorted = allSavedSessions
+      .filter((s) => (s.name.match(/(\d{4})/) || [""])[0] === currentYear)
       .sort((a, b) => {
-        const dk = getDateKey(a.s.name).localeCompare(getDateKey(b.s.name));
+        const dk = getDateKey(a.name).localeCompare(getDateKey(b.name));
         if (dk !== 0) return dk;
-        return a.idx - b.idx;
+        const ai = a.importIndex;
+        const bi = b.importIndex;
+        if (ai !== undefined && bi !== undefined) return ai - bi;
+        if (ai !== undefined) return -1;  // with index before without
+        if (bi !== undefined) return 1;
+        return 0;  // neither has index, keep stable
       });
 
     // Find current session position
-    const curPos = sorted.findIndex(({ s }) => s.id === currentSessionId);
+    const curPos = sorted.findIndex((s) => s.id === currentSessionId);
     if (curPos < 0) return [0, 1, 2, 3, 4, 5] as const;
 
     // Only accumulate sessions BEFORE current
     let rowBet = 0, rowWin = 0, grpBet = 0, grpWin = 0;
     for (let i = 0; i < curPos; i++) {
-      const s = sorted[i].s;
+      const s = sorted[i];
       const r = computeRoi(s.numbers, [3, 4, 5]);
       const g = computeRoi(s.numbers, [0, 1, 2]);
       rowBet += r.bet; rowWin += r.win;
@@ -464,7 +470,6 @@ export function App() {
   // 直接从号码推算追号状态 — 不存独立state, 永远同步
   const signalDisplay = useMemo(() => {
     const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number; peak: number; chaseLen: number; kind: "cold" | "rhythm" }> = [];
-    if (predictions.length === 0 && rhythmSignals.length === 0) return items;
 
     // 长套信号
     for (const s of predictions) {
@@ -501,7 +506,6 @@ export function App() {
         const rm: typeof ac = [];
         for (const c of ac) {
           const bi = r - c.sr; if (bi >= c.cl) continue;
-          const amt = [1,2,4][bi] ?? 4;
           if (hc.includes(c.ci as ColRowIndex)) { /* hit, chase done */ }
           else if (bi + 1 < c.cl) rm.push(c);
           else {
@@ -529,7 +533,7 @@ export function App() {
           if (ac.some((c) => c.ci === ci)) continue;
           const gaps = extractGaps(numbers.slice(0, r), ci);
           const stats = computePeakStats(gaps);
-          if (!stats || stats.conc < 0.65) continue;
+          if (!stats || stats.conc < RHYTHM_MIN_PCT) continue;
           if (cg !== stats.peak) continue;
           ac.push({ ci, sr: r + 1, cl: stats.zoneLen, peak: stats.peak });
           latestSignal[ci] = { ci, peak: stats.peak, cl: stats.zoneLen };
@@ -539,10 +543,11 @@ export function App() {
       // Current active chases → signal display
       for (const c of ac) {
         if (rhythmRowsOnly && c.ci < 3) continue;
+        const roundsPlayed = Math.max(0, numbers.length - c.sr);
+        const nr = roundsPlayed + 1;
+        if (nr > c.cl) continue;
         const label = labels124[c.ci];
-        const bi = numbers.length - c.sr + 1;
-        const nr = bi;
-        const prog = c.cl <= 3 ? [1,2,4] : [1,2,4,8];
+        const prog = RHYTHM_PROG;
         const sig = latestSignal[c.ci];
         items.push({
           ci: c.ci as ColRowIndex, label, round: nr, betAmt: prog[nr - 1] ?? prog[prog.length - 1],
@@ -725,6 +730,7 @@ export function App() {
       ...currentSession,
       numbers,
       updatedAt: new Date().toISOString(),
+      importIndex: currentSession.importIndex,
     });
     await refreshSessions();
     setLastSavedNumbers(numbers);
@@ -733,11 +739,13 @@ export function App() {
 
   async function persistSession(name: string, existingId?: string) {
     const id = existingId ?? crypto.randomUUID?.() ?? `${Date.now()}`;
+    const existing = existingId ? (await storage.listSessions()).find((s) => s.id === existingId) : undefined;
     await storage.saveSession({
       id,
       name,
       numbers,
       updatedAt: new Date().toISOString(),
+      importIndex: existing?.importIndex,
     });
     await refreshSessions();
     setCurrentSessionId(id);
@@ -949,6 +957,7 @@ export function App() {
         Numbers: formatNumbers(session.numbers),
         SaveTime: formatSessionTime(session.updatedAt),
         tms: new Date(session.updatedAt).getTime(),
+        ImportIndex: session.importIndex,
       })),
     );
 
@@ -3106,11 +3115,14 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
     }
 
     const time = typeof item.tms === "number" && Number.isFinite(item.tms) ? item.tms : Date.now() + index;
+    const importIdx = typeof (item as { ImportIndex?: number }).ImportIndex === "number"
+      ? (item as { ImportIndex?: number }).ImportIndex : index;
     imported.push({
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
       numbers: parsed.numbers,
       updatedAt: new Date(time).toISOString(),
+      importIndex: importIdx,
     });
   }
 

@@ -99,9 +99,9 @@ export class ColdReversalEngine {
 // ====== 节奏追号 自适应峰值 ======
 
 /** 集中度阈值 */
-const RHYTHM_MIN_PCT = 0.65;
+export const RHYTHM_MIN_PCT = 0.65;
 /** 翻倍策略 (最多3轮) */
-const RHYTHM_PROG = [1, 2, 4];
+export const RHYTHM_PROG = [1, 2, 4];
 
 export interface RhythmSignal {
   index: ColRowIndex;
