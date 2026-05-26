@@ -76,7 +76,6 @@ import {
   PROGRESSION,
   RHYTHM_MIN_PCT,
   RHYTHM_PROG,
-  RhythmEngine,
   type ColdSignal,
   type RhythmDetailRow,
   type RhythmSignal,
@@ -269,18 +268,12 @@ export function App() {
 
   // 预测引擎初始化
   const coldEngine = useMemo(() => new ColdReversalEngine(), []);
-  const rhythmEngine = useMemo(() => new RhythmEngine(), []);
   const predictionTracker = useMemo(() => new PredictionTracker(), []);
 
   const predictions = useMemo(() => {
     if (numbers.length < 10) return [];
     return coldEngine.analyze(numbers);
   }, [numbers, coldEngine]);
-
-  const rhythmSignals = useMemo(() => {
-    if (numbers.length < 15) return [];
-    return rhythmEngine.analyze(numbers);
-  }, [numbers, rhythmEngine]);
 
   const predictionAccuracy = predictionTracker.getFormattedAccuracy();
   const predictionRecordCount = predictionTracker.count;
@@ -310,7 +303,7 @@ export function App() {
     })();
     if (!currentYear || !currentSessionId) return [0, 1, 2, 3, 4, 5] as const;
 
-    // Sort by dateKey asc + originalIndex asc
+    // Sort by dateKey asc + importIndex asc
     const getDateKey = (name: string) => {
       const m = name.match(/(\d{4})[-.]?(\d{2})[-.]?(\d{2})/);
       if (m) return m[1] + m[2] + m[3];
@@ -408,65 +401,6 @@ export function App() {
   }, [numbers]);
 
   // 波浪恢复: 每个行组独立追踪波浪状态
-  const rhythmPausedCis = useMemo(() => {
-    const paused = new Set<number>();
-    const ls = [-1,-1,-1,-1,-1,-1];
-    const ac: {ci:number;sr:number;cl:number}[]=[];
-    const recovery: WaveRecoveryState[] = Array.from({length:6},()=>createRecoveryState());
-
-    for(let r=0;r<numbers.length;r++){
-      const v=numbers[r];const hc=v!==0?getNumberColRows(v):[];
-      const rm:typeof ac=[];
-      for(const c of ac){
-        const bi=r-c.sr;if(bi>=c.cl)continue;
-        const amt=[1,2,4][bi]??4;
-        if(hc.includes(c.ci as ColRowIndex)){}
-        else if(bi+1<c.cl)rm.push(c);
-        else {
-          // 追号失败, 记录波浪状态
-          const gaps = extractGaps(numbers.slice(0,r),c.ci);
-          recovery[c.ci] = createRecoveryState();
-          recovery[c.ci].paused = true;
-          recovery[c.ci].failSma = computePeakSma(gaps);
-          recovery[c.ci].failRound = r;
-          recovery[c.ci].phase = 0;
-        }
-      }
-      ac.length=0;ac.push(...rm);
-      for(const ci of hc)ls[ci]=r;
-      if(r<15)continue;
-
-      // 检查波浪恢复
-      for(let ci=0;ci<6;ci++){
-        if(recovery[ci].paused){
-          const gaps = extractGaps(numbers.slice(0,r),ci);
-          if(checkWaveRecovery(recovery[ci],gaps,r)){
-            recovery[ci].paused = false;
-          }
-        }
-      }
-
-      // 决定哪些ci当前被暂停
-      paused.clear();
-      for(let ci=0;ci<6;ci++){
-        if(recovery[ci].paused) paused.add(ci);
-      }
-
-      for(let ci=0;ci<6;ci++){
-        if(paused.has(ci))continue;
-        const cg=ls[ci]>=0?r-ls[ci]-1:r;
-        if(cg<1||cg>6)continue;
-        if(ac.some(c=>c.ci===ci))continue;
-        const engine=new RhythmEngine();
-        const sigs=engine.analyze(numbers.slice(0,r));
-        if(!sigs.some(s=>s.index===ci))continue;
-        const sig = sigs.find(s=>s.index===ci)!;
-        ac.push({ci,sr:r+1,cl:sig.chaseLength});
-      }
-    }
-    return paused;
-  }, [numbers]);
-
   // 直接从号码推算追号状态 — 不存独立state, 永远同步
   const signalDisplay = useMemo(() => {
     const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number; peak: number; chaseLen: number; kind: "cold" | "rhythm" }> = [];
