@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   getNumberColor,
   getNumberColRows,
@@ -601,6 +601,37 @@ export function App() {
 
     setNumbers([...numbers, restored]);
     setRedoNumbers(redoNumbers.slice(0, -1));
+  }
+  function undoAll() {
+    if (numbers.length === 0) return;
+    setConfirmDialog({
+      title: "长退",
+      message: `确定要退回全部 ${numbers.length} 个数字吗？`,
+      confirmText: "确定退回",
+      onConfirm: () => {
+        setRedoNumbers([...redoNumbers, ...numbers.slice().reverse()]);
+        setNumbers([]);
+      },
+    });
+  }
+  function redoAll() {
+    if (redoNumbers.length === 0) return;
+    setConfirmDialog({
+      title: "长进",
+      message: `确定要恢复全部 ${redoNumbers.length} 个数字吗？`,
+      confirmText: "确定恢复",
+      onConfirm: () => {
+        setNumbers([...numbers, ...redoNumbers.slice().reverse()]);
+        setRedoNumbers([]);
+      },
+    });
+  }
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function startLongPress(action: () => void) {
+    longPressTimer.current = setTimeout(action, 600);
+  }
+  function cancelLongPress() {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }
 
   async function refreshSessions() {
@@ -1659,10 +1690,14 @@ export function App() {
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
             <NumberButton className="zero-key keypad-zero" value={0} onClick={addNumber} />
-            <button className="control-button wide-control" onClick={undo} disabled={numbers.length === 0}>
+            <button className="control-button wide-control" onClick={undo} disabled={numbers.length === 0}
+              onMouseDown={() => startLongPress(undoAll)} onTouchStart={() => startLongPress(undoAll)}
+              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}>
               ←
             </button>
-            <button className="control-button wide-control keypad-redo" onClick={redo} disabled={redoNumbers.length === 0}>
+            <button className="control-button wide-control keypad-redo" onClick={redo} disabled={redoNumbers.length === 0}
+              onMouseDown={() => startLongPress(redoAll)} onTouchStart={() => startLongPress(redoAll)}
+              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}>
               →
             </button>
             <button
@@ -1685,10 +1720,14 @@ export function App() {
               className="control-button board-wide-2"
               onClick={undo}
               disabled={numbers.length === 0}
+              onMouseDown={() => startLongPress(undoAll)} onTouchStart={() => startLongPress(undoAll)}
+              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}
             >
               ←
             </button>
-            <button className="control-button board-wide-2" onClick={redo} disabled={redoNumbers.length === 0}>
+            <button className="control-button board-wide-2" onClick={redo} disabled={redoNumbers.length === 0}
+              onMouseDown={() => startLongPress(redoAll)} onTouchStart={() => startLongPress(redoAll)}
+              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}>
               →
             </button>
             <button
