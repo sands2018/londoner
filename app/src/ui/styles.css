@@ -28,7 +28,7 @@
   --dock-width: 100%;
   --key-gap: clamp(3px, 0.45dvh, 4px);
   --key-height: clamp(36px, 4.2dvh, 39px);
-  --keypad-columns: 9;
+  --keypad-columns: 10;
   --number-font-size: calc(clamp(17px, 4.5vw, 19px) + var(--font-adjust));
   --queue-font-size: calc(clamp(14px, 3.65vw, 16px) + var(--font-adjust));
   --queue-chip-height: clamp(24px, 2.8dvh, 26px);
@@ -682,6 +682,17 @@ button:disabled {
   display: grid;
   gap: var(--key-gap);
   grid-template-columns: repeat(var(--keypad-columns), minmax(0, 1fr));
+}
+
+.keypad-grid .keypad-zero {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  height: auto;
+  order: 1;
+}
+
+.keypad-grid .skip-control {
+  grid-column: span 1;
 }
 
 .board-grid {
@@ -2425,13 +2436,12 @@ button:disabled {
     order: 50;
   }
 
-  .keypad-grid .zero-key {
-    grid-column: auto;
+  .keypad-grid .skip-control {
+    grid-column: span 1;
   }
 
-  .keypad-grid .keypad-zero {
-    grid-column: span 5;
-    order: 37;
+  .keypad-grid .zero-key {
+    grid-column: auto;
   }
 
 }

@@ -6,7 +6,7 @@ import {
   type ColRowIndex,
   type RouletteNumber,
 } from "../core/roulette";
-import { Keyboard } from "lucide-react";
+import { Keyboard, SkipBack, SkipForward } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -1690,14 +1690,16 @@ export function App() {
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
             <NumberButton className="zero-key keypad-zero" value={0} onClick={addNumber} />
-            <button className="control-button wide-control" onClick={undo} disabled={numbers.length === 0}
-              onMouseDown={() => startLongPress(undoAll)} onTouchStart={() => startLongPress(undoAll)}
-              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}>
+            <button className="control-button wide-control" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+              <SkipBack size={16} />
+            </button>
+            <button className="control-button skip-control keypad-redo" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+              <SkipForward size={16} />
+            </button>
+            <button className="control-button wide-control" onClick={undo} disabled={numbers.length === 0}>
               ←
             </button>
-            <button className="control-button wide-control keypad-redo" onClick={redo} disabled={redoNumbers.length === 0}
-              onMouseDown={() => startLongPress(redoAll)} onTouchStart={() => startLongPress(redoAll)}
-              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}>
+            <button className="control-button wide-control keypad-redo" onClick={redo} disabled={redoNumbers.length === 0}>
               →
             </button>
             <button
@@ -1706,7 +1708,7 @@ export function App() {
             >
               切换键盘
             </button>
-            <button className="control-button" onClick={() => setKeyboardVisible(false)}>
+            <button className="control-button skip-control" onClick={() => setKeyboardVisible(false)}>
               X
             </button>
           </div>
@@ -1715,23 +1717,25 @@ export function App() {
             {boardRows.flat().map((value) => (
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
-            <NumberButton className="board-wide-4 zero-key" value={0} onClick={addNumber} />
+            <button className="control-button board-wide-2" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+              <SkipBack size={16} />
+            </button>
+            <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+              <SkipForward size={16} />
+            </button>
+            <NumberButton className="board-wide-2 zero-key" value={0} onClick={addNumber} />
             <button
               className="control-button board-wide-2"
               onClick={undo}
               disabled={numbers.length === 0}
-              onMouseDown={() => startLongPress(undoAll)} onTouchStart={() => startLongPress(undoAll)}
-              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}
             >
               ←
             </button>
-            <button className="control-button board-wide-2" onClick={redo} disabled={redoNumbers.length === 0}
-              onMouseDown={() => startLongPress(redoAll)} onTouchStart={() => startLongPress(redoAll)}
-              onMouseUp={cancelLongPress} onMouseLeave={cancelLongPress} onTouchEnd={cancelLongPress}>
+            <button className="control-button board-wide-2" onClick={redo} disabled={redoNumbers.length === 0}>
               →
             </button>
             <button
-              className="control-button board-wide-3"
+              className="control-button board-wide-2"
               onClick={() => setKeyboardMode("keypad")}
             >
               切换键盘
