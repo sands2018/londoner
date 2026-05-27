@@ -1763,13 +1763,13 @@ button:disabled {
 }
 
 .sort-mark {
-  color: #aaa198;
+  color: #ddd9d2;
   font-size: 11px;
   margin-left: 3px;
 }
 
 .sort-mark.active {
-  color: #c5aa74;
+  color: #d4a855;
 }
 
 .data-screen-actions {
