@@ -13,3 +13,4 @@ sands_history*.txt
 app/test-results/
 HistoryData/
 history_data.json
+.claude/
