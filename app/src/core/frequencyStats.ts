@@ -2,6 +2,7 @@ import { getNumberColRows, type RouletteNumber } from "./roulette";
 import { colRowLabels } from "./colRowStats";
 
 export const frequencyScopes = [18, 36, 72, 144, 288, 576] as const;
+export type FrequencyScope = (typeof frequencyScopes)[number] | number;
 export const frequencyDetailKeys = [0, 1, 2, 4, 5, 6] as const;
 export const frequencyBandLabels = colRowLabels.slice(0, 8);
 
@@ -10,15 +11,18 @@ export interface FrequencyStats {
   nonZeroCount: number;
 }
 
-export function calculateFrequencyStats(numbers: readonly RouletteNumber[]): FrequencyStats {
+export function calculateFrequencyStats(
+  numbers: readonly RouletteNumber[],
+  scopes: readonly FrequencyScope[] = frequencyScopes,
+): FrequencyStats {
   const nonZeroNumbers = numbers.filter((value) => value !== 0);
   const frequencies = Array.from({ length: 8 }, () =>
-    Array.from({ length: frequencyScopes.length }, () => [] as number[]),
+    Array.from({ length: scopes.length }, () => [] as number[]),
   );
 
   for (let length = 1; length <= nonZeroNumbers.length; length += 1) {
-    for (let scopeIndex = 0; scopeIndex < frequencyScopes.length; scopeIndex += 1) {
-      const scope = frequencyScopes[scopeIndex];
+    for (let scopeIndex = 0; scopeIndex < scopes.length; scopeIndex += 1) {
+      const scope = scopes[scopeIndex];
       if (length < scope) continue;
 
       const counts = Array<number>(6).fill(0);

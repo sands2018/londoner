@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { calculateColRowCompare } from "./colRowStats";
+import { calculateFrequencyStats } from "./frequencyStats";
 import { formatNumbers, parseNumbersText } from "./numberText";
 import { getColumnIndexes, getGroupIndex, getNumberColor, getNumberColRows, getRowIndex } from "./roulette";
 import {
@@ -62,5 +64,24 @@ describe("roulette rules", () => {
     expect(parseNumbersText("1, 2，3、0").numbers).toEqual([1, 2, 3, 0]);
     expect(parseNumbersText("1, 37, x").invalidTokens).toEqual(["37", "x"]);
     expect(formatNumbers([1, 2, 0])).toBe("1,2,0");
+  });
+  it("uses the provided frequency scopes", () => {
+    const stats = calculateFrequencyStats([1, 2, 3, 4, 5, 6, 7, 8, 9], [3, 5]);
+
+    expect(stats.frequencies).toHaveLength(8);
+    expect(stats.frequencies[0]).toHaveLength(2);
+    expect(stats.frequencies[0][0]).toHaveLength(7);
+    expect(stats.frequencies[0][1]).toHaveLength(5);
+  });
+
+  it("limits col-row compare results by scope", () => {
+    const rawDistances = Array.from({ length: 8 }, () => [] as number[]);
+    rawDistances[0] = [20, 8, 4];
+
+    const narrow = calculateColRowCompare(rawDistances, 10, 0, 5);
+    const wide = calculateColRowCompare(rawDistances, 20, 0, 5);
+
+    expect(narrow[0]).toMatchObject({ succeeded: 1, failed: 0 });
+    expect(wide[0]).toMatchObject({ succeeded: 1, failed: 1 });
   });
 });

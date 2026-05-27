@@ -31,7 +31,8 @@ import {
   calculateFrequencyStats,
   frequencyBandLabels,
   frequencyDetailKeys,
-  frequencyScopes,
+  frequencyScopes as classicFrequencyScopes,
+  type FrequencyScope,
   type FrequencyStats,
 } from "../core/frequencyStats";
 import {
@@ -88,8 +89,13 @@ const currentSessionIdKey = "londoner.currentSessionId";
 const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
-const statScopes = [8, 13, 21, 40, 60, 100, -1];
-const colRowScopes = [18, 36, 72, 144, 288, -1];
+const windowModeKey = "londoner.windowMode";
+type WindowMode = "classic" | "fibonacci";
+const classicStatScopes: readonly number[] = [8, 13, 21, 40, 60, 100, -1];
+const fibonacciStatScopes: readonly number[] = [8, 13, 21, 34, 55, 89, 144, -1];
+const classicColRowScopes: readonly number[] = [18, 36, 72, 144, 288, -1];
+const fibonacciColRowScopes: readonly number[] = [21, 34, 55, 89, 144, 233, -1];
+const fibonacciFrequencyScopes: readonly FrequencyScope[] = [21, 34, 55, 89, 144, 233, 377];
 const columnMinimums = [3, 4, 5, 6, 7];
 const boardRows: RouletteNumber[][] = [
   [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
@@ -186,10 +192,13 @@ export function App() {
   const [keyboardVisible, setKeyboardVisible] = useState(true);
   const [separateColRows, setSeparateColRows] = useState(false);
   const [queueExpanded, setQueueExpanded] = useState(false);
+  const [windowMode, setWindowMode] = useState<WindowMode>(() =>
+    localStorage.getItem(windowModeKey) === "fibonacci" ? "fibonacci" : "classic",
+  );
   const [statsScope, setStatsScope] = useState(21);
   const [colRowScope, setColRowScope] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(colRowScopeKey) ?? "", 10);
-    return colRowScopes.includes(stored) ? stored : 72;
+    return classicColRowScopes.includes(stored) ? stored : 72;
   });
   const [columnMinimum, setColumnMinimum] = useState(5);
   const [loaded, setLoaded] = useState(false);
@@ -220,11 +229,11 @@ export function App() {
   const [refineSortDirection, setRefineSortDirection] = useState<SortDirection>("desc");
   const [refineScope, setRefineScope] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(refineScopeKey) ?? "", 10);
-    return colRowScopes.includes(stored) ? stored : 72;
+    return classicColRowScopes.includes(stored) ? stored : 72;
   });
   const [otherScope, setOtherScope] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(otherScopeKey) ?? "", 10);
-    return colRowScopes.includes(stored) ? stored : 72;
+    return classicColRowScopes.includes(stored) ? stored : 72;
   });
   const [frequencyScopeIndex, setFrequencyScopeIndex] = useState(0);
   const [frequencyDetailKey, setFrequencyDetailKey] = useState<number | null>(null);
@@ -232,11 +241,12 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
-  const [configTab, setConfigTab] = useState<"signal" | "game">("signal");
+  const [configTab, setConfigTab] = useState<"signal" | "game" | "other">("signal");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [draftRhythmRowsOnly, setDraftRhythmRowsOnly] = useState(rhythmRowsOnly);
   const [coldAdaptiveMode, setColdAdaptiveMode] = useState<string>(() => localStorage.getItem("londoner.coldAdaptiveMode") || "adaptiveRow");
   const [draftColdAdaptiveMode, setDraftColdAdaptiveMode] = useState(coldAdaptiveMode);
+  const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
   const [allSavedSessions, setAllSavedSessions] = useState<SavedSession[]>([]);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
@@ -269,6 +279,18 @@ export function App() {
   // 预测引擎初始化
   const coldEngine = useMemo(() => new ColdReversalEngine(), []);
   const predictionTracker = useMemo(() => new PredictionTracker(), []);
+  const statScopes = useMemo(
+    () => (windowMode === "fibonacci" ? fibonacciStatScopes : classicStatScopes),
+    [windowMode],
+  );
+  const colRowScopes = useMemo(
+    () => (windowMode === "fibonacci" ? fibonacciColRowScopes : classicColRowScopes),
+    [windowMode],
+  );
+  const frequencyScopes = useMemo(
+    () => (windowMode === "fibonacci" ? fibonacciFrequencyScopes : classicFrequencyScopes),
+    [windowMode],
+  );
 
   const predictions = useMemo(() => {
     if (numbers.length < 10) return [];
@@ -552,6 +574,15 @@ export function App() {
   useEffect(() => {
     localStorage.setItem(keyboardModeKey, keyboardMode);
   }, [keyboardMode]);
+
+  useEffect(() => {
+    localStorage.setItem(windowModeKey, windowMode);
+    setStatsScope((current) => (statScopes.includes(current) ? current : statScopes[0]));
+    setColRowScope((current) => (colRowScopes.includes(current) ? current : colRowScopes[0]));
+    setRefineScope((current) => (colRowScopes.includes(current) ? current : colRowScopes[0]));
+    setOtherScope((current) => (colRowScopes.includes(current) ? current : colRowScopes[0]));
+    setFrequencyScopeIndex((current) => (current < frequencyScopes.length ? current : 0));
+  }, [colRowScopes, frequencyScopes.length, statScopes, windowMode]);
 
   useEffect(() => {
     localStorage.setItem(colRowScopeKey, String(colRowScope));
@@ -1014,12 +1045,27 @@ export function App() {
     () => calculateColRowStats(numbers, effectiveColRowScope),
     [effectiveColRowScope, numbers],
   );
-  const frequencyStats = useMemo(() => calculateFrequencyStats(numbers), [numbers]);
+  const frequencyStats = useMemo(() => calculateFrequencyStats(numbers, frequencyScopes), [frequencyScopes, numbers]);
   const distanceStats = colRowStats.rawDistances;
+  const colRowCompareRows = useMemo(() => {
+    return buildColRowCompareRows(
+      colRowStats.rawDistances,
+      colRowScope,
+      refineRoundStart,
+      refineRoundBet,
+      refineSortField,
+      refineSortDirection,
+    );
+  }, [colRowScope, colRowStats.rawDistances, refineRoundBet, refineRoundStart, refineSortDirection, refineSortField]);
   const refineCompareRows = useMemo(() => {
-    const scope = refineScope < 0 ? Number.POSITIVE_INFINITY : refineScope;
-    const rows = calculateColRowCompare(colRowStats.rawDistances, scope, refineRoundStart, refineRoundBet);
-    return sortRefineRows(rows, refineSortField, refineSortDirection);
+    return buildColRowCompareRows(
+      colRowStats.rawDistances,
+      refineScope,
+      refineRoundStart,
+      refineRoundBet,
+      refineSortField,
+      refineSortDirection,
+    );
   }, [colRowStats.rawDistances, refineRoundBet, refineRoundStart, refineScope, refineSortDirection, refineSortField]);
   const otherNumberStats = useMemo(
     () => calculateOtherNumberStats(numbers, effectiveOtherScope, otherNumberSortField, otherNumberSortDirection),
@@ -1105,6 +1151,7 @@ export function App() {
     reloadGameConfigState();
     setDraftRhythmRowsOnly(rhythmRowsOnly);
     setDraftColdAdaptiveMode(coldAdaptiveMode);
+    setDraftWindowMode(windowMode);
     setConfigViewOpen(true);
   }
 
@@ -1226,6 +1273,13 @@ export function App() {
       return;
     }
 
+    if (configTab === "other") {
+      setWindowMode(draftWindowMode);
+      localStorage.setItem(windowModeKey, draftWindowMode);
+      setConfigViewOpen(false);
+      return;
+    }
+
     const selectedBets = allGameBets.filter((bet) => selectedBetKeys.includes(formatGameBet(bet)));
     if (selectedBets.length <= 0) {
       setNoticeDialog({ title: "打法配置", message: "至少要选择一个打法！" });
@@ -1326,7 +1380,12 @@ export function App() {
                 <button className={key === frequencyDetailKey ? "selected" : ""} key={key} onClick={() => setFrequencyDetailKey(key)} type="button">{frequencyBandLabels[key]}</button>
               ))}
             </div>
-            <FrequencyDetailChart frequencyStats={frequencyStats} onBack={() => setFrequencyDetailKey(null)} selectedKey={frequencyDetailKey} />
+            <FrequencyDetailChart
+              frequencyScopes={frequencyScopes}
+              frequencyStats={frequencyStats}
+              onBack={() => setFrequencyDetailKey(null)}
+              selectedKey={frequencyDetailKey}
+            />
           </>
         )}
       </div>
@@ -1379,7 +1438,7 @@ export function App() {
               <th>失败</th>
               <th><button onClick={()=>sortRefineView("failureRate")} type="button">失败率{refineSortField==="failureRate"?<SortMark active direction={refineSortDirection}/>:null}</button></th>
             </tr></thead><tbody>
-              {refineCompareRows.map((item) => (<tr key={item.key}><th>{item.label}</th><td>{item.succeeded}</td><td>{item.failed}</td><td>{(item.failureRate*100).toFixed(2)}%</td></tr>))}
+              {colRowCompareRows.map((item) => (<tr key={item.key}><th>{item.label}</th><td>{item.succeeded}</td><td>{item.failed}</td><td>{(item.failureRate*100).toFixed(2)}%</td></tr>))}
             </tbody></table>
           </div>
         ) : null}
@@ -1993,6 +2052,7 @@ export function App() {
                   ))}
                 </div>
                 <FrequencyDetailChart
+                  frequencyScopes={frequencyScopes}
                   frequencyStats={frequencyStats}
                   onBack={() => setFrequencyDetailKey(null)}
                   selectedKey={frequencyDetailKey}
@@ -2552,7 +2612,7 @@ export function App() {
             {statsTab === "wave" && <StatsWaveTab />}
             {statsTab === "other" && <StatsOtherTab />}
           </div>
-          {statsTab === "colrow" && colRowTab !== "detail" && colRowTab !== "compare" ? (
+          {statsTab === "colrow" && colRowTab !== "detail" ? (
             <div className="data-screen-actions colrow-scope-actions" aria-label="行组统计范围" style={{borderTop:0,padding:"0 0 8px"}}>
               {colRowScopes.map((value) => (<button className={value===colRowScope?"selected":""} key={value} onClick={()=>setColRowScope(value)} type="button">{value<0?"全部":value}</button>))}
             </div>
@@ -2588,6 +2648,7 @@ export function App() {
             <div className="stats-tabs">
               <button className={configTab === "signal" ? "selected" : ""} onClick={() => setConfigTab("signal")} type="button">信号</button>
               <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
+              <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
             </div>
             {configTab === "signal" ? (
               <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
@@ -2630,6 +2691,32 @@ export function App() {
                     <input type="checkbox" checked={draftColdAdaptiveMode === "adaptiveRow"} onChange={() => setDraftColdAdaptiveMode("adaptiveRow")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
                     <span>自适应切换 + 冷启动押行</span>
                   </label>
+                  </div>
+                </section>
+              </div>
+            ) : configTab === "other" ? (
+              <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
+                <section className="config-card config-bets">
+                  <h2><span>统计窗口</span></h2>
+                  <div style={{ padding: "10px 0" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={draftWindowMode === "classic"}
+                        onChange={() => setDraftWindowMode("classic")}
+                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
+                      />
+                      <span>传统数字序列</span>
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={draftWindowMode === "fibonacci"}
+                        onChange={() => setDraftWindowMode("fibonacci")}
+                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
+                      />
+                      <span>斐波那契数字序列</span>
+                    </label>
                   </div>
                 </section>
               </div>
@@ -3036,6 +3123,19 @@ function sortRefineRows(
     }
     return result * multiplier;
   });
+}
+
+function buildColRowCompareRows(
+  rawDistances: readonly number[][],
+  scopeValue: number,
+  roundStart: number,
+  roundBet: number,
+  sortField: RefineSortField,
+  sortDirection: SortDirection,
+) {
+  const scope = scopeValue < 0 ? Number.POSITIVE_INFINITY : scopeValue;
+  const rows = calculateColRowCompare(rawDistances, scope, roundStart, roundBet);
+  return sortRefineRows(rows, sortField, sortDirection);
 }
 
 function validateSessionName(name: string, sessions: SavedSession[], currentId?: string): string | null {
@@ -3515,12 +3615,13 @@ function FrequencyOverviewChart({ frequencyStats, onSelect, scopeIndex }: Freque
 }
 
 interface FrequencyDetailChartProps {
+  frequencyScopes: readonly FrequencyScope[];
   frequencyStats: FrequencyStats;
   onBack: () => void;
   selectedKey: number;
 }
 
-function FrequencyDetailChart({ frequencyStats, onBack, selectedKey }: FrequencyDetailChartProps) {
+function FrequencyDetailChart({ frequencyScopes, frequencyStats, onBack, selectedKey }: FrequencyDetailChartProps) {
   const chart = {
     height: 1840,
     maxPoints: 180,
@@ -3529,7 +3630,7 @@ function FrequencyDetailChart({ frequencyStats, onBack, selectedKey }: Frequency
     x1: 917,
     y0: 8,
   };
-  const height100 = chart.height / 16;
+  const height100 = chart.height / (frequencyScopes.length * 2 + 4);
   const height50 = height100 / 2;
   const bases = frequencyScopes.map((_, index) => chart.y0 + height100 * (2 * index + 1));
 

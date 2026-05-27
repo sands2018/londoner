@@ -1113,9 +1113,13 @@ button:disabled {
   outline: none;
 }
 
-.frequency-detail-actions,
-.frequency-scope-actions {
+.frequency-detail-actions {
   grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.data-screen-actions.frequency-scope-actions {
+  gap: 3px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .distance-screen {
@@ -1683,7 +1687,8 @@ button:disabled {
 }
 
 .colrow-scope-actions {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .stats-tab-body {
