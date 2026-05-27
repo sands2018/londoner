@@ -60,6 +60,7 @@ docs/                 # Design notes (prediction-notes.md)
 
 ## Key conventions
 
+- **Encoding safety**: `App.tsx`, `styles.css`, docs, and any file containing Chinese text must remain UTF-8. Do not rewrite whole files with PowerShell `Set-Content`, especially after `Get-Content -Raw`, because it can mojibake Chinese text. Prefer `apply_patch` for edits. If a scripted rewrite is truly necessary, use Node.js `fs.readFileSync/writeFileSync(..., "utf8")` and verify representative Chinese strings plus a build before finishing.
 - **Legacy is the reference**: `legacy/index.html` defines correct behavior. New UI can be refactored but workflows must stay compatible.
 - **Typography**: Use shared CSS tokens from `styles.css`. Never introduce ad-hoc font weights (480/520/560/580) — they render differently on Android vs iPhone. Use only `--weight-regular` (400), `--weight-ui` (500), `--weight-emphasis` (500), `--weight-strong` (500).
 - **Viewport height must not switch typography tokens** — Android address bar changes visible height constantly.
@@ -79,7 +80,7 @@ The main screen has these sections, top to bottom:
 7. **Input dock** — keyboard, action buttons. Second row starts with "预测".
 
 Bottom action buttons layout:
-- Row 1: SAND brand | 导出 | 导入 | 保存 | 另存 | 数据 | 配置
+- Row 1: 传输 | 导出 | 导入 | 保存 | 另存 | 数据 | 配置
 - Row 2: **预测** | 打法 | 行组 | 频率 | 距离 | 细化 | 其它
 
 The prediction signal area must remain concise — one line per signal, immediate and obvious.

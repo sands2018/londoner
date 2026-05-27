@@ -12,6 +12,13 @@ export interface SharedSession {
   updatedAt: string;
 }
 
+export interface TransferSession {
+  id: string;
+  numbers: RouletteNumber[];
+  uploader: string;
+  createdAt: string;
+}
+
 interface SharedSessionRow {
   id: string;
   name: string;
@@ -19,6 +26,13 @@ interface SharedSessionRow {
   uploader: string;
   created_at: string;
   updated_at: string;
+}
+
+interface TransferSessionRow {
+  id: string;
+  numbers: number[];
+  uploader: string;
+  created_at: string;
 }
 
 async function rpc<T>(functionName: string, body: Record<string, unknown>): Promise<T> {
@@ -45,11 +59,24 @@ function normalizeRow(row: SharedSessionRow): SharedSession {
   return {
     id: row.id,
     name: row.name,
-    numbers: row.numbers.filter((value): value is RouletteNumber => Number.isInteger(value) && value >= 0 && value <= 36),
+    numbers: normalizeNumbers(row.numbers),
     uploader: row.uploader,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function normalizeTransferRow(row: TransferSessionRow): TransferSession {
+  return {
+    id: row.id,
+    numbers: normalizeNumbers(row.numbers),
+    uploader: row.uploader,
+    createdAt: row.created_at,
+  };
+}
+
+function normalizeNumbers(values: readonly number[]): RouletteNumber[] {
+  return values.filter((value): value is RouletteNumber => Number.isInteger(value) && value >= 0 && value <= 36);
 }
 
 export async function checkSharedAccess(username: string, password: string): Promise<boolean> {
@@ -90,5 +117,33 @@ export async function deleteSharedSession(username: string, password: string, id
     p_id: id,
     p_password: password,
     p_username: username,
+  });
+}
+
+export async function deleteTransferSession(username: string, password: string, id: string): Promise<void> {
+  await rpc<null>("londoner_delete_transfer_buffer", {
+    p_id: id,
+    p_password: password,
+    p_username: username,
+  });
+}
+
+export async function listTransferSessions(username: string, password: string): Promise<TransferSession[]> {
+  const rows = await rpc<TransferSessionRow[]>("londoner_list_transfer_buffer", {
+    p_password: password,
+    p_username: username,
+  });
+  return rows.map(normalizeTransferRow);
+}
+
+export async function uploadTransferSession(input: {
+  numbers: readonly RouletteNumber[];
+  password: string;
+  username: string;
+}): Promise<string> {
+  return rpc<string>("londoner_upload_transfer_buffer", {
+    p_numbers: input.numbers,
+    p_password: input.password,
+    p_username: input.username,
   });
 }

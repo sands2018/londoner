@@ -65,8 +65,12 @@ import { LocalStorageAdapter } from "../storage/localStorageAdapter";
 import {
   checkSharedAccess,
   deleteSharedSession,
+  deleteTransferSession,
   listSharedSessions,
+  listTransferSessions,
   type SharedSession,
+  type TransferSession,
+  uploadTransferSession,
   upsertSharedSession,
 } from "../storage/sharedStorage";
 import type { SavedSession } from "../storage/storage";
@@ -117,7 +121,7 @@ const keypadRows: RouletteNumber[][] = [
 ];
 
 type DialogName = "import" | "save" | null;
-type DataTab = "local" | "shared";
+type DataTab = "local" | "shared" | "transfer";
 type DataSortField = "name" | "count" | "time" | "sharedId";
 type SortDirection = "asc" | "desc";
 type ColRowTab = "detail" | "chart" | "summary" | "compare";
@@ -268,6 +272,8 @@ export function App() {
   const [sharedLoading, setSharedLoading] = useState(false);
   const [sharedSessions, setSharedSessions] = useState<SharedSession[]>([]);
   const [selectedSharedSessionIds, setSelectedSharedSessionIds] = useState<string[]>([]);
+  const [transferSessions, setTransferSessions] = useState<TransferSession[]>([]);
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
   const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
 
@@ -723,6 +729,12 @@ export function App() {
     setSelectedSharedSessionIds((current) => current.filter((id) => list.some((s) => s.id === id)));
   }
 
+  async function refreshTransferSessions(username = sharedUsername, password = sharedPassword) {
+    const list = await listTransferSessions(username.trim(), password);
+    setTransferSessions(list);
+    setSelectedTransferId((current) => (current && list.some((item) => item.id === current) ? current : null));
+  }
+
   function clearCurrentSession() {
     setCurrentSessionId(null);
   }
@@ -1018,6 +1030,85 @@ export function App() {
     } finally {
       setSharedLoading(false);
     }
+  }
+
+  async function reloadTransferData(username?: string, password?: string) {
+    const u = (username ?? sharedUsername).trim();
+    const p = password ?? sharedPassword;
+    if (!u || !p) return;
+    setSharedLoading(true);
+    try {
+      await refreshTransferSessions(u, p);
+    } catch (error) {
+      setNoticeDialog({ title: "传输数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  async function uploadCurrentTransfer(username?: string, password?: string) {
+    if (numbers.length === 0) {
+      setNoticeDialog({ title: "传输数据", message: "当前没有可传输的数据。" });
+      return;
+    }
+
+    const u = (username ?? sharedUsername).trim();
+    const p = password ?? sharedPassword;
+    if (!u || !p) return;
+
+    setSharedLoading(true);
+    try {
+      await uploadTransferSession({ numbers, password: p, username: u });
+      await refreshTransferSessions(u, p);
+      setNoticeDialog({ title: "传输数据", message: "当前数据已传输。" });
+    } catch (error) {
+      setNoticeDialog({ title: "传输数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  function importTransferData() {
+    const selected = transferSessions.find((item) => item.id === selectedTransferId);
+    if (!selected) return;
+
+    setConfirmDialog({
+      title: "导入传输数据",
+      message: numbers.length > 0 ? "导入将清除当前数据！确定要导入吗？" : "系统将使用选中的传输数据，确定要导入吗？",
+      confirmText: "导入",
+      onConfirm: () => {
+        const importedNumbers = selected.numbers.filter(isRouletteNumber);
+        setNumbers(importedNumbers);
+        setRedoNumbers([]);
+        clearCurrentSession();
+        setDataViewOpen(false);
+        setNoticeDialog({ title: "导入传输数据", message: `已导入 ${importedNumbers.length} 个数字。` });
+      },
+    });
+  }
+
+  function removeTransferData() {
+    const selected = transferSessions.find((item) => item.id === selectedTransferId);
+    if (!selected) return;
+
+    setConfirmDialog({
+      title: "传输数据",
+      message: "确定要删除选中的传输数据吗？",
+      confirmText: "删除",
+      onConfirm: async () => {
+        setSharedLoading(true);
+        try {
+          await deleteTransferSession(sharedUsername.trim(), sharedPassword, selected.id);
+          await refreshTransferSessions();
+          setSelectedTransferId(null);
+          setNoticeDialog({ title: "传输数据", message: "已删除选中的传输数据。" });
+        } catch (error) {
+          setNoticeDialog({ title: "传输数据", message: formatSharedError(error) });
+        } finally {
+          setSharedLoading(false);
+        }
+      },
+    });
   }
 
   async function uploadSharedData(targetId?: string, username?: string, password?: string) {
@@ -1982,13 +2073,11 @@ export function App() {
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
-          <div className="dock-brand" aria-label="SANDS">
-            S<span>A</span>NDS
-          </div>
-          <button onClick={() => void exportCurrentData()} type="button">导出</button>
+          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadCurrentTransfer(u, p)); }} type="button">传输</button>
+          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
-          <button onClick={openSaveAsDialog} type="button">另存</button>
+          <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
           <button onClick={openConfigView} type="button">配置</button>
         </div>
@@ -2084,6 +2173,7 @@ export function App() {
           <div className="stats-tabs data-tabs" aria-label="数据来源">
             <button className={dataTab === "local" ? "selected" : ""} onClick={() => setDataTab("local")} type="button">本地数据</button>
             <button className={dataTab === "shared" ? "selected" : ""} onClick={() => setDataTab("shared")} type="button">共享数据</button>
+            <button className={dataTab === "transfer" ? "selected" : ""} onClick={() => { setDataTab("transfer"); if (sharedConnected) void reloadTransferData(); }} type="button">传输数据</button>
           </div>
           {dataTab === "local" ? (
             <>
@@ -2165,7 +2255,7 @@ export function App() {
             <button onClick={openToolsDialog} type="button">工具</button>
           </footer>
             </>
-          ) : (
+          ) : dataTab === "shared" ? (
             <>
               <div className="shared-data-body">
                 <section className="shared-access-panel shared-access-panel-hidden" aria-label="共享访问">
@@ -2251,6 +2341,53 @@ export function App() {
                 <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
                 <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void removeSharedData()} type="button">删除</button>
                 <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+              </footer>
+            </>
+          ) : (
+            <>
+              <div className="shared-data-body">
+                {sharedConnected ? (
+                  <div className="data-table-wrap shared-data-table-wrap">
+                    <table className="data-table transfer-data-table">
+                      <thead>
+                        <tr>
+                          <th>量</th>
+                          <th>传输人</th>
+                          <th>时间</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transferSessions.length === 0 ? (
+                          <tr>
+                            <td className="data-empty" colSpan={3}>暂无传输数据</td>
+                          </tr>
+                        ) : null}
+                        {transferSessions.map((item) => (
+                          <tr
+                            className={selectedTransferId === item.id ? "selected" : ""}
+                            key={item.id}
+                            onClick={() => setSelectedTransferId(item.id)}
+                          >
+                            <td>{item.numbers.length}</td>
+                            <td>{item.uploader}</td>
+                            <td>{formatSessionTime(item.createdAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="shared-data-empty">
+                    <strong>传输数据尚未连接</strong>
+                    <span>连接后可以查看最近 10 条传输数据。</span>
+                    <button onClick={() => setSharedLoginOpen(true)} type="button">连接共享库</button>
+                  </div>
+                )}
+              </div>
+              <footer className="data-screen-actions transfer-data-actions">
+                <button disabled={!sharedConnected || sharedLoading || !selectedTransferId} onClick={importTransferData} type="button">导入</button>
+                <button disabled={!sharedConnected || sharedLoading || !selectedTransferId} onClick={removeTransferData} type="button">删除</button>
+                <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadTransferData(u, p)); }} type="button">刷新</button>
               </footer>
             </>
           )}

@@ -35,7 +35,8 @@ A roulette analysis PWA (Progressive Web App) built with Vite + React 19 + TypeS
 │   ├── architecture.md         # This file
 │   ├── prediction-models.md    # Prediction feature details
 │   └── prediction-notes.md     # Early prediction design notes
-└── CLAUDE.md                   # AI assistant project brief
+├── AGENTS.md                   # Canonical AI assistant project brief
+└── CLAUDE.md                   # Compatibility pointer to AGENTS.md
 ```
 
 ## Core Layer (`src/core/`)
@@ -186,7 +187,8 @@ User input (keyboard/import)
 
 ## Key Files for AI Assistants
 
-- `CLAUDE.md` — Project brief (this file's summary)
+- `AGENTS.md` — Canonical project brief for AI assistants
+- `CLAUDE.md` — Compatibility pointer to `AGENTS.md`; memory updates belong in `AGENTS.md`
 - `docs/architecture.md` — This file
 - `docs/prediction-models.md` — Prediction feature details  
 - `app/src/core/wave.ts` — Reusable wave analysis module

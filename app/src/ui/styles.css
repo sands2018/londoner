@@ -1762,6 +1762,32 @@ button:disabled {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.transfer-data-table th:nth-child(1),
+.transfer-data-table td:nth-child(1) {
+  text-align: center;
+  width: 18%;
+}
+
+.transfer-data-table th:nth-child(2),
+.transfer-data-table td:nth-child(2) {
+  text-align: center;
+  width: 28%;
+}
+
+.transfer-data-table th:nth-child(3) {
+  text-align: center;
+  width: 54%;
+}
+
+.transfer-data-table td:nth-child(3) {
+  text-align: right;
+  width: 54%;
+}
+
+.data-screen-actions.transfer-data-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .sort-mark {
   color: #ddd9d2;
   font-size: 11px;
