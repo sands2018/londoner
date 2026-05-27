@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   getNumberColor,
   getNumberColRows,
@@ -62,6 +62,13 @@ import {
   type OtherNumberSortField,
 } from "../core/otherStats";
 import { LocalStorageAdapter } from "../storage/localStorageAdapter";
+import {
+  checkSharedAccess,
+  deleteSharedSession,
+  listSharedSessions,
+  type SharedSession,
+  upsertSharedSession,
+} from "../storage/sharedStorage";
 import type { SavedSession } from "../storage/storage";
 import {
   CHASE_LENGTH,
@@ -110,7 +117,8 @@ const keypadRows: RouletteNumber[][] = [
 ];
 
 type DialogName = "import" | "save" | null;
-type DataSortField = "name" | "count" | "time";
+type DataTab = "local" | "shared";
+type DataSortField = "name" | "count" | "time" | "sharedId";
 type SortDirection = "asc" | "desc";
 type ColRowTab = "detail" | "chart" | "summary" | "compare";
 type RefineTab = "compare" | "detail";
@@ -204,6 +212,7 @@ export function App() {
   const [loaded, setLoaded] = useState(false);
   const [activeDialog, setActiveDialog] = useState<DialogName>(null);
   const [dataViewOpen, setDataViewOpen] = useState(false);
+  const [dataTab, setDataTab] = useState<DataTab>("local");
   const [gameViewOpen, setGameViewOpen] = useState(false);
   const [colRowViewOpen, setColRowViewOpen] = useState(false);
   const [frequencyViewOpen, setFrequencyViewOpen] = useState(false);
@@ -250,6 +259,43 @@ export function App() {
   const [allSavedSessions, setAllSavedSessions] = useState<SavedSession[]>([]);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
+  const [sharedUsername, setSharedUsername] = useState("");
+  const [sharedPassword, setSharedPassword] = useState("");
+  const [sharedConnected, setSharedConnected] = useState(false);
+  const [sharedLoginOpen, setSharedLoginOpen] = useState(false);
+  const postLoginAction = useRef<((u: string, p: string) => void) | null>(null);
+  const savedLoginKey = "londoner.sharedLogin";
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const [sharedSessions, setSharedSessions] = useState<SharedSession[]>([]);
+  const [selectedSharedSessionIds, setSelectedSharedSessionIds] = useState<string[]>([]);
+  const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
+  const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
+
+  const sortedSharedSessions = useMemo(() => {
+    const sorted = [...sharedSessions];
+    sorted.sort((a, b) => {
+      let va: string | number, vb: string | number;
+      switch (sharedSortField) {
+        case "name": va = a.name; vb = b.name; break;
+        case "count": va = a.numbers.length; vb = b.numbers.length; break;
+        case "user": va = a.uploader; vb = b.uploader; break;
+        default: va = a.updatedAt; vb = b.updatedAt;
+      }
+      if (va < vb) return sharedSortDirection === "asc" ? -1 : 1;
+      if (va > vb) return sharedSortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [sharedSessions, sharedSortField, sharedSortDirection]);
+
+  function sortSharedView(field: "name" | "count" | "user" | "time") {
+    if (sharedSortField === field) {
+      setSharedSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSharedSortField(field);
+      setSharedSortDirection(field === "time" ? "desc" : "asc");
+    }
+  }
   const [toolsOpen, setToolsOpen] = useState(false);
   const [toolsText, setToolsText] = useState("");
   const [toolsKeepBreaks, setToolsKeepBreaks] = useState(false);
@@ -671,6 +717,12 @@ export function App() {
     setAllSavedSessions(list);
   }
 
+  async function refreshSharedSessions(username = sharedUsername, password = sharedPassword) {
+    const list = await listSharedSessions(username.trim(), password);
+    setSharedSessions(list);
+    setSelectedSharedSessionIds((current) => current.filter((id) => list.some((s) => s.id === id)));
+  }
+
   function clearCurrentSession() {
     setCurrentSessionId(null);
   }
@@ -782,7 +834,9 @@ export function App() {
     setDialogMessage("");
     await refreshSessions();
     setSelectedSessionIds([]);
+    setDataTab("local");
     setDataViewOpen(true);
+    if (!sharedConnected) void tryAutoLogin().then((creds) => { if (creds) setSharedConnected(true); });
   }
 
   function openPendingFeature(name: string) {
@@ -891,6 +945,210 @@ export function App() {
     setNoticeDialog({ title: "导入数据", message: `已导入 ${parsed.numbers.length} 个数字。` });
   }
 
+  async function tryAutoLogin(): Promise<{ u: string; p: string } | null> {
+    try {
+      const raw = localStorage.getItem(savedLoginKey);
+      if (!raw) return null;
+      const creds = JSON.parse(raw) as { u: string; p: string };
+      const allowed = await checkSharedAccess(creds.u, creds.p);
+      if (!allowed) return null;
+      setSharedUsername(creds.u);
+      setSharedPassword(creds.p);
+      setSharedConnected(true);
+      await refreshSharedSessions(creds.u, creds.p);
+      return creds;
+    } catch {
+      return null;
+    }
+  }
+
+  async function connectSharedData() {
+    const username = sharedUsername.trim();
+    if (!username || !sharedPassword) {
+      setNoticeDialog({ title: "共享数据", message: "请先输入用户名和密码。" });
+      return;
+    }
+
+    setSharedLoading(true);
+    try {
+      const allowed = await checkSharedAccess(username, sharedPassword);
+      if (!allowed) {
+        setSharedConnected(false);
+        setNoticeDialog({ title: "共享数据", message: "用户名或密码不正确。" });
+        return;
+      }
+      localStorage.setItem(savedLoginKey, JSON.stringify({ u: username, p: sharedPassword }));
+      setSharedConnected(true);
+      await refreshSharedSessions(username, sharedPassword);
+      const action = postLoginAction.current;
+      postLoginAction.current = null;
+      setSharedLoginOpen(false);
+      action?.(username, sharedPassword);
+    } catch (error) {
+      setSharedConnected(false);
+      setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  function ensureSharedConnected(action: (u: string, p: string) => void) {
+    if (sharedConnected) { action(sharedUsername.trim(), sharedPassword); return; }
+    postLoginAction.current = action;
+    tryAutoLogin().then((creds) => {
+      if (creds) {
+        const act = postLoginAction.current;
+        postLoginAction.current = null;
+        act?.(creds.u, creds.p);
+      } else {
+        setSharedLoginOpen(true);
+      }
+    });
+  }
+
+  async function reloadSharedData(username?: string, password?: string) {
+    const u = (username ?? sharedUsername).trim();
+    const p = password ?? sharedPassword;
+    if (!u || !p) return;
+    setSharedLoading(true);
+    try {
+      await refreshSharedSessions(u, p);
+    } catch (error) {
+      setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  async function uploadSharedData(targetId?: string, username?: string, password?: string) {
+    if (numbers.length === 0) return;
+    const u = (username ?? sharedUsername).trim();
+    const p = password ?? sharedPassword;
+    if (!u || !p) return;
+
+    const currentSession = sessions.find((session) => session.id === currentSessionId);
+    const name = currentSession?.name ?? defaultSessionName();
+    if (!targetId) {
+      const list = await listSharedSessions(u, p);
+      if (list.some((s) => s.name === name)) {
+        setNoticeDialog({ title: "共享数据", message: "当前数据已存在" });
+        return;
+      }
+    }
+    setSharedLoading(true);
+    try {
+      await upsertSharedSession({
+        id: targetId,
+        name,
+        numbers,
+        password: p,
+        updatedAt: currentSession?.updatedAt ?? new Date().toISOString(),
+        username: u,
+      });
+      await refreshSharedSessions(u, p);
+      setNoticeDialog({ title: "共享数据", message: targetId ? "已覆盖共享数据。" : "已上传到共享数据。" });
+    } catch (error) {
+      setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  async function uploadLocalToShared(username?: string, password?: string) {
+    const u = (username ?? sharedUsername).trim();
+    const p = password ?? sharedPassword;
+    if (!u || !p || selectedSessions.length === 0) return;
+    setSharedLoading(true);
+    try {
+      const existing = await listSharedSessions(u, p);
+      const existingNames = new Set(existing.map((s) => s.name.toLowerCase()));
+      let uploaded = 0;
+      let skipped = 0;
+      for (const session of selectedSessions) {
+        if (existingNames.has(session.name.toLowerCase())) {
+          skipped += 1;
+          continue;
+        }
+        await upsertSharedSession({
+          name: session.name,
+          numbers: session.numbers,
+          password: p,
+          updatedAt: session.updatedAt,
+          username: u,
+        });
+        existingNames.add(session.name.toLowerCase());
+        uploaded += 1;
+      }
+      await refreshSharedSessions(u, p);
+      const msg = skipped > 0
+        ? `已上传 ${uploaded} 条，${skipped} 条重名已跳过。`
+        : `已上传 ${uploaded} 条到云端。`;
+      setNoticeDialog({ title: "共享数据", message: msg });
+      setSelectedSessionIds([]);
+    } catch (error) {
+      setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  async function importSharedToLocal() {
+    const selected = sharedSessions.filter((s) => selectedSharedSessionIds.includes(s.id));
+    if (selected.length === 0) return;
+
+    const localSessions = await storage.listSessions();
+    const names = new Set(localSessions.map((s) => s.name.toLowerCase()));
+    let imported = 0;
+    let skipped = 0;
+    for (const shared of selected) {
+      if (names.has(shared.name.toLowerCase())) {
+        skipped += 1;
+        continue;
+      }
+      const session: SavedSession = {
+        id: crypto.randomUUID?.() ?? `${Date.now()}`,
+        name: shared.name,
+        numbers: shared.numbers,
+        updatedAt: shared.updatedAt,
+        sharedId: shared.uploader === sharedUsername.trim() ? "" : shared.uploader,
+      };
+      await storage.saveSession(session);
+      names.add(shared.name.toLowerCase());
+      imported += 1;
+    }
+    await refreshSessions();
+    setSelectedSharedSessionIds([]);
+    const msg = skipped > 0
+      ? `已导入 ${imported} 条，${skipped} 条重名已跳过。`
+      : `已导入 ${imported} 条到本地。`;
+    setNoticeDialog({ title: "共享数据", message: msg });
+  }
+
+  async function removeSharedData() {
+    const selected = sharedSessions.filter((s) => selectedSharedSessionIds.includes(s.id));
+    if (selected.length === 0) return;
+
+    setConfirmDialog({
+      title: "共享数据",
+      message: `确定要删除 ${selected.length} 条共享数据吗？`,
+      confirmText: "删除",
+      onConfirm: async () => {
+        setSharedLoading(true);
+        try {
+          for (const s of selected) {
+            await deleteSharedSession(sharedUsername.trim(), sharedPassword, s.id);
+          }
+          await refreshSharedSessions();
+          setNoticeDialog({ title: "共享数据", message: `已删除 ${selected.length} 条。` });
+        } catch (error) {
+          setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+        } finally {
+          setSharedLoading(false);
+        }
+      },
+    });
+  }
+
   function openSession(session: SavedSession) {
     setConfirmDialog({
       title: "打开数据",
@@ -954,6 +1212,7 @@ export function App() {
         SaveTime: formatSessionTime(session.updatedAt),
         tms: new Date(session.updatedAt).getTime(),
         ImportIndex: session.importIndex,
+        SharedId: session.sharedId || "",
       })),
     );
 
@@ -1822,6 +2081,12 @@ export function App() {
               <strong>保存的数据</strong>
             <button className="close-button title-close-button" onClick={() => setDataViewOpen(false)} type="button">x</button>
             </header>
+          <div className="stats-tabs data-tabs" aria-label="数据来源">
+            <button className={dataTab === "local" ? "selected" : ""} onClick={() => setDataTab("local")} type="button">本地数据</button>
+            <button className={dataTab === "shared" ? "selected" : ""} onClick={() => setDataTab("shared")} type="button">共享数据</button>
+          </div>
+          {dataTab === "local" ? (
+            <>
           <div className="data-table-wrap">
             <table className="data-table">
               <thead>
@@ -1832,6 +2097,9 @@ export function App() {
                   <th onClick={() => sortDataView("count")}>
                     量 <SortMark active={sessionSortField === "count"} direction={sessionSortDirection} />
                   </th>
+                  <th onClick={() => sortDataView("sharedId")}>
+                    ID <SortMark active={sessionSortField === "sharedId"} direction={sessionSortDirection} />
+                  </th>
                   <th onClick={() => sortDataView("time")}>
                     时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
                   </th>
@@ -1840,7 +2108,7 @@ export function App() {
               <tbody>
                 {sortedSessions.length === 0 ? (
                   <tr>
-                    <td className="data-empty" colSpan={3}>暂无保存的数据</td>
+                    <td className="data-empty" colSpan={4}>暂无保存的数据</td>
                   </tr>
                 ) : null}
                 {sortedSessions.map((session) => (
@@ -1851,6 +2119,7 @@ export function App() {
                   >
                     <td>{session.name}</td>
                     <td>{session.numbers.length}</td>
+                    <td>{session.sharedId ?? ""}</td>
                     <td>{formatSessionTime(session.updatedAt)}</td>
                   </tr>
                 ))}
@@ -1892,8 +2161,99 @@ export function App() {
             <button disabled={sortedSessions.length === 0} onClick={() => void exportSessions(selectedSessions)} type="button">
               导出
             </button>
+            <button disabled={selectedSessions.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadLocalToShared(u, p)); }} type="button">上传</button>
             <button onClick={openToolsDialog} type="button">工具</button>
           </footer>
+            </>
+          ) : (
+            <>
+              <div className="shared-data-body">
+                <section className="shared-access-panel shared-access-panel-hidden" aria-label="共享访问">
+                  <label>
+                    <span>用户名</span>
+                    <input
+                      autoComplete="username"
+                      onChange={(event) => setSharedUsername(event.target.value)}
+                      placeholder="输入用户名"
+                      type="text"
+                      value={sharedUsername}
+                    />
+                  </label>
+                  <label>
+                    <span>密码</span>
+                    <input
+                      autoComplete="current-password"
+                      onChange={(event) => setSharedPassword(event.target.value)}
+                      placeholder="输入密码"
+                      type="password"
+                      value={sharedPassword}
+                    />
+                  </label>
+                  <button
+                    disabled={sharedLoading || !sharedUsername.trim() || !sharedPassword}
+                    onClick={() => void connectSharedData()}
+                    type="button"
+                  >
+                    {sharedLoading ? "连接中" : sharedConnected ? "重新连接" : "连接共享库"}
+                  </button>
+                </section>
+                {sharedConnected ? (
+                  <div className="data-table-wrap shared-data-table-wrap">
+                    <table className="data-table shared-data-table">
+                      <thead>
+                        <tr>
+                          <th onClick={() => sortSharedView("name")}>
+                            名称 <SortMark active={sharedSortField === "name"} direction={sharedSortDirection} />
+                          </th>
+                          <th onClick={() => sortSharedView("count")}>
+                            量 <SortMark active={sharedSortField === "count"} direction={sharedSortDirection} />
+                          </th>
+                          <th onClick={() => sortSharedView("user")}>
+                            ID <SortMark active={sharedSortField === "user"} direction={sharedSortDirection} />
+                          </th>
+                          <th onClick={() => sortSharedView("time")}>
+                            时间 <SortMark active={sharedSortField === "time"} direction={sharedSortDirection} />
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedSharedSessions.length === 0 ? (
+                          <tr>
+                            <td className="data-empty" colSpan={4}>暂无共享数据</td>
+                          </tr>
+                        ) : null}
+                        {sortedSharedSessions.map((session) => (
+                          <tr
+                            className={selectedSharedSessionIds.includes(session.id) ? "selected" : ""}
+                            key={session.id}
+                            onClick={() => setSelectedSharedSessionIds((prev) => prev.includes(session.id) ? prev.filter((id) => id !== session.id) : [...prev, session.id])}
+                          >
+                            <td>{session.name}</td>
+                            <td>{session.numbers.length}</td>
+                            <td>{session.uploader}</td>
+                            <td>{formatSessionTime(session.updatedAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="shared-data-empty">
+                    <strong>共享数据尚未连接</strong>
+                    <span>连接后可以查看、上传和导入共享数据。</span>
+                    <button onClick={() => setSharedLoginOpen(true)} type="button">连接共享库</button>
+                  </div>
+                )}
+              </div>
+              <footer className="data-screen-actions shared-data-actions">
+                <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
+                <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
+                <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
+                <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void removeSharedData()} type="button">删除</button>
+                <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+              </footer>
+            </>
+          )}
         </section>
       ) : null}
 
@@ -2961,6 +3321,46 @@ export function App() {
         </MessageDialog>
       ) : null}
 
+      {sharedLoginOpen ? (
+        <MessageDialog
+          title="共享数据登录"
+          onClose={() => setSharedLoginOpen(false)}
+          actions={
+            <>
+              <button onClick={() => setSharedLoginOpen(false)} type="button">取消</button>
+              <button
+                className="primary-action"
+                disabled={sharedLoading || !sharedUsername.trim() || !sharedPassword}
+                onClick={() => void connectSharedData()}
+                type="button"
+              >
+                {sharedLoading ? "连接中" : "连接"}
+              </button>
+            </>
+          }
+        >
+          <div className="modal-stack">
+            <label className="field-label">
+              用户名
+              <input
+                autoComplete="username"
+                onChange={(event) => setSharedUsername(event.target.value)}
+                value={sharedUsername}
+              />
+            </label>
+            <label className="field-label">
+              密码
+              <input
+                autoComplete="current-password"
+                onChange={(event) => setSharedPassword(event.target.value)}
+                type="password"
+                value={sharedPassword}
+              />
+            </label>
+          </div>
+        </MessageDialog>
+      ) : null}
+
       {promptDialog ? (
         <MessageDialog
           title={promptDialog.title}
@@ -3099,11 +3499,36 @@ function sortSessions(sessions: SavedSession[], field: DataSortField, direction:
       result = left.numbers.length - right.numbers.length;
     } else if (field === "time") {
       result = new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime();
+    } else if (field === "sharedId") {
+      result = (left.sharedId ?? "").localeCompare(right.sharedId ?? "");
     } else {
       result = left.name.localeCompare(right.name, "zh-Hans-CN");
     }
     return result * multiplier;
   });
+}
+
+function makeUniqueSessionName(baseName: string, sessions: SavedSession[]): string {
+  const names = new Set(sessions.map((session) => session.name));
+  if (!names.has(baseName)) return baseName;
+
+  let index = 2;
+  let next = `${baseName} (${index})`;
+  while (names.has(next)) {
+    index += 1;
+    next = `${baseName} (${index})`;
+  }
+  return next;
+}
+
+function formatSharedError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Invalid shared access code")) return "访问密码不正确。";
+  if (message.includes("Invalid shared user")) return "用户名或密码不正确。";
+  if (message.includes("Delete permission denied")) return "当前用户没有删除权限。";
+  if (message.includes("Failed to fetch")) return "无法连接共享库，请检查网络或 Supabase 配置。";
+  if (message.includes("Could not find the function")) return "共享库尚未初始化，请先在 Supabase 执行建表 SQL。";
+  return message || "共享数据操作失败。";
 }
 
 function sortRefineRows(
@@ -3194,12 +3619,15 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
     const time = typeof item.tms === "number" && Number.isFinite(item.tms) ? item.tms : Date.now() + index;
     const importIdx = typeof (item as { ImportIndex?: number }).ImportIndex === "number"
       ? (item as { ImportIndex?: number }).ImportIndex : index;
+    const sharedId = typeof (item as { SharedId?: string }).SharedId === "string"
+      ? (item as { SharedId?: string }).SharedId : "";
     imported.push({
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
       numbers: parsed.numbers,
       updatedAt: new Date(time).toISOString(),
       importIndex: importIdx,
+      sharedId,
     });
   }
 

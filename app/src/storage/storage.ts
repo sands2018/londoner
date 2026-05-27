@@ -7,6 +7,8 @@ export interface SavedSession {
   updatedAt: string;
   /** 导入时的原始顺序索引, 用于自适应排序 tie-breaker */
   importIndex?: number;
+  /** 从共享库导入时的远程ID, 本地保存的为空字符串 */
+  sharedId?: string;
 }
 
 export interface StorageAdapter {
