@@ -103,10 +103,10 @@ const boardRows: RouletteNumber[][] = [
   [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
 ];
 const keypadRows: RouletteNumber[][] = [
-  [1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [10, 11, 12, 13, 14, 15, 16, 17, 18],
-  [19, 20, 21, 22, 23, 24, 25, 26, 27],
-  [28, 29, 30, 31, 32, 33, 34, 35, 36],
+  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+  [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
+  [31, 32, 33, 34, 35, 36],
 ];
 
 type DialogName = "import" | "save" | null;
@@ -1748,7 +1748,7 @@ export function App() {
             {keypadRows.flat().map((value) => (
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
-            <NumberButton className="zero-key keypad-zero" value={0} onClick={addNumber} />
+            <NumberButton className="zero-key keypad-zero-h" value={0} onClick={addNumber} />
             <button className="control-button wide-control" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
               <SkipBack size={16} />
             </button>

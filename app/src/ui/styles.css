@@ -684,11 +684,8 @@ button:disabled {
   grid-template-columns: repeat(var(--keypad-columns), minmax(0, 1fr));
 }
 
-.keypad-grid .keypad-zero {
-  grid-column: 1;
-  grid-row: 1 / span 4;
-  height: auto;
-  order: 1;
+.keypad-grid .keypad-zero-h {
+  grid-column: span 4;
 }
 
 .keypad-grid .skip-control {
