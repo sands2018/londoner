@@ -2657,6 +2657,15 @@ button:disabled {
 .overview-rhythm .prediction-roi-row { border-bottom-color: #e8dcdc; }
 .overview-rhythm .prediction-roi-row span { color: #7a6b65; }
 
+.overview-chase6 {
+  background: #f5efe0;
+  border-color: #d0c0a0;
+}
+.overview-chase6 .overview-card-title { color: #6b5a38; }
+.overview-chase6 .prediction-roi-table { border-color: #d0c0a0; }
+.overview-chase6 .prediction-roi-row { border-bottom-color: #e4d8c0; }
+.overview-chase6 .prediction-roi-row span { color: #7a6b55; }
+
 .prediction-tabs {
   align-items: end;
   background: #cfc5b3;
@@ -3229,9 +3238,11 @@ button:disabled {
   align-items: stretch;
   border: 1px solid #d4c7ac;
   border-radius: 5px;
+  cursor: pointer;
   display: flex;
   flex: 0 0 calc((100% - 4px) / 2);
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 .chase6-label {

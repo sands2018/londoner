@@ -568,6 +568,71 @@ export function App() {
     return items;
   }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
 
+  // 追6 ROI 计算: 6号滑窗, gap∈[25,29], 211追3轮
+  const computeChaseSixRoi = (allowedWindows?: readonly number[]): { bet: number; win: number; roi: number } => {
+    let bet = 0, win = 0;
+    const MIN_G = 25, MAX_G = 29;
+    const PROG = [2, 1, 1];
+    const CHASE_LEN = 3;
+    const W = 11;
+    const wStart = (wi: number) => 1 + wi * 3;
+    const wEnd = (wi: number) => 6 + wi * 3;
+    const inWin = (wi: number, v: number) => v >= wStart(wi) && v <= wEnd(wi);
+
+    const gaps = new Array(W).fill(0);
+    const appearCount = new Array(W).fill(0);
+    const activeChases: Array<{ wi: number; sr: number }> = [];
+
+    for (let r = 0; r < numbers.length; r++) {
+      const v = numbers[r];
+      const remaining: typeof activeChases = [];
+      for (const c of activeChases) {
+        const ri = r - c.sr;
+        if (ri >= CHASE_LEN) continue;
+        const amt = PROG[ri] ?? PROG[PROG.length - 1];
+        if (!allowedWindows || allowedWindows.includes(c.wi)) { bet += amt; }
+        if (v !== 0 && inWin(c.wi, v)) {
+          if (!allowedWindows || allowedWindows.includes(c.wi)) { win += amt * 6; }
+          continue;
+        }
+        if (ri + 1 < CHASE_LEN) remaining.push(c);
+      }
+      activeChases.length = 0;
+      activeChases.push(...remaining);
+
+      if (v !== 0) {
+        const candidates: Array<{ wi: number; gap: number }> = [];
+        for (let wi = 0; wi < W; wi++) {
+          if (allowedWindows && !allowedWindows.includes(wi)) continue;
+          if (inWin(wi, v) && gaps[wi] >= MIN_G && gaps[wi] <= MAX_G && appearCount[wi] >= 5 && !activeChases.some(c => c.wi === wi)) {
+            candidates.push({ wi, gap: gaps[wi] });
+          }
+        }
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
+          activeChases.push({ wi: candidates[0].wi, sr: r + 1 });
+        }
+      }
+
+      if (v !== 0) {
+        for (let wi = 0; wi < W; wi++) {
+          if (inWin(wi, v)) { gaps[wi] = 0; appearCount[wi] += 1; }
+          else { gaps[wi] += 1; }
+        }
+      }
+    }
+    const r = bet > 0 ? ((win - bet) / bet * 100) : 0;
+    return { bet, win, roi: r };
+  };
+
+  const chaseSixRoi = useMemo(() => computeChaseSixRoi(), [numbers]);
+  // 一组: windows 0-3 (1-6,4-9,7-12,10-15)
+  const chaseSixG1Roi = useMemo(() => computeChaseSixRoi([0, 1, 2, 3]), [numbers]);
+  // 二组: windows 3-7 (10-15,13-18,16-21,19-24,22-27) overlap at 10-15 and 22-27
+  const chaseSixG2Roi = useMemo(() => computeChaseSixRoi([3, 4, 5, 6, 7]), [numbers]);
+  // 三组: windows 7-10 (22-27,25-30,28-33,31-36)
+  const chaseSixG3Roi = useMemo(() => computeChaseSixRoi([7, 8, 9, 10]), [numbers]);
+
   // 追6信号: 6号滑窗, gap∈[25,29], 211追3轮
   const chaseSixSignals = useMemo(() => {
     const items: Array<{ wi: number; windowName: string; round: number; betAmt: number; isNew: boolean; chaseLen: number; isHighQuality: boolean }> = [];
@@ -2148,6 +2213,9 @@ export function App() {
             <div
               className={`chase6-signal-item ${item.isHighQuality ? "chase6-hq" : ""} ${item.isNew ? "" : "chase6-active"}`}
               key={`chase6-${item.wi}`}
+              onClick={() => { setPredictionTab("chase6"); setPredictionWindowOpen(true); }}
+              role="button"
+              tabIndex={0}
             >
               <strong className="chase6-label">{item.windowName}</strong>
               <span className="chase6-chase">
@@ -3048,6 +3116,7 @@ export function App() {
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
               <button className={predictionTab === "rhythm" ? "selected" : ""} onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} type="button">124</button>
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
+              <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
             </div>
             <div className="prediction-body">
               {predictionTab === "overview" ? (
@@ -3080,6 +3149,16 @@ export function App() {
                       </div>
                     </div>
                   </div>
+                  <div className="overview-card overview-chase6" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
+                    <strong className="overview-card-title">追6</strong>
+                    <div className="prediction-roi-table" style={{ margin: 0 }}>
+                      <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row">
+                        <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
+                        <strong style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : predictionTab === "cold" ? (
                 <>
@@ -3109,6 +3188,29 @@ export function App() {
                         <span className={`detail-trend trend-${row.trend}`}>{row.trend === "up" ? "↑" : row.trend === "down" ? "↓" : "→"}</span>
                       </div>
                     ))}
+                  </div>
+                </>
+              ) : predictionTab === "chase6" ? (
+                <>
+                  <p className="prediction-desc">6号滑窗gap∈[25,29]时触发，211追打3轮。minAppearances≥5触发，≥20为高质量信号。一组:1-6/4-9/7-12/10-15, 二组:10-15/13-18/16-21/19-24/22-27, 三组:22-27/25-30/28-33/31-36</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
+                      <strong style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                      <span>一组(1-15)</span><span>{chaseSixG1Roi.bet}</span><span>{chaseSixG1Roi.win}</span>
+                      <strong style={{ color: chaseSixG1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG1Roi.roi >= 0 ? "+" : ""}{chaseSixG1Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                      <span>二组(10-27)</span><span>{chaseSixG2Roi.bet}</span><span>{chaseSixG2Roi.win}</span>
+                      <strong style={{ color: chaseSixG2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG2Roi.roi >= 0 ? "+" : ""}{chaseSixG2Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
+                      <span>三组(22-36)</span><span>{chaseSixG3Roi.bet}</span><span>{chaseSixG3Roi.win}</span>
+                      <strong style={{ color: chaseSixG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG3Roi.roi >= 0 ? "+" : ""}{chaseSixG3Roi.roi.toFixed(1)}%</strong>
+                    </div>
                   </div>
                 </>
               ) : (
