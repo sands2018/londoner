@@ -1649,50 +1649,6 @@ button:disabled {
   overflow: auto;
 }
 
-.shared-access-panel {
-  background: #ffffff;
-  border: 1px solid #d8d2c6;
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-}
-
-.shared-access-panel-hidden {
-  display: none;
-}
-
-.shared-access-panel label {
-  display: grid;
-  gap: 5px;
-}
-
-.shared-access-panel span {
-  color: #5f5548;
-  font-size: var(--data-header-font-size);
-  font-weight: var(--weight-ui);
-}
-
-.shared-access-panel input {
-  background: #fffdf9;
-  border: 1px solid #cfc5b3;
-  border-radius: 5px;
-  color: #20241f;
-  font: inherit;
-  min-height: var(--action-button-min-height);
-  min-width: 0;
-  padding: 0 10px;
-}
-
-.shared-access-panel button {
-  background: #fbfaf6;
-  border: 1px solid #cfc5b3;
-  border-radius: 5px;
-  color: #c8c3b9;
-  font-size: var(--data-action-font-size);
-  font-weight: var(--weight-ui);
-  min-height: var(--action-button-min-height);
-}
-
 .shared-data-empty {
   align-content: center;
   background: #ffffff;

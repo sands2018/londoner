@@ -122,7 +122,7 @@ const keypadRows: RouletteNumber[][] = [
 
 type DialogName = "import" | "save" | null;
 type DataTab = "local" | "shared" | "transfer";
-type DataSortField = "name" | "count" | "time" | "sharedId";
+type DataSortField = "name" | "count" | "time" | "sharedUploader";
 type SortDirection = "asc" | "desc";
 type ColRowTab = "detail" | "chart" | "summary" | "compare";
 type RefineTab = "compare" | "detail";
@@ -192,6 +192,8 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 
   return copied;
 }
+
+const savedLoginKey = "londoner.sharedLogin";
 
 export function App() {
   const [numbers, setNumbers] = useState<RouletteNumber[]>([]);
@@ -268,7 +270,6 @@ export function App() {
   const [sharedConnected, setSharedConnected] = useState(false);
   const [sharedLoginOpen, setSharedLoginOpen] = useState(false);
   const postLoginAction = useRef<((u: string, p: string) => void) | null>(null);
-  const savedLoginKey = "londoner.sharedLogin";
   const [sharedLoading, setSharedLoading] = useState(false);
   const [sharedSessions, setSharedSessions] = useState<SharedSession[]>([]);
   const [selectedSharedSessionIds, setSelectedSharedSessionIds] = useState<string[]>([]);
@@ -1201,7 +1202,7 @@ export function App() {
         name: shared.name,
         numbers: shared.numbers,
         updatedAt: shared.updatedAt,
-        sharedId: shared.uploader === sharedUsername.trim() ? "" : shared.uploader,
+        sharedUploader: shared.uploader === sharedUsername.trim() ? "" : shared.uploader,
       };
       await storage.saveSession(session);
       names.add(shared.name.toLowerCase());
@@ -1303,7 +1304,7 @@ export function App() {
         SaveTime: formatSessionTime(session.updatedAt),
         tms: new Date(session.updatedAt).getTime(),
         ImportIndex: session.importIndex,
-        SharedId: session.sharedId || "",
+        SharedUploader: session.sharedUploader || "",
       })),
     );
 
@@ -2187,8 +2188,8 @@ export function App() {
                   <th onClick={() => sortDataView("count")}>
                     量 <SortMark active={sessionSortField === "count"} direction={sessionSortDirection} />
                   </th>
-                  <th onClick={() => sortDataView("sharedId")}>
-                    ID <SortMark active={sessionSortField === "sharedId"} direction={sessionSortDirection} />
+                  <th onClick={() => sortDataView("sharedUploader")}>
+                    上传者 <SortMark active={sessionSortField === "sharedUploader"} direction={sessionSortDirection} />
                   </th>
                   <th onClick={() => sortDataView("time")}>
                     时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
@@ -2209,7 +2210,7 @@ export function App() {
                   >
                     <td>{session.name}</td>
                     <td>{session.numbers.length}</td>
-                    <td>{session.sharedId ?? ""}</td>
+                    <td>{session.sharedUploader ?? ""}</td>
                     <td>{formatSessionTime(session.updatedAt)}</td>
                   </tr>
                 ))}
@@ -2258,35 +2259,6 @@ export function App() {
           ) : dataTab === "shared" ? (
             <>
               <div className="shared-data-body">
-                <section className="shared-access-panel shared-access-panel-hidden" aria-label="共享访问">
-                  <label>
-                    <span>用户名</span>
-                    <input
-                      autoComplete="username"
-                      onChange={(event) => setSharedUsername(event.target.value)}
-                      placeholder="输入用户名"
-                      type="text"
-                      value={sharedUsername}
-                    />
-                  </label>
-                  <label>
-                    <span>密码</span>
-                    <input
-                      autoComplete="current-password"
-                      onChange={(event) => setSharedPassword(event.target.value)}
-                      placeholder="输入密码"
-                      type="password"
-                      value={sharedPassword}
-                    />
-                  </label>
-                  <button
-                    disabled={sharedLoading || !sharedUsername.trim() || !sharedPassword}
-                    onClick={() => void connectSharedData()}
-                    type="button"
-                  >
-                    {sharedLoading ? "连接中" : sharedConnected ? "重新连接" : "连接共享库"}
-                  </button>
-                </section>
                 {sharedConnected ? (
                   <div className="data-table-wrap shared-data-table-wrap">
                     <table className="data-table shared-data-table">
@@ -2299,7 +2271,7 @@ export function App() {
                             量 <SortMark active={sharedSortField === "count"} direction={sharedSortDirection} />
                           </th>
                           <th onClick={() => sortSharedView("user")}>
-                            ID <SortMark active={sharedSortField === "user"} direction={sharedSortDirection} />
+                            上传者 <SortMark active={sharedSortField === "user"} direction={sharedSortDirection} />
                           </th>
                           <th onClick={() => sortSharedView("time")}>
                             时间 <SortMark active={sharedSortField === "time"} direction={sharedSortDirection} />
@@ -3461,10 +3433,10 @@ export function App() {
       {sharedLoginOpen ? (
         <MessageDialog
           title="共享数据登录"
-          onClose={() => setSharedLoginOpen(false)}
+          onClose={() => { setSharedLoginOpen(false); postLoginAction.current = null; }}
           actions={
             <>
-              <button onClick={() => setSharedLoginOpen(false)} type="button">取消</button>
+              <button onClick={() => { setSharedLoginOpen(false); postLoginAction.current = null; }} type="button">取消</button>
               <button
                 className="primary-action"
                 disabled={sharedLoading || !sharedUsername.trim() || !sharedPassword}
@@ -3636,8 +3608,8 @@ function sortSessions(sessions: SavedSession[], field: DataSortField, direction:
       result = left.numbers.length - right.numbers.length;
     } else if (field === "time") {
       result = new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime();
-    } else if (field === "sharedId") {
-      result = (left.sharedId ?? "").localeCompare(right.sharedId ?? "");
+    } else if (field === "sharedUploader") {
+      result = (left.sharedUploader ?? "").localeCompare(right.sharedUploader ?? "");
     } else {
       result = left.name.localeCompare(right.name, "zh-Hans-CN");
     }
@@ -3756,15 +3728,18 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
     const time = typeof item.tms === "number" && Number.isFinite(item.tms) ? item.tms : Date.now() + index;
     const importIdx = typeof (item as { ImportIndex?: number }).ImportIndex === "number"
       ? (item as { ImportIndex?: number }).ImportIndex : index;
-    const sharedId = typeof (item as { SharedId?: string }).SharedId === "string"
-      ? (item as { SharedId?: string }).SharedId : "";
+    const sharedUploader = typeof (item as { SharedUploader?: string }).SharedUploader === "string"
+      ? (item as { SharedUploader?: string }).SharedUploader
+      : typeof (item as { SharedId?: string }).SharedId === "string"
+      ? (item as { SharedId?: string }).SharedId
+      : "";
     imported.push({
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
       numbers: parsed.numbers,
       updatedAt: new Date(time).toISOString(),
       importIndex: importIdx,
-      sharedId,
+      sharedUploader,
     });
   }
 

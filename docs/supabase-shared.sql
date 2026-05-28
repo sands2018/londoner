@@ -169,5 +169,5 @@ $$;
 grant execute on function public.londoner_auth_user(text, text) to anon, authenticated;
 grant execute on function public.londoner_check_access(text, text) to anon, authenticated;
 grant execute on function public.londoner_list_sessions(text, text) to anon, authenticated;
-grant execute on function public.londoner_upsert_session(text, text, uuid, text, integer[]) to anon, authenticated;
+grant execute on function public.londoner_upsert_session(text, text, uuid, text, integer[], timestamptz) to anon, authenticated;
 grant execute on function public.londoner_delete_session(text, text, uuid) to anon, authenticated;

@@ -68,7 +68,11 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async listSessions(): Promise<SavedSession[]> {
-    const sessions = parseJson<SavedSession[]>(localStorage.getItem(sessionsKey), []);
+    const raw = parseJson<Array<Record<string, unknown>>>(localStorage.getItem(sessionsKey), []);
+    const sessions: SavedSession[] = raw.map((s) => ({
+      ...(s as unknown as SavedSession),
+      sharedUploader: (s.sharedUploader as string) ?? (s.sharedId as string) ?? "",
+    }));
     const seenIds = new Set(sessions.map((session) => session.id));
     const legacySessions = readLegacySessions().filter((session) => !seenIds.has(session.id));
     return [...sessions, ...legacySessions];
