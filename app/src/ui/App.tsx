@@ -3124,38 +3124,38 @@ export function App() {
                   <div className="overview-card overview-rhythm" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
                     <strong className="overview-card-title">124</strong>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
                         <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
-                        <strong style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
+                        <strong className="roi-value" style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
                       </div>
-                      <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                        <span>ROI(仅行)</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
-                        <strong style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">ROI-仅行</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
+                        <strong className="roi-value" style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
                   </div>
                   <div className="overview-card overview-cold" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
                     <strong className="overview-card-title">长套</strong>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
                         <strong>{numbers.length}</strong><strong>{coldActiveRoi.bet}</strong><strong>{coldActiveRoi.win}</strong>
-                        <strong style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
+                        <strong className="roi-value" style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
                       </div>
-                      <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                        <span>ROI(仅行)</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
-                        <strong style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">ROI-仅行</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
+                        <strong className="roi-value" style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
                   </div>
                   <div className="overview-card overview-chase6" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
                     <strong className="overview-card-title">追6</strong>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
                         <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
-                        <strong style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
+                        <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
                   </div>
@@ -3164,18 +3164,18 @@ export function App() {
                 <>
                   <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮。{coldAdaptiveMode !== "off" ? " 自适应"+ (coldAdaptiveMode === "adaptiveRow" ? "(冷启动押行)" : "") + "已启用" : ""}</p>
                   <div className="prediction-roi-table">
-                    <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
                       <strong>{numbers.length}</strong><strong>{coldActiveRoi.bet}</strong><strong>{coldActiveRoi.win}</strong>
-                      <strong style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
+                      <strong className="roi-value" style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                      <span>ROI(仅行)</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
-                      <strong style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">ROI-仅行</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
+                      <strong className="roi-value" style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                      <span>ROI(仅组)</span><span>{coldGroupsOnlyRoi.bet}</span><span>{coldGroupsOnlyRoi.win}</span>
-                      <strong style={{ color: coldGroupsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldGroupsOnlyRoi.roi >= 0 ? "+" : ""}{coldGroupsOnlyRoi.roi.toFixed(1)}%</strong>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">ROI-仅组</span><span>{coldGroupsOnlyRoi.bet}</span><span>{coldGroupsOnlyRoi.win}</span>
+                      <strong className="roi-value" style={{ color: coldGroupsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldGroupsOnlyRoi.roi >= 0 ? "+" : ""}{coldGroupsOnlyRoi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                   <div className="detail-stats-table">
@@ -3184,7 +3184,7 @@ export function App() {
                       <div className="detail-stats-row" key={row.ci}>
                         <strong className="detail-stats-label">{row.label}</strong>
                         <span>{row.successes}</span><span>{row.failures}</span>
-                        <span style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
+                        <span className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
                         <span className={`detail-trend trend-${row.trend}`}>{row.trend === "up" ? "↑" : row.trend === "down" ? "↓" : "→"}</span>
                       </div>
                     ))}
@@ -3192,24 +3192,24 @@ export function App() {
                 </>
               ) : predictionTab === "chase6" ? (
                 <>
-                  <p className="prediction-desc">6号滑窗gap∈[25,29]时触发，211追打3轮。minAppearances≥5触发，≥20为高质量信号。一组:1-6/4-9/7-12/10-15, 二组:10-15/13-18/16-21/19-24/22-27, 三组:22-27/25-30/28-33/31-36</p>
+                  <p className="prediction-desc">6号滑窗gap∈[25,29]时触发，211追打3轮。minAppearances≥5触发，≥20为高质量信号。</p>
                   <div className="prediction-roi-table">
-                    <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
                       <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
-                      <strong style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
+                      <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                      <span>一组(1-15)</span><span>{chaseSixG1Roi.bet}</span><span>{chaseSixG1Roi.win}</span>
-                      <strong style={{ color: chaseSixG1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG1Roi.roi >= 0 ? "+" : ""}{chaseSixG1Roi.roi.toFixed(1)}%</strong>
+                    <div className="prediction-roi-row">
+                      <span><strong className="prediction-roi-subheader">一组</strong> 1-15</span><span>{chaseSixG1Roi.bet}</span><span>{chaseSixG1Roi.win}</span>
+                      <strong className="roi-value" style={{ color: chaseSixG1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG1Roi.roi >= 0 ? "+" : ""}{chaseSixG1Roi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                      <span>二组(10-27)</span><span>{chaseSixG2Roi.bet}</span><span>{chaseSixG2Roi.win}</span>
-                      <strong style={{ color: chaseSixG2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG2Roi.roi >= 0 ? "+" : ""}{chaseSixG2Roi.roi.toFixed(1)}%</strong>
+                    <div className="prediction-roi-row">
+                      <span><strong className="prediction-roi-subheader">二组</strong> 10-27</span><span>{chaseSixG2Roi.bet}</span><span>{chaseSixG2Roi.win}</span>
+                      <strong className="roi-value" style={{ color: chaseSixG2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG2Roi.roi >= 0 ? "+" : ""}{chaseSixG2Roi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                      <span>三组(22-36)</span><span>{chaseSixG3Roi.bet}</span><span>{chaseSixG3Roi.win}</span>
-                      <strong style={{ color: chaseSixG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG3Roi.roi >= 0 ? "+" : ""}{chaseSixG3Roi.roi.toFixed(1)}%</strong>
+                    <div className="prediction-roi-row">
+                      <span><strong className="prediction-roi-subheader">三组</strong> 22-36</span><span>{chaseSixG3Roi.bet}</span><span>{chaseSixG3Roi.win}</span>
+                      <strong className="roi-value" style={{ color: chaseSixG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG3Roi.roi >= 0 ? "+" : ""}{chaseSixG3Roi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                 </>
@@ -3217,14 +3217,14 @@ export function App() {
                 <>
                   <p className="prediction-desc">间隔1-4自适应入场，集中度≥65%触发，1-2-4追打2-3轮，失败波浪恢复</p>
                   <div className="prediction-roi-table">
-                    <div className="prediction-roi-row"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
                       <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
-                      <strong style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
+                      <strong className="roi-value" style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row" style={{ color: "#8a7e74", fontSize: "11px" }}>
-                      <span>ROI(仅行)</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
-                      <strong style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">ROI-仅行</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
+                      <strong className="roi-value" style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                   <div className="detail-stats-table">
@@ -3233,7 +3233,7 @@ export function App() {
                       <div className="detail-stats-row" key={row.ci}>
                         <strong className="detail-stats-label">{row.label}</strong>
                         <span>{row.successes}</span><span>{row.failures}</span>
-                        <span style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
+                        <span className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
                         <span className={`detail-trend trend-${row.trend}`}>{row.trend === "up" ? "↑" : row.trend === "down" ? "↓" : "→"}</span>
                       </div>
                     ))}
@@ -3340,7 +3340,7 @@ export function App() {
                 </section>
                 <section className="config-card config-bets">
                   <h2><span>长套 自适应</span></h2>
-                  <p style={{ fontSize: "11px", color: "#8a7e74", padding: "4px 12px 0", margin: 0 }}>自适应仅对已保存的场次生效；未保存当前数据时按全六组显示。</p>
+                  <p style={{ fontSize: "14px", color: "#8a7e74", padding: "4px 12px 0", margin: 0 }}>自适应仅对已保存的场次生效；未保存当前数据时按全六组显示。</p>
                   <div style={{ padding: "10px 0" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
                     <input type="checkbox" checked={draftColdAdaptiveMode === "off"} onChange={() => setDraftColdAdaptiveMode("off")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />

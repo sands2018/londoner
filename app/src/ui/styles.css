@@ -2594,7 +2594,7 @@ button:disabled {
   border-bottom: 1px solid #e8ece4;
   display: grid;
   gap: 4px;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
   padding: 3px 14px;
   text-align: center;
 }
@@ -2604,14 +2604,26 @@ button:disabled {
 }
 
 .prediction-roi-row span {
-  color: #6b7a65;
-  font-size: 16px;
+  color: #20241f;
+  font-size: 14px;
+}
+
+.prediction-roi-row.prediction-roi-header span {
+  color: #8a6b5b;
+  font-size: 14px;
+  font-weight: var(--weight-ui);
 }
 
 .prediction-roi-row strong {
   color: #20241f;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: var(--weight-emphasis);
+}
+
+.prediction-roi-row .prediction-roi-subheader {
+  color: #8a6b5b;
+  font-size: 14px;
+  font-weight: var(--weight-ui);
 }
 
 .overview-cards {
@@ -3411,7 +3423,7 @@ button:disabled {
 
 .detail-stats-header span {
   color: #8a6b5b;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: var(--weight-ui);
 }
 
@@ -3420,15 +3432,21 @@ button:disabled {
 }
 
 .detail-stats-label {
-  color: #995539;
-  font-size: 16px;
-  font-weight: var(--weight-emphasis);
-  text-align: left;
+  color: #8a6b5b;
+  font-size: 14px;
+  font-weight: var(--weight-ui);
+  text-align: center;
 }
 
 .detail-stats-row span {
-  color: #5f5548;
-  font-size: 16px;
+  color: #20241f;
+  font-size: 14px;
+}
+
+span.roi-value,
+strong.roi-value {
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
 }
 
 .detail-trend {
