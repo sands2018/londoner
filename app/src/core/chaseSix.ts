@@ -226,122 +226,135 @@ export function analyzeChaseSix(numbers: readonly RouletteNumber[]): ChaseSixAna
   const CHASE_LEN = CHASE6_CHASE_LEN;
   const STRONG_AP = CHASE6_STRONG_APPEARANCES;
 
-  // — 逐窗口状态 —
-  const gaps = new Array<number>(W).fill(0);
-  const appearCount = new Array<number>(W).fill(0);
-  // gapHistory[wi]: 该窗口最近完成的 gap 值，按时间倒序（index 0 = 最新）
-  const gapHistory: number[][] = Array.from({ length: W }, () => []);
-
-  // — 活跃追打 —
+  // — 活跃追打内部结构 —
   interface ActiveChase {
     wi: number;
-    sr: number;          // 追打起始轮 = 触发轮 + 1
+    sr: number;
     isStrong: boolean;
     isWaveQualified: boolean;
   }
-  const activeChases: ActiveChase[] = [];
 
-  // — ROI 累积 —
-  const roiByWi: Array<{ bet: number; win: number }> =
-    Array.from({ length: W }, () => ({ bet: 0, win: 0 }));
-  let roiStrong = { bet: 0, win: 0 };
-  let roiWaveStrong = { bet: 0, win: 0 };
-  let roiWaveFiltered = { bet: 0, win: 0 };
-
-  for (let r = 0; r < numbers.length; r++) {
-    const v = numbers[r];
-
-    // ──── 1. 结算活跃追打 ─────────────────────────────────
-    const surviving: ActiveChase[] = [];
-    for (const c of activeChases) {
-      const ri = r - c.sr;                      // ri=0 表示第一轮追打
-      if (ri >= CHASE_LEN) continue;            // 超时，已结束
-      const amt = PROG[ri] ?? PROG[PROG.length - 1];
-
-      // 下注
-      roiByWi[c.wi].bet += amt;
-      if (c.isStrong) {
-        roiStrong.bet += amt;
-        if (c.isWaveQualified) roiWaveStrong.bet += amt;
-        else roiWaveFiltered.bet += amt;
-      }
-
-      // 命中判定：v !== 0 且在窗口内
-      if (v !== 0 && isInChaseSixWindow(c.wi, v)) {
-        const won = amt * 6;
-        roiByWi[c.wi].win += won;
-        if (c.isStrong) {
-          roiStrong.win += won;
-          if (c.isWaveQualified) roiWaveStrong.win += won;
-          else roiWaveFiltered.win += won;
-        }
-        continue; // 命中 → 追打结束，不保留
-      }
-
-      // 未命中 → 如果还有剩余轮数，保留到下轮
-      if (ri + 1 < CHASE_LEN) surviving.push(c);
-    }
-    activeChases.length = 0;
-    for (const c of surviving) activeChases.push(c);
-
-    // ──── 2. 检测新信号 ─────────────────────────────────
-    if (v !== 0) {
-      const candidates: Array<{ wi: number; gap: number }> = [];
-      for (let wi = 0; wi < W; wi++) {
-        if (
-          isInChaseSixWindow(wi, v) &&
-          gaps[wi] >= MIN_G &&
-          gaps[wi] <= MAX_G &&
-          appearCount[wi] >= CHASE6_MIN_APPEARANCES &&
-          !activeChases.some(c => c.wi === wi)
-        ) {
-          candidates.push({ wi, gap: gaps[wi] });
-        }
-      }
-
-      if (candidates.length > 0) {
-        // 优先级：gap 大的优先；gap 相同则 wi 小的优先
-        candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
-        const sel = candidates[0];
-        const isStrong = appearCount[sel.wi] >= STRONG_AP;
-
-        // 波浪特征：从**当前 gap 之前**的历史中计算
-        // 此时 gapHistory[sel.wi] 不含本轮 gap（本轮 gap 在步骤 3 才推入）
-        const wave = computeWaveFeatures(gapHistory[sel.wi]);
-        const isWaveQualified =
-          wave.avg5 <= CHASE6_WAVE_AVG5_MAX &&
-          wave.long20Rate10 <= CHASE6_WAVE_LONG20_RATE10_MAX;
-
-        activeChases.push({
-          wi: sel.wi,
-          sr: r + 1,       // 从下一轮开始追打
-          isStrong,
-          isWaveQualified,
-        });
-      }
-    }
-
-    // ──── 3. 更新 gap 跟踪 ───────────────────────────────
-    if (v !== 0) {
-      for (let wi = 0; wi < W; wi++) {
-        if (isInChaseSixWindow(wi, v)) {
-          // 已完成 gap 入库（保留最近 10 个，最新在前）
-          gapHistory[wi].unshift(gaps[wi]);
-          if (gapHistory[wi].length > MAX_GAP_HISTORY) {
-            gapHistory[wi].length = MAX_GAP_HISTORY;
-          }
-          gaps[wi] = 0;
-          appearCount[wi] += 1;
-        } else {
-          gaps[wi] += 1;
-        }
-      }
-    }
+  interface PassResult {
+    roiByWi: Array<{ bet: number; win: number }>;
+    strongRoi: { bet: number; win: number };
+    waveStrongRoi: { bet: number; win: number };
+    waveFilteredRoi: { bet: number; win: number };
+    activeChases: ActiveChase[];
   }
 
-  // ──── 构建活跃信号列表（供 UI） ─────────────────────
+  /**
+   * 对号码序列做一次完整遍历。
+   *
+   * @param allowedWindows - null 表示全 11 窗口；传数组则在候选阶段就过滤，
+   *   确保分组独立统计时不会被别组窗口抢信号。
+   */
+  function runPass(allowedWindows: readonly number[] | null): PassResult {
+    const gaps = new Array<number>(W).fill(0);
+    const appearCount = new Array<number>(W).fill(0);
+    const gapHistory: number[][] = Array.from({ length: W }, () => []);
+
+    const activeChases: ActiveChase[] = [];
+
+    const roiByWi: Array<{ bet: number; win: number }> =
+      Array.from({ length: W }, () => ({ bet: 0, win: 0 }));
+    let strongRoi = { bet: 0, win: 0 };
+    let waveStrongRoi = { bet: 0, win: 0 };
+    let waveFilteredRoi = { bet: 0, win: 0 };
+
+    for (let r = 0; r < numbers.length; r++) {
+      const v = numbers[r];
+
+      // ── 1. 结算活跃追打 ──
+      const surviving: ActiveChase[] = [];
+      for (const c of activeChases) {
+        const ri = r - c.sr;
+        if (ri >= CHASE_LEN) continue;
+        const amt = PROG[ri] ?? PROG[PROG.length - 1];
+
+        roiByWi[c.wi].bet += amt;
+        if (c.isStrong) {
+          strongRoi.bet += amt;
+          if (c.isWaveQualified) waveStrongRoi.bet += amt;
+          else waveFilteredRoi.bet += amt;
+        }
+
+        if (v !== 0 && isInChaseSixWindow(c.wi, v)) {
+          const won = amt * 6;
+          roiByWi[c.wi].win += won;
+          if (c.isStrong) {
+            strongRoi.win += won;
+            if (c.isWaveQualified) waveStrongRoi.win += won;
+            else waveFilteredRoi.win += won;
+          }
+          continue;
+        }
+
+        if (ri + 1 < CHASE_LEN) surviving.push(c);
+      }
+      activeChases.length = 0;
+      for (const c of surviving) activeChases.push(c);
+
+      // ── 2. 检测新信号 ──
+      if (v !== 0) {
+        const candidates: Array<{ wi: number; gap: number }> = [];
+        for (let wi = 0; wi < W; wi++) {
+          // 分组独立统计：候选阶段就过滤 allowedWindows
+          if (allowedWindows && !allowedWindows.includes(wi)) continue;
+          if (
+            isInChaseSixWindow(wi, v) &&
+            gaps[wi] >= MIN_G &&
+            gaps[wi] <= MAX_G &&
+            appearCount[wi] >= CHASE6_MIN_APPEARANCES &&
+            !activeChases.some(c => c.wi === wi)
+          ) {
+            candidates.push({ wi, gap: gaps[wi] });
+          }
+        }
+
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
+          const sel = candidates[0];
+          const isStrong = appearCount[sel.wi] >= STRONG_AP;
+
+          const wave = computeWaveFeatures(gapHistory[sel.wi]);
+          const isWaveQualified =
+            wave.avg5 <= CHASE6_WAVE_AVG5_MAX &&
+            wave.long20Rate10 < CHASE6_WAVE_LONG20_RATE10_MAX;
+
+          activeChases.push({
+            wi: sel.wi,
+            sr: r + 1,
+            isStrong,
+            isWaveQualified,
+          });
+        }
+      }
+
+      // ── 3. 更新 gap 跟踪 ──
+      if (v !== 0) {
+        for (let wi = 0; wi < W; wi++) {
+          if (isInChaseSixWindow(wi, v)) {
+            gapHistory[wi].unshift(gaps[wi]);
+            if (gapHistory[wi].length > MAX_GAP_HISTORY) {
+              gapHistory[wi].length = MAX_GAP_HISTORY;
+            }
+            gaps[wi] = 0;
+            appearCount[wi] += 1;
+          } else {
+            gaps[wi] += 1;
+          }
+        }
+      }
+    }
+
+    return { roiByWi, strongRoi, waveStrongRoi, waveFilteredRoi, activeChases };
+  }
+
+  // ── 全局：全 11 窗口，产出活跃信号 + 总 ROI ──
+  const global = runPass(null);
+
   const activeSignals: ChaseSixActiveSignal[] = [];
-  for (const c of activeChases) {
+  for (const c of global.activeChases) {
     const roundsPlayed = Math.max(0, numbers.length - c.sr);
     const nr = roundsPlayed + 1;
     if (nr > CHASE_LEN) continue;
@@ -359,20 +372,22 @@ export function analyzeChaseSix(numbers: readonly RouletteNumber[]): ChaseSixAna
     });
   }
 
-  // ──── 组装 ROI ──────────────────────────────────────
-  const totalRoi = sumRoi(roiByWi.map(p => makeRoi(p.bet, p.win)));
+  const totalRoi = sumRoi(global.roiByWi.map(p => makeRoi(p.bet, p.win)));
 
-  const groupRoi = (wis: readonly number[]): ChaseSixRoi =>
-    sumRoi(wis.map(wi => makeRoi(roiByWi[wi].bet, roiByWi[wi].win)));
+  // ── 分组：各自独立跑一趟，候选阶段就限制 allowedWindows ──
+  function groupPass(wis: readonly number[]): ChaseSixRoi {
+    const p = runPass(wis);
+    return sumRoi(wis.map(wi => makeRoi(p.roiByWi[wi].bet, p.roiByWi[wi].win)));
+  }
 
   return {
     activeSignals,
     totalRoi,
-    group1Roi: groupRoi(GROUP1_WINDOWS),
-    group2Roi: groupRoi(GROUP2_WINDOWS),
-    group3Roi: groupRoi(GROUP3_WINDOWS),
-    strongRoi: makeRoi(roiStrong.bet, roiStrong.win),
-    waveStrongRoi: makeRoi(roiWaveStrong.bet, roiWaveStrong.win),
-    waveFilteredRoi: makeRoi(roiWaveFiltered.bet, roiWaveFiltered.win),
+    group1Roi: groupPass(GROUP1_WINDOWS),
+    group2Roi: groupPass(GROUP2_WINDOWS),
+    group3Roi: groupPass(GROUP3_WINDOWS),
+    strongRoi: makeRoi(global.strongRoi.bet, global.strongRoi.win),
+    waveStrongRoi: makeRoi(global.waveStrongRoi.bet, global.waveStrongRoi.win),
+    waveFilteredRoi: makeRoi(global.waveFilteredRoi.bet, global.waveFilteredRoi.win),
   };
 }
