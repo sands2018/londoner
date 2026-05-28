@@ -93,6 +93,7 @@ import {
   type RhythmSignal,
 } from "../core/prediction";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
+import { analyzeChaseSix } from "../core/chaseSix";
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
@@ -568,141 +569,13 @@ export function App() {
     return items;
   }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
 
-  // 追6 ROI 计算: 6号滑窗, gap∈[25,29], 211追3轮
-  const computeChaseSixRoi = (allowedWindows?: readonly number[]): { bet: number; win: number; roi: number } => {
-    let bet = 0, win = 0;
-    const MIN_G = 25, MAX_G = 29;
-    const PROG = [2, 1, 1];
-    const CHASE_LEN = 3;
-    const W = 11;
-    const wStart = (wi: number) => 1 + wi * 3;
-    const wEnd = (wi: number) => 6 + wi * 3;
-    const inWin = (wi: number, v: number) => v >= wStart(wi) && v <= wEnd(wi);
-
-    const gaps = new Array(W).fill(0);
-    const appearCount = new Array(W).fill(0);
-    const activeChases: Array<{ wi: number; sr: number }> = [];
-
-    for (let r = 0; r < numbers.length; r++) {
-      const v = numbers[r];
-      const remaining: typeof activeChases = [];
-      for (const c of activeChases) {
-        const ri = r - c.sr;
-        if (ri >= CHASE_LEN) continue;
-        const amt = PROG[ri] ?? PROG[PROG.length - 1];
-        if (!allowedWindows || allowedWindows.includes(c.wi)) { bet += amt; }
-        if (v !== 0 && inWin(c.wi, v)) {
-          if (!allowedWindows || allowedWindows.includes(c.wi)) { win += amt * 6; }
-          continue;
-        }
-        if (ri + 1 < CHASE_LEN) remaining.push(c);
-      }
-      activeChases.length = 0;
-      activeChases.push(...remaining);
-
-      if (v !== 0) {
-        const candidates: Array<{ wi: number; gap: number }> = [];
-        for (let wi = 0; wi < W; wi++) {
-          if (allowedWindows && !allowedWindows.includes(wi)) continue;
-          if (inWin(wi, v) && gaps[wi] >= MIN_G && gaps[wi] <= MAX_G && appearCount[wi] >= 5 && !activeChases.some(c => c.wi === wi)) {
-            candidates.push({ wi, gap: gaps[wi] });
-          }
-        }
-        if (candidates.length > 0) {
-          candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
-          activeChases.push({ wi: candidates[0].wi, sr: r + 1 });
-        }
-      }
-
-      if (v !== 0) {
-        for (let wi = 0; wi < W; wi++) {
-          if (inWin(wi, v)) { gaps[wi] = 0; appearCount[wi] += 1; }
-          else { gaps[wi] += 1; }
-        }
-      }
-    }
-    const r = bet > 0 ? ((win - bet) / bet * 100) : 0;
-    return { bet, win, roi: r };
-  };
-
-  const chaseSixRoi = useMemo(() => computeChaseSixRoi(), [numbers]);
-  // 一组: windows 0-3 (1-6,4-9,7-12,10-15)
-  const chaseSixG1Roi = useMemo(() => computeChaseSixRoi([0, 1, 2, 3]), [numbers]);
-  // 二组: windows 3-7 (10-15,13-18,16-21,19-24,22-27) overlap at 10-15 and 22-27
-  const chaseSixG2Roi = useMemo(() => computeChaseSixRoi([3, 4, 5, 6, 7]), [numbers]);
-  // 三组: windows 7-10 (22-27,25-30,28-33,31-36)
-  const chaseSixG3Roi = useMemo(() => computeChaseSixRoi([7, 8, 9, 10]), [numbers]);
-
-  // 追6信号: 6号滑窗, gap∈[25,29], 211追3轮
-  const chaseSixSignals = useMemo(() => {
-    const items: Array<{ wi: number; windowName: string; round: number; betAmt: number; isNew: boolean; chaseLen: number; isHighQuality: boolean }> = [];
-    if (numbers.length < 10) return items;
-
-    const MIN_G = 25, MAX_G = 29;
-    const PROG = [2, 1, 1];
-    const CHASE_LEN = 3;
-    const W = 11;
-    const wStart = (wi: number) => 1 + wi * 3;
-    const wEnd = (wi: number) => 6 + wi * 3;
-    const inWin = (wi: number, v: number) => v >= wStart(wi) && v <= wEnd(wi);
-
-    const gaps = new Array(W).fill(0);
-    const appearCount = new Array(W).fill(0);
-    const activeChases: Array<{ wi: number; sr: number; isHQ: boolean }> = [];
-
-    for (let r = 0; r < numbers.length; r++) {
-      const v = numbers[r];
-
-      // 结算活跃追打
-      const remaining: typeof activeChases = [];
-      for (const c of activeChases) {
-        const ri = r - c.sr;
-        if (ri >= CHASE_LEN) continue;
-        if (v !== 0 && inWin(c.wi, v)) continue; // 命中，追打结束
-        if (ri + 1 < CHASE_LEN) remaining.push(c);
-        // else: 最后一轮未命中，追打结束(loss)
-      }
-      activeChases.length = 0;
-      activeChases.push(...remaining);
-
-      // 检测信号: gap∈[25,29], minAppearances>=5
-      if (v !== 0) {
-        const candidates: Array<{ wi: number; gap: number }> = [];
-        for (let wi = 0; wi < W; wi++) {
-          if (inWin(wi, v) && gaps[wi] >= MIN_G && gaps[wi] <= MAX_G && appearCount[wi] >= 5 && !activeChases.some(c => c.wi === wi)) {
-            candidates.push({ wi, gap: gaps[wi] });
-          }
-        }
-        if (candidates.length > 0) {
-          candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
-          const sel = candidates[0];
-          activeChases.push({ wi: sel.wi, sr: r + 1, isHQ: appearCount[sel.wi] >= 20 });
-        }
-      }
-
-      // 更新 gap 和出现计数 (0 不更新)
-      if (v !== 0) {
-        for (let wi = 0; wi < W; wi++) {
-          if (inWin(wi, v)) { gaps[wi] = 0; appearCount[wi] += 1; }
-          else { gaps[wi] += 1; }
-        }
-      }
-    }
-
-    // 当前活跃追打 → 展示
-    for (const c of activeChases) {
-      const roundsPlayed = Math.max(0, numbers.length - c.sr);
-      const nr = roundsPlayed + 1;
-      if (nr > CHASE_LEN) continue;
-      items.push({
-        wi: c.wi, windowName: `${wStart(c.wi)}-${wEnd(c.wi)}`,
-        round: nr, betAmt: PROG[nr - 1] ?? PROG[PROG.length - 1],
-        isNew: nr === 1, chaseLen: CHASE_LEN, isHighQuality: c.isHQ,
-      });
-    }
-
-    return items;
-  }, [numbers]);
+  // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
+  const cs = useMemo(() => analyzeChaseSix(numbers), [numbers]);
+  const chaseSixSignals = cs.activeSignals;
+  const chaseSixRoi = cs.totalRoi;
+  const chaseSixG1Roi = cs.group1Roi;
+  const chaseSixG2Roi = cs.group2Roi;
+  const chaseSixG3Roi = cs.group3Roi;
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -2211,7 +2084,7 @@ export function App() {
         <section className="chase6-signal-area" aria-label="追6信号">
           {chaseSixSignals.map((item) => (
             <div
-              className={`chase6-signal-item ${item.isHighQuality ? "chase6-hq" : ""} ${item.isNew ? "" : "chase6-active"}`}
+              className={`chase6-signal-item ${item.isStrong ? "chase6-hq" : ""} ${item.isWaveStrong ? "chase6-wave" : ""} ${item.isNew ? "" : "chase6-active"}`}
               key={`chase6-${item.wi}`}
               onClick={() => { setPredictionTab("chase6"); setPredictionWindowOpen(true); }}
               role="button"
@@ -2225,6 +2098,7 @@ export function App() {
                   ))}
                 </span>
                 <span className="chase6-bet">{item.betAmt}</span>
+                <span className="chase6-stars" style={item.isStrong ? undefined : { visibility: "hidden" }}>{item.isWaveStrong ? "★★" : "★"}</span>
               </span>
             </div>
           ))}
@@ -3157,6 +3031,14 @@ export function App() {
                         <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
                         <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
                       </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">强信号 ★</span><span>{cs.strongRoi.bet}</span><span>{cs.strongRoi.win}</span>
+                        <strong className="roi-value" style={{ color: cs.strongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.strongRoi.roi >= 0 ? "+" : ""}{cs.strongRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
+                        <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3192,12 +3074,20 @@ export function App() {
                 </>
               ) : predictionTab === "chase6" ? (
                 <>
-                  <p className="prediction-desc">6号滑窗gap∈[25,29]时触发，211追打3轮。minAppearances≥5触发，≥20为高质量信号。</p>
+                  <p className="prediction-desc">6号滑窗gap∈[25,29]时触发，211追打3轮。minAppearances≥5触发；≥20为强信号；波浪过滤：强信号中近5次gap均值≤8且近10次长冷比例&lt;20%者标记为波浪过滤信号，进一步精选。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
                       <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
                       <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">强信号 ★</span><span>{cs.strongRoi.bet}</span><span>{cs.strongRoi.win}</span>
+                      <strong className="roi-value" style={{ color: cs.strongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.strongRoi.roi >= 0 ? "+" : ""}{cs.strongRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
+                      <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
                       <span><strong className="prediction-roi-subheader">一组</strong> 1-15</span><span>{chaseSixG1Roi.bet}</span><span>{chaseSixG1Roi.win}</span>

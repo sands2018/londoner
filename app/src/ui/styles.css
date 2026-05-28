@@ -3248,7 +3248,7 @@ button:disabled {
 
 .chase6-signal-item {
   align-items: stretch;
-  border: 1px solid #d4c7ac;
+  border: 1px solid #d9ccb4;
   border-radius: 5px;
   cursor: pointer;
   display: flex;
@@ -3259,7 +3259,7 @@ button:disabled {
 
 .chase6-label {
   align-items: center;
-  background: #e4d6ba;
+  background: #e8dcc4;
   color: #6b5a38;
   display: flex;
   flex: 0 0 44px;
@@ -3272,7 +3272,7 @@ button:disabled {
 
 .chase6-chase {
   align-items: center;
-  background: #f1e9d6;
+  background: #f5efde;
   display: flex;
   flex: 1;
   gap: 8px;
@@ -3283,11 +3283,11 @@ button:disabled {
 }
 
 .chase6-signal-item.chase6-active .chase6-chase {
-  background: #e8dec4;
+  background: #ece4ce;
 }
 
 .chase6-signal-item.chase6-active .chase6-label {
-  background: #d4c6a8;
+  background: #d8ccb2;
 }
 
 .chase6-bet {
@@ -3296,48 +3296,56 @@ button:disabled {
   font-weight: var(--weight-emphasis);
 }
 
-/* 高质量信号: minAppearances>=20, 饱和米黄 */
+/* 高质量信号: minAppearances>=20, 浅金 */
 .chase6-signal-item.chase6-hq {
-  border-color: #c8b878;
+  border-color: #d3c690;
 }
 
 .chase6-signal-item.chase6-hq .chase6-label {
-  background: #d4c088;
-  color: #4a3010;
+  background: #e4d4a8;
+  color: #553820;
 }
 
 .chase6-signal-item.chase6-hq .chase6-chase {
-  background: #ede0c0;
+  background: #f4ecd6;
 }
 
 .chase6-signal-item.chase6-hq.chase6-active .chase6-chase {
-  background: #e0cc98;
+  background: #ebdab0;
 }
 
 .chase6-signal-item.chase6-hq.chase6-active .chase6-label {
-  background: #c8b070;
+  background: #dac894;
 }
 
 .chase6-signal-item.chase6-hq .chase6-bet {
-  color: #4a3010;
+  color: #553820;
 }
 
-/* 追6 dots */
-.chase6-dots {
-  display: flex;
-  gap: 3px;
+/* 波浪强信号: 强信号 + 波浪过滤达标, 紫色调 */
+.chase6-signal-item.chase6-wave {
+  border-color: #bea6c6;
 }
 
-.chase6-dot {
-  border: 1.5px solid #c4b088;
-  border-radius: 50%;
-  height: 12px;
-  width: 12px;
+.chase6-signal-item.chase6-wave .chase6-label {
+  background: #d2beda;
+  color: #2a1038;
 }
 
-.chase6-dot.filled {
-  background: #b89860;
-  border-color: #b89860;
+.chase6-signal-item.chase6-wave .chase6-chase {
+  background: #ede0f0;
+}
+
+.chase6-signal-item.chase6-wave.chase6-active .chase6-chase {
+  background: #e4d4ea;
+}
+
+.chase6-signal-item.chase6-wave.chase6-active .chase6-label {
+  background: #bca0cc;
+}
+
+.chase6-signal-item.chase6-wave .chase6-bet {
+  color: #2a1038;
 }
 
 .chase6-signal-item.chase6-hq .chase6-dot {
@@ -3349,6 +3357,48 @@ button:disabled {
   border-color: #8a6020;
 }
 
+.chase6-signal-item.chase6-wave .chase6-dot {
+  border-color: #b090c0;
+}
+
+.chase6-signal-item.chase6-wave .chase6-dot.filled {
+  background: #8a58a8;
+  border-color: #8a58a8;
+}
+
+/* 追6 星级标记 */
+.chase6-stars {
+  font-size: 15px;
+  letter-spacing: -2px;
+  margin-left: 10px;
+  opacity: 0.85;
+}
+
+.chase6-signal-item.chase6-hq .chase6-stars {
+  color: #b89440;
+}
+
+.chase6-signal-item.chase6-wave .chase6-stars {
+  color: #8a58a8;
+}
+
+/* 追6 dots */
+.chase6-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.chase6-dot {
+  border: 1.5px solid #c8b690;
+  border-radius: 50%;
+  height: 12px;
+  width: 12px;
+}
+
+.chase6-dot.filled {
+  background: #bc9c68;
+  border-color: #bc9c68;
+}
 .prediction-signal-label-legacy {
   color: #8a3a38;
   font-size: 16px;
