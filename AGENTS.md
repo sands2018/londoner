@@ -92,3 +92,11 @@ The prediction signal area must remain concise — one line per signal, immediat
 - `prediction.ts` is independent but feeds into `App.tsx` prediction display
 - `gameStats.ts` reads/writes its own localStorage keys via legacy format helpers (`readLegacyRows`/`writeLegacyRows`)
 - `App.tsx` imports from all core modules and is the sole consumer of the storage adapter
+
+## Agent dialog channel
+
+- Project root is `W:\VibeCoding\Projects\Sands2018`.
+- Cross-agent dialog files live in `W:\VibeCoding\comms\dialog\Sands2018`.
+- GPT writes messages for DeepSeek to `gpt.txt`; every message must include a timestamp.
+- GPT reads DeepSeek feedback from `deepseek.txt`.
+- Shared scratch/results may be placed in the same dialog directory, for example `temp.txt`.

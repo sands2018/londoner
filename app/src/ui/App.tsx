@@ -568,6 +568,77 @@ export function App() {
     return items;
   }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
 
+  // 追6信号: 6号滑窗, gap∈[25,29], 211追3轮
+  const chaseSixSignals = useMemo(() => {
+    const items: Array<{ wi: number; windowName: string; round: number; betAmt: number; isNew: boolean; chaseLen: number; isHighQuality: boolean }> = [];
+    if (numbers.length < 10) return items;
+
+    const MIN_G = 25, MAX_G = 29;
+    const PROG = [2, 1, 1];
+    const CHASE_LEN = 3;
+    const W = 11;
+    const wStart = (wi: number) => 1 + wi * 3;
+    const wEnd = (wi: number) => 6 + wi * 3;
+    const inWin = (wi: number, v: number) => v >= wStart(wi) && v <= wEnd(wi);
+
+    const gaps = new Array(W).fill(0);
+    const appearCount = new Array(W).fill(0);
+    const activeChases: Array<{ wi: number; sr: number; isHQ: boolean }> = [];
+
+    for (let r = 0; r < numbers.length; r++) {
+      const v = numbers[r];
+
+      // 结算活跃追打
+      const remaining: typeof activeChases = [];
+      for (const c of activeChases) {
+        const ri = r - c.sr;
+        if (ri >= CHASE_LEN) continue;
+        if (v !== 0 && inWin(c.wi, v)) continue; // 命中，追打结束
+        if (ri + 1 < CHASE_LEN) remaining.push(c);
+        // else: 最后一轮未命中，追打结束(loss)
+      }
+      activeChases.length = 0;
+      activeChases.push(...remaining);
+
+      // 检测信号: gap∈[25,29], minAppearances>=5
+      if (v !== 0) {
+        const candidates: Array<{ wi: number; gap: number }> = [];
+        for (let wi = 0; wi < W; wi++) {
+          if (inWin(wi, v) && gaps[wi] >= MIN_G && gaps[wi] <= MAX_G && appearCount[wi] >= 5 && !activeChases.some(c => c.wi === wi)) {
+            candidates.push({ wi, gap: gaps[wi] });
+          }
+        }
+        if (candidates.length > 0) {
+          candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
+          const sel = candidates[0];
+          activeChases.push({ wi: sel.wi, sr: r + 1, isHQ: appearCount[sel.wi] >= 20 });
+        }
+      }
+
+      // 更新 gap 和出现计数 (0 不更新)
+      if (v !== 0) {
+        for (let wi = 0; wi < W; wi++) {
+          if (inWin(wi, v)) { gaps[wi] = 0; appearCount[wi] += 1; }
+          else { gaps[wi] += 1; }
+        }
+      }
+    }
+
+    // 当前活跃追打 → 展示
+    for (const c of activeChases) {
+      const roundsPlayed = Math.max(0, numbers.length - c.sr);
+      const nr = roundsPlayed + 1;
+      if (nr > CHASE_LEN) continue;
+      items.push({
+        wi: c.wi, windowName: `${wStart(c.wi)}-${wEnd(c.wi)}`,
+        round: nr, betAmt: PROG[nr - 1] ?? PROG[PROG.length - 1],
+        isNew: nr === 1, chaseLen: CHASE_LEN, isHighQuality: c.isHQ,
+      });
+    }
+
+    return items;
+  }, [numbers]);
+
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
   const effectiveOtherScope = otherScope < 0 ? numbers.length : otherScope;
@@ -2065,6 +2136,27 @@ export function App() {
                   ))}
                 </span>
                 <span style={{ color: "#555", fontSize: 14, fontWeight: 500 }}>{item.betAmt}</span>
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {chaseSixSignals.length > 0 ? (
+        <section className="chase6-signal-area" aria-label="追6信号">
+          {chaseSixSignals.map((item) => (
+            <div
+              className={`chase6-signal-item ${item.isHighQuality ? "chase6-hq" : ""} ${item.isNew ? "" : "chase6-active"}`}
+              key={`chase6-${item.wi}`}
+            >
+              <strong className="chase6-label">{item.windowName}</strong>
+              <span className="chase6-chase">
+                <span className="chase6-dots">
+                  {Array.from({ length: item.chaseLen }, (_, i) => i + 1).map((n) => (
+                    <span key={n} className={`chase6-dot ${n <= item.round ? "filled" : ""}`} />
+                  ))}
+                </span>
+                <span className="chase6-bet">{item.betAmt}</span>
               </span>
             </div>
           ))}

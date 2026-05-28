@@ -3216,6 +3216,116 @@ button:disabled {
   border-color: #8aaa8a;
 }
 
+/* 追6信号: 6号滑窗, gap∈[25,29], 211追3轮, 2张/行 */
+.chase6-signal-area {
+  background: transparent;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.chase6-signal-item {
+  align-items: stretch;
+  border: 1px solid #d4c7ac;
+  border-radius: 5px;
+  display: flex;
+  flex: 0 0 calc((100% - 4px) / 2);
+  overflow: hidden;
+}
+
+.chase6-label {
+  align-items: center;
+  background: #e4d6ba;
+  color: #6b5a38;
+  display: flex;
+  flex: 0 0 44px;
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+  justify-content: center;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.chase6-chase {
+  align-items: center;
+  background: #f1e9d6;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  justify-content: space-around;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.chase6-signal-item.chase6-active .chase6-chase {
+  background: #e8dec4;
+}
+
+.chase6-signal-item.chase6-active .chase6-label {
+  background: #d4c6a8;
+}
+
+.chase6-bet {
+  color: #6b5a38;
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+}
+
+/* 高质量信号: minAppearances>=20, 饱和米黄 */
+.chase6-signal-item.chase6-hq {
+  border-color: #c8b878;
+}
+
+.chase6-signal-item.chase6-hq .chase6-label {
+  background: #d4c088;
+  color: #4a3010;
+}
+
+.chase6-signal-item.chase6-hq .chase6-chase {
+  background: #ede0c0;
+}
+
+.chase6-signal-item.chase6-hq.chase6-active .chase6-chase {
+  background: #e0cc98;
+}
+
+.chase6-signal-item.chase6-hq.chase6-active .chase6-label {
+  background: #c8b070;
+}
+
+.chase6-signal-item.chase6-hq .chase6-bet {
+  color: #4a3010;
+}
+
+/* 追6 dots */
+.chase6-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.chase6-dot {
+  border: 1.5px solid #c4b088;
+  border-radius: 50%;
+  height: 12px;
+  width: 12px;
+}
+
+.chase6-dot.filled {
+  background: #b89860;
+  border-color: #b89860;
+}
+
+.chase6-signal-item.chase6-hq .chase6-dot {
+  border-color: #b89860;
+}
+
+.chase6-signal-item.chase6-hq .chase6-dot.filled {
+  background: #8a6020;
+  border-color: #8a6020;
+}
+
 .prediction-signal-label-legacy {
   color: #8a3a38;
   font-size: 16px;
