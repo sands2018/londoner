@@ -21,7 +21,7 @@
   --dock-left: 0;
   --dock-margin: 0 auto;
   --dock-max-width: var(--app-content-max-width);
-  --dock-padding: clamp(4px, 0.55dvh, 5px) 6px clamp(10px, 1.2dvh, 14px);
+  --dock-padding: clamp(4px, 0.55dvh, 5px) 6px clamp(22px, 2.5dvh, 28px);
   --dock-position: fixed;
   --dock-right: 0;
   --dock-transform: none;
@@ -331,6 +331,13 @@ button:disabled {
   padding-right: clamp(4px, 1.05vw, 6px);
 }
 
+.queue-panel.expanded {
+  align-content: start;
+  max-height: 280px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .queue-panel.collapsed {
   align-content: start;
   max-height: calc(var(--queue-cell-size) + (var(--queue-padding-block) * 2));
@@ -633,7 +640,7 @@ button:disabled {
   color: #7a592d;
   font-size: var(--control-font-size);
   font-weight: var(--weight-ui);
-  min-height: var(--control-min-height);
+  min-height: var(--key-height);
   min-width: 0;
   display: flex;
   justify-content: center;
@@ -644,7 +651,7 @@ button:disabled {
 
 .dock-actions button {
   font-size: var(--menu-font-size);
-  min-height: var(--menu-min-height);
+  min-height: var(--key-height);
 }
 
 .dock-actions button {
@@ -1809,7 +1816,7 @@ button:disabled {
   display: flex;
   gap: 1px;
   overflow-x: auto;
-  padding: 0 4px 8px;
+  padding: 0 4px 18px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -2383,9 +2390,6 @@ button:disabled {
     --number-font-size: 17px;
   }
 
-  .queue-panel.expanded .queue-row {
-    grid-template-columns: repeat(auto-fill, minmax(var(--queue-cell-size), var(--queue-cell-size)));
-  }
 }
 
 @media (orientation: portrait) and (max-height: 820px) {
@@ -2647,8 +2651,74 @@ button:disabled {
 }
 
 .overview-card-title {
+  align-items: center;
+  display: flex;
   font-size: 14px;
   font-weight: var(--weight-emphasis);
+  justify-content: space-between;
+}
+
+.signal-toggle {
+  background: #ccc;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  height: 20px;
+  padding: 0;
+  position: relative;
+  touch-action: manipulation;
+  transition: background 0.2s;
+  width: 36px;
+}
+
+.signal-toggle.on {
+  background: #c09858;
+}
+
+.signal-toggle::after {
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  content: "";
+  height: 16px;
+  left: 2px;
+  position: absolute;
+  top: 2px;
+  transition: transform 0.2s;
+  width: 16px;
+}
+
+.signal-toggle.on::after {
+  transform: translateX(16px);
+}
+
+.signal-tier-group {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.signal-tier-opts {
+  display: flex;
+  gap: 4px;
+}
+
+.signal-tier-btn {
+  background: #beb8ae;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  padding: 3px 7px;
+  touch-action: manipulation;
+}
+
+.signal-tier-btn.active {
+  background: #c09858;
+  border: none;
+  color: #fff;
 }
 
 .overview-cold {
@@ -2725,7 +2795,7 @@ button:disabled {
   align-items: center;
   border-radius: 10px 10px 0 0;
   margin: 0 0 0 0;
-  min-height: 48px;
+  min-height: 40px;
 }
 
 .prediction-desc {
@@ -3457,11 +3527,11 @@ button:disabled {
   background: #f4f2f2;
   display: flex;
   flex: 1;
-  gap: 10px;
-  justify-content: center;
+  gap: 8px;
+  justify-content: space-around;
   min-height: 36px;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 
 .chase3-gap {

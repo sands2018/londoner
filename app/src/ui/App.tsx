@@ -231,6 +231,10 @@ export function App() {
   const [statsTab, setStatsTab] = useState("game");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "rhythm");
+  const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
+  const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
+  const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
+  const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [waveTab, setWaveTab] = useState<"kline" | "spark">("kline");
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
@@ -1385,7 +1389,6 @@ export function App() {
     });
   }
 
-  const visibleQueueRows = [queueItems];
   const maxStatsColRowCount = Math.max(...stats.colRows.map((item) => item.count), 1);
   const maxBisectionCount = Math.max(
     stats.bisections.red,
@@ -1997,18 +2000,11 @@ export function App() {
         onClick={() => setQueueExpanded((value) => !value)}
       >
         {queueItems.length === 0 ? <span className="empty-state">等待输入</span> : null}
-        {visibleQueueRows.map((row, rowIndex) => (
-          <div className="queue-row" key={rowIndex}>
-            {row.map((value, index) => (
-              <span
-                className={`queue-chip number-${getNumberColor(value)}`}
-                key={`${rowIndex}-${index}-${numbers.length}`}
-              >
-                {value}
-              </span>
-            ))}
-          </div>
-        ))}
+        <div className="queue-row">
+          {(queueExpanded ? [...numbers].reverse() : queueItems).map((value, index) => (
+            <span className={`queue-chip number-${getNumberColor(value)}`} key={`q-${index}-${numbers.length}`}>{value}</span>
+          ))}
+        </div>
       </section>
 
       <section className="summary-grid">
@@ -2065,9 +2061,9 @@ export function App() {
         </div>
       </section>
 
-      {signalDisplay.length > 0 ? (
+      {(() => { const filtered = signalDisplay.filter(item => (item.kind === "rhythm" ? show124 : showCold)); return filtered.length > 0 ? (
         <section className="prediction-signal-area" aria-label="预测信号">
-          {signalDisplay.map((item) => (
+          {filtered.map((item) => (
             <div
               className={`prediction-signal-item ${item.isNew ? "" : "chase-active"} ${item.kind === "rhythm" ? "rhythm-signal" : ""}`}
               key={`${item.kind}-${item.ci}`}
@@ -2087,11 +2083,11 @@ export function App() {
             </div>
           ))}
         </section>
-      ) : null}
+      ) : null; })()}
 
-      {chaseSixSignals.length > 0 ? (
+      {(() => { const c6f = chase6Filter; const filtered6 = c6f === "全关" ? [] : c6f === "TOP2" ? chaseSixSignals.filter(item => item.isStrong || item.isWaveStrong) : c6f === "TOP1" ? chaseSixSignals.filter(item => item.isWaveStrong) : chaseSixSignals; return filtered6.length > 0 ? (
         <section className="chase6-signal-area" aria-label="追6信号">
-          {chaseSixSignals.map((item) => (
+          {filtered6.map((item) => (
             <div
               className={`chase6-signal-item ${item.isStrong ? "chase6-hq" : ""} ${item.isWaveStrong ? "chase6-wave" : ""} ${item.isNew ? "" : "chase6-active"}`}
               key={`chase6-${item.wi}`}
@@ -2112,11 +2108,11 @@ export function App() {
             </div>
           ))}
         </section>
-      ) : null}
+      ) : null; })()}
 
-      {chaseThreeSignals.length > 0 ? (
+      {(() => { const c3f = chase3Filter; const filtered3 = c3f === "全关" ? [] : c3f === "TOP2" ? chaseThreeSignals.filter(item => item.isStar1 || item.isStar2) : c3f === "TOP1" ? chaseThreeSignals.filter(item => item.isStar2) : chaseThreeSignals; return filtered3.length > 0 ? (
         <section className="chase3-signal-area" aria-label="追3信号">
-          {chaseThreeSignals.map((item) => (
+          {filtered3.map((item) => (
             <div
               className={`chase3-signal-item ${item.isStar1 ? "chase3-star1" : ""} ${item.isStar2 ? "chase3-star2" : ""} ${item.isNew ? "" : "chase3-active"}`}
               key={`chase3-${item.wi}`}
@@ -2133,7 +2129,7 @@ export function App() {
             </div>
           ))}
         </section>
-      ) : null}
+      ) : null; })()}
 
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
@@ -3027,7 +3023,10 @@ export function App() {
               {predictionTab === "overview" ? (
                 <div className="overview-cards">
                   <div className="overview-card overview-rhythm" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
-                    <strong className="overview-card-title">124</strong>
+                    <div className="overview-card-title">
+                      <span>124</span>
+                      <button className={`signal-toggle${show124 ? " on" : ""}`} onClick={(e) => { e.stopPropagation(); const v = !show124; setShow124(v); localStorage.setItem("londoner.show124", v ? "1" : "0"); }} type="button" />
+                    </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
@@ -3041,7 +3040,10 @@ export function App() {
                     </div>
                   </div>
                   <div className="overview-card overview-cold" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
-                    <strong className="overview-card-title">长套</strong>
+                    <div className="overview-card-title">
+                      <span>长套</span>
+                      <button className={`signal-toggle${showCold ? " on" : ""}`} onClick={(e) => { e.stopPropagation(); const v = !showCold; setShowCold(v); localStorage.setItem("londoner.showCold", v ? "1" : "0"); }} type="button" />
+                    </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
@@ -3055,7 +3057,19 @@ export function App() {
                     </div>
                   </div>
                   <div className="overview-card overview-chase6" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
-                    <strong className="overview-card-title">追6</strong>
+                    <div className="overview-card-title">
+                      <span>追6</span>
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${chase6Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase6Filter === "全关" ? "全部" : "全关"; setChase6Filter(v); localStorage.setItem("londoner.chase6Filter", v); }} type="button" />
+                        {chase6Filter !== "全关" ? (
+                          <span className="signal-tier-opts">
+                            {["全部","TOP2","TOP1"].map(t => (
+                              <button key={t} className={`signal-tier-btn${chase6Filter === t ? " active" : ""}`} onClick={() => { setChase6Filter(t); localStorage.setItem("londoner.chase6Filter", t); }} type="button">{t}</button>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
+                    </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
@@ -3073,7 +3087,19 @@ export function App() {
                     </div>
                   </div>
                   <div className="overview-card overview-chase3" onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} role="button" tabIndex={0}>
-                    <strong className="overview-card-title">追3</strong>
+                    <div className="overview-card-title">
+                      <span>追3</span>
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${chase3Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase3Filter === "全关" ? "全部" : "全关"; setChase3Filter(v); localStorage.setItem("londoner.chase3Filter", v); }} type="button" />
+                        {chase3Filter !== "全关" ? (
+                          <span className="signal-tier-opts">
+                            {["全部","TOP2","TOP1"].map(t => (
+                              <button key={t} className={`signal-tier-btn${chase3Filter === t ? " active" : ""}`} onClick={() => { setChase3Filter(t); localStorage.setItem("londoner.chase3Filter", t); }} type="button">{t}</button>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
+                    </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
