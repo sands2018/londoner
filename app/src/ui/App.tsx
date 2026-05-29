@@ -2137,7 +2137,7 @@ export function App() {
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
-          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadCurrentTransfer(u, p)); }} type="button">传输</button>
+          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传输</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
@@ -2252,7 +2252,7 @@ export function App() {
                     量 <SortMark active={sessionSortField === "count"} direction={sessionSortDirection} />
                   </th>
                   <th onClick={() => sortDataView("sharedUploader")}>
-                    上传者 <SortMark active={sessionSortField === "sharedUploader"} direction={sessionSortDirection} />
+                    ID <SortMark active={sessionSortField === "sharedUploader"} direction={sessionSortDirection} />
                   </th>
                   <th onClick={() => sortDataView("time")}>
                     时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
@@ -2334,7 +2334,7 @@ export function App() {
                             量 <SortMark active={sharedSortField === "count"} direction={sharedSortDirection} />
                           </th>
                           <th onClick={() => sortSharedView("user")}>
-                            上传者 <SortMark active={sharedSortField === "user"} direction={sharedSortDirection} />
+                            ID <SortMark active={sharedSortField === "user"} direction={sharedSortDirection} />
                           </th>
                           <th onClick={() => sortSharedView("time")}>
                             时间 <SortMark active={sharedSortField === "time"} direction={sharedSortDirection} />
@@ -2387,7 +2387,7 @@ export function App() {
                       <thead>
                         <tr>
                           <th>量</th>
-                          <th>传输人</th>
+                          <th>ID</th>
                           <th>时间</th>
                         </tr>
                       </thead>
