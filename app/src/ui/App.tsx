@@ -390,6 +390,7 @@ export function App() {
     };
     // dateKey asc + importIndex asc (matches backtesting sort)
     const sorted = allSavedSessions
+      .filter((s) => !s.name.startsWith("DEBUG-"))
       .filter((s) => (s.name.match(/(\d{4})/) || [""])[0] === currentYear)
       .sort((a, b) => {
         const dk = getDateKey(a.name).localeCompare(getDateKey(b.name));
