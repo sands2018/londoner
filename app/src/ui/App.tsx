@@ -262,11 +262,11 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
-  const [configTab, setConfigTab] = useState<"signal" | "game" | "other">("signal");
+  const [configTab, setConfigTab] = useState<"game" | "other">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
-  const [draftRhythmRowsOnly, setDraftRhythmRowsOnly] = useState(rhythmRowsOnly);
+  const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
   const [coldAdaptiveMode, setColdAdaptiveMode] = useState<string>(() => localStorage.getItem("londoner.coldAdaptiveMode") || "adaptiveRow");
-  const [draftColdAdaptiveMode, setDraftColdAdaptiveMode] = useState(coldAdaptiveMode);
+  const coldModeLabel = coldAdaptiveMode === "off" ? "不切换" : coldAdaptiveMode === "adaptive" ? "自适应" : "自适应+默认行";
   const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
   const [allSavedSessions, setAllSavedSessions] = useState<SavedSession[]>([]);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
@@ -1521,8 +1521,6 @@ export function App() {
 
   function openConfigView() {
     reloadGameConfigState();
-    setDraftRhythmRowsOnly(rhythmRowsOnly);
-    setDraftColdAdaptiveMode(coldAdaptiveMode);
     setDraftWindowMode(windowMode);
     setConfigViewOpen(true);
   }
@@ -1636,15 +1634,6 @@ export function App() {
   }
 
   function saveConfigView() {
-    if (configTab === "signal") {
-      setRhythmRowsOnly(draftRhythmRowsOnly);
-      localStorage.setItem("londoner.rhythmRowsOnly", draftRhythmRowsOnly ? "true" : "false");
-      setColdAdaptiveMode(draftColdAdaptiveMode);
-      localStorage.setItem("londoner.coldAdaptiveMode", draftColdAdaptiveMode);
-      setConfigViewOpen(false);
-      return;
-    }
-
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
@@ -3025,7 +3014,16 @@ export function App() {
                   <div className="overview-card overview-rhythm" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>124</span>
-                      <button className={`signal-toggle${show124 ? " on" : ""}`} onClick={(e) => { e.stopPropagation(); const v = !show124; setShow124(v); localStorage.setItem("londoner.show124", v ? "1" : "0"); }} type="button" />
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${show124 ? " on" : ""}`} onClick={() => { const v = !show124; setShow124(v); localStorage.setItem("londoner.show124", v ? "1" : "0"); }} type="button" />
+                        {show124 ? (
+                          <span className="signal-tier-opts">
+                            {["全部","仅行"].map(t => (
+                              <button key={t} className={`signal-tier-btn${rhythmMode === t ? " active" : ""}`} onClick={() => { setRhythmMode(t); const ro = t === "仅行"; setRhythmRowsOnly(ro); localStorage.setItem("londoner.rhythmMode", t); localStorage.setItem("londoner.rhythmRowsOnly", ro ? "true" : "false"); }} type="button">{t}</button>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
@@ -3042,7 +3040,16 @@ export function App() {
                   <div className="overview-card overview-cold" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>长套</span>
-                      <button className={`signal-toggle${showCold ? " on" : ""}`} onClick={(e) => { e.stopPropagation(); const v = !showCold; setShowCold(v); localStorage.setItem("londoner.showCold", v ? "1" : "0"); }} type="button" />
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${showCold ? " on" : ""}`} onClick={() => { const v = !showCold; setShowCold(v); localStorage.setItem("londoner.showCold", v ? "1" : "0"); }} type="button" />
+                        {showCold ? (
+                          <span className="signal-tier-opts">
+                            {["不切换","自适应","自适应+默认行"].map(t => (
+                              <button key={t} className={`signal-tier-btn${coldModeLabel === t ? " active" : ""}`} onClick={() => { const mode = t === "不切换" ? "off" : t === "自适应" ? "adaptive" : "adaptiveRow"; setColdAdaptiveMode(mode); localStorage.setItem("londoner.coldAdaptiveMode", mode); }} type="button">{t}</button>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
@@ -3305,55 +3312,10 @@ export function App() {
               <button className="close-button" onClick={() => setConfigViewOpen(false)} type="button">x</button>
             </header>
             <div className="stats-tabs">
-              <button className={configTab === "signal" ? "selected" : ""} onClick={() => setConfigTab("signal")} type="button">信号</button>
               <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
               <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
             </div>
-            {configTab === "signal" ? (
-              <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
-                <section className="config-card config-bets">
-                  <h2><span>124 信号范围</span></h2>
-                  <div style={{ padding: "10px 0" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={draftRhythmRowsOnly}
-                      onChange={() => setDraftRhythmRowsOnly(true)}
-                      style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
-                    />
-                    <span>仅行（排除组信号）</span>
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={!draftRhythmRowsOnly}
-                      onChange={() => setDraftRhythmRowsOnly(false)}
-                      style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
-                    />
-                    <span>全部信号（行+组）</span>
-                  </label>
-                  </div>
-                </section>
-                <section className="config-card config-bets">
-                  <h2><span>长套 自适应</span></h2>
-                  <p style={{ fontSize: "14px", color: "#8a7e74", padding: "4px 12px 0", margin: 0 }}>自适应仅对已保存的场次生效；未保存当前数据时按全六组显示。</p>
-                  <div style={{ padding: "10px 0" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                    <input type="checkbox" checked={draftColdAdaptiveMode === "off"} onChange={() => setDraftColdAdaptiveMode("off")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
-                    <span>不切换（全六组）</span>
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                    <input type="checkbox" checked={draftColdAdaptiveMode === "adaptive"} onChange={() => setDraftColdAdaptiveMode("adaptive")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
-                    <span>自适应切换（行/组累计ROI择优）</span>
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                    <input type="checkbox" checked={draftColdAdaptiveMode === "adaptiveRow"} onChange={() => setDraftColdAdaptiveMode("adaptiveRow")} style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }} />
-                    <span>自适应切换 + 冷启动押行</span>
-                  </label>
-                  </div>
-                </section>
-              </div>
-            ) : configTab === "other" ? (
+            {configTab === "other" ? (
               <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
                 <section className="config-card config-bets">
                   <h2><span>统计窗口</span></h2>
