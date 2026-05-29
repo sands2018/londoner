@@ -2652,31 +2652,40 @@ button:disabled {
 }
 
 .overview-cold {
-  background: #eef4ea;
-  border-color: #c0d4bc;
+  background: #e8eef2;
+  border-color: #c8d8e0;
 }
-.overview-cold .overview-card-title { color: #4a7040; }
-.overview-cold .prediction-roi-table { border-color: #c0d4bc; }
-.overview-cold .prediction-roi-row { border-bottom-color: #d8e4d4; }
-.overview-cold .prediction-roi-row span { color: #6b7a65; }
+.overview-cold .overview-card-title { color: #486068; }
+.overview-cold .prediction-roi-table { border-color: #c8d8e0; }
+.overview-cold .prediction-roi-row { border-bottom-color: #d4dce4; }
+.overview-cold .prediction-roi-row span { color: #607080; }
 
 .overview-rhythm {
-  background: #f2eeee;
-  border-color: #d8c8c8;
+  background: #eef4ea;
+  border-color: #e0e8dc;
 }
-.overview-rhythm .overview-card-title { color: #7a4a48; }
-.overview-rhythm .prediction-roi-table { border-color: #d8c8c8; }
-.overview-rhythm .prediction-roi-row { border-bottom-color: #e8dcdc; }
-.overview-rhythm .prediction-roi-row span { color: #7a6b65; }
+.overview-rhythm .overview-card-title { color: #4a6040; }
+.overview-rhythm .prediction-roi-table { border-color: #e0e8dc; }
+.overview-rhythm .prediction-roi-row { border-bottom-color: #d8e4d4; }
+.overview-rhythm .prediction-roi-row span { color: #6b7a65; }
 
 .overview-chase6 {
-  background: #f5efe0;
-  border-color: #d0c0a0;
+  background: #f8f4ea;
+  border-color: #f2e8da;
 }
 .overview-chase6 .overview-card-title { color: #6b5a38; }
-.overview-chase6 .prediction-roi-table { border-color: #d0c0a0; }
-.overview-chase6 .prediction-roi-row { border-bottom-color: #e4d8c0; }
+.overview-chase6 .prediction-roi-table { border-color: #f2e8da; }
+.overview-chase6 .prediction-roi-row { border-bottom-color: #eee4d4; }
 .overview-chase6 .prediction-roi-row span { color: #7a6b55; }
+
+.overview-chase3 {
+  background: #f4f2f2;
+  border-color: #ece4e4;
+}
+.overview-chase3 .overview-card-title { color: #7a4a48; }
+.overview-chase3 .prediction-roi-table { border-color: #ece4e4; }
+.overview-chase3 .prediction-roi-row { border-bottom-color: #e8e0e0; }
+.overview-chase3 .prediction-roi-row span { color: #7a6b65; }
 
 .prediction-tabs {
   align-items: end;
@@ -3135,7 +3144,7 @@ button:disabled {
 
 .prediction-signal-item {
   align-items: stretch;
-  border: 1px solid #c0d0bc;
+  border: 1px solid #c8d8e0;
   border-radius: 5px;
   cursor: pointer;
   display: flex;
@@ -3144,11 +3153,11 @@ button:disabled {
   touch-action: manipulation;
 }
 
-/* 冷门反转 = 冷色调 (绿) */
+/* 冷门反转 = 游泳池蓝 */
 .prediction-signal-label {
   align-items: center;
-  background: #d4dcd0;
-  color: #4a6040;
+  background: #c8d8e0;
+  color: #486068;
   display: flex;
   flex: 0 0 40px;
   font-size: 15px;
@@ -3160,7 +3169,7 @@ button:disabled {
 
 .prediction-signal-item .prediction-chase {
   align-items: center;
-  background: #eef4ea;
+  background: #e8eef2;
   display: flex;
   flex: 1;
   gap: 6px;
@@ -3171,46 +3180,56 @@ button:disabled {
 }
 
 .prediction-signal-item:active .prediction-chase {
-  background: #e4ece2;
+  background: #d8e2ea;
 }
 
 .prediction-signal-item.chase-active .prediction-chase {
-  background: #e4ece2;
+  background: #d8e2ea;
 }
 
 .prediction-signal-item.chase-active .prediction-signal-label {
-  background: #c8d4c0;
+  background: #b4c8d4;
 }
 
-/* 节奏追号 = 暖色调 (粉) */
+.prediction-bet {
+  color: #486068;
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+}
+
+.prediction-signal-item.rhythm-signal .prediction-bet {
+  color: #4a6040;
+}
+
+/* 节奏追号 = 灰绿 */
 .prediction-signal-item.rhythm-signal {
-  border-color: #d8c8c8;
+  border-color: #e0e8dc;
 }
 
 .prediction-signal-item.rhythm-signal .prediction-signal-label {
-  background: #e0d6d6;
-  color: #7a4a48;
+  background: #e0e8dc;
+  color: #4a6040;
 }
 
 .prediction-signal-item.rhythm-signal .prediction-chase {
-  background: #f2eeee;
+  background: #eef4ea;
 }
 
 .prediction-signal-item.rhythm-signal.chase-active .prediction-chase {
-  background: #eadede;
+  background: #e0e8dc;
 }
 
 .prediction-signal-item.rhythm-signal.chase-active .prediction-signal-label {
-  background: #d4c8c8;
+  background: #ccd8c8;
 }
 
 .prediction-signal-item.rhythm-signal .prediction-dot {
-  border-color: #c0a8a8;
+  border-color: #a0b8a0;
 }
 
 .prediction-signal-item.rhythm-signal .prediction-dot.filled {
-  background: #b89898;
-  border-color: #b89898;
+  background: #8aaa8a;
+  border-color: #8aaa8a;
 }
 
 .prediction-chase {
@@ -3225,7 +3244,7 @@ button:disabled {
 }
 
 .prediction-dot {
-  border: 1.5px solid #a0b8a0;
+  border: 1.5px solid #aebfc8;
   border-radius: 50%;
   display: inline-block;
   height: 12px;
@@ -3233,8 +3252,8 @@ button:disabled {
 }
 
 .prediction-dot.filled {
-  background: #8aaa8a;
-  border-color: #8aaa8a;
+  background: #8aa8b8;
+  border-color: #8aa8b8;
 }
 
 /* 追6信号: 6号滑窗, gap∈[25,29], 211追3轮, 2张/行 */
@@ -3248,7 +3267,7 @@ button:disabled {
 
 .chase6-signal-item {
   align-items: stretch;
-  border: 1px solid #d9ccb4;
+  border: 1px solid #f2e8da;
   border-radius: 5px;
   cursor: pointer;
   display: flex;
@@ -3259,7 +3278,7 @@ button:disabled {
 
 .chase6-label {
   align-items: center;
-  background: #e8dcc4;
+  background: #f2e8da;
   color: #6b5a38;
   display: flex;
   flex: 0 0 44px;
@@ -3272,7 +3291,7 @@ button:disabled {
 
 .chase6-chase {
   align-items: center;
-  background: #f5efde;
+  background: #f8f4ea;
   display: flex;
   flex: 1;
   gap: 8px;
@@ -3283,11 +3302,11 @@ button:disabled {
 }
 
 .chase6-signal-item.chase6-active .chase6-chase {
-  background: #ece4ce;
+  background: #eee8d8;
 }
 
 .chase6-signal-item.chase6-active .chase6-label {
-  background: #d8ccb2;
+  background: #e8d8c4;
 }
 
 .chase6-bet {
@@ -3298,72 +3317,72 @@ button:disabled {
 
 /* 高质量信号: minAppearances>=20, 浅金 */
 .chase6-signal-item.chase6-hq {
-  border-color: #d3c690;
+  border-color: #eee0bf;
 }
 
 .chase6-signal-item.chase6-hq .chase6-label {
-  background: #e4d4a8;
+  background: #eee0bf;
   color: #553820;
 }
 
 .chase6-signal-item.chase6-hq .chase6-chase {
-  background: #f4ecd6;
+  background: #f4eede;
 }
 
 .chase6-signal-item.chase6-hq.chase6-active .chase6-chase {
-  background: #ebdab0;
+  background: #e8e0ca;
 }
 
 .chase6-signal-item.chase6-hq.chase6-active .chase6-label {
-  background: #dac894;
+  background: #e4d4a8;
 }
 
 .chase6-signal-item.chase6-hq .chase6-bet {
   color: #553820;
 }
 
-/* 波浪强信号: 强信号 + 波浪过滤达标, 紫色调 */
+/* 波浪强信号: 强信号 + 波浪过滤达标, 琥珀金 */
 .chase6-signal-item.chase6-wave {
-  border-color: #bea6c6;
+  border-color: #ead8b6;
 }
 
 .chase6-signal-item.chase6-wave .chase6-label {
-  background: #d2beda;
-  color: #2a1038;
+  background: #ead8b6;
+  color: #4a3018;
 }
 
 .chase6-signal-item.chase6-wave .chase6-chase {
-  background: #ede0f0;
+  background: #f2e8d0;
 }
 
 .chase6-signal-item.chase6-wave.chase6-active .chase6-chase {
-  background: #e4d4ea;
+  background: #e8dcc0;
 }
 
 .chase6-signal-item.chase6-wave.chase6-active .chase6-label {
-  background: #bca0cc;
+  background: #dcc898;
 }
 
 .chase6-signal-item.chase6-wave .chase6-bet {
-  color: #2a1038;
+  color: #4a3018;
 }
 
 .chase6-signal-item.chase6-hq .chase6-dot {
-  border-color: #b89860;
+  border-color: #c4a868;
 }
 
 .chase6-signal-item.chase6-hq .chase6-dot.filled {
-  background: #8a6020;
-  border-color: #8a6020;
+  background: #b49850;
+  border-color: #b49850;
 }
 
 .chase6-signal-item.chase6-wave .chase6-dot {
-  border-color: #b090c0;
+  border-color: #cab478;
 }
 
 .chase6-signal-item.chase6-wave .chase6-dot.filled {
-  background: #8a58a8;
-  border-color: #8a58a8;
+  background: #a88040;
+  border-color: #a88040;
 }
 
 /* 追6 星级标记 */
@@ -3379,7 +3398,7 @@ button:disabled {
 }
 
 .chase6-signal-item.chase6-wave .chase6-stars {
-  color: #8a58a8;
+  color: #b08830;
 }
 
 /* 追6 dots */
@@ -3391,14 +3410,155 @@ button:disabled {
 .chase6-dot {
   border: 1.5px solid #c8b690;
   border-radius: 50%;
-  height: 12px;
-  width: 12px;
+  height: 11px;
+  width: 11px;
 }
 
 .chase6-dot.filled {
   background: #bc9c68;
   border-color: #bc9c68;
 }
+
+/* ── 追3信号: 12街口, gap∈[47,53], 1口追 ── */
+.chase3-signal-area {
+  background: transparent;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.chase3-signal-item {
+  align-items: stretch;
+  border: 1px solid #ece4e4;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  flex: 0 0 calc((100% - 4px) / 2);
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.chase3-label {
+  align-items: center;
+  background: #ece4e4;
+  color: #7a4a48;
+  display: flex;
+  flex: 0 0 44px;
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+  justify-content: center;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.chase3-chase {
+  align-items: center;
+  background: #f4f2f2;
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.chase3-gap {
+  color: #8a5a58;
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+}
+
+.chase3-bet {
+  color: #7a4a48;
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+}
+
+.chase3-signal-item.chase3-active .chase3-chase {
+  background: #ece6e6;
+}
+
+.chase3-signal-item.chase3-active .chase3-label {
+  background: #e0d6d6;
+}
+
+/* ★ 波浪强 */
+.chase3-signal-item.chase3-star1 {
+  border-color: #e6dcdc;
+}
+
+.chase3-signal-item.chase3-star1 .chase3-label {
+  background: #e6dcdc;
+  color: #6a3a38;
+}
+
+.chase3-signal-item.chase3-star1 .chase3-chase {
+  background: #f2ecec;
+}
+
+.chase3-signal-item.chase3-star1.chase3-active .chase3-chase {
+  background: #eae0e0;
+}
+
+.chase3-signal-item.chase3-star1.chase3-active .chase3-label {
+  background: #dacece;
+}
+
+.chase3-signal-item.chase3-star1 .chase3-gap {
+  color: #7a4848;
+}
+
+.chase3-signal-item.chase3-star1 .chase3-bet {
+  color: #6a3a38;
+}
+
+/* ★★ 波浪精选 */
+.chase3-signal-item.chase3-star2 {
+  border-color: #ded2d2;
+}
+
+.chase3-signal-item.chase3-star2 .chase3-label {
+  background: #ded2d2;
+  color: #4a2828;
+}
+
+.chase3-signal-item.chase3-star2 .chase3-chase {
+  background: #eae0e0;
+}
+
+.chase3-signal-item.chase3-star2.chase3-active .chase3-chase {
+  background: #e2d6d6;
+}
+
+.chase3-signal-item.chase3-star2.chase3-active .chase3-label {
+  background: #d2c2c2;
+}
+
+.chase3-signal-item.chase3-star2 .chase3-gap {
+  color: #6a4040;
+}
+
+.chase3-signal-item.chase3-star2 .chase3-bet {
+  color: #4a2828;
+}
+
+/* 追3 星级标记 */
+.chase3-stars {
+  font-size: 15px;
+  letter-spacing: -2px;
+  opacity: 0.85;
+}
+
+.chase3-signal-item.chase3-star1 .chase3-stars {
+  color: #a06868;
+}
+
+.chase3-signal-item.chase3-star2 .chase3-stars {
+  color: #884848;
+}
+
 .prediction-signal-label-legacy {
   color: #8a3a38;
   font-size: 16px;
@@ -3437,15 +3597,15 @@ button:disabled {
   overflow: hidden;
 }
 
-/* 节奏追号卡片 = 暖色调覆盖 */
+/* 节奏追号卡片 = 灰绿色调覆盖 */
 .cold-signal-card.rhythm-card .cold-signal-label {
-  background: #fdf5f0;
-  border-right-color: #d4a08a;
-  color: #995539;
+  background: #eef4ea;
+  border-right-color: #a0b8a0;
+  color: #4a6040;
 }
 
 .cold-signal-card.rhythm-card {
-  border-color: #e0d0c8;
+  border-color: #e0e8dc;
 }
 
 .detail-stats-table {
@@ -3553,21 +3713,21 @@ strong.roi-value {
 
 .rhythm-card .prediction-dot,
 .rhythm-detail .prediction-dot {
-  border-color: #c0a8a8;
+  border-color: #a0b8a0;
 }
 
 .rhythm-card .prediction-dot.filled,
 .rhythm-detail .prediction-dot.filled {
-  background: #b89898;
-  border-color: #b89898;
+  background: #8aaa8a;
+  border-color: #8aaa8a;
 }
 
-/* 冷门反转卡片 = 冷色调(默认) */
+/* 冷门反转卡片 = 游泳池蓝(默认) */
 .cold-signal-label {
   align-items: center;
-  background: #eef4ea;
-  border-right: 1px solid #b0c8a8;
-  color: #4a7040;
+  background: #e8eef2;
+  border-right: 1px solid #aebfc8;
+  color: #486068;
   display: flex;
   font-size: 20px;
   font-weight: var(--weight-emphasis);

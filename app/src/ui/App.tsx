@@ -2073,7 +2073,7 @@ export function App() {
                     <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
                   ))}
                 </span>
-                <span style={{ color: "#555", fontSize: 14, fontWeight: 500 }}>{item.betAmt}</span>
+                <span className="prediction-bet">{item.betAmt}</span>
               </span>
             </div>
           ))}
