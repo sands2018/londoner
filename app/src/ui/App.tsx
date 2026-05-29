@@ -236,7 +236,8 @@ export function App() {
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
-  const [waveTab, setWaveTab] = useState<"kline" | "spark">("kline");
+  const [waveTab, setWaveTab] = useState<"rhythm" | "trend">("rhythm");
+  const [waveWindow, setWaveWindow] = useState(() => Number(localStorage.getItem("londoner.waveWindow")) || 20);
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
   const [otherRoundTab, setOtherRoundTab] = useState<OtherRoundTab>("bet");
@@ -436,24 +437,31 @@ export function App() {
   const coldGroupsOnlyRoi = useMemo(() => computeRoi(numbers, [0, 1, 2]), [numbers]);
   const coldActiveRoi = useMemo(() => computeRoi(numbers, coldAdaptiveCis), [numbers, coldAdaptiveCis]);
 
-  const waveKLineData = useMemo(() => {
+  const waveRhythmData = useMemo(() => {
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
     return labels.map((label, ci) => {
-      const gaps = extractGaps(numbers, ci);
-      const candles: { peak: number; zoneLo: number; zoneHi: number; sma: number }[] = [];
-      for (let i = 8; i <= gaps.length; i += 3) {
-        const stats = computePeakStats(gaps.slice(0, i));
-        if (!stats) continue;
-        candles.push({
-          peak: stats.peak,
-          zoneLo: Math.max(1, stats.peak - 1),
-          zoneHi: Math.min(6, stats.peak + 1),
-          sma: stats.sma,
+      const rawGaps = extractGaps(numbers.slice(-144), ci);
+      const pts: { median: number; q1: number; q3: number }[] = [];
+      const W = Math.max(5, Math.min(waveWindow, rawGaps.length));
+      for (let i = W; i <= rawGaps.length; i++) {
+        const window = rawGaps.slice(i - W, i);
+        const sorted = [...window].sort((a, b) => a - b);
+        const q1 = sorted[Math.floor(sorted.length * 0.25)];
+        const q3 = sorted[Math.floor(sorted.length * 0.75)];
+        const iqr = q3 - q1;
+        const upper = q3 + 1.5 * iqr;
+        const clean = window.filter(g => g <= upper);
+        if (clean.length < 3) continue;
+        const cs = [...clean].sort((a, b) => a - b);
+        pts.push({
+          median: cs[Math.floor(cs.length * 0.5)],
+          q1: cs[Math.floor(cs.length * 0.25)],
+          q3: cs[Math.floor(cs.length * 0.75)],
         });
       }
-      return { label, candles: candles.slice(-40), hasData: candles.length >= 3 };
+      return { label, pts, hasData: pts.length >= 1 };
     });
-  }, [numbers]);
+  }, [numbers, waveWindow]);
 
   const waveHistory = useMemo(() => {
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
@@ -1808,52 +1816,69 @@ export function App() {
   }
 
   function StatsWaveTab() {
+    const w = 360, h = 100, padX = 4, padR = 4, padY = 8;
+    const MAX_SLOTS = 60;
+    const BASIS = 144;
+    const maxSlots = Math.round(BASIS / 7);
+    const chartW = w - padX - padR;
+    const slotW = chartW / maxSlots;
     return (
       <div className="prediction-body" style={{padding:0}}>
         <div className="stats-tabs">
-          <button className={waveTab === "kline" ? "selected" : ""} onClick={() => setWaveTab("kline")} type="button">K线</button>
-          <button className={waveTab === "spark" ? "selected" : ""} onClick={() => setWaveTab("spark")} type="button">趋势</button>
+          <button className={waveTab === "rhythm" ? "selected" : ""} onClick={() => setWaveTab("rhythm")} type="button">节奏</button>
+          <button className={waveTab === "trend" ? "selected" : ""} onClick={() => setWaveTab("trend")} type="button">趋势</button>
         </div>
-        {waveTab === "kline" ? (
+        {waveTab === "rhythm" ? (
           <>
-            <p className="prediction-desc" style={{padding:"0 18px"}}>每根竖线表示一个采样点的集中出现区间(peak±1)。竖线Y轴位置=偏差程度(峰值k)，长度=集中范围。绿=间隔缩短，红=间隔拉长</p>
             <div className="wave-grid" style={{padding:"0 10px"}}>
-              {waveKLineData.map((wd, i) => {
-                if (!wd.hasData) return null;
-                const ws = waveSnapshot[i];
-                const w = 360, h = 80, padX = 4, padR = 4, padY = 6;
-                const yMin = 0.5, yMax = 6.5;
-                const yVal = (v: number) => padY + ((yMax - v) / (yMax - yMin)) * (h - padY * 2);
-                const barW = Math.max(2, (w - padX - padR) / wd.candles.length - 1);
+              {waveRhythmData.map((wd) => {
+                const allQ3 = waveRhythmData.flatMap(x => x.pts.map(p => p.q3));
+                const yMax = allQ3.length > 0 ? Math.max(4, ...allQ3) + 1 : 6;
+                const yVal = (v: number) => padY + ((yMax - v) / yMax) * (h - padY * 2);
+                const gridLines = (() => { const g: number[] = []; for (let n = 1; n <= yMax; n++) g.push(n); return g; })();
+                const overflow = wd.pts.length > maxSlots;
+                const stepX = overflow ? slotW : (wd.pts.length > 1 ? chartW / (wd.pts.length - 1) : chartW);
+                const svgW = overflow ? padX + (wd.pts.length - 1) * slotW + padR : w;
+                const lineEnd = overflow ? padX + (wd.pts.length - 1) * slotW : w - padR;
                 return (
-                  <div className="wave-card" key={wd.label}>
-                    <div className="wave-card-head">
-                      <strong className="wave-card-label">{wd.label}</strong>
-                      <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
+                  <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
+                    <div style={{display:"flex", alignItems:"center", padding:"2px 4px 2px 0", minWidth:22, borderRight:"1px solid #e8e4e0"}}>
+                      <span style={{writingMode:"vertical-rl", fontSize:12, fontWeight:500, color:"#6b5a38"}}>{wd.label}</span>
                     </div>
-                    <svg className="wave-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
-                      {/* grid lines */}
-                      {[1,2,3,4,5,6].map((g) => (
-                        <line key={`g${g}`} x1={padX} x2={w - padR} y1={yVal(g)} y2={yVal(g)} stroke="#f0ece8" strokeWidth="0.5" />
+                    <div className="wave-scroll" style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+                    <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
+                      <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
+                      <line x1={padX} x2={lineEnd} y1={yVal(0)} y2={yVal(0)} stroke="#9a7a5a" strokeWidth="1" />
+                      {gridLines.map((g) => (
+                        <line key={"g" + g} x1={padX} x2={lineEnd} y1={yVal(g)} y2={yVal(g)} stroke={g % 5 === 0 ? "#c0ae98" : "#e0d8cc"} strokeWidth={g % 5 === 0 ? "0.7" : "0.5"} />
                       ))}
-                      {/* SMA line */}
-                      {wd.candles.length >= 2 && (() => {
-                        const smaPts = wd.candles.map((c, j) => `${(padX + j * (w - padX - padR) / (wd.candles.length - 1)).toFixed(1)},${yVal(c.sma).toFixed(1)}`).join(" ");
-                        return <polyline points={smaPts} fill="none" stroke="#9a8e82" strokeWidth="1.5" strokeDasharray="3,2" />;
+                      {wd.pts.length >= 2 && (() => {
+                        let bandPath = "";
+                        for (let j = 0; j < wd.pts.length; j++) {
+                          const x = padX + j * stepX;
+                          bandPath += (j === 0 ? "M" : "L") + x.toFixed(1) + "," + yVal(wd.pts[j].q3).toFixed(1) + " ";
+                        }
+                        for (let j = wd.pts.length - 1; j >= 0; j--) {
+                          const x = padX + j * stepX;
+                          bandPath += "L" + x.toFixed(1) + "," + yVal(wd.pts[j].q1).toFixed(1) + " ";
+                        }
+                        bandPath += "Z";
+                        return <path d={bandPath} fill="#c8b898aa" stroke="none" />;
                       })()}
-                      {/* candles */}
-                      {wd.candles.map((c, j) => {
-                        const cx = padX + j * (w - padX - padR) / Math.max(1, wd.candles.length - 1);
-                        const yHi = yVal(c.zoneLo);
-                        const yLo = yVal(c.zoneHi);
-                        const up = j > 0 ? c.sma <= wd.candles[j - 1].sma : true;
-                        const color = up ? "#5f9a70" : "#b85a3a";
-                        return <line key={j} x1={cx} x2={cx} y1={yHi} y2={yLo} stroke={color} strokeWidth={barW} strokeLinecap="round" opacity="0.85" />;
-                      })}
+                      {wd.pts.length >= 2 && (() => {
+                        const pts = wd.pts.map((p, j) => (padX + j * stepX).toFixed(1) + "," + yVal(p.median).toFixed(1)).join(" ");
+                        return <polyline points={pts} fill="none" stroke="#c0a860" strokeWidth="1.5" />;
+                      })()}
                     </svg>
+                    </div>
                   </div>
                 );
               })}
+            </div>
+            <div className="scope-row" style={{marginTop:6, paddingLeft:8}}>
+              {[5, 8, 13, 21, 34].map(n => (
+                <button key={n} className={waveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
+              ))}
             </div>
           </>
         ) : (
@@ -1866,13 +1891,14 @@ export function App() {
                 const maxSma = Math.max(...wh.points, 3);
                 const minSma = Math.min(...wh.points, 1);
                 const range = Math.max(maxSma - minSma, 0.5);
-                const w = 360, h = 64, padX = 0, padY = 4, baseline = h - padY;
+                const w2 = 360, h2 = 64, padX2 = 0, padY2 = 4;
+                const baseline = h2 - padY2;
                 const maxSlots = 59;
-                const stepX = w / maxSlots;
-                const yVal = (v: number) => padY + ((maxSma - v) / range) * (h - padY * 2);
+                const stepX = w2 / maxSlots;
+                const yVal2 = (v: number) => padY2 + ((maxSma - v) / range) * (h2 - padY2 * 2);
                 const segments: { x1: number; y1: number; x2: number; y2: number; up: boolean }[] = [];
                 for (let j = 1; j < wh.points.length; j++) {
-                  segments.push({ x1: padX + (j - 1) * stepX, y1: yVal(wh.points[j - 1]), x2: padX + j * stepX, y2: yVal(wh.points[j]), up: wh.points[j] <= wh.points[j - 1] });
+                  segments.push({ x1: padX2 + (j - 1) * stepX, y1: yVal2(wh.points[j - 1]), x2: padX2 + j * stepX, y2: yVal2(wh.points[j]), up: wh.points[j] <= wh.points[j - 1] });
                 }
                 return (
                   <div className="wave-card" key={wh.label}>
@@ -1880,17 +1906,17 @@ export function App() {
                       <strong className="wave-card-label">{wh.label}</strong>
                       <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
                     </div>
-                    <svg className="wave-sparkline" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
-                      <line x1={padX} x2={w-padX} y1={baseline} y2={baseline} stroke="#e8e4e0" strokeWidth="1" />
+                    <svg className="wave-sparkline" viewBox={"0 0 " + w2 + " " + h2} preserveAspectRatio="none" role="img">
+                      <line x1={padX2} x2={w2 - padX2} y1={baseline} y2={baseline} stroke="#e8e4e0" strokeWidth="1" />
                       {segments.map((seg, j) => {
                         const color = seg.up ? "#5f9a7088" : "#b85a3a88";
-                        const pts = `${seg.x1.toFixed(1)},${seg.y1.toFixed(1)} ${seg.x2.toFixed(1)},${seg.y2.toFixed(1)} ${seg.x2.toFixed(1)},${baseline} ${seg.x1.toFixed(1)},${baseline}`;
+                        const pts = seg.x1.toFixed(1) + "," + seg.y1.toFixed(1) + " " + seg.x2.toFixed(1) + "," + seg.y2.toFixed(1) + " " + seg.x2.toFixed(1) + "," + baseline + " " + seg.x1.toFixed(1) + "," + baseline;
                         return <polygon key={j} points={pts} fill={color} />;
                       })}
-                      {segments.map((seg, j) => {
-                        const color = seg.up ? "#5f9a70" : "#b85a3a";
-                        return <line key={`l${j}`} x1={seg.x1.toFixed(1)} y1={seg.y1.toFixed(1)} x2={seg.x2.toFixed(1)} y2={seg.y2.toFixed(1)} stroke={color} strokeWidth="2" />;
-                      })}
+                      <polyline
+                        points={wh.points.map((v, j) => (padX2 + j * stepX).toFixed(1) + "," + yVal2(v).toFixed(1)).join(" ")}
+                        fill="none" stroke="#5a4a38" strokeWidth="1.5"
+                      />
                     </svg>
                   </div>
                 );
