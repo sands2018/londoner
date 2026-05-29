@@ -94,6 +94,7 @@ import {
 } from "../core/prediction";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
 import { analyzeChaseSix } from "../core/chaseSix";
+import { analyzeChaseThree } from "../core/chaseThree";
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
@@ -576,6 +577,13 @@ export function App() {
   const chaseSixG1Roi = cs.group1Roi;
   const chaseSixG2Roi = cs.group2Roi;
   const chaseSixG3Roi = cs.group3Roi;
+
+  const c3 = useMemo(() => analyzeChaseThree(numbers), [numbers]);
+  const chaseThreeSignals = c3.activeSignals;
+  const chaseThreeRoi = c3.totalRoi;
+  const chaseThreeG1Roi = c3.group1Roi;
+  const chaseThreeG2Roi = c3.group2Roi;
+  const chaseThreeG3Roi = c3.group3Roi;
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -2105,6 +2113,27 @@ export function App() {
         </section>
       ) : null}
 
+      {chaseThreeSignals.length > 0 ? (
+        <section className="chase3-signal-area" aria-label="追3信号">
+          {chaseThreeSignals.map((item) => (
+            <div
+              className={`chase3-signal-item ${item.isStar1 ? "chase3-star1" : ""} ${item.isStar2 ? "chase3-star2" : ""} ${item.isNew ? "" : "chase3-active"}`}
+              key={`chase3-${item.wi}`}
+              onClick={() => { setPredictionTab("chase3"); setPredictionWindowOpen(true); }}
+              role="button"
+              tabIndex={0}
+            >
+              <strong className="chase3-label">{item.streetName}</strong>
+              <span className="chase3-chase">
+                <span className="chase3-gap">冷{item.triggerGap}</span>
+                <span className="chase3-bet">{item.betAmt}</span>
+                <span className="chase3-stars" style={(item.isStar1 || item.isStar2) ? undefined : { visibility: "hidden" }}>{item.isStar2 ? "★★" : "★"}</span>
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
@@ -2991,6 +3020,7 @@ export function App() {
               <button className={predictionTab === "rhythm" ? "selected" : ""} onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} type="button">124</button>
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
+              <button className={predictionTab === "chase3" ? "selected" : ""} onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} type="button">追3</button>
             </div>
             <div className="prediction-body">
               {predictionTab === "overview" ? (
@@ -3038,6 +3068,24 @@ export function App() {
                       <div className="prediction-roi-row">
                         <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
                         <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="overview-card overview-chase3" onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} role="button" tabIndex={0}>
+                    <strong className="overview-card-title">追3</strong>
+                    <div className="prediction-roi-table" style={{ margin: 0 }}>
+                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row">
+                        <strong>{numbers.length}</strong><strong>{chaseThreeRoi.bet}</strong><strong>{chaseThreeRoi.win}</strong>
+                        <strong className="roi-value" style={{ color: chaseThreeRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeRoi.roi >= 0 ? "+" : ""}{chaseThreeRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">波浪强 ★</span><span>{c3.star1Roi.bet}</span><span>{c3.star1Roi.win}</span>
+                        <strong className="roi-value" style={{ color: c3.star1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star1Roi.roi >= 0 ? "+" : ""}{c3.star1Roi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">波浪精选 ★★</span><span>{c3.star2Roi.bet}</span><span>{c3.star2Roi.win}</span>
+                        <strong className="roi-value" style={{ color: c3.star2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star2Roi.roi >= 0 ? "+" : ""}{c3.star2Roi.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
                   </div>
@@ -3100,6 +3148,37 @@ export function App() {
                     <div className="prediction-roi-row">
                       <span><strong className="prediction-roi-subheader">三组</strong> 22-36</span><span>{chaseSixG3Roi.bet}</span><span>{chaseSixG3Roi.win}</span>
                       <strong className="roi-value" style={{ color: chaseSixG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG3Roi.roi >= 0 ? "+" : ""}{chaseSixG3Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                </>
+              ) : predictionTab === "chase3" ? (
+                <>
+                  <p className="prediction-desc">12街口gap∈[47,53]时触发，1单位只追下一口。minAppearances≥5触发。波浪强★：avg10≤18且prevGap≤15；波浪精选★★：avg10≤18且long30Rate10≥0.1。</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>{numbers.length}</strong><strong>{chaseThreeRoi.bet}</strong><strong>{chaseThreeRoi.win}</strong>
+                      <strong className="roi-value" style={{ color: chaseThreeRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeRoi.roi >= 0 ? "+" : ""}{chaseThreeRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">波浪强 ★</span><span>{c3.star1Roi.bet}</span><span>{c3.star1Roi.win}</span>
+                      <strong className="roi-value" style={{ color: c3.star1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star1Roi.roi >= 0 ? "+" : ""}{c3.star1Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">波浪精选 ★★</span><span>{c3.star2Roi.bet}</span><span>{c3.star2Roi.win}</span>
+                      <strong className="roi-value" style={{ color: c3.star2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star2Roi.roi >= 0 ? "+" : ""}{c3.star2Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span><strong className="prediction-roi-subheader">一组</strong> 1-12</span><span>{chaseThreeG1Roi.bet}</span><span>{chaseThreeG1Roi.win}</span>
+                      <strong className="roi-value" style={{ color: chaseThreeG1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeG1Roi.roi >= 0 ? "+" : ""}{chaseThreeG1Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span><strong className="prediction-roi-subheader">二组</strong> 13-24</span><span>{chaseThreeG2Roi.bet}</span><span>{chaseThreeG2Roi.win}</span>
+                      <strong className="roi-value" style={{ color: chaseThreeG2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeG2Roi.roi >= 0 ? "+" : ""}{chaseThreeG2Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span><strong className="prediction-roi-subheader">三组</strong> 25-36</span><span>{chaseThreeG3Roi.bet}</span><span>{chaseThreeG3Roi.win}</span>
+                      <strong className="roi-value" style={{ color: chaseThreeG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeG3Roi.roi >= 0 ? "+" : ""}{chaseThreeG3Roi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                 </>
