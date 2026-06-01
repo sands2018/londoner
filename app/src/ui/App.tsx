@@ -756,7 +756,25 @@ export function App() {
     return Math.min(3, index);
   }
 
+  let audioCtx: AudioContext | null = null;
+  function playKeySound() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1800, now);
+    osc.frequency.exponentialRampToValueAtTime(500, now + 0.022);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.028);
+  }
+
   function addNumber(value: RouletteNumber) {
+    playKeySound();
     if (predictions.length > 0 && value !== 0) {
       predictionTracker.record(predictions, value);
     }
