@@ -232,6 +232,7 @@ export function App() {
   const [statsTab, setStatsTab] = useState("game");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
+  const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
@@ -249,6 +250,8 @@ export function App() {
   const [otherLongRound, setOtherLongRound] = useState(5);
   const [otherNumberSortField, setOtherNumberSortField] = useState<OtherNumberSortField>("number");
   const [otherNumberSortDirection, setOtherNumberSortDirection] = useState<SortDirection>("desc");
+  const [keyPops, setKeyPops] = useState<Array<{ id: number; value: RouletteNumber }>>([]);
+  const keyPopIdRef = useRef(0);
   const [refineRoundStart, setRefineRoundStart] = useState(0);
   const [refineRoundBet, setRefineRoundBet] = useState(1);
   const [refineSortField, setRefineSortField] = useState<RefineSortField>("succeeded");
@@ -760,6 +763,9 @@ export function App() {
 
     setNumbers([...numbers, value]);
     setRedoNumbers([]);
+
+    const popId = keyPopIdRef.current++;
+    setKeyPops(prev => [...prev, { id: popId, value }]);
   }
 
   function undo() {
@@ -3200,8 +3206,24 @@ export function App() {
             </div>
             <div className="prediction-body">
               {predictionTab === "overview" ? (
-                <div className="overview-cards">
-                  <div className="overview-card overview-rhythm" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
+                <div className={`overview-pane overview-pane-${predictionOverviewTab}`}>
+                  <div className="overview-subtabs" aria-label="总览分类">
+                    {[
+                      ["repeat", "重号"],
+                      ["other", "其他"],
+                    ].map(([key, label]) => (
+                      <button
+                        className={predictionOverviewTab === key ? "selected" : ""}
+                        key={key}
+                        onClick={() => { setPredictionOverviewTab(key); localStorage.setItem("londoner.predictionOverviewTab", key); }}
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="overview-cards">
+                  <div className="overview-card overview-rhythm overview-other-card" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>124</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3227,7 +3249,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-cold" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-cold overview-other-card" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>长套</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3253,7 +3275,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-chase6" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-chase6 overview-other-card" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>追6</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3283,7 +3305,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-chase3" onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-chase3 overview-other-card" onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>追3</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3313,7 +3335,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-repeat" onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-repeat overview-repeat-card" onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>重号</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3343,7 +3365,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-short-repeat" onClick={() => { setPredictionTab("shortRepeat"); localStorage.setItem("londoner.predictionTab", "shortRepeat"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-short-repeat overview-repeat-card" onClick={() => { setPredictionTab("shortRepeat"); localStorage.setItem("londoner.predictionTab", "shortRepeat"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>短重号</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3361,6 +3383,7 @@ export function App() {
                         <strong className="roi-value" style={{ color: shortRepeatRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoi.roi >= 0 ? "+" : ""}{shortRepeatRoi.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
+                  </div>
                   </div>
                 </div>
               ) : predictionTab === "cold" ? (
@@ -3940,6 +3963,16 @@ export function App() {
           </label>
         </MessageDialog>
       ) : null}
+      <div className="key-pop-overlay" aria-hidden="true">
+        {keyPops.map((pop, i) => (
+          <span
+            key={pop.id}
+            className="key-pop"
+            style={{ zIndex: i }}
+            onAnimationEnd={() => setKeyPops(prev => prev.filter(p => p.id !== pop.id))}
+          >{pop.value}</span>
+        ))}
+      </div>
     </main>
   );
 }
