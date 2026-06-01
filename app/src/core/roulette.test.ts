@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calculateColRowCompare } from "./colRowStats";
 import { calculateFrequencyStats } from "./frequencyStats";
 import { formatNumbers, parseNumbersText } from "./numberText";
+import { analyzeRepeatNumber } from "./repeatNumber";
 import { getColumnIndexes, getGroupIndex, getNumberColor, getNumberColRows, getRowIndex } from "./roulette";
 import {
   calculateColRowDistances,
@@ -83,5 +84,16 @@ describe("roulette rules", () => {
 
     expect(narrow[0]).toMatchObject({ succeeded: 1, failed: 0 });
     expect(wide[0]).toMatchObject({ succeeded: 1, failed: 1 });
+  });
+
+  it("detects repeat-number signals and premium repeat stats", () => {
+    const numbers = [18, 5, 18, 1, 2, 3, 4, 5, 6, 7, 8, 18, 18];
+    const stats = analyzeRepeatNumber(numbers);
+
+    expect(stats.normalRoi.signals).toBe(1);
+    expect(stats.normalRoi.hits).toBe(1);
+    expect(stats.normalRoi.roi).toBe(3500);
+    expect(stats.premiumRoi.signals).toBe(1);
+    expect(stats.activeSignals).toHaveLength(0);
   });
 });
