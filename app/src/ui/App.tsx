@@ -1992,12 +1992,8 @@ export function App() {
   return (
     <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
       <section className="top-stats-strip" aria-label="统计数据">
-        <span className="top-stats-item">共<strong>{numbers.length}</strong>个</span>
-        <span className="top-stats-sep">|</span>
-        <span className="top-stats-item">第<strong>{numbers.length}</strong>位</span>
-        <span className="top-stats-sep">|</span>
+        <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
-        <span className="top-stats-item">回<strong>{combinedRoi.win}</strong></span>
         <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
           净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
         </span>
@@ -2006,7 +2002,6 @@ export function App() {
             <span className="top-stats-sep">|</span>
             <span className="top-stats-item top-stats-from201">201+</span>
             <span className="top-stats-item">投<strong>{combinedRoiFrom201.bet}</strong></span>
-            <span className="top-stats-item">回<strong>{combinedRoiFrom201.win}</strong></span>
             <span className={`top-stats-item top-stats-net ${combinedRoiFrom201.net >= 0 ? "net-positive" : "net-negative"}`}>
               净<strong>{combinedRoiFrom201.net >= 0 ? "+" : ""}{combinedRoiFrom201.net}</strong>
             </span>

@@ -183,19 +183,26 @@ button:disabled {
   color: #7a662e;
   display: flex;
   flex-wrap: nowrap;
-  font-size: clamp(11px, 2.5vw, 13px);
+  font-size: clamp(13px, 3.2vw, 16px);
   font-weight: var(--weight-ui);
-  gap: 4px;
+  gap: 6px;
   justify-content: center;
   line-height: 1;
   overflow: hidden;
-  padding: 3px 6px;
+  padding: 4px 8px;
   white-space: nowrap;
 }
 
 .top-stats-strip strong {
   color: #5a4a1e;
   font-weight: var(--weight-strong);
+}
+
+.top-stats-count {
+  color: #4a3a12;
+  font-size: 1.15em;
+  font-weight: var(--weight-strong);
+  margin-right: 2px;
 }
 
 .top-stats-item {
