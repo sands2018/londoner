@@ -330,7 +330,7 @@ export function App() {
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
   const [selectedAcrModes, setSelectedAcrModes] = useState<string[]>([]);
   const [selectedManageBetKeys, setSelectedManageBetKeys] = useState<string[]>([]);
-  const [sessionSortField, setSessionSortField] = useState<DataSortField>("name");
+  const [sessionSortField, setSessionSortField] = useState<DataSortField>("time");
   const [sessionSortDirection, setSessionSortDirection] = useState<SortDirection>("desc");
   const [gameSortField, setGameSortField] = useState<GameSortField>("won");
   const [gameSortDirection, setGameSortDirection] = useState<GameSortDirection>("desc");
@@ -796,6 +796,7 @@ export function App() {
 
   async function refreshTransferSessions(username = sharedUsername, password = sharedPassword) {
     const list = await listTransferSessions(username.trim(), password);
+    list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     setTransferSessions(list);
     setSelectedTransferIds((current) => current.filter((id) => list.some((item) => item.id === id)));
   }
@@ -1390,7 +1391,7 @@ export function App() {
       setSessionSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
     } else {
       setSessionSortField(field);
-      setSessionSortDirection(field === "name" ? "desc" : "asc");
+      setSessionSortDirection(field === "time" ? "desc" : "asc");
     }
   }
 
