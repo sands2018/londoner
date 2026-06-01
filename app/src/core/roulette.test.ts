@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calculateColRowCompare } from "./colRowStats";
 import { calculateFrequencyStats } from "./frequencyStats";
 import { formatNumbers, parseNumbersText } from "./numberText";
-import { analyzeRepeatNumber } from "./repeatNumber";
+import { analyzeRepeatNumber, analyzeShortRepeatNumber } from "./repeatNumber";
 import { getColumnIndexes, getGroupIndex, getNumberColor, getNumberColRows, getRowIndex } from "./roulette";
 import {
   calculateColRowDistances,
@@ -87,7 +87,7 @@ describe("roulette rules", () => {
   });
 
   it("detects repeat-number signals and premium repeat stats", () => {
-    const numbers = [18, 5, 18, 1, 2, 3, 4, 5, 6, 7, 8, 18, 18];
+    const numbers = [18, 7, 1, 7, 18, 3, 7, 4, 5, 6, 8, 9, 10, 11, 12, 18, 18];
     const stats = analyzeRepeatNumber(numbers);
 
     expect(stats.normalRoi.signals).toBe(1);
@@ -95,5 +95,36 @@ describe("roulette rules", () => {
     expect(stats.normalRoi.roi).toBe(3500);
     expect(stats.premiumRoi.signals).toBe(1);
     expect(stats.activeSignals).toHaveLength(0);
+  });
+
+  it("uses full repeat history when ROI starts later", () => {
+    const numbers = [18, 7, 1, 7, 2, 3, 7, 4, 5, 6, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 18];
+    const stats = analyzeRepeatNumber(numbers, 20);
+
+    expect(stats.normalRoi.signals).toBe(1);
+    expect(stats.normalRoi.hits).toBe(1);
+    expect(stats.premiumRoi.signals).toBe(1);
+    expect(stats.premiumRoi.hits).toBe(1);
+  });
+
+  it("detects short repeat signals with a two-round chase", () => {
+    const numbers = [18, 1, 18, 2, 3, 18, 4, 18, 18];
+    const stats = analyzeShortRepeatNumber(numbers);
+
+    expect(stats.totalRoi.signals).toBe(1);
+    expect(stats.totalRoi.hits).toBe(1);
+    expect(stats.totalRoi.bet).toBe(2);
+    expect(stats.totalRoi.win).toBe(36);
+    expect(stats.activeSignals).toHaveLength(0);
+  });
+
+  it("counts short repeat signals when a delayed ROI window includes chase bets", () => {
+    const numbers = [18, 1, 18, 2, 3, 18, 4, 18];
+    const stats = analyzeShortRepeatNumber(numbers, 7);
+
+    expect(stats.totalRoi.signals).toBe(1);
+    expect(stats.totalRoi.bet).toBe(1);
+    expect(stats.totalRoi.hits).toBe(1);
+    expect(stats.totalRoi.win).toBe(36);
   });
 });

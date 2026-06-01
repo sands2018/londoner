@@ -2822,6 +2822,15 @@ button:disabled {
 .overview-repeat .prediction-roi-row { border-bottom-color: #e9e5ec; }
 .overview-repeat .prediction-roi-row span { color: #765f80; }
 
+.overview-short-repeat {
+  background: #eff2f2;
+  border-color: #dce4e2;
+}
+.overview-short-repeat .overview-card-title { color: #4e6b68; }
+.overview-short-repeat .prediction-roi-table { border-color: #dce4e2; }
+.overview-short-repeat .prediction-roi-row { border-bottom-color: #e5ecea; }
+.overview-short-repeat .prediction-roi-row span { color: #607876; }
+
 .prediction-tabs {
   align-items: end;
   background: #cfc5b3;
@@ -3697,6 +3706,7 @@ button:disabled {
 .repeat-signal-area {
   background: transparent;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-top: 6px;
 }
@@ -3722,8 +3732,18 @@ button:disabled {
   color: #4f2f60;
 }
 
+.repeat-signal-item.repeat-short {
+  background: #eff2f2;
+  border-color: #dce4e2;
+  color: #4e6b68;
+}
+
 .repeat-signal-item:active {
   background: #e5e1e8;
+}
+
+.repeat-signal-item.repeat-short:active {
+  background: #dde8e6;
 }
 
 .repeat-number {
@@ -3735,6 +3755,39 @@ button:disabled {
 .repeat-star {
   color: #9a6fb0;
   font-size: 15px;
+  font-weight: var(--weight-emphasis);
+  line-height: 1;
+}
+
+.short-repeat-chase {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+}
+
+.short-repeat-dots {
+  align-items: center;
+  display: flex;
+  gap: 3px;
+}
+
+.short-repeat-dot {
+  background: transparent;
+  border: 1px solid #8aa9a4;
+  border-radius: 50%;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+}
+
+.short-repeat-dot.filled {
+  background: #5f8c86;
+  border-color: #5f8c86;
+}
+
+.short-repeat-bet {
+  color: #4e6b68;
+  font-size: 13px;
   font-weight: var(--weight-emphasis);
   line-height: 1;
 }
