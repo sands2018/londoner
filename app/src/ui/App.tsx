@@ -281,7 +281,7 @@ export function App() {
   const [sharedSessions, setSharedSessions] = useState<SharedSession[]>([]);
   const [selectedSharedSessionIds, setSelectedSharedSessionIds] = useState<string[]>([]);
   const [transferSessions, setTransferSessions] = useState<TransferSession[]>([]);
-  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
+  const [selectedTransferIds, setSelectedTransferIds] = useState<string[]>([]);
   const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
 
@@ -763,7 +763,7 @@ export function App() {
   async function refreshTransferSessions(username = sharedUsername, password = sharedPassword) {
     const list = await listTransferSessions(username.trim(), password);
     setTransferSessions(list);
-    setSelectedTransferId((current) => (current && list.some((item) => item.id === current) ? current : null));
+    setSelectedTransferIds((current) => current.filter((id) => list.some((item) => item.id === id)));
   }
 
   function clearCurrentSession() {
@@ -1100,7 +1100,7 @@ export function App() {
   }
 
   function importTransferData() {
-    const selected = transferSessions.find((item) => item.id === selectedTransferId);
+    const selected = transferSessions.find((item) => item.id === selectedTransferIds[0]);
     if (!selected) return;
 
     setConfirmDialog({
@@ -1119,7 +1119,7 @@ export function App() {
   }
 
   function removeTransferData() {
-    const selected = transferSessions.find((item) => item.id === selectedTransferId);
+    const selected = transferSessions.find((item) => item.id === selectedTransferIds[0]);
     if (!selected) return;
 
     setConfirmDialog({
@@ -1131,7 +1131,7 @@ export function App() {
         try {
           await deleteTransferSession(sharedUsername.trim(), sharedPassword, selected.id);
           await refreshTransferSessions();
-          setSelectedTransferId(null);
+          setSelectedTransferIds([]);
           setNoticeDialog({ title: "传输数据", message: "已删除选中的传输数据。" });
         } catch (error) {
           setNoticeDialog({ title: "传输数据", message: formatSharedError(error) });
@@ -2293,6 +2293,19 @@ export function App() {
             </table>
           </div>
           <footer className="data-screen-actions">
+            <button
+              disabled={sortedSessions.length === 0}
+              onClick={() =>
+                setSelectedSessionIds(
+                  selectedSessionIds.length === sortedSessions.length
+                    ? []
+                    : sortedSessions.map((s) => s.id),
+                )
+              }
+              type="button"
+            >
+              全选
+            </button>
             <button disabled={selectedSessions.length !== 1} onClick={() => openSession(selectedSessions[0])} type="button">
               打开
             </button>
@@ -2383,6 +2396,19 @@ export function App() {
                 )}
               </div>
               <footer className="data-screen-actions shared-data-actions">
+                <button
+                  disabled={!sharedConnected || sharedLoading || sortedSharedSessions.length === 0}
+                  onClick={() =>
+                    setSelectedSharedSessionIds(
+                      selectedSharedSessionIds.length === sortedSharedSessions.length
+                        ? []
+                        : sortedSharedSessions.map((s) => s.id),
+                    )
+                  }
+                  type="button"
+                >
+                  全选
+                </button>
                 <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
                 <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
                 <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
@@ -2411,9 +2437,9 @@ export function App() {
                         ) : null}
                         {transferSessions.map((item) => (
                           <tr
-                            className={selectedTransferId === item.id ? "selected" : ""}
+                            className={selectedTransferIds.includes(item.id) ? "selected" : ""}
                             key={item.id}
-                            onClick={() => setSelectedTransferId(item.id)}
+                            onClick={() => setSelectedTransferIds((prev) => prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id])}
                           >
                             <td>{item.numbers.length}</td>
                             <td>{item.uploader}</td>
@@ -2432,8 +2458,21 @@ export function App() {
                 )}
               </div>
               <footer className="data-screen-actions transfer-data-actions">
-                <button disabled={!sharedConnected || sharedLoading || !selectedTransferId} onClick={importTransferData} type="button">导入</button>
-                <button disabled={!sharedConnected || sharedLoading || !selectedTransferId} onClick={removeTransferData} type="button">删除</button>
+                <button
+                  disabled={!sharedConnected || sharedLoading || transferSessions.length === 0}
+                  onClick={() =>
+                    setSelectedTransferIds(
+                      selectedTransferIds.length === transferSessions.length
+                        ? []
+                        : transferSessions.map((s) => s.id),
+                    )
+                  }
+                  type="button"
+                >
+                  全选
+                </button>
+                <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={importTransferData} type="button">导入</button>
+                <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={removeTransferData} type="button">删除</button>
                 <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadTransferData(u, p)); }} type="button">刷新</button>
               </footer>
             </>
