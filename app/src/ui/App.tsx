@@ -1993,20 +1993,21 @@ export function App() {
     <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
-        <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
-        <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
-          净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
+        <span className="top-stats-roi">
+          <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
+          <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
+            净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
+          </span>
+          {combinedRoiFrom201 ? (
+            <>
+              <span className="top-stats-sep">|</span>
+              <span className="top-stats-item">投<strong>{combinedRoiFrom201.bet}</strong></span>
+              <span className={`top-stats-item top-stats-net ${combinedRoiFrom201.net >= 0 ? "net-positive" : "net-negative"}`}>
+                净<strong>{combinedRoiFrom201.net >= 0 ? "+" : ""}{combinedRoiFrom201.net}</strong>
+              </span>
+            </>
+          ) : null}
         </span>
-        {combinedRoiFrom201 ? (
-          <>
-            <span className="top-stats-sep">|</span>
-            <span className="top-stats-item top-stats-from201">201+</span>
-            <span className="top-stats-item">投<strong>{combinedRoiFrom201.bet}</strong></span>
-            <span className={`top-stats-item top-stats-net ${combinedRoiFrom201.net >= 0 ? "net-positive" : "net-negative"}`}>
-              净<strong>{combinedRoiFrom201.net >= 0 ? "+" : ""}{combinedRoiFrom201.net}</strong>
-            </span>
-          </>
-        ) : null}
       </section>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => !value)}>
         {topColRows.map((item) => (
