@@ -230,7 +230,7 @@ export function App() {
   const [statsViewOpen, setStatsViewOpen] = useState(false);
   const [statsTab, setStatsTab] = useState("game");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
-  const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "rhythm");
+  const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
@@ -597,6 +597,40 @@ export function App() {
   const chaseThreeG1Roi = c3.group1Roi;
   const chaseThreeG2Roi = c3.group2Roi;
   const chaseThreeG3Roi = c3.group3Roi;
+
+  // 综合ROI: 按总览配置汇总所有已启用策略
+  const combinedRoi = useMemo(() => {
+    let bet = 0, win = 0;
+    if (show124) {
+      const r = rhythmMode === "仅行" ? rhythmRowsOnlyRoi : rhythmRoi;
+      bet += r.bet; win += r.win;
+    }
+    if (showCold) {
+      bet += coldActiveRoi.bet; win += coldActiveRoi.win;
+    }
+    if (chase6Filter !== "全关") {
+      bet += chaseSixRoi.bet; win += chaseSixRoi.win;
+    }
+    if (chase3Filter !== "全关") {
+      bet += chaseThreeRoi.bet; win += chaseThreeRoi.win;
+    }
+    return { bet, win, net: win - bet };
+  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi]);
+
+  // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
+  const combinedRoiFrom201 = useMemo(() => {
+    if (numbers.length <= 200) return null;
+    const rhs = rhythmMode === "仅行" ? computeRhythmRoi(numbers, [3, 4, 5], 200) : computeRhythmRoi(numbers, undefined, 200);
+    const cold = computeRoi(numbers, coldAdaptiveCis, 200);
+    const c6 = analyzeChaseSix(numbers.slice(200));
+    const c3f = analyzeChaseThree(numbers.slice(200));
+    let bet = 0, win = 0;
+    if (show124) { bet += rhs.bet; win += rhs.win; }
+    if (showCold) { bet += cold.bet; win += cold.win; }
+    if (chase6Filter !== "全关") { bet += c6.totalRoi.bet; win += c6.totalRoi.win; }
+    if (chase3Filter !== "全关") { bet += c3f.totalRoi.bet; win += c3f.totalRoi.win; }
+    return { bet, win, net: win - bet };
+  }, [numbers, show124, rhythmMode, showCold, coldAdaptiveCis, chase6Filter, chase3Filter]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -1957,6 +1991,28 @@ export function App() {
 
   return (
     <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
+      <section className="top-stats-strip" aria-label="统计数据">
+        <span className="top-stats-item">共<strong>{numbers.length}</strong>个</span>
+        <span className="top-stats-sep">|</span>
+        <span className="top-stats-item">第<strong>{numbers.length}</strong>位</span>
+        <span className="top-stats-sep">|</span>
+        <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
+        <span className="top-stats-item">回<strong>{combinedRoi.win}</strong></span>
+        <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
+          净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
+        </span>
+        {combinedRoiFrom201 ? (
+          <>
+            <span className="top-stats-sep">|</span>
+            <span className="top-stats-item top-stats-from201">201+</span>
+            <span className="top-stats-item">投<strong>{combinedRoiFrom201.bet}</strong></span>
+            <span className="top-stats-item">回<strong>{combinedRoiFrom201.win}</strong></span>
+            <span className={`top-stats-item top-stats-net ${combinedRoiFrom201.net >= 0 ? "net-positive" : "net-negative"}`}>
+              净<strong>{combinedRoiFrom201.net >= 0 ? "+" : ""}{combinedRoiFrom201.net}</strong>
+            </span>
+          </>
+        ) : null}
+      </section>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => !value)}>
         {topColRows.map((item) => (
           <div

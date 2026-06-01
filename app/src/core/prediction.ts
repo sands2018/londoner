@@ -172,8 +172,9 @@ export class RhythmEngine {
 }
 
 /** 计算ROI: 模拟冷门反转追号, 返回 {bet, win, roi}. allowedCis默认全六组 */
-export function computeRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[]): { bet: number; win: number; roi: number } {
+export function computeRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[], startRound?: number): { bet: number; win: number; roi: number } {
   const cis = allowedCis ?? [0, 1, 2, 3, 4, 5];
+  const betStart = startRound ?? 0;
   let bet = 0, win = 0;
   const lastSeen = [-1, -1, -1, -1, -1, -1];
   const activeChases: { ci: number; startRound: number; chaseLen: number }[] = [];
@@ -181,20 +182,23 @@ export function computeRoi(numbers: readonly RouletteNumber[], allowedCis?: read
   for (let r = 0; r < numbers.length; r++) {
     const value = numbers[r];
     const hitCis = value !== 0 ? getNumberColRows(value).map((h) => h as number) : [];
-    const remaining: typeof activeChases = [];
 
-    for (const c of activeChases) {
-      const bi = r - c.startRound;
-      if (bi >= c.chaseLen) continue;
-      const amt = PROGRESSION[bi] ?? PROGRESSION[PROGRESSION.length - 1];
-      bet += amt;
-      if (hitCis.includes(c.ci)) { win += amt * 3; }
-      else if (bi + 1 < c.chaseLen) remaining.push(c);
+    if (r >= betStart) {
+      const remaining: typeof activeChases = [];
+      for (const c of activeChases) {
+        const bi = r - c.startRound;
+        if (bi >= c.chaseLen) continue;
+        const amt = PROGRESSION[bi] ?? PROGRESSION[PROGRESSION.length - 1];
+        bet += amt;
+        if (hitCis.includes(c.ci)) { win += amt * 3; }
+        else if (bi + 1 < c.chaseLen) remaining.push(c);
+      }
+      activeChases.length = 0;
+      activeChases.push(...remaining);
     }
-    activeChases.length = 0;
-    activeChases.push(...remaining);
+
     for (const ci of hitCis) lastSeen[ci] = r;
-    if (r < 10) continue;
+    if (r < Math.max(10, betStart)) continue;
 
     for (const ci of cis) {
       const cg = lastSeen[ci] >= 0 ? r - lastSeen[ci] - 1 : r;
@@ -220,8 +224,9 @@ export function computeRoi(numbers: readonly RouletteNumber[], allowedCis?: read
 }
 
 /** 计算节奏追号ROI (自适应峰值, 波浪恢复). allowedCis默认全六组, 可传入[3,4,5]仅行 */
-export function computeRhythmRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[]): { bet: number; win: number; roi: number } {
+export function computeRhythmRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[], startRound?: number): { bet: number; win: number; roi: number } {
   const cis = allowedCis ?? [0, 1, 2, 3, 4, 5];
+  const betStart = startRound ?? 0;
   let bet = 0, win = 0;
   const ls = [-1, -1, -1, -1, -1, -1];
   const ac: { ci: number; sr: number; cl: number }[] = [];
@@ -230,27 +235,29 @@ export function computeRhythmRoi(numbers: readonly RouletteNumber[], allowedCis?
   for (let r = 0; r < numbers.length; r++) {
     const v = numbers[r];
     const hc = v !== 0 ? getNumberColRows(v).map((h) => h as number) : [];
-    const rm: typeof ac = [];
-    for (const c of ac) {
-      const bi = r - c.sr; if (bi >= c.cl) continue;
-      const amt = RHYTHM_PROG[bi] ?? RHYTHM_PROG[RHYTHM_PROG.length - 1]; bet += amt;
-      if (hc.includes(c.ci)) { win += amt * 3; }
-      else if (bi + 1 < c.cl) rm.push(c);
-      else {
-        // 追号失败, 记录波浪状态
-        const gaps = extractGapsLocal(numbers.slice(0, r), c.ci);
-        recovery[c.ci] = createRecoveryState();
-        recovery[c.ci].paused = true;
-        recovery[c.ci].failSma = computePeakSma(gaps);
-        recovery[c.ci].failRound = r;
-        recovery[c.ci].phase = 0;
-      }
-    }
-    ac.length = 0; ac.push(...rm);
-    for (const ci of hc) ls[ci] = r;
-    if (r < 15) continue;
 
-    // 检查波浪恢复
+    if (r >= betStart) {
+      const rm: typeof ac = [];
+      for (const c of ac) {
+        const bi = r - c.sr; if (bi >= c.cl) continue;
+        const amt = RHYTHM_PROG[bi] ?? RHYTHM_PROG[RHYTHM_PROG.length - 1]; bet += amt;
+        if (hc.includes(c.ci)) { win += amt * 3; }
+        else if (bi + 1 < c.cl) rm.push(c);
+        else {
+          const gaps = extractGapsLocal(numbers.slice(0, r), c.ci);
+          recovery[c.ci] = createRecoveryState();
+          recovery[c.ci].paused = true;
+          recovery[c.ci].failSma = computePeakSma(gaps);
+          recovery[c.ci].failRound = r;
+          recovery[c.ci].phase = 0;
+        }
+      }
+      ac.length = 0; ac.push(...rm);
+    }
+
+    for (const ci of hc) ls[ci] = r;
+    if (r < Math.max(15, betStart)) continue;
+
     for (let ci = 0; ci < 6; ci++) {
       if (recovery[ci].paused) {
         const gaps = extractGapsLocal(numbers.slice(0, r), ci);
