@@ -143,7 +143,7 @@ type OtherRoundTab = "bet" | "summary";
 function normalizeRepeatTier(value: string | null): RepeatTier {
   if (value === REPEAT_TIER_CORE || value === "精选信号") return REPEAT_TIER_CORE;
   if (value === REPEAT_TIER_AGGRESSIVE || value === "全部信号") return REPEAT_TIER_AGGRESSIVE;
-  return REPEAT_TIER_CORE;
+  return REPEAT_TIER_AGGRESSIVE;
 }
 type RefineSortField = "name" | "succeeded" | "failureRate";
 
@@ -3265,6 +3265,10 @@ export function App() {
                       </button>
                     ))}
                   </div>
+                  <div className="repeat-filter-panel" style={{ margin: "0 0 6px", padding: "6px 10px", fontSize: 13 }}>
+                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
+                    <span>前200个数字为历史号码</span>
+                  </div>
                   <div className="overview-cards">
                   <div className="overview-card overview-rhythm overview-other-card" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
@@ -3383,13 +3387,6 @@ export function App() {
                       <span>重号</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showRepeat ? " on" : ""}`} onClick={() => { const v = !showRepeat; setShowRepeat(v); localStorage.setItem("londoner.showRepeat", v ? "1" : "0"); }} type="button" />
-                        {showRepeat ? (
-                          <span className="signal-tier-opts">
-                            {repeatFilterOptions.map(t => (
-                              <button key={t} className={`signal-tier-btn${repeatFilter === t ? " active" : ""}`} onClick={() => { setRepeatFilter(t); localStorage.setItem("londoner.repeatFilter", t); }} type="button">{t}</button>
-                            ))}
-                          </span>
-                        ) : null}
                       </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
@@ -3399,7 +3396,7 @@ export function App() {
                         <strong className="roi-value" style={{ color: repeatFilteredRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoi.roi >= 0 ? "+" : ""}{repeatFilteredRoi.roi.toFixed(1)}%</strong>
                       </div>
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">201后</span><span>{repeatFilteredRoiFrom201.bet}</span><span>{repeatFilteredRoiFrom201.win}</span>
+                        <span className="prediction-roi-subheader">200后</span><span>{repeatFilteredRoiFrom201.bet}</span><span>{repeatFilteredRoiFrom201.win}</span>
                         <strong className="roi-value" style={{ color: repeatFilteredRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoiFrom201.roi >= 0 ? "+" : ""}{repeatFilteredRoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
                       <div className="prediction-roi-row">
@@ -3426,7 +3423,7 @@ export function App() {
                         <strong className="roi-value" style={{ color: shortRepeatRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoi.roi >= 0 ? "+" : ""}{shortRepeatRoi.roi.toFixed(1)}%</strong>
                       </div>
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">201后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
+                        <span className="prediction-roi-subheader">200后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
                         <strong className="roi-value" style={{ color: shortRepeatRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoiFrom201.roi >= 0 ? "+" : ""}{shortRepeatRoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
@@ -3527,11 +3524,6 @@ export function App() {
                 </>
               ) : predictionTab === "repeat" ? (
                 <>
-                  <div className="repeat-filter-panel">
-                    <span>前200口环境：g3 {repeatInitialFilter.g3Count} / g2 {repeatInitialFilter.g2Count}，{repeatInitialFilter.ready ? (repeatInitialFilter.passed ? "通过" : "未通过") : "未满200口"}</span>
-                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
-                    <span>前200个为录入号</span>
-                  </div>
                   <p className="prediction-desc">核心：短重gap=3，长重gap=9-10；进取：在核心基础上增加长重gap=8/11/12且短重环境1-2。前200口g3次数需大于g2次数才纳入统计。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
@@ -3540,7 +3532,7 @@ export function App() {
                       <strong className="roi-value" style={{ color: repeatFilteredRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoi.roi >= 0 ? "+" : ""}{repeatFilteredRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">201后</span><span>{repeatFilteredRoiFrom201.bet}</span><span>{repeatFilteredRoiFrom201.win}</span>
+                      <span className="prediction-roi-subheader">200后</span><span>{repeatFilteredRoiFrom201.bet}</span><span>{repeatFilteredRoiFrom201.win}</span>
                       <strong className="roi-value" style={{ color: repeatFilteredRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoiFrom201.roi >= 0 ? "+" : ""}{repeatFilteredRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
@@ -3568,11 +3560,6 @@ export function App() {
                 </>
               ) : predictionTab === "shortRepeat" ? (
                 <>
-                  <div className="repeat-filter-panel">
-                    <span>前200口环境：g3 {repeatInitialFilter.g3Count} / g2 {repeatInitialFilter.g2Count}，{repeatInitialFilter.ready ? (repeatInitialFilter.passed ? "通过" : "未通过") : "未满200口"}</span>
-                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
-                    <span>前200个为录入号</span>
-                  </div>
                   <p className="prediction-desc">短重号核心/进取均只保留gap=3且近37口出现≥3次，追同号2轮，每轮1单位；前200口g3次数需大于g2次数才纳入统计。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
@@ -3581,7 +3568,7 @@ export function App() {
                       <strong className="roi-value" style={{ color: shortRepeatRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoi.roi >= 0 ? "+" : ""}{shortRepeatRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">201后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
+                      <span className="prediction-roi-subheader">200后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
                       <strong className="roi-value" style={{ color: shortRepeatRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoiFrom201.roi >= 0 ? "+" : ""}{shortRepeatRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
