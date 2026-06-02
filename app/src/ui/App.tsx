@@ -94,8 +94,8 @@ import {
 } from "../core/prediction";
 import { analyzePreferredNumber } from "../core/preferredNumber";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
-import { analyzeChaseSix } from "../core/chaseSix";
-import { analyzeChaseThree } from "../core/chaseThree";
+import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
+import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
 import {
   REPEAT_INITIAL_ROUNDS,
   REPEAT_ENV_WINDOW,
@@ -246,6 +246,7 @@ export function App() {
   const [refineViewOpen, setRefineViewOpen] = useState(false);
   const [otherViewOpen, setOtherViewOpen] = useState(false);
   const [statsViewOpen, setStatsViewOpen] = useState(false);
+  const [sixNumberViewOpen, setSixNumberViewOpen] = useState(false);
   const [statsTab, setStatsTab] = useState("game");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
@@ -611,7 +612,7 @@ export function App() {
   }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
 
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
-  const cs = useMemo(() => analyzeChaseSix(numbers), [numbers]);
+  const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
   const chaseSixSignals = cs.activeSignals;
   const chaseSixRoi = cs.totalRoi;
   const chaseSixG1Roi = cs.group1Roi;
@@ -689,7 +690,7 @@ export function App() {
     if (numbers.length <= 200) return null;
     const rhs = rhythmMode === "仅行" ? computeRhythmRoi(numbers, [3, 4, 5], 200) : computeRhythmRoi(numbers, undefined, 200);
     const cold = computeRoi(numbers, coldAdaptiveCis, 200);
-    const c6 = analyzeChaseSix(numbers.slice(200));
+    const c6 = analyzeChaseSixRolling(numbers, 200, 200);
     const c3f = analyzeChaseThree(numbers.slice(200));
     let bet = 0, win = 0;
     if (show124) { bet += rhs.bet; win += rhs.win; }
@@ -726,6 +727,49 @@ export function App() {
   );
   const finishedLongs = useMemo(() => calculateFinishedLongs(numbers), [numbers]);
   const queueItems = useMemo(() => numbers.slice(-105).reverse(), [numbers]);
+  const sixNumberSnapshot = useMemo(() => {
+    const latest = numbers.length > 0 ? numbers[numbers.length - 1] : null;
+    const getMissDistanceBefore = (wi: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        const value = numbers[index];
+        if (isInChaseSixWindow(wi, value)) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return Array.from({ length: 11 }, (_, wi) => {
+      const highlighted = latest !== null && isInChaseSixWindow(wi, latest);
+      return {
+        distance: getMissDistanceBefore(wi, numbers.length - 1),
+        highlighted,
+        label: `${chaseSixWindowStart(wi)}-${chaseSixWindowEnd(wi)}`,
+        previousDistance: highlighted ? getMissDistanceBefore(wi, numbers.length - 2) : null,
+        wi,
+      };
+    });
+  }, [numbers]);
+  const threeNumberSnapshot = useMemo(() => {
+    const latestStreet = numbers.length > 0 ? streetOf(numbers[numbers.length - 1]) : -1;
+    const getMissDistanceBefore = (wi: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        if (streetOf(numbers[index]) === wi) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return Array.from({ length: 12 }, (_, wi) => {
+      const highlighted = latestStreet === wi;
+      return {
+        distance: getMissDistanceBefore(wi, numbers.length - 1),
+        highlighted,
+        label: `${chaseThreeStreetStart(wi)}-${chaseThreeStreetEnd(wi)}`,
+        previousDistance: highlighted ? getMissDistanceBefore(wi, numbers.length - 2) : null,
+        wi,
+      };
+    });
+  }, [numbers]);
   const hasUnsavedChanges = useMemo(
     () => numbers.length > 0 && !areSameNumbers(numbers, lastSavedNumbers),
     [lastSavedNumbers, numbers],
@@ -2360,13 +2404,14 @@ export function App() {
 
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
-        <div className="dock-actions">
+        <div className="dock-actions dock-actions-primary">
           <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">临时传</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">63</button>
           <button onClick={openConfigView} type="button">配置</button>
         </div>
         <div className="dock-actions">
@@ -2745,6 +2790,39 @@ export function App() {
                   : null}
               </tbody>
             </table>
+          </div>
+        </section>
+      ) : null}
+
+      {sixNumberViewOpen ? (
+        <section className="data-screen six-number-screen" aria-label="63快照">
+          <header className="data-screen-head">
+            <strong>63快照</strong>
+            <button className="close-button title-close-button" onClick={() => setSixNumberViewOpen(false)} type="button">x</button>
+          </header>
+          <div className="six-number-body">
+            <section className="six-number-section" aria-label="6数字">
+              <h2>6数字</h2>
+              <div className="six-number-grid">
+                {sixNumberSnapshot.map((item) => (
+                  <div className={`six-number-card${item.highlighted ? " highlighted" : ""}`} key={item.wi}>
+                    <span>{item.label}</span>
+                    <strong>{item.highlighted && item.previousDistance !== null ? `0 (${item.previousDistance})` : item.distance}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="six-number-section" aria-label="3数字">
+              <h2>3数字</h2>
+              <div className="six-number-grid">
+                {threeNumberSnapshot.map((item) => (
+                  <div className={`six-number-card${item.highlighted ? " highlighted" : ""}`} key={item.wi}>
+                    <span>{item.label}</span>
+                    <strong>{item.highlighted && item.previousDistance !== null ? `0 (${item.previousDistance})` : item.distance}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </section>
       ) : null}
