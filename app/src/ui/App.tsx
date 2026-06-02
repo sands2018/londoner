@@ -97,8 +97,10 @@ import { analyzeChaseSix } from "../core/chaseSix";
 import { analyzeChaseThree } from "../core/chaseThree";
 import {
   REPEAT_INITIAL_ROUNDS,
+  REPEAT_ENV_WINDOW,
   REPEAT_TIER_AGGRESSIVE,
   REPEAT_TIER_CORE,
+  SHORT_REPEAT_ENV_WINDOW,
   analyzeRepeatNumber,
   analyzeShortRepeatNumber,
   type RepeatTier,
@@ -642,7 +644,8 @@ export function App() {
   const shortRepeatFrom201 = useMemo(() => analyzeShortRepeatNumber(numbers, REPEAT_INITIAL_ROUNDS, repeatStatsOptions), [numbers, repeatStatsOptions]);
   const shortRepeatRoi = repeatFilter === REPEAT_TIER_CORE ? shortRepeatAll.coreRoi : shortRepeatAll.aggressiveRoi;
   const shortRepeatRoiFrom201 = repeatFilter === REPEAT_TIER_CORE ? shortRepeatFrom201.coreRoi : shortRepeatFrom201.aggressiveRoi;
-  const repeatInitialFilter = repeatAll.initialFilter;
+  const repeatEnvironmentFilter = repeatAll.environmentFilter;
+  const shortRepeatEnvironmentFilter = shortRepeatAll.environmentFilter;
 
   // 综合ROI: 按总览配置汇总所有已启用策略
   const combinedRoi = useMemo(() => {
@@ -3524,7 +3527,12 @@ export function App() {
                 </>
               ) : predictionTab === "repeat" ? (
                 <>
-                  <p className="prediction-desc">核心：短重gap=3，长重gap=9-10；进取：在核心基础上增加长重gap=8/11/12且短重环境1-2。前200口g3次数需大于g2次数才纳入统计。</p>
+                  <p className="prediction-desc">核心：短重gap=3，长重gap=9-10；进取：在核心基础上增加长重gap=8/11/12且短重环境1-2。长重号使用移动{REPEAT_ENV_WINDOW}口环境，g3次数大于g2次数时开启。</p>
+                  <div className="repeat-filter-panel">
+                    <span>当前环境：{repeatEnvironmentFilter.ready ? (repeatEnvironmentFilter.passed ? "通过" : "未通过") : "窗口未满"}</span>
+                    <span>g3={repeatEnvironmentFilter.g3Count}</span>
+                    <span>g2={repeatEnvironmentFilter.g2Count}</span>
+                  </div>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -3560,7 +3568,12 @@ export function App() {
                 </>
               ) : predictionTab === "shortRepeat" ? (
                 <>
-                  <p className="prediction-desc">短重号核心/进取均只保留gap=3且近37口出现≥3次，追同号2轮，每轮1单位；前200口g3次数需大于g2次数才纳入统计。</p>
+                  <p className="prediction-desc">短重号核心/进取均只保留gap=3且近37口出现≥3次，追同号2轮，每轮1单位；短重号使用移动{SHORT_REPEAT_ENV_WINDOW}口环境，g3次数大于g2次数时开启。</p>
+                  <div className="repeat-filter-panel">
+                    <span>当前环境：{shortRepeatEnvironmentFilter.ready ? (shortRepeatEnvironmentFilter.passed ? "通过" : "未通过") : "窗口未满"}</span>
+                    <span>g3={shortRepeatEnvironmentFilter.g3Count}</span>
+                    <span>g2={shortRepeatEnvironmentFilter.g2Count}</span>
+                  </div>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">

@@ -172,13 +172,18 @@
     align-items:center; background:#e5dcec; border:1px solid #d6cee0;
     border-radius:5px; color:#51406a; cursor:pointer; display:flex;
     flex:0 0 calc((100% - 8px) / 3); gap:20px;
-    justify-content:center; min-height:38px; touch-action:manipulation;
+    justify-content:center; min-height:38px; position:relative;
+    touch-action:manipulation;
   }
   .repeat-signal-item.repeat-premium { background:#dbd0e6; border-color:#cec2d9; color:#443460; }
   .repeat-signal-item.repeat-short { background:#eddce2; border-color:#e4d3d9; color:#64425a; }
   .repeat-signal-item.repeat-short:active { background:#e8dee1; }
   .repeat-number { font-size:24px; font-weight:500; line-height:1; }
   .repeat-star { color:#8a6aa8; font-size:15px; font-weight:500; line-height:1; }
+  .repeat-tier-badge {
+    color:#8a6aa8; font-size:11px; font-weight:500; line-height:1;
+    opacity:0.75; position:absolute; right:5px; top:2px;
+  }
   .short-repeat-chase { align-items:center; display:flex; gap:5px; }
   .short-repeat-dots { align-items:center; display:flex; gap:3px; }
   .short-repeat-dot {
@@ -400,17 +405,19 @@
 </section>
 
 <!-- ============ 重号 + 短重号 ============ -->
-<h2>重号 / 短重号</h2>
+<h2>重号 / 短重号 — 冷紫 / 暖粉紫</h2>
 
+<p class="label-row" style="margin-bottom:6px">规则：核心=长重gap 9-10 / 短重gap=3；进取=核心 + 长重gap 8/11/12且短重环境1-2。前200口 g3&gt;g2 才纳入统计。</p>
+
+<!-- 重号：核心 vs 进取 -->
 <section class="repeat-signal-area">
-  <!-- 重号 普通 -->
   <div class="repeat-signal-item">
+    <span class="repeat-tier-badge">进取</span>
     <strong class="repeat-number">18</strong>
   </div>
-  <!-- 重号 精选 -->
   <div class="repeat-signal-item repeat-premium">
+    <span class="repeat-tier-badge">核心</span>
     <strong class="repeat-number">23</strong>
-    <span class="repeat-star">★</span>
   </div>
 </section>
 
@@ -441,7 +448,8 @@
 
 <!-- 同时出现（重号 + 短重号） -->
 <section class="repeat-signal-area">
-  <div class="repeat-signal-item">
+  <div class="repeat-signal-item repeat-premium">
+    <span class="repeat-tier-badge">核心</span>
     <strong class="repeat-number">14</strong>
   </div>
   <div class="repeat-signal-item repeat-short">
@@ -456,7 +464,16 @@
   </div>
 </section>
 
-<!-- ============ 调色参考：提取所有颜色值 ============ -->
+<!-- repeat-filter-panel -->
+<div class="repeat-filter-panel" style="margin-top:8px">
+  <span>前200口环境：g3 12 / g2 8，通过</span>
+  <span style="display:inline-flex;align-items:center;gap:4px">
+    <span style="width:28px;height:18px;border-radius:9px;background:#c09858;display:inline-block"></span>
+    <span>前200口显示信号</span>
+  </span>
+</div>
+
+<!-- ============ 调色参考 ============ -->
 <h2>调色参考</h2>
 <p class="label-row">冷门反转（蓝）: label=#c8d8e0 / chase=#e8eef2 / border=#c8d8e0 / text=#486068 / dot=#aebfc8 / dot-filled=#8aa8b8</p>
 <p class="label-row">节奏（绿）: label=#e0e8dc / chase=#eef4ea / border=#e0e8dc / text=#4a6040 / dot=#a0b8a0 / dot-filled=#8aaa8a</p>
@@ -466,9 +483,10 @@
 <p class="label-row">追3 普通（淡红）: label=#ece4e4 / chase=#f4f2f2 / border=#ece4e4 / text=#7a4a48</p>
 <p class="label-row">追3 波浪强★: label=#e6dcdc / chase=#f2ecec / border=#e6dcdc / text=#6a3a38</p>
 <p class="label-row">追3 波浪精选★★: label=#ded2d2 / chase=#eae0e0 / border=#ded2d2 / text=#4a2828</p>
-<p class="label-row">重号（紫）: bg=#f1eff3 / border=#e2dfe6 / text=#684a74</p>
-<p class="label-row">重号 精选（紫深）: bg=#e9e5ec / border=#d8d1df / text=#4f2f60 / star=#9a6fb0</p>
-<p class="label-row">短重号（青灰）: bg=#eff2f2 / border=#dce4e2 / text=#4e6b68 / dot=#8aa9a4 / dot-filled=#5f8c86</p>
+<p class="label-row">重号 核心（冷紫）: bg=#e5dcec / border=#d6cee0 / text=#51406a / badge=#8a6aa8</p>
+<p class="label-row">重号 核心精选: bg=#dbd0e6 / border=#cec2d9 / text=#443460</p>
+<p class="label-row">短重号（暖粉紫）: bg=#eddce2 / border=#e4d3d9 / text=#64425a / dot=#a08195 / dot-filled=#835876</p>
+<p class="label-row">repeat-filter-panel: bg=#f7f3f8 / border=#e5dcec / text=#685a78</p>
 
 </body>
 </html>

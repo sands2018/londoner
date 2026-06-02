@@ -4,6 +4,8 @@ export const REPEAT_RECENT_SCOPE = 37;
 export const REPEAT_PREMIUM_COUNT = 3;
 export const REPEAT_PAY = 36;
 export const REPEAT_INITIAL_ROUNDS = 200;
+export const REPEAT_ENV_WINDOW = 200;
+export const SHORT_REPEAT_ENV_WINDOW = 100;
 export const SHORT_REPEAT_GAP_MIN = 2;
 export const SHORT_REPEAT_GAP_MAX = 3;
 export const SHORT_REPEAT_CHASE_LEN = 2;
@@ -39,7 +41,7 @@ export interface RepeatNumberAnalysis {
   activeSignals: RepeatNumberSignal[];
   coreRoi: RepeatNumberRoi;
   aggressiveRoi: RepeatNumberRoi;
-  initialFilter: RepeatInitialFilter;
+  environmentFilter: RepeatEnvironmentFilter;
 }
 
 export interface ShortRepeatAnalysis {
@@ -47,10 +49,10 @@ export interface ShortRepeatAnalysis {
   totalRoi: RepeatNumberRoi;
   coreRoi: RepeatNumberRoi;
   aggressiveRoi: RepeatNumberRoi;
-  initialFilter: RepeatInitialFilter;
+  environmentFilter: RepeatEnvironmentFilter;
 }
 
-export interface RepeatInitialFilter {
+export interface RepeatEnvironmentFilter {
   g2Count: number;
   g3Count: number;
   passed: boolean;
@@ -68,15 +70,15 @@ export function analyzeRepeatNumber(
   startRound = 0,
   options: RepeatAnalyzeOptions = {},
 ): RepeatNumberAnalysis {
-  const initialFilter = getInitialFilter(numbers);
+  const environmentFilter = getEnvironmentFilter(numbers, REPEAT_ENV_WINDOW);
   const tier = options.tier ?? REPEAT_TIER_AGGRESSIVE;
-  const coreRoi = computeRoi(numbers, startRound, (signal) => signal.tier === REPEAT_TIER_CORE, options);
-  const aggressiveRoi = computeRoi(numbers, startRound, () => true, options);
+  const coreRoi = computeRoi(numbers, startRound, (signal) => signal.tier === REPEAT_TIER_CORE, options, REPEAT_ENV_WINDOW);
+  const aggressiveRoi = computeRoi(numbers, startRound, () => true, options, REPEAT_ENV_WINDOW);
   return {
     activeSignals: getActiveSignals(numbers, tier, options),
     coreRoi,
     aggressiveRoi,
-    initialFilter,
+    environmentFilter,
   };
 }
 
@@ -85,14 +87,14 @@ export function analyzeShortRepeatNumber(
   startRound = 0,
   options: RepeatAnalyzeOptions = {},
 ): ShortRepeatAnalysis {
-  const initialFilter = getInitialFilter(numbers);
+  const environmentFilter = getEnvironmentFilter(numbers, SHORT_REPEAT_ENV_WINDOW);
   const replay = replayShortRepeat(numbers, startRound, REPEAT_TIER_CORE, options);
   return {
     activeSignals: replay.activeSignals,
     totalRoi: replay.roi,
     coreRoi: replay.roi,
     aggressiveRoi: replay.roi,
-    initialFilter,
+    environmentFilter,
   };
 }
 
@@ -102,11 +104,11 @@ function getActiveSignals(
   options: RepeatAnalyzeOptions,
 ): RepeatNumberSignal[] {
   if (numbers.length === 0) return [];
-  if (!canUseRepeatSignals(numbers, options)) return [];
+  if (!canUseRepeatAt(numbers, numbers.length - 1, options, REPEAT_ENV_WINDOW)) return [];
 
   const signal = getRepeatSignalAt(numbers, numbers.length - 1);
   if (!signal || !signalMatchesTier(signal, tier)) return [];
-  return signal ? [signal] : [];
+  return [signal];
 }
 
 function getRepeatSignalAt(numbers: readonly RouletteNumber[], index: number): RepeatNumberSignal | null {
@@ -152,16 +154,16 @@ function computeRoi(
   startRound = 0,
   filter: (signal: RepeatNumberSignal) => boolean = () => true,
   options: RepeatAnalyzeOptions = {},
+  environmentWindow = REPEAT_ENV_WINDOW,
 ): RepeatNumberRoi {
   let signals = 0;
   let bet = 0;
   let win = 0;
   let hits = 0;
 
-  if (!canUseRepeatStats(numbers, options)) return emptyRoi();
-
   for (let index = 0; index < numbers.length - 1; index += 1) {
     if (index < startRound) continue;
+    if (!canUseRepeatAt(numbers, index, options, environmentWindow)) continue;
     const signal = getRepeatSignalAt(numbers, index);
     if (!signal || !filter(signal)) continue;
 
@@ -235,20 +237,22 @@ function replayShortRepeat(
   let win = 0;
   let hits = 0;
   const activeChases: Array<RepeatNumberSignal & { startRound: number }> = [];
-  const allowStats = canUseRepeatStats(numbers, options);
 
   for (let index = 0; index < numbers.length; index += 1) {
     const value = numbers[index];
     const surviving: typeof activeChases = [];
+    const allowBet = canUseRepeatAt(numbers, index - 1, options, SHORT_REPEAT_ENV_WINDOW);
 
     for (const chase of activeChases) {
       const roundIndex = index - chase.startRound;
       if (roundIndex >= SHORT_REPEAT_CHASE_LEN) continue;
 
-      if (allowStats && index >= startRound) bet += chase.betAmt;
+      if (!allowBet) continue;
+
+      if (index >= startRound) bet += chase.betAmt;
 
       if (value === chase.number) {
-        if (allowStats && index >= startRound) {
+        if (index >= startRound) {
           win += chase.betAmt * REPEAT_PAY;
           hits += 1;
         }
@@ -261,14 +265,17 @@ function replayShortRepeat(
     activeChases.length = 0;
     activeChases.push(...surviving);
 
+    const allowSignal = canUseRepeatAt(numbers, index, options, SHORT_REPEAT_ENV_WINDOW);
+    if (!allowSignal) continue;
+
     const signal = getShortRepeatSignalAt(numbers, index);
     if (!signal || signal.prevGap !== 3 || !signalMatchesTier(signal, tier)) continue;
 
-    if (allowStats && index < numbers.length - 1 && index + SHORT_REPEAT_CHASE_LEN >= startRound) signals += 1;
+    if (index < numbers.length - 1 && index + SHORT_REPEAT_CHASE_LEN >= startRound) signals += 1;
     activeChases.push({ ...signal, startRound: index + 1 });
   }
 
-  const activeSignals: ShortRepeatSignal[] = canUseRepeatSignals(numbers, options) ? activeChases
+  const activeSignals: ShortRepeatSignal[] = canUseRepeatAt(numbers, numbers.length - 1, options, SHORT_REPEAT_ENV_WINDOW) ? activeChases
     .map((chase) => {
       const roundsPlayed = Math.max(0, numbers.length - chase.startRound);
       const round = roundsPlayed + 1;
@@ -295,12 +302,17 @@ function signalMatchesTier(signal: RepeatNumberSignal, tier: RepeatTier): boolea
   return tier === REPEAT_TIER_AGGRESSIVE || signal.tier === REPEAT_TIER_CORE;
 }
 
-export function getInitialFilter(numbers: readonly RouletteNumber[]): RepeatInitialFilter {
+export function getEnvironmentFilter(
+  numbers: readonly RouletteNumber[],
+  windowSize = REPEAT_ENV_WINDOW,
+  endIndex = numbers.length - 1,
+): RepeatEnvironmentFilter {
   let g2Count = 0;
   let g3Count = 0;
-  const end = Math.min(REPEAT_INITIAL_ROUNDS, numbers.length);
+  const safeEnd = Math.min(Math.max(0, endIndex), numbers.length - 1);
+  const start = Math.max(0, safeEnd - windowSize + 1);
 
-  for (let index = 0; index < end; index += 1) {
+  for (let index = start; index <= safeEnd; index += 1) {
     const signal = getShortRepeatSignalAt(numbers, index);
     if (!signal) continue;
     if (signal.prevGap === 2) g2Count += 1;
@@ -311,20 +323,21 @@ export function getInitialFilter(numbers: readonly RouletteNumber[]): RepeatInit
     g2Count,
     g3Count,
     passed: g3Count > g2Count,
-    ready: numbers.length > REPEAT_INITIAL_ROUNDS,
+    ready: safeEnd + 1 >= windowSize,
   };
 }
 
-function canUseRepeatStats(numbers: readonly RouletteNumber[], options: RepeatAnalyzeOptions): boolean {
+function canUseRepeatAt(
+  numbers: readonly RouletteNumber[],
+  index: number,
+  options: RepeatAnalyzeOptions,
+  windowSize: number,
+): boolean {
   if (!options.requireInitialFilter) return true;
-  const initialFilter = getInitialFilter(numbers);
-  return initialFilter.ready && initialFilter.passed;
-}
-
-function canUseRepeatSignals(numbers: readonly RouletteNumber[], options: RepeatAnalyzeOptions): boolean {
-  if (!options.requireInitialFilter) return true;
-  if (numbers.length <= REPEAT_INITIAL_ROUNDS) return options.allowPreInitialSignals === true;
-  return getInitialFilter(numbers).passed;
+  if (index < 0 || numbers.length === 0) return false;
+  const filter = getEnvironmentFilter(numbers, windowSize, index);
+  if (!filter.ready) return options.allowPreInitialSignals === true;
+  return filter.passed;
 }
 
 function emptyRoi(): RepeatNumberRoi {

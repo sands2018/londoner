@@ -164,25 +164,29 @@ describe("roulette rules", () => {
     expect(aggressiveStats.aggressiveRoi.hits).toBe(1);
   });
 
-  it("uses the first 200 rounds as a repeat-number environment filter", () => {
-    const numbers = Array.from({ length: 201 }, (_, index) => (index % 37) as RouletteNumber);
+  it("uses a rolling short-repeat environment filter", () => {
+    const numbers = Array.from({ length: 106 }, (_, index) => ((index % 36) + 1) as RouletteNumber);
     numbers[0] = 18;
     numbers[3] = 18;
     numbers[6] = 18;
-    numbers[20] = 19;
-    numbers[23] = 19;
-    numbers[26] = 19;
-    numbers[190] = 7;
-    numbers[194] = 7;
-    numbers[198] = 7;
-    numbers[200] = 7;
+    numbers[10] = 19;
+    numbers[13] = 19;
+    numbers[16] = 19;
+    numbers[20] = 20;
+    numbers[23] = 20;
+    numbers[26] = 20;
+    numbers[92] = 7;
+    numbers[96] = 7;
+    numbers[100] = 7;
+    numbers[104] = 7;
+    numbers[105] = 7;
 
-    const blocked = analyzeShortRepeatNumber(numbers, 200, {
+    const blocked = analyzeShortRepeatNumber(numbers, 100, {
       tier: REPEAT_TIER_CORE,
       requireInitialFilter: true,
     });
 
-    expect(blocked.initialFilter.g2Count).toBeGreaterThan(blocked.initialFilter.g3Count);
+    expect(blocked.environmentFilter.g2Count).toBeGreaterThan(blocked.environmentFilter.g3Count);
     expect(blocked.totalRoi.bet).toBe(0);
   });
 });
