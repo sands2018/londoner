@@ -92,6 +92,7 @@ import {
   type RhythmDetailRow,
   type RhythmSignal,
 } from "../core/prediction";
+import { analyzePreferredNumber } from "../core/preferredNumber";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
 import { analyzeChaseSix } from "../core/chaseSix";
 import { analyzeChaseThree } from "../core/chaseThree";
@@ -253,6 +254,7 @@ export function App() {
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
+  const [showPreferredNumber, setShowPreferredNumber] = useState(() => localStorage.getItem("londoner.showPreferredNumber") !== "0");
   const [showRepeat, setShowRepeat] = useState(() => localStorage.getItem("londoner.showRepeat") !== "0");
   const [repeatFilter, setRepeatFilter] = useState<RepeatTier>(() => normalizeRepeatTier(localStorage.getItem("londoner.repeatFilter")));
   const [entryMode200, setEntryMode200] = useState(() => localStorage.getItem("londoner.entryMode200") !== "0");
@@ -308,6 +310,7 @@ export function App() {
   const [selectedTransferIds, setSelectedTransferIds] = useState<string[]>([]);
   const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
+  const canUsePreferredNumber = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
 
   const sortedSharedSessions = useMemo(() => {
     const sorted = [...sharedSessions];
@@ -622,6 +625,12 @@ export function App() {
   const chaseThreeG2Roi = c3.group2Roi;
   const chaseThreeG3Roi = c3.group3Roi;
 
+  const preferredNumber = useMemo(() => analyzePreferredNumber(numbers), [numbers]);
+  const preferredNumberSignals = preferredNumber.activeSignals;
+  const preferredNumberRoi = preferredNumber.totalRoi;
+  const preferredNumberFrom201 = useMemo(() => analyzePreferredNumber(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const preferredNumberRoiFrom201 = preferredNumberFrom201.totalRoi;
+
   const repeatSignalOptions = useMemo(
     () => ({ tier: repeatFilter, requireInitialFilter: true, allowPreInitialSignals: !entryMode200 }),
     [repeatFilter, entryMode200],
@@ -663,6 +672,9 @@ export function App() {
     if (chase3Filter !== "全关") {
       bet += chaseThreeRoi.bet; win += chaseThreeRoi.win;
     }
+    if (canUsePreferredNumber && showPreferredNumber) {
+      bet += preferredNumberRoi.bet; win += preferredNumberRoi.win;
+    }
     if (showRepeat) {
       bet += repeatFilteredRoi.bet; win += repeatFilteredRoi.win;
     }
@@ -670,7 +682,7 @@ export function App() {
       bet += shortRepeatRoi.bet; win += shortRepeatRoi.win;
     }
     return { bet, win, net: win - bet };
-  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi]);
+  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi]);
 
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
@@ -684,12 +696,13 @@ export function App() {
     if (showCold) { bet += cold.bet; win += cold.win; }
     if (chase6Filter !== "全关") { bet += c6.totalRoi.bet; win += c6.totalRoi.win; }
     if (chase3Filter !== "全关") { bet += c3f.totalRoi.bet; win += c3f.totalRoi.win; }
+    if (canUsePreferredNumber && showPreferredNumber) { bet += preferredNumberRoiFrom201.bet; win += preferredNumberRoiFrom201.win; }
     if (showRepeat) {
       bet += repeatFilteredRoiFrom201.bet; win += repeatFilteredRoiFrom201.win;
     }
     if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
     return { bet, win, net: win - bet };
-  }, [numbers, show124, rhythmMode, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201]);
+  }, [numbers, show124, rhythmMode, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -779,6 +792,13 @@ export function App() {
       localStorage.removeItem(currentSessionIdKey);
     }
   }, [currentSessionId]);
+
+  useEffect(() => {
+    if (!canUsePreferredNumber && predictionTab === "preferredNumber") {
+      setPredictionTab("overview");
+      localStorage.setItem("londoner.predictionTab", "overview");
+    }
+  }, [canUsePreferredNumber, predictionTab]);
 
   function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
     const sorted = [...predictions].sort((a, b) => b.excess - a.excess);
@@ -2280,12 +2300,29 @@ export function App() {
       ) : null; })()}
 
       {(() => {
+        const filteredPreferredNumber = canUsePreferredNumber && showPreferredNumber ? preferredNumberSignals : [];
         const filteredRepeat = showRepeat
           ? repeatSignals
           : [];
         const filteredShortRepeat = showShortRepeat ? shortRepeatSignals : [];
-        return filteredRepeat.length > 0 || filteredShortRepeat.length > 0 ? (
-          <section className="repeat-signal-area" aria-label="重号信号">
+        return filteredPreferredNumber.length > 0 || filteredRepeat.length > 0 || filteredShortRepeat.length > 0 ? (
+          <section className="repeat-signal-area" aria-label="单号信号">
+            {filteredPreferredNumber.map((item, index) => (
+              <div
+                className="repeat-signal-item repeat-preferred"
+                key={`preferred-${index}-${item.numbers.join("-")}`}
+                onClick={() => { setPredictionTab("preferredNumber"); setPredictionWindowOpen(true); }}
+                role="button"
+                tabIndex={0}
+              >
+                <span className="repeat-tier-badge">优选</span>
+                <span className="preferred-number-picks">
+                  {item.numbers.map((value) => (
+                    <strong className="repeat-number" key={value}>{value}</strong>
+                  ))}
+                </span>
+              </div>
+            ))}
             {filteredRepeat.map((item) => (
               <div
                 className={`repeat-signal-item ${item.tier === REPEAT_TIER_CORE ? "repeat-premium" : ""}`}
@@ -3247,7 +3284,10 @@ export function App() {
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
               <button className={predictionTab === "chase3" ? "selected" : ""} onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} type="button">追3</button>
-              <button className={predictionTab === "repeat" ? "selected" : ""} onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} type="button">重号</button>
+              {canUsePreferredNumber ? (
+                <button className={predictionTab === "preferredNumber" ? "selected" : ""} onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} type="button">优选号</button>
+              ) : null}
+              <button className={predictionTab === "repeat" ? "selected" : ""} onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} type="button">长重号</button>
               <button className={predictionTab === "shortRepeat" ? "selected" : ""} onClick={() => { setPredictionTab("shortRepeat"); localStorage.setItem("londoner.predictionTab", "shortRepeat"); }} type="button">短重号</button>
             </div>
             <div className="prediction-body">
@@ -3255,8 +3295,8 @@ export function App() {
                 <div className={`overview-pane overview-pane-${predictionOverviewTab}`}>
                   <div className="overview-subtabs" aria-label="总览分类">
                     {[
-                      ["repeat", "重号"],
-                      ["other", "其他"],
+                      ["repeat", "单号"],
+                      ["other", "行组"],
                     ].map(([key, label]) => (
                       <button
                         className={predictionOverviewTab === key ? "selected" : ""}
@@ -3385,9 +3425,30 @@ export function App() {
                       </div>
                     </div>
                   </div>
+                  {canUsePreferredNumber ? (
+                  <div className="overview-card overview-preferred overview-repeat-card" onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} role="button" tabIndex={0}>
+                    <div className="overview-card-title">
+                      <span>优选号</span>
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${showPreferredNumber ? " on" : ""}`} onClick={() => { const v = !showPreferredNumber; setShowPreferredNumber(v); localStorage.setItem("londoner.showPreferredNumber", v ? "1" : "0"); }} type="button" />
+                      </span>
+                    </div>
+                    <div className="prediction-roi-table" style={{ margin: 0 }}>
+                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row">
+                        <strong>{numbers.length}</strong><strong>{preferredNumberRoi.bet}</strong><strong>{preferredNumberRoi.win}</strong>
+                        <strong className="roi-value" style={{ color: preferredNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoi.roi >= 0 ? "+" : ""}{preferredNumberRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">200后</span><span>{preferredNumberRoiFrom201.bet}</span><span>{preferredNumberRoiFrom201.win}</span>
+                        <strong className="roi-value" style={{ color: preferredNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoiFrom201.roi >= 0 ? "+" : ""}{preferredNumberRoiFrom201.roi.toFixed(1)}%</strong>
+                      </div>
+                    </div>
+                  </div>
+                  ) : null}
                   <div className="overview-card overview-repeat overview-repeat-card" onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>重号</span>
+                      <span>长重号</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showRepeat ? " on" : ""}`} onClick={() => { const v = !showRepeat; setShowRepeat(v); localStorage.setItem("londoner.showRepeat", v ? "1" : "0"); }} type="button" />
                       </span>
@@ -3433,6 +3494,29 @@ export function App() {
                   </div>
                   </div>
                 </div>
+              ) : predictionTab === "preferredNumber" && canUsePreferredNumber ? (
+                <>
+                  <p className="prediction-desc">Markov Top2 纸面过滤：最近37口纸面预测命中≥2次时触发，押Top2各1单位；真实下注未中后冷却3口。</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>优选号</strong><strong>{preferredNumberRoi.bet}</strong><strong>{preferredNumberRoi.win}</strong>
+                      <strong className="roi-value" style={{ color: preferredNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoi.roi >= 0 ? "+" : ""}{preferredNumberRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">200后</span><span>{preferredNumberRoiFrom201.bet}</span><span>{preferredNumberRoiFrom201.win}</span>
+                      <strong className="roi-value" style={{ color: preferredNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoiFrom201.roi >= 0 ? "+" : ""}{preferredNumberRoiFrom201.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                  <div className="detail-stats-table">
+                    <div className="detail-stats-header"><span>类型</span><span>信号</span><span>命中</span><span>未中</span><span>命中率</span></div>
+                    <div className="detail-stats-row">
+                      <strong className="detail-stats-label">优选号</strong>
+                      <span>{preferredNumberRoi.signals}</span><span>{preferredNumberRoi.hits}</span><span>{preferredNumberRoi.signals - preferredNumberRoi.hits}</span>
+                      <span>{preferredNumberRoi.signals > 0 ? `${(preferredNumberRoi.hits / preferredNumberRoi.signals * 100).toFixed(1)}%` : "0.0%"}</span>
+                    </div>
+                  </div>
+                </>
               ) : predictionTab === "cold" ? (
                 <>
                   <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮。{coldAdaptiveMode !== "off" ? " 自适应"+ (coldAdaptiveMode === "adaptiveRow" ? "(冷启动押行)" : "") + "已启用" : ""}</p>
@@ -3527,7 +3611,7 @@ export function App() {
                 </>
               ) : predictionTab === "repeat" ? (
                 <>
-                  <p className="prediction-desc">核心：短重gap=3，长重gap=9-10；进取：在核心基础上增加长重gap=8/11/12且短重环境1-2。长重号使用移动{REPEAT_ENV_WINDOW}口环境，g3次数大于g2次数时开启。</p>
+                  <p className="prediction-desc">长重号核心：gap=9-10；进取：在核心基础上增加gap=8/11/12且短重环境1-2。长重号使用移动{REPEAT_ENV_WINDOW}口环境，g3次数大于g2次数时开启。</p>
                   <div className="repeat-filter-panel">
                     <span>当前环境：{repeatEnvironmentFilter.ready ? (repeatEnvironmentFilter.passed ? "通过" : "未通过") : "窗口未满"}</span>
                     <span>g3={repeatEnvironmentFilter.g3Count}</span>

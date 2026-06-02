@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calculateColRowCompare } from "./colRowStats";
 import { calculateFrequencyStats } from "./frequencyStats";
 import { formatNumbers, parseNumbersText } from "./numberText";
+import { analyzePreferredNumber } from "./preferredNumber";
 import {
   REPEAT_TIER_AGGRESSIVE,
   REPEAT_TIER_CORE,
@@ -188,5 +189,30 @@ describe("roulette rules", () => {
 
     expect(blocked.environmentFilter.g2Count).toBeGreaterThan(blocked.environmentFilter.g3Count);
     expect(blocked.totalRoi.bet).toBe(0);
+  });
+
+  it("starts preferred-number bets after the paper Markov gate passes", () => {
+    const numbers = Array.from({ length: 90 }, (_, index) => (index % 2 === 0 ? 1 : 2) as RouletteNumber);
+    const stats = analyzePreferredNumber(numbers);
+
+    expect(stats.totalRoi.signals).toBe(52);
+    expect(stats.totalRoi.bet).toBe(104);
+    expect(stats.totalRoi.hits).toBe(52);
+    expect(stats.totalRoi.win).toBe(1872);
+    expect(stats.activeSignals[0]?.numbers).toContain(1);
+  });
+
+  it("pauses preferred-number betting for three spins after a miss", () => {
+    const numbers = [
+      ...Array.from({ length: 50 }, (_, index) => (index % 2 === 0 ? 1 : 2) as RouletteNumber),
+      3 as RouletteNumber,
+      ...Array.from({ length: 10 }, (_, index) => (index % 2 === 0 ? 1 : 2) as RouletteNumber),
+    ];
+    const stats = analyzePreferredNumber(numbers);
+
+    expect(stats.totalRoi.signals).toBe(20);
+    expect(stats.totalRoi.bet).toBe(40);
+    expect(stats.totalRoi.hits).toBe(19);
+    expect(stats.totalRoi.win).toBe(684);
   });
 });
