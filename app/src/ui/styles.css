@@ -2814,6 +2814,21 @@ button:disabled {
   color: #fff;
 }
 
+.repeat-filter-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid #e5dcec;
+  border-radius: 8px;
+  background: #f7f3f8;
+  color: #685a78;
+  font-size: var(--font-size-small);
+  font-weight: var(--weight-ui);
+}
+
 .overview-cold {
   background: #e8eef2;
   border-color: #c8d8e0;

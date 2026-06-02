@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import { calculateColRowCompare } from "./colRowStats";
 import { calculateFrequencyStats } from "./frequencyStats";
 import { formatNumbers, parseNumbersText } from "./numberText";
-import { analyzeRepeatNumber, analyzeShortRepeatNumber } from "./repeatNumber";
-import { getColumnIndexes, getGroupIndex, getNumberColor, getNumberColRows, getRowIndex } from "./roulette";
+import {
+  REPEAT_TIER_AGGRESSIVE,
+  REPEAT_TIER_CORE,
+  analyzeRepeatNumber,
+  analyzeShortRepeatNumber,
+} from "./repeatNumber";
+import { getColumnIndexes, getGroupIndex, getNumberColor, getNumberColRows, getRowIndex, type RouletteNumber } from "./roulette";
 import {
   calculateColRowDistances,
   calculateColumnDistances,
@@ -86,14 +91,14 @@ describe("roulette rules", () => {
     expect(wide[0]).toMatchObject({ succeeded: 1, failed: 1 });
   });
 
-  it("detects repeat-number signals and premium repeat stats", () => {
+  it("detects repeat-number signals and core repeat stats", () => {
     const numbers = [18, 7, 1, 7, 18, 3, 7, 4, 5, 6, 8, 9, 10, 11, 12, 18, 18];
     const stats = analyzeRepeatNumber(numbers);
 
-    expect(stats.normalRoi.signals).toBe(1);
-    expect(stats.normalRoi.hits).toBe(1);
-    expect(stats.normalRoi.roi).toBe(3500);
-    expect(stats.premiumRoi.signals).toBe(1);
+    expect(stats.aggressiveRoi.signals).toBe(1);
+    expect(stats.aggressiveRoi.hits).toBe(1);
+    expect(stats.aggressiveRoi.roi).toBe(3500);
+    expect(stats.coreRoi.signals).toBe(1);
     expect(stats.activeSignals).toHaveLength(0);
   });
 
@@ -101,14 +106,14 @@ describe("roulette rules", () => {
     const numbers = [18, 7, 1, 7, 2, 3, 7, 4, 5, 6, 18, 1, 2, 3, 4, 5, 6, 7, 8, 9, 18, 18];
     const stats = analyzeRepeatNumber(numbers, 20);
 
-    expect(stats.normalRoi.signals).toBe(1);
-    expect(stats.normalRoi.hits).toBe(1);
-    expect(stats.premiumRoi.signals).toBe(1);
-    expect(stats.premiumRoi.hits).toBe(1);
+    expect(stats.aggressiveRoi.signals).toBe(1);
+    expect(stats.aggressiveRoi.hits).toBe(1);
+    expect(stats.coreRoi.signals).toBe(1);
+    expect(stats.coreRoi.hits).toBe(1);
   });
 
   it("detects short repeat signals with a two-round chase", () => {
-    const numbers = [18, 1, 18, 2, 3, 18, 4, 18, 18];
+    const numbers = [18, 1, 2, 18, 3, 4, 5, 18, 6, 18];
     const stats = analyzeShortRepeatNumber(numbers);
 
     expect(stats.totalRoi.signals).toBe(1);
@@ -119,12 +124,65 @@ describe("roulette rules", () => {
   });
 
   it("counts short repeat signals when a delayed ROI window includes chase bets", () => {
-    const numbers = [18, 1, 18, 2, 3, 18, 4, 18];
-    const stats = analyzeShortRepeatNumber(numbers, 7);
+    const numbers = [18, 1, 2, 18, 3, 4, 5, 18, 6, 18];
+    const stats = analyzeShortRepeatNumber(numbers, 9);
 
     expect(stats.totalRoi.signals).toBe(1);
     expect(stats.totalRoi.bet).toBe(1);
     expect(stats.totalRoi.hits).toBe(1);
     expect(stats.totalRoi.win).toBe(36);
+  });
+
+  it("separates core and aggressive short repeat tiers", () => {
+    const gap2 = [18, 1, 18, 2, 3, 18, 4, 18];
+    const gap2Core = analyzeShortRepeatNumber(gap2, 0, { tier: REPEAT_TIER_CORE });
+    const gap2Aggressive = analyzeShortRepeatNumber(gap2, 0, { tier: REPEAT_TIER_AGGRESSIVE });
+
+    expect(gap2Core.totalRoi.signals).toBe(0);
+    expect(gap2Aggressive.totalRoi.signals).toBe(0);
+
+    const gap3 = [18, 1, 2, 18, 3, 4, 5, 18, 6, 18];
+    const gap3Core = analyzeShortRepeatNumber(gap3, 0, { tier: REPEAT_TIER_CORE });
+
+    expect(gap3Core.totalRoi.signals).toBe(1);
+    expect(gap3Core.totalRoi.hits).toBe(1);
+  });
+
+  it("separates core and aggressive long repeat tiers", () => {
+    const core = [18, 7, 1, 7, 18, 3, 7, 4, 5, 6, 8, 9, 10, 11, 12, 18, 18];
+    const coreStats = analyzeRepeatNumber(core, 0, { tier: REPEAT_TIER_CORE });
+
+    expect(coreStats.coreRoi.signals).toBe(1);
+    expect(coreStats.coreRoi.hits).toBe(1);
+
+    const aggressive = [18, 7, 1, 7, 18, 3, 7, 4, 5, 6, 8, 9, 10, 18, 18];
+    const aggressiveCore = analyzeRepeatNumber(aggressive, 0, { tier: REPEAT_TIER_CORE });
+    const aggressiveStats = analyzeRepeatNumber(aggressive, 0, { tier: REPEAT_TIER_AGGRESSIVE });
+
+    expect(aggressiveCore.coreRoi.signals).toBe(0);
+    expect(aggressiveStats.aggressiveRoi.signals).toBe(1);
+    expect(aggressiveStats.aggressiveRoi.hits).toBe(1);
+  });
+
+  it("uses the first 200 rounds as a repeat-number environment filter", () => {
+    const numbers = Array.from({ length: 201 }, (_, index) => (index % 37) as RouletteNumber);
+    numbers[0] = 18;
+    numbers[3] = 18;
+    numbers[6] = 18;
+    numbers[20] = 19;
+    numbers[23] = 19;
+    numbers[26] = 19;
+    numbers[190] = 7;
+    numbers[194] = 7;
+    numbers[198] = 7;
+    numbers[200] = 7;
+
+    const blocked = analyzeShortRepeatNumber(numbers, 200, {
+      tier: REPEAT_TIER_CORE,
+      requireInitialFilter: true,
+    });
+
+    expect(blocked.initialFilter.g2Count).toBeGreaterThan(blocked.initialFilter.g3Count);
+    expect(blocked.totalRoi.bet).toBe(0);
   });
 });
