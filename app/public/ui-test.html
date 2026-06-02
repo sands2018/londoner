@@ -178,6 +178,12 @@
   .repeat-signal-item.repeat-premium { background:#dbd0e6; border-color:#cec2d9; color:#443460; }
   .repeat-signal-item.repeat-short { background:#eddce2; border-color:#e4d3d9; color:#64425a; }
   .repeat-signal-item.repeat-short:active { background:#e8dee1; }
+  .repeat-signal-item.repeat-preferred {
+    background:#ede0d2; border-color:#e3d4c2; color:#5c3a28;
+  }
+  .repeat-signal-item.repeat-preferred .repeat-tier-badge { color:#b07040; }
+  .repeat-signal-item.repeat-preferred:active { background:#e0d0bc; }
+  .preferred-number-picks { align-items:center; display:flex; gap:10px; }
   .repeat-number { font-size:24px; font-weight:500; line-height:1; }
   .repeat-star { color:#8a6aa8; font-size:15px; font-weight:500; line-height:1; }
   .repeat-tier-badge {
@@ -404,6 +410,74 @@
   </div>
 </section>
 
+<!-- ============ 优选号 ============ -->
+<h2>优选号 — 蓝灰</h2>
+
+<p class="label-row" style="margin-bottom:6px">Markov Top2：纸面37口≥2命中 + 轮盘半径4区域37口≥8次，押Top2各1单位。未中后冷却3口。</p>
+
+<section class="repeat-signal-area">
+  <!-- 优选号 单独出现 -->
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">12</strong>
+      <strong class="repeat-number">28</strong>
+    </span>
+  </div>
+  <!-- 优选号 另一个示例 -->
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">5</strong>
+      <strong class="repeat-number">0</strong>
+    </span>
+  </div>
+  <!-- 优选号 宽示例 (0是两位数视觉) -->
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">33</strong>
+      <strong class="repeat-number">17</strong>
+    </span>
+  </div>
+</section>
+
+<!-- 同时出现：优选号 + 重号 -->
+<section class="repeat-signal-area">
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">14</strong>
+      <strong class="repeat-number">9</strong>
+    </span>
+  </div>
+  <div class="repeat-signal-item repeat-premium">
+    <span class="repeat-tier-badge">核心</span>
+    <strong class="repeat-number">14</strong>
+  </div>
+</section>
+
+<!-- 同时出现：优选号 + 短重号 -->
+<section class="repeat-signal-area">
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">7</strong>
+      <strong class="repeat-number">22</strong>
+    </span>
+  </div>
+  <div class="repeat-signal-item repeat-short">
+    <strong class="repeat-number">7</strong>
+    <span class="short-repeat-chase">
+      <span class="short-repeat-dots">
+        <span class="short-repeat-dot filled"></span>
+        <span class="short-repeat-dot"></span>
+      </span>
+      <span class="short-repeat-bet">1</span>
+    </span>
+  </div>
+</section>
+
 <!-- ============ 重号 + 短重号 ============ -->
 <h2>重号 / 短重号 — 冷紫 / 暖粉紫</h2>
 
@@ -483,6 +557,7 @@
 <p class="label-row">追3 普通（淡红）: label=#ece4e4 / chase=#f4f2f2 / border=#ece4e4 / text=#7a4a48</p>
 <p class="label-row">追3 波浪强★: label=#e6dcdc / chase=#f2ecec / border=#e6dcdc / text=#6a3a38</p>
 <p class="label-row">追3 波浪精选★★: label=#ded2d2 / chase=#eae0e0 / border=#ded2d2 / text=#4a2828</p>
+<p class="label-row">优选号（金红）: bg=#ede0d2 / border=#e3d4c2 / text=#5c3a28 / badge=#b07040</p>
 <p class="label-row">重号 核心（冷紫）: bg=#e5dcec / border=#d6cee0 / text=#51406a / badge=#8a6aa8</p>
 <p class="label-row">重号 核心精选: bg=#dbd0e6 / border=#cec2d9 / text=#443460</p>
 <p class="label-row">短重号（暖粉紫）: bg=#eddce2 / border=#e4d3d9 / text=#64425a / dot=#a08195 / dot-filled=#835876</p>

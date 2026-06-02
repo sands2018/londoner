@@ -2866,13 +2866,13 @@ button:disabled {
 .overview-chase3 .prediction-roi-row span { color: #7a6b65; }
 
 .overview-preferred {
-  background: #e0e6ed;
-  border-color: #cfd9e4;
+  background: #ede0d2;
+  border-color: #e3d4c2;
 }
-.overview-preferred .overview-card-title { color: #3f5368; }
-.overview-preferred .prediction-roi-table { border-color: #cfd9e4; }
-.overview-preferred .prediction-roi-row { border-bottom-color: #dce4eb; }
-.overview-preferred .prediction-roi-row span { color: #5a6b7a; }
+.overview-preferred .overview-card-title { color: #5c3a28; }
+.overview-preferred .prediction-roi-table { border-color: #e3d4c2; }
+.overview-preferred .prediction-roi-row { border-bottom-color: #ede0d2; }
+.overview-preferred .prediction-roi-row span { color: #7a6858; }
 
 .overview-repeat {
   background: #e5dcec;
@@ -3812,13 +3812,13 @@ button:disabled {
 }
 
 .repeat-signal-item.repeat-preferred {
-  background: #e0e6ed;
-  border-color: #cfd9e4;
-  color: #3f5368;
+  background: #ede0d2;
+  border-color: #e3d4c2;
+  color: #5c3a28;
 }
 
 .repeat-signal-item.repeat-preferred .repeat-tier-badge {
-  color: #5a6f86;
+  color: #b07040;
 }
 
 .repeat-signal-item:active {
@@ -3826,7 +3826,7 @@ button:disabled {
 }
 
 .repeat-signal-item.repeat-preferred:active {
-  background: #d5dee8;
+  background: #e0d0bc;
 }
 
 .repeat-signal-item.repeat-short:active {

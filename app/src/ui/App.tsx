@@ -3496,7 +3496,12 @@ export function App() {
                 </div>
               ) : predictionTab === "preferredNumber" && canUsePreferredNumber ? (
                 <>
-                  <p className="prediction-desc">Markov Top2 纸面过滤：最近37口纸面预测命中≥2次时触发，押Top2各1单位；真实下注未中后冷却3口。</p>
+                  <p className="prediction-desc">Markov Top2 纸面过滤：最近37口纸面预测命中≥2次，且当前号轮盘半径4区域最近37口≥8次时触发；真实下注未中后冷却3口。</p>
+                  <p className="prediction-desc">
+                    当前区域：{preferredNumberSignals[0]
+                      ? `通过（${preferredNumberSignals[0].zoneHits}/${preferredNumberSignals[0].zoneWindow}，半径${preferredNumberSignals[0].zoneRadius}）`
+                      : "未触发"}
+                  </p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">

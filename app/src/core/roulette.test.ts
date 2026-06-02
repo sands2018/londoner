@@ -200,6 +200,18 @@ describe("roulette rules", () => {
     expect(stats.totalRoi.hits).toBe(52);
     expect(stats.totalRoi.win).toBe(1872);
     expect(stats.activeSignals[0]?.numbers).toContain(1);
+    expect(stats.activeSignals[0]?.zoneHits).toBeGreaterThanOrEqual(8);
+  });
+
+  it("blocks preferred-number bets when the wheel zone is not active", () => {
+    const cycle: RouletteNumber[] = [0, 2, 13, 10, 20, 29];
+    const numbers = Array.from({ length: 90 }, (_, index) => cycle[index % cycle.length]);
+    const stats = analyzePreferredNumber(numbers);
+
+    expect(stats.totalRoi.signals).toBe(0);
+    expect(stats.totalRoi.bet).toBe(0);
+    expect(stats.totalRoi.hits).toBe(0);
+    expect(stats.activeSignals).toHaveLength(0);
   });
 
   it("pauses preferred-number betting for three spins after a miss", () => {
