@@ -253,7 +253,7 @@ export function App() {
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
   const [showRepeat, setShowRepeat] = useState(() => localStorage.getItem("londoner.showRepeat") !== "0");
   const [repeatFilter, setRepeatFilter] = useState<RepeatTier>(() => normalizeRepeatTier(localStorage.getItem("londoner.repeatFilter")));
-  const [showRepeatPre200Signals, setShowRepeatPre200Signals] = useState(() => localStorage.getItem("londoner.showRepeatPre200Signals") === "1");
+  const [entryMode200, setEntryMode200] = useState(() => localStorage.getItem("londoner.entryMode200") !== "0");
   const [showShortRepeat, setShowShortRepeat] = useState(() => localStorage.getItem("londoner.showShortRepeat") !== "0");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [waveTab, setWaveTab] = useState<"rhythm" | "trend">("rhythm");
@@ -621,8 +621,8 @@ export function App() {
   const chaseThreeG3Roi = c3.group3Roi;
 
   const repeatSignalOptions = useMemo(
-    () => ({ tier: repeatFilter, requireInitialFilter: true, allowPreInitialSignals: showRepeatPre200Signals }),
-    [repeatFilter, showRepeatPre200Signals],
+    () => ({ tier: repeatFilter, requireInitialFilter: true, allowPreInitialSignals: !entryMode200 }),
+    [repeatFilter, entryMode200],
   );
   const repeatStatsOptions = useMemo(
     () => ({ tier: repeatFilter, requireInitialFilter: true }),
@@ -2285,14 +2285,14 @@ export function App() {
           <section className="repeat-signal-area" aria-label="重号信号">
             {filteredRepeat.map((item) => (
               <div
-                className={`repeat-signal-item ${item.isPremium ? "repeat-premium" : ""}`}
+                className={`repeat-signal-item ${item.tier === REPEAT_TIER_CORE ? "repeat-premium" : ""}`}
                 key={`repeat-${item.number}`}
                 onClick={() => { setPredictionTab("repeat"); setPredictionWindowOpen(true); }}
                 role="button"
                 tabIndex={0}
               >
+                <span className="repeat-tier-badge">{item.tier === REPEAT_TIER_CORE ? "核心" : "进取"}</span>
                 <strong className="repeat-number">{item.number}</strong>
-                {item.isPremium ? <span className="repeat-star">★</span> : null}
               </div>
             ))}
             {filteredShortRepeat.map((item) => (
@@ -3529,8 +3529,8 @@ export function App() {
                 <>
                   <div className="repeat-filter-panel">
                     <span>前200口环境：g3 {repeatInitialFilter.g3Count} / g2 {repeatInitialFilter.g2Count}，{repeatInitialFilter.ready ? (repeatInitialFilter.passed ? "通过" : "未通过") : "未满200口"}</span>
-                    <button className={`signal-toggle${showRepeatPre200Signals ? " on" : ""}`} onClick={() => { const v = !showRepeatPre200Signals; setShowRepeatPre200Signals(v); localStorage.setItem("londoner.showRepeatPre200Signals", v ? "1" : "0"); }} type="button" />
-                    <span>前200口显示信号</span>
+                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
+                    <span>前200个为录入号</span>
                   </div>
                   <p className="prediction-desc">核心：短重gap=3，长重gap=9-10；进取：在核心基础上增加长重gap=8/11/12且短重环境1-2。前200口g3次数需大于g2次数才纳入统计。</p>
                   <div className="prediction-roi-table">
@@ -3570,8 +3570,8 @@ export function App() {
                 <>
                   <div className="repeat-filter-panel">
                     <span>前200口环境：g3 {repeatInitialFilter.g3Count} / g2 {repeatInitialFilter.g2Count}，{repeatInitialFilter.ready ? (repeatInitialFilter.passed ? "通过" : "未通过") : "未满200口"}</span>
-                    <button className={`signal-toggle${showRepeatPre200Signals ? " on" : ""}`} onClick={() => { const v = !showRepeatPre200Signals; setShowRepeatPre200Signals(v); localStorage.setItem("londoner.showRepeatPre200Signals", v ? "1" : "0"); }} type="button" />
-                    <span>前200口显示信号</span>
+                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
+                    <span>前200个为录入号</span>
                   </div>
                   <p className="prediction-desc">短重号核心/进取均只保留gap=3且近37口出现≥3次，追同号2轮，每轮1单位；前200口g3次数需大于g2次数才纳入统计。</p>
                   <div className="prediction-roi-table">
