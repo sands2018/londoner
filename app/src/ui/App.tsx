@@ -2,6 +2,7 @@
 import {
   getNumberColor,
   getNumberColRows,
+  getRowIndex,
   isRouletteNumber,
   type ColRowIndex,
   type RouletteNumber,
@@ -793,8 +794,33 @@ export function App() {
       };
     });
   }, [latestNumber, numbers]);
-  const formatGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
-    item.highlighted && item.previousDistance !== null ? `0 (${item.previousDistance})` : String(item.distance);
+  const rowBlockSnapshot = useMemo(() => {
+    const latestRow = latestNumber !== null ? getRowIndex(latestNumber) : null;
+    const getMissDistanceBefore = (ri: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        if (getRowIndex(numbers[index]) === ri) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return [2, 1, 0].map((ri) => {
+      const highlighted = latestRow === ri;
+      return {
+        distance: getMissDistanceBefore(ri, numbers.length - 1),
+        highlighted,
+        label: `${ri + 1}行`,
+        previousDistance: highlighted ? getMissDistanceBefore(ri, numbers.length - 2) : null,
+        ri,
+      };
+    });
+  }, [latestNumber, numbers]);
+  const renderGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
+    item.highlighted && item.previousDistance !== null ? (
+      <span className="group-block-distance">({item.previousDistance})</span>
+    ) : (
+      <span className="group-block-distance">{item.distance}</span>
+    );
   const hasUnsavedChanges = useMemo(
     () => numbers.length > 0 && !areSameNumbers(numbers, lastSavedNumbers),
     [lastSavedNumbers, numbers],
@@ -2429,17 +2455,16 @@ export function App() {
 
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
-        <div className="dock-actions dock-actions-primary">
+        <div className="dock-actions">
           <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">临时传</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
-          <button onClick={() => setSixNumberViewOpen(true)} type="button">组</button>
-          <button onClick={openConfigView} type="button">配置</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
         </div>
-        <div className="dock-actions">
+        <div className="dock-actions dock-actions-primary">
           <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
           <button onClick={() => { setStatsTab("colrow"); setStatsViewOpen(true); }} type="button">行组</button>
@@ -2447,6 +2472,7 @@ export function App() {
           <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
           <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
+          <button onClick={openConfigView} type="button">配置</button>
         </div>
 
         {keyboardMode === "keypad" ? (
@@ -2820,14 +2846,14 @@ export function App() {
       ) : null}
 
       {sixNumberViewOpen ? (
-        <section className="data-screen six-number-screen" aria-label="组块照">
+        <section className="data-screen six-number-screen" aria-label="行组快照">
           <header className="data-screen-head">
-            <strong>组块照</strong>
+            <strong>行组快照</strong>
             <button className="close-button title-close-button" onClick={() => setSixNumberViewOpen(false)} type="button">x</button>
           </header>
           <div className="group-block-body">
             <div className="group-block-head" aria-hidden="true">
-              <span>号码</span><span>3数字</span><span>6数字</span><span>组</span>
+              <span>组</span><span>6数字</span><span>3数字</span><span>号码</span>
             </div>
             <div className="group-block-grid">
               {threeNumberSnapshot.map((item) => (
@@ -2837,23 +2863,31 @@ export function App() {
                   ))}
                 </div>
               ))}
+              <div className="group-block-row-stats" style={{ gridRow: "13" }}>
+                {rowBlockSnapshot.map((item) => (
+                  <div className={`group-block-row-stat${item.highlighted ? " highlighted" : ""}`} key={item.ri}>
+                    <span className="group-block-row-label">{item.label}</span>
+                    <strong>{renderGroupBlockDistance(item)}</strong>
+                  </div>
+                ))}
+              </div>
               {threeNumberSnapshot.map((item) => (
                 <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
-                  {formatGroupBlockDistance(item)}
+                  {renderGroupBlockDistance(item)}
                 </div>
               ))}
               {sixNumberSnapshot.map((item) => (
                 <div
                   className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`}
                   key={`y-${item.wi}`}
-                  style={{ gridColumn: item.wi % 2 === 0 ? 3 : 4, gridRow: `${item.wi + 1} / span 2` }}
+                  style={{ gridColumn: item.wi % 2 === 0 ? 3 : 2, gridRow: `${item.wi + 1} / span 2` }}
                 >
-                  {formatGroupBlockDistance(item)}
+                  {renderGroupBlockDistance(item)}
                 </div>
               ))}
               {groupBlockSnapshot.map((item) => (
                 <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${item.gi * 4 + 1} / span 4` }}>
-                  {formatGroupBlockDistance(item)}
+                  {renderGroupBlockDistance(item)}
                 </div>
               ))}
             </div>
