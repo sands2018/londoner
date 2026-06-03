@@ -727,8 +727,8 @@ export function App() {
   );
   const finishedLongs = useMemo(() => calculateFinishedLongs(numbers), [numbers]);
   const queueItems = useMemo(() => numbers.slice(-105).reverse(), [numbers]);
+  const latestNumber = numbers.length > 0 ? numbers[numbers.length - 1] : null;
   const sixNumberSnapshot = useMemo(() => {
-    const latest = numbers.length > 0 ? numbers[numbers.length - 1] : null;
     const getMissDistanceBefore = (wi: number, startIndex: number) => {
       let distance = 0;
       for (let index = startIndex; index >= 0; index -= 1) {
@@ -739,7 +739,7 @@ export function App() {
       return distance;
     };
     return Array.from({ length: 11 }, (_, wi) => {
-      const highlighted = latest !== null && isInChaseSixWindow(wi, latest);
+      const highlighted = latestNumber !== null && isInChaseSixWindow(wi, latestNumber);
       return {
         distance: getMissDistanceBefore(wi, numbers.length - 1),
         highlighted,
@@ -748,9 +748,9 @@ export function App() {
         wi,
       };
     });
-  }, [numbers]);
+  }, [latestNumber, numbers]);
   const threeNumberSnapshot = useMemo(() => {
-    const latestStreet = numbers.length > 0 ? streetOf(numbers[numbers.length - 1]) : -1;
+    const latestStreet = latestNumber !== null ? streetOf(latestNumber) : -1;
     const getMissDistanceBefore = (wi: number, startIndex: number) => {
       let distance = 0;
       for (let index = startIndex; index >= 0; index -= 1) {
@@ -769,7 +769,32 @@ export function App() {
         wi,
       };
     });
-  }, [numbers]);
+  }, [latestNumber, numbers]);
+  const groupBlockSnapshot = useMemo(() => {
+    const groupOfNumber = (value: number) => value === 0 ? -1 : Math.floor((value - 1) / 12);
+    const latestGroup = latestNumber !== null ? groupOfNumber(latestNumber) : -1;
+    const getMissDistanceBefore = (gi: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        if (groupOfNumber(numbers[index]) === gi) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return Array.from({ length: 3 }, (_, gi) => {
+      const highlighted = latestGroup === gi;
+      const start = gi * 12 + 1;
+      return {
+        distance: getMissDistanceBefore(gi, numbers.length - 1),
+        highlighted,
+        label: `${start}-${start + 11}`,
+        previousDistance: highlighted ? getMissDistanceBefore(gi, numbers.length - 2) : null,
+        gi,
+      };
+    });
+  }, [latestNumber, numbers]);
+  const formatGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
+    item.highlighted && item.previousDistance !== null ? `0 (${item.previousDistance})` : String(item.distance);
   const hasUnsavedChanges = useMemo(
     () => numbers.length > 0 && !areSameNumbers(numbers, lastSavedNumbers),
     [lastSavedNumbers, numbers],
@@ -2411,7 +2436,7 @@ export function App() {
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
-          <button onClick={() => setSixNumberViewOpen(true)} type="button">63</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">组</button>
           <button onClick={openConfigView} type="button">配置</button>
         </div>
         <div className="dock-actions">
@@ -2795,34 +2820,43 @@ export function App() {
       ) : null}
 
       {sixNumberViewOpen ? (
-        <section className="data-screen six-number-screen" aria-label="63快照">
+        <section className="data-screen six-number-screen" aria-label="组块照">
           <header className="data-screen-head">
-            <strong>63快照</strong>
+            <strong>组块照</strong>
             <button className="close-button title-close-button" onClick={() => setSixNumberViewOpen(false)} type="button">x</button>
           </header>
-          <div className="six-number-body">
-            <section className="six-number-section" aria-label="6数字">
-              <h2>6数字</h2>
-              <div className="six-number-grid">
-                {sixNumberSnapshot.map((item) => (
-                  <div className={`six-number-card${item.highlighted ? " highlighted" : ""}`} key={item.wi}>
-                    <span>{item.label}</span>
-                    <strong>{item.highlighted && item.previousDistance !== null ? `0 (${item.previousDistance})` : item.distance}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section className="six-number-section" aria-label="3数字">
-              <h2>3数字</h2>
-              <div className="six-number-grid">
-                {threeNumberSnapshot.map((item) => (
-                  <div className={`six-number-card${item.highlighted ? " highlighted" : ""}`} key={item.wi}>
-                    <span>{item.label}</span>
-                    <strong>{item.highlighted && item.previousDistance !== null ? `0 (${item.previousDistance})` : item.distance}</strong>
-                  </div>
-                ))}
-              </div>
-            </section>
+          <div className="group-block-body">
+            <div className="group-block-head" aria-hidden="true">
+              <span>号码</span><span>3数字</span><span>6数字</span><span>组</span>
+            </div>
+            <div className="group-block-grid">
+              {threeNumberSnapshot.map((item) => (
+                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                  {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
+                    <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
+                  ))}
+                </div>
+              ))}
+              {threeNumberSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                  {formatGroupBlockDistance(item)}
+                </div>
+              ))}
+              {sixNumberSnapshot.map((item) => (
+                <div
+                  className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`}
+                  key={`y-${item.wi}`}
+                  style={{ gridColumn: item.wi % 2 === 0 ? 3 : 4, gridRow: `${item.wi + 1} / span 2` }}
+                >
+                  {formatGroupBlockDistance(item)}
+                </div>
+              ))}
+              {groupBlockSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${item.gi * 4 + 1} / span 4` }}>
+                  {formatGroupBlockDistance(item)}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       ) : null}
