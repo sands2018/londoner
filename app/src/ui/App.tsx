@@ -2880,7 +2880,7 @@ export function App() {
                 <div
                   className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`}
                   key={`y-${item.wi}`}
-                  style={{ gridColumn: item.wi % 2 === 0 ? 3 : 2, gridRow: `${item.wi + 1} / span 2` }}
+                  style={{ gridRow: `${item.wi + 1} / span 2` }}
                 >
                   {renderGroupBlockDistance(item)}
                 </div>
