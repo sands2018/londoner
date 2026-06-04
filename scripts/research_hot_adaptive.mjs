@@ -238,6 +238,25 @@ function adaptiveChooser(params) {
   };
 }
 
+function guardedChooser(params) {
+  return (_session, paper, index) => {
+    const shortStats = windowStats(paper.short, index, params.lookback);
+    const longStats = windowStats(paper.long, index, params.lookback);
+    const longRecent = windowStats(paper.long, index, params.failLookback);
+    const shortRecent = windowStats(paper.short, index, params.failLookback);
+
+    const longFailing = longRecent.signals >= params.minLongFailSignals
+      && longRecent.roi <= params.maxLongFailRoi;
+    const shortHealthy = shortStats.signals >= params.minShortSignals
+      && shortStats.roi >= params.minShortRoi
+      && shortRecent.roi >= params.minShortRecentRoi;
+    const shortBetter = shortStats.roi >= longStats.roi + params.shortEdge;
+
+    if (longFailing && shortHealthy && shortBetter) return ["short", "long"];
+    return ["long", "short"];
+  };
+}
+
 function runAll(chooser, startIndex = 0) {
   return cachedSessions.flatMap((session) => backtest(session, chooser, startIndex));
 }
@@ -336,5 +355,52 @@ for (const row of candidates
   .filter((item) => item.from201.signals >= fixedLongSignals && item.from201.roi > 0 && item.user.roi > 0)
   .sort((a, b) => b.from201.roi - a.from201.roi || b.user.roi - a.user.roi)
   .slice(0, 20)) {
+  console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
+}
+
+const guardedCandidates = [];
+for (const lookback of [74, 111, 148]) {
+  for (const failLookback of [37, 55, 74]) {
+    for (const minLongFailSignals of [5, 8, 12, 16]) {
+      for (const maxLongFailRoi of [-40, -20, -10, 0]) {
+        for (const minShortSignals of [5, 8, 12]) {
+          for (const minShortRoi of [-10, 0, 10]) {
+            for (const minShortRecentRoi of [-40, -20, -10, 0]) {
+              for (const shortEdge of [-20, -10, 0, 10]) {
+                const params = {
+                  lookback,
+                  failLookback,
+                  minLongFailSignals,
+                  maxLongFailRoi,
+                  minShortSignals,
+                  minShortRoi,
+                  minShortRecentRoi,
+                  shortEdge,
+                };
+                const row = evaluate(`guarded ${JSON.stringify(params)}`, guardedChooser(params));
+                if (row.user.roi <= 0) continue;
+                if (row.from201.signals < fixedLongSignals) continue;
+                guardedCandidates.push({ params, ...row, score: score(row) });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+console.log("\nGuarded switch candidates: long-failure triggers short, no signal loss");
+for (const row of guardedCandidates
+  .sort((a, b) => b.from201.roi - a.from201.roi || b.user.roi - a.user.roi)
+  .slice(0, 30)) {
+  console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
+}
+
+console.log("\nGuarded balanced: history from201 >= 15%, user > 0, no signal loss");
+for (const row of guardedCandidates
+  .filter((item) => item.from201.roi >= 15)
+  .sort((a, b) => b.user.roi - a.user.roi || b.from201.roi - a.from201.roi)
+  .slice(0, 30)) {
   console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 }

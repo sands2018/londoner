@@ -96,7 +96,7 @@ The main screen has these sections, top to bottom:
 
 Bottom action buttons layout:
 
-- Row 1: 临时传 | 导出 | 导入 | 保存 | 另存 | 数据 | 快照
+- Row 1: 传递 | 导出 | 导入 | 保存 | 另存 | 数据 | 快照
 - Row 2: 预测 | 打法 | 行组 | 频率 | 距离 | 波浪 | 其它 | 配置
 
 ## Current prediction naming

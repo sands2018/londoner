@@ -1423,6 +1423,7 @@ export function App() {
 
     setNumbers(parsed.numbers);
     setRedoNumbers([]);
+    setLastSavedNumbers([]);
     clearCurrentSession();
     setActiveDialog(null);
     setNoticeDialog({ title: "导入数据", message: `已导入 ${parsed.numbers.length} 个数字。` });
@@ -1551,6 +1552,7 @@ export function App() {
         const importedNumbers = selected.numbers.filter(isRouletteNumber);
         setNumbers(importedNumbers);
         setRedoNumbers([]);
+        setLastSavedNumbers([]);
         clearCurrentSession();
         setDataViewOpen(false);
         setNoticeDialog({ title: "导入传输数据", message: `已导入 ${importedNumbers.length} 个数字。` });
@@ -2704,7 +2706,7 @@ export function App() {
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
-          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">临时传</button>
+          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
@@ -2806,7 +2808,7 @@ export function App() {
           <div className="stats-tabs data-tabs" aria-label="数据来源">
             <button className={dataTab === "local" ? "selected" : ""} onClick={() => setDataTab("local")} type="button">本地数据</button>
             <button className={dataTab === "shared" ? "selected" : ""} onClick={() => setDataTab("shared")} type="button">共享数据</button>
-            <button className={dataTab === "transfer" ? "selected" : ""} onClick={() => { setDataTab("transfer"); if (sharedConnected) void reloadTransferData(); }} type="button">传输数据</button>
+            <button className={dataTab === "transfer" ? "selected" : ""} onClick={() => { setDataTab("transfer"); if (sharedConnected) void reloadTransferData(); }} type="button">临时数据</button>
           </div>
           {dataTab === "local" ? (
             <>
