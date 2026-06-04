@@ -43,6 +43,7 @@ export interface PreferredNumberAnalysis {
   totalRoi: PreferredNumberRoi;
 }
 
+// 优选号当前不在 UI 展示；保留核心逻辑用于后续研究、回测和可能重新开放。
 export function analyzePreferredNumber(
   numbers: readonly RouletteNumber[],
   startRound = 0,
