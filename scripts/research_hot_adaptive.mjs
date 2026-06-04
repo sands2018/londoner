@@ -300,7 +300,7 @@ const baselineRows = [
 ];
 
 const candidates = [];
-for (const lookback of [74, 111]) {
+for (const lookback of []) {
   for (const minShortSignals of [5, 8, 12]) {
     for (const minLongSignals of [5]) {
       for (const minShortRoi of [0, 10, 20]) {
@@ -337,7 +337,7 @@ console.log("\nBaselines");
 for (const row of baselineRows) console.log(row.label, row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 
 console.log("\nTop adaptive candidates");
-for (const row of candidates.slice(0, 20)) {
+for (const row of candidates.slice(0, 5)) {
   console.log(row.params, "score", row.score.toFixed(2), "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 }
 
@@ -345,7 +345,7 @@ console.log("\nBalanced candidates: history from201 >= 15%, user > 0");
 for (const row of candidates
   .filter((item) => item.from201.roi >= 15 && item.user.roi > 0)
   .sort((a, b) => b.user.roi - a.user.roi || b.from201.roi - a.from201.roi)
-  .slice(0, 20)) {
+  .slice(0, 5)) {
   console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 }
 
@@ -354,19 +354,19 @@ const fixedLongSignals = baselineRows.find((row) => row.label === "fixed long").
 for (const row of candidates
   .filter((item) => item.from201.signals >= fixedLongSignals && item.from201.roi > 0 && item.user.roi > 0)
   .sort((a, b) => b.from201.roi - a.from201.roi || b.user.roi - a.user.roi)
-  .slice(0, 20)) {
+  .slice(0, 5)) {
   console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 }
 
 const guardedCandidates = [];
-for (const lookback of [74, 111, 148]) {
-  for (const failLookback of [37, 55, 74]) {
-    for (const minLongFailSignals of [5, 8, 12, 16]) {
-      for (const maxLongFailRoi of [-40, -20, -10, 0]) {
-        for (const minShortSignals of [5, 8, 12]) {
-          for (const minShortRoi of [-10, 0, 10]) {
-            for (const minShortRecentRoi of [-40, -20, -10, 0]) {
-              for (const shortEdge of [-20, -10, 0, 10]) {
+for (const lookback of [111]) {
+  for (const failLookback of [37, 55]) {
+    for (const minLongFailSignals of [5, 8]) {
+      for (const maxLongFailRoi of [-20, -10, 0]) {
+        for (const minShortSignals of [5]) {
+          for (const minShortRoi of [-20, -10, 0]) {
+            for (const minShortRecentRoi of [-100, -40, -20]) {
+              for (const shortEdge of [-20, -10, 0]) {
                 const params = {
                   lookback,
                   failLookback,
@@ -393,7 +393,7 @@ for (const lookback of [74, 111, 148]) {
 console.log("\nGuarded switch candidates: long-failure triggers short, no signal loss");
 for (const row of guardedCandidates
   .sort((a, b) => b.from201.roi - a.from201.roi || b.user.roi - a.user.roi)
-  .slice(0, 30)) {
+  .slice(0, 10)) {
   console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 }
 
@@ -401,6 +401,6 @@ console.log("\nGuarded balanced: history from201 >= 15%, user > 0, no signal los
 for (const row of guardedCandidates
   .filter((item) => item.from201.roi >= 15)
   .sort((a, b) => b.user.roi - a.user.roi || b.from201.roi - a.from201.roi)
-  .slice(0, 30)) {
+  .slice(0, 10)) {
   console.log(row.params, "from201", row.from201, "recent10", row.recent10, "user", row.user, row.userModes);
 }

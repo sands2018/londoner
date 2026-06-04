@@ -2648,7 +2648,7 @@ export function App() {
                 role="button"
                 tabIndex={0}
               >
-                <span className="repeat-tier-badge hot-badge">热门</span>
+                <span className="repeat-tier-badge hot-badge">{item.mode === "short" ? "热门S" : "热门"}</span>
                 <strong className="repeat-number">{item.number}</strong>
               </div>
             ))}
@@ -4023,7 +4023,7 @@ export function App() {
                       </div>
                       {hotNumberSignal ? (
                         <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
+                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
                         </div>
                       ) : null}
                     </div>
@@ -4123,7 +4123,7 @@ export function App() {
                 </>
               ) : predictionTab === "hotNumber" ? (
                 <>
-                  <p className="prediction-desc">148口三段加速（S1→S2→S3严格递增）+ Top10候选池 + 排除20口内爆发≥4次。每口押1个号码，1单位平注。暖机148口。</p>
+                  <p className="prediction-desc">自适应双模：默认长热148加速（S1-S2-S3递增+burst&lt;4）；短热DS三窗（37/74/111共识+趋势+burst&lt;4）。111口纸面复盘：短热信号&gt;=5且ROI&gt;=0且比长热高20%则优先短热。信号不减，优先档无信号回落另一档。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>命中</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -4137,7 +4137,7 @@ export function App() {
                     {hotNumberSignal ? (
                       <>
                         <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前信号</span><strong>{hotNumberSignal.number}</strong><span>148口={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
+                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><strong>{hotNumberSignal.number}</strong><span>148={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
                         </div>
                       </>
                     ) : (
