@@ -14,4 +14,5 @@ app/test-results/
 HistoryData/
 history_data.json
 .claude/
+comms/
 app/public/test.html

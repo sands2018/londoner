@@ -4121,7 +4121,7 @@ export function App() {
                 </>
               ) : predictionTab === "hotNumber" ? (
                 <>
-                  <p className="prediction-desc">三窗共识（1圈/2圈/3圈同时热）+ 1圈趋势向上 + 排除20口内爆发≥3次。每口押1个号码，1单位平注。</p>
+                  <p className="prediction-desc">三窗共识（1圈/2圈/3圈同时热）+ 1圈趋势向上 + 排除20口内爆发≥4次。每口押1个号码，1单位平注。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>命中</span><span>ROI</span></div>
                     <div className="prediction-roi-row">

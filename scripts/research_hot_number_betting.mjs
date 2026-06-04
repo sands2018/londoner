@@ -218,10 +218,16 @@ for (const multiNeed of [2, 3]) {
     for (const maxNumbers of [1, 2, 3, 5]) {
       if (maxNumbers > pool) continue;
       for (const trend of ["none", "uiUp", "halfUp1", "zUp", "acceleration", "freshHot"]) {
-        const opts = { window: 37, pool, maxNumbers, trend, progression: PROGRESSION_SINGLE, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed };
-        const r = runAll(sessions, opts);
-        if (r.all.signals < 80) continue;
-        candidates.push({ opts, r });
+        for (const maxRecentCount of [null, 1, 2]) {
+          const opts = { window: 37, pool, maxNumbers, trend, progression: PROGRESSION_SINGLE, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed };
+          if (maxRecentCount !== null) {
+            opts.burstWindow = 20;
+            opts.maxRecentCount = maxRecentCount;
+          }
+          const r = runAll(sessions, opts);
+          if (r.all.signals < 80) continue;
+          candidates.push({ opts, r });
+        }
       }
     }
   }
@@ -276,4 +282,18 @@ for (const window of [37, 74, 111, 185, 222]) {
     const r = runAll(sessions, opts);
     console.log(`${fmt(r.all)} | 201 ${r.from201.roi.toFixed(2).padStart(6)}% R3 ${r.recent3.roi.toFixed(2).padStart(6)}% R10 ${r.recent10.roi.toFixed(2).padStart(6)}% | UI trend w=${window} betN=${maxNumbers}`);
   }
+}
+
+console.log("\n=== DeepSeek exact strategy and local variants ===");
+const dsVariants = [
+  ["DS exact", { window: 37, pool: 6, maxNumbers: 1, trend: "halfUp1", progression: PROGRESSION_SINGLE, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed: 3, burstWindow: 20, maxRecentCount: 2 }],
+  ["DS pick2", { window: 37, pool: 6, maxNumbers: 2, trend: "halfUp1", progression: PROGRESSION_SINGLE, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed: 3, burstWindow: 20, maxRecentCount: 2 }],
+  ["DS no burst", { window: 37, pool: 6, maxNumbers: 1, trend: "halfUp1", progression: PROGRESSION_SINGLE, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed: 3 }],
+  ["DS 1-2", { window: 37, pool: 6, maxNumbers: 1, trend: "halfUp1", progression: PROGRESSION_12, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed: 3, burstWindow: 20, maxRecentCount: 2 }],
+  ["DS 1-2-4", { window: 37, pool: 6, maxNumbers: 1, trend: "halfUp1", progression: PROGRESSION_124, warmup: 222, tie: false, allowOverlap: false, multi: [37, 74, 111], multiNeed: 3, burstWindow: 20, maxRecentCount: 2 }],
+  ["4circle accel 1-2", { window: 148, pool: 3, maxNumbers: 1, trend: "acceleration", progression: PROGRESSION_12, warmup: 148, tie: false, allowOverlap: false }],
+];
+for (const [label, opts] of dsVariants) {
+  const r = runAll(sessions, opts);
+  console.log(`${label.padEnd(18)} ${fmt(r.all)} | 201 ${r.from201.roi.toFixed(2).padStart(6)}% R3 ${r.recent3.roi.toFixed(2).padStart(6)}% R10 ${r.recent10.roi.toFixed(2).padStart(6)}%`);
 }

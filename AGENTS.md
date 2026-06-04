@@ -130,7 +130,13 @@ Bottom action buttons layout:
 - Prefix commit messages with agent name: `"DeepSeek - "` or `"GPT - "`.
 - Use present tense, describe what the change does.
 - End with: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
-- **Do NOT auto-commit or push.** Wait for Wayne to explicitly say "commit" or "push".
+
+### ⚠️ CRITICAL: Never auto-commit or auto-push
+
+- **Do NOT run `git commit` or `git push` without Wayne's explicit approval.**
+- Wait for Wayne to say "commit", "push", "提交", or "push 一下".
+- If you've made changes and think they should be committed, ask Wayne first.
+- This applies to BOTH agents (DeepSeek and GPT).
 
 ## Project memory
 
@@ -159,5 +165,6 @@ Bottom action buttons layout:
 
 - **Prediction engine**: 124 rhythm, New124 four-tier, cold reversal, chase6/3, hot numbers, repeat/short-repeat.
 - **Number zone page**: 37-number popup with distance/circle modes, hot/cold highlighting, trend arrows.
-- **Research**: Hot number single-pick strategy (+18.93% ROI), gear rotation for 124 entry timing.
+- **Research**: Hot number strategy is still under review. Current GPT-side tentative candidate is the conservative improved hot-number rule: 148-spin window, acceleration trend, Top10 candidate pool, pick Top1, chase 1-2, no overlapping active signal. Latest same-dataset comparison: DS exact rule 2491 signals / +1.16% ROI / max DD 290 / Top3 profit share 43.7%; improved main Top3-pool rule 2793 signals / +24.54% ROI / max DD 482 / Top3 profit share 27.4%; improved conservative Top10-pool rule 4380 signals / +20.48% ROI / max DD 466 / Top3 profit share 20.3%. Tentative decision: prefer the improved conservative version for now, then re-compare after DeepSeek finishes its hot-number work.
+- **Research**: Gear rotation for 124 entry timing.
 - Active scripts in `scripts/`, research notes in `docs/124-rhythm-research-notes.md`.

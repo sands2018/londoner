@@ -4,7 +4,7 @@
  * Strategy: pick the #1 number that is:
  *   1. Hot in 1圈/2圈/3圈 simultaneously (triple consensus)
  *   2. Trending up within 1圈 (2nd half > 1st half)
- *   3. Not burst (appeared < 3 times in last 20 spins)
+ *   3. Not burst (appeared < 4 times in last 20 spins)
  *
  * Pick 1 number, bet 1 unit flat.
  */
@@ -104,8 +104,8 @@ function selectPick(recentNumbers: readonly RouletteNumber[]): { number: Roulett
   const trending = new Set([...consensus].filter(n => isTrendingUp(recentNumbers, n, 37) > 0));
   if (trending.size === 0) return null;
 
-  // Filter burst: < 3 in last 20
-  const candidates = [...trending].filter(n => !isBurst(recentNumbers, n, 20, 3));
+  // Filter burst: < 4 in last 20
+  const candidates = [...trending].filter(n => !isBurst(recentNumbers, n, 20, 4));
   if (candidates.length === 0) return null;
 
   // Pick #1 by 1圈 count
