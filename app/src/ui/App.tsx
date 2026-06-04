@@ -862,7 +862,6 @@ export function App() {
         let dist = 0;
         let foundIdx = -1;
         for (let i = numbers.length - 1; i >= 0; i--) {
-          if (numbers[i] === 0) { dist++; continue; }
           if (numbers[i] === n) { foundIdx = i; break; }
           dist++;
         }
@@ -871,7 +870,6 @@ export function App() {
         if (n === latestNumber && foundIdx >= 0) {
           let prevDist = 0;
           for (let i = foundIdx - 1; i >= 0; i--) {
-            if (numbers[i] === 0) { prevDist++; continue; }
             if (numbers[i] === n) break;
             prevDist++;
           }
@@ -902,14 +900,12 @@ export function App() {
       if (numberZoneMode === "distance") {
         let currDist = 0;
         for (let i = numbers.length - 1; i >= 0; i--) {
-          if (numbers[i] === 0) { currDist++; continue; }
           if (numbers[i] === n) break;
           currDist++;
         }
         const pastEnd = Math.max(0, numbers.length - 19);
         let pastDist = 0;
         for (let i = pastEnd; i >= 0; i--) {
-          if (numbers[i] === 0) { pastDist++; continue; }
           if (numbers[i] === n) break;
           pastDist++;
         }
