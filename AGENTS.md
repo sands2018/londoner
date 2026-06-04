@@ -68,6 +68,7 @@ comms/dialog/         # GPT <-> DeepSeek dialog files
 
 ## Key conventions
 
+- **UI tuning workflow**: When adding or restyling signal cards, badges, or other visual components, first put the HTML+CSS into `app/public/ui-test.html`. Tune colors, sizes, and layout there until Wayne is satisfied. Only then copy the final styles into `app/src/ui/styles.css` and update `App.tsx` to match — exactly as tuned, no deviation.
 - **Encoding safety**: `App.tsx`, `styles.css`, docs, and any file containing Chinese text must remain UTF-8. Do not rewrite whole files with PowerShell `Set-Content`, especially after `Get-Content -Raw`, because it can mojibake Chinese text. Prefer `apply_patch` for edits. If a scripted rewrite is truly necessary, use Node.js `fs.readFileSync/writeFileSync(..., "utf8")` and verify representative Chinese strings plus a build before finishing.
 - **Roulette data scopes / 轮盘数据口径**: In real use, the first 200 numbers are often pre-entered past results used only as context. Name this first-200 context area **录号区数据**. Keep explicit scopes in prediction/stat UI and analysis:
   - **全部数据** means every recorded number, including 录号区数据.

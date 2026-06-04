@@ -3856,84 +3856,101 @@ button:disabled {
 }
 
 .quality124-signal-area {
-  display: grid;
-  gap: 6px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
   margin: 6px 0 0;
 }
 
 .quality124-signal-item {
-  align-items: center;
-  border: 1px solid #e4c8cf;
-  border-radius: 7px;
-  color: #65414a;
+  align-items: stretch;
+  border: 1px solid #dbccd0;
+  border-radius: 5px;
   cursor: pointer;
-  display: grid;
-  gap: 3px;
-  grid-template-columns: auto 1fr auto;
-  min-height: 42px;
-  padding: 5px 8px;
+  display: flex;
+  flex: 0 0 calc((100% - 4px) / 2);
+  overflow: hidden;
   touch-action: manipulation;
 }
 
-.quality124-tier-low {
+.quality124-signal-label {
+  align-items: center;
   background: #edd0d6;
-  border-color: #d8aeb9;
+  color: #65414a;
+  display: flex;
+  flex: 0 0 40px;
+  font-size: 15px;
+  font-weight: var(--weight-emphasis);
+  justify-content: center;
+  min-height: 34px;
+  white-space: nowrap;
 }
 
-.quality124-tier-medium {
-  background: #f2dce2;
+.quality124-signal-chase {
+  align-items: center;
+  background: #f2ecee;
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  justify-content: space-between;
+  min-height: 34px;
+  min-width: 0;
+  padding: 0 8px;
 }
 
-.quality124-tier-high {
-  background: #f7e7eb;
-}
-
-.quality124-tier-ultra {
-  background: #fbf1f3;
-}
-
-.quality124-label {
-  font-size: 16px;
-  font-weight: var(--weight-strong);
+.quality124-signal-item:active .quality124-signal-chase {
+  background: #f0e4e8;
 }
 
 .quality124-stars {
-  color: #9c6670;
-  font-size: 13px;
-  font-weight: var(--weight-strong);
-  min-width: 28px;
-  text-align: center;
-}
-
-.quality124-chase {
-  align-items: center;
-  display: inline-grid;
-  gap: 4px;
-  grid-auto-flow: column;
-  justify-content: end;
+  color: #8a5a66;
+  font-size: 11px;
+  font-weight: var(--weight-ui);
+  white-space: nowrap;
 }
 
 .quality124-dots {
-  display: inline-flex;
+  display: flex;
   gap: 3px;
 }
 
 .quality124-dot {
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid #c99ca7;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #c498a4;
   border-radius: 999px;
-  height: 7px;
-  width: 7px;
+  height: var(--dot-size);
+  width: var(--dot-size);
 }
 
 .quality124-dot.filled {
-  background: #9f6571;
+  background: #8e5a68;
+  border-color: #8e5a68;
 }
 
 .quality124-bet {
-  font-size: 15px;
-  font-weight: var(--weight-strong);
+  font-size: 14px;
+  font-weight: var(--weight-emphasis);
+  color: #5c3848;
+}
+
+.quality124-signal-item.quality124-tier-low .quality124-signal-label {
+  background: #e8ced2;
+  color: #4e2c36;
+}
+
+.quality124-signal-item.quality124-tier-medium .quality124-signal-label {
+  background: #ecd8de;
+  color: #4e3040;
+}
+
+.quality124-signal-item.quality124-tier-high .quality124-signal-label {
+  background: #ecdee2;
+  color: #4e3848;
+}
+
+.quality124-signal-item.quality124-tier-ultra .quality124-signal-label {
+  background: #e8dee2;
+  color: #4e4050;
 }
 
 .prediction-chase {

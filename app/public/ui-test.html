@@ -538,6 +538,169 @@
   </div>
 </section>
 
+<!-- ===== 新124 四档信号 ===== -->
+<style>
+.quality124-signal-area { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0; }
+.quality124-signal-item {
+  align-items:stretch; border:1px solid #e4c8cf; border-radius:5px;
+  cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+  overflow:hidden; touch-action:manipulation;
+}
+.quality124-signal-label {
+  align-items:center; color:#65414a; display:flex; flex:0 0 40px;
+  font-size:15px; font-weight:500; justify-content:center;
+  min-height:34px; white-space:nowrap;
+}
+.quality124-signal-chase {
+  align-items:center; background:#f5f0f2; display:flex; flex:1;
+  gap:6px; justify-content:space-between; min-height:34px;
+  min-width:0; padding:0 8px;
+}
+.quality124-stars { color:#8a5a66; font-size:11px; font-weight:500; white-space:nowrap; }
+.quality124-dots { display:flex; gap:3px; }
+.quality124-dot {
+  background:rgba(255,255,255,0.55); border:1px solid #c498a4;
+  border-radius:999px; height:var(--dot-size); width:var(--dot-size);
+}
+.quality124-dot.filled { background:#8e5a68; border-color:#8e5a68; }
+.quality124-bet { font-size:14px; font-weight:500; color:#5c3848; }
+
+.quality124-signal-item { border-color:#dbccd0; }
+/* 低频 ★★★ */
+.quality124-tier-low .quality124-signal-label { background:#e8ced2; color:#4e2c36; }
+.quality124-tier-low .quality124-signal-chase { background:#eee4e8; }
+/* 中频 ★★ */
+.quality124-tier-medium .quality124-signal-label { background:#ecd8de; color:#4e3040; }
+.quality124-tier-medium .quality124-signal-chase { background:#f2eaee; }
+/* 高频 ★ */
+.quality124-tier-high .quality124-signal-label { background:#ecdee2; color:#4e3848; }
+.quality124-tier-high .quality124-signal-chase { background:#f4eef2; }
+/* 超高频 */
+.quality124-tier-ultra .quality124-signal-label { background:#e8dee2; color:#4e4050; }
+.quality124-tier-ultra .quality124-signal-chase { background:#f2ecee; }
+</style>
+
+<h2>新124 — 四档信号</h2>
+<section class="quality124-signal-area">
+  <!-- 低频 ★★★ 二组 k=4 -->
+  <div class="quality124-signal-item quality124-tier-low">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 低频 ★★★ 二组 k=4 round=2 -->
+  <div class="quality124-signal-item quality124-tier-low">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">2</span>
+    </span>
+  </div>
+  <!-- 低频 ★★★ 二组 round=3 -->
+  <div class="quality124-signal-item quality124-tier-low">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+      </span>
+      <span class="quality124-bet">4</span>
+    </span>
+  </div>
+  <!-- 中频 ★★ 三组 k=3 -->
+  <div class="quality124-signal-item quality124-tier-medium">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 中频 ★★ 三组 round=2 -->
+  <div class="quality124-signal-item quality124-tier-medium">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">2</span>
+    </span>
+  </div>
+  <!-- 高频 ★ 二组 k=3 -->
+  <div class="quality124-signal-item quality124-tier-high">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 高频 ★ 三组 k=4 -->
+  <div class="quality124-signal-item quality124-tier-high">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 超高频 三组 k=3 -->
+  <div class="quality124-signal-item quality124-tier-ultra">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars"></span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 超高频 二组 k=3 round=2 -->
+  <div class="quality124-signal-item quality124-tier-ultra">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars"></span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">2</span>
+    </span>
+  </div>
+</section>
+
 <!-- repeat-filter-panel -->
 <div class="repeat-filter-panel" style="margin-top:8px">
   <span>前200口环境：g3 12 / g2 8，通过</span>
@@ -561,6 +724,10 @@
 <p class="label-row">重号 核心（冷紫）: bg=#e5dcec / border=#d6cee0 / text=#51406a / badge=#8a6aa8</p>
 <p class="label-row">重号 核心精选: bg=#dbd0e6 / border=#cec2d9 / text=#443460</p>
 <p class="label-row">短重号（暖粉紫）: bg=#eddce2 / border=#e4d3d9 / text=#64425a / dot=#a08195 / dot-filled=#835876</p>
+<p class="label-row">新124 低频★★★: label=#eacdd4 chase=#eee4e8 / text=#4e2c36</p>
+<p class="label-row">新124 中频★★: label=#efd8e0 chase=#f2eaee / text=#4e3040</p>
+<p class="label-row">新124 高频★: label=#eedee4 chase=#f4eef2 / text=#4e3848</p>
+<p class="label-row">新124 超高频: label=#eee4e8 chase=#f2ecee / text=#4e4050</p>
 <p class="label-row">repeat-filter-panel: bg=#f7f3f8 / border=#e5dcec / text=#685a78</p>
 
 </body>

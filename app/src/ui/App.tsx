@@ -2544,9 +2544,9 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <strong className="quality124-label">{item.label}</strong>
-              <span className="quality124-stars">{item.stars > 0 ? "★".repeat(item.stars) : ""}</span>
-              <span className="quality124-chase">
+              <span className="quality124-signal-label">{item.label}</span>
+              <span className="quality124-signal-chase">
+                <span className="quality124-stars">{item.stars > 0 ? "★".repeat(item.stars) : ""}</span>
                 <span className="quality124-dots">
                   {Array.from({ length: item.chaseLen }, (_, i) => i + 1).map((n) => (
                     <span key={n} className={`quality124-dot ${n <= item.round ? "filled" : ""}`} />
