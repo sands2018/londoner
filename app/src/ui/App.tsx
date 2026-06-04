@@ -97,6 +97,7 @@ import { analyzePreferredNumber } from "../core/preferredNumber";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
 import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
+import { analyzeQuality124 } from "../core/quality124";
 import {
   REPEAT_INITIAL_ROUNDS,
   REPEAT_ENV_WINDOW,
@@ -248,11 +249,14 @@ export function App() {
   const [otherViewOpen, setOtherViewOpen] = useState(false);
   const [statsViewOpen, setStatsViewOpen] = useState(false);
   const [sixNumberViewOpen, setSixNumberViewOpen] = useState(false);
+  const [numberZoneOpen, setNumberZoneOpen] = useState(false);
+  const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [statsTab, setStatsTab] = useState("game");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
   const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
+  const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
@@ -312,7 +316,9 @@ export function App() {
   const [selectedTransferIds, setSelectedTransferIds] = useState<string[]>([]);
   const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
-  const canUsePreferredNumber = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
+  // 优选号算法逻辑保留用于研究/回测，但当前 UI 暂时隐藏，不对任何用户开放。
+  const canUsePreferredNumber = false;
+  const canUseQuality124 = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
 
   const sortedSharedSessions = useMemo(() => {
     const sorted = [...sharedSessions];
@@ -393,6 +399,11 @@ export function App() {
   const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
   const rhythmRowsOnlyRoi = useMemo(() => computeRhythmRoi(numbers, [3, 4, 5]), [numbers]);
   const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
+  const quality124 = useMemo(() => analyzeQuality124(numbers), [numbers]);
+  const quality124Signals = quality124.activeSignals;
+  const quality124Roi = quality124.totalRoi;
+  const quality124From201 = useMemo(() => analyzeQuality124(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const quality124RoiFrom201 = quality124From201.totalRoi;
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
   // 长套自适应: 从历史session计算行/组累计ROI
@@ -665,6 +676,9 @@ export function App() {
       const r = rhythmMode === "仅行" ? rhythmRowsOnlyRoi : rhythmRoi;
       bet += r.bet; win += r.win;
     }
+    if (canUseQuality124 && showQuality124) {
+      bet += quality124Roi.bet; win += quality124Roi.win;
+    }
     if (showCold) {
       bet += coldActiveRoi.bet; win += coldActiveRoi.win;
     }
@@ -684,7 +698,7 @@ export function App() {
       bet += shortRepeatRoi.bet; win += shortRepeatRoi.win;
     }
     return { bet, win, net: win - bet };
-  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi]);
+  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi]);
 
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
@@ -695,6 +709,7 @@ export function App() {
     const c3f = analyzeChaseThree(numbers.slice(200));
     let bet = 0, win = 0;
     if (show124) { bet += rhs.bet; win += rhs.win; }
+    if (canUseQuality124 && showQuality124) { bet += quality124RoiFrom201.bet; win += quality124RoiFrom201.win; }
     if (showCold) { bet += cold.bet; win += cold.win; }
     if (chase6Filter !== "全关") { bet += c6.totalRoi.bet; win += c6.totalRoi.win; }
     if (chase3Filter !== "全关") { bet += c3f.totalRoi.bet; win += c3f.totalRoi.win; }
@@ -704,7 +719,7 @@ export function App() {
     }
     if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
     return { bet, win, net: win - bet };
-  }, [numbers, show124, rhythmMode, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201]);
+  }, [numbers, show124, rhythmMode, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -815,6 +830,187 @@ export function App() {
       };
     });
   }, [latestNumber, numbers]);
+  const numberZoneData = useMemo(() => {
+    const ONE_CIRCLE = 37;
+    const circles: Record<string, number> = {
+      "1": ONE_CIRCLE,
+      "2": ONE_CIRCLE * 2,
+      "3": ONE_CIRCLE * 3,
+      "4": ONE_CIRCLE * 4,
+      "5": ONE_CIRCLE * 5,
+      "6": ONE_CIRCLE * 6,
+    };
+
+    const data: Record<number, { value: number; isLatest: boolean; prevDistance: number | null }> = {};
+
+    for (let n = 0; n <= 36; n++) {
+      let value: number;
+      let prevDistance: number | null = null;
+
+      if (numberZoneMode === "distance") {
+        let dist = 0;
+        let foundIdx = -1;
+        for (let i = numbers.length - 1; i >= 0; i--) {
+          if (numbers[i] === 0) { dist++; continue; }
+          if (numbers[i] === n) { foundIdx = i; break; }
+          dist++;
+        }
+        value = dist;
+        // For latest number: compute previous distance before this appearance
+        if (n === latestNumber && foundIdx >= 0) {
+          let prevDist = 0;
+          for (let i = foundIdx - 1; i >= 0; i--) {
+            if (numbers[i] === 0) { prevDist++; continue; }
+            if (numbers[i] === n) break;
+            prevDist++;
+          }
+          prevDistance = prevDist;
+        }
+      } else if (numberZoneMode === "all") {
+        value = numbers.filter((x) => x === n).length;
+      } else {
+        const windowSize = circles[numberZoneMode] || ONE_CIRCLE;
+        const start = Math.max(0, numbers.length - windowSize);
+        value = 0;
+        for (let i = start; i < numbers.length; i++) {
+          if (numbers[i] === n) value++;
+        }
+      }
+
+      data[n] = { value, isLatest: latestNumber === n, prevDistance };
+    }
+    return data;
+  }, [numbers, latestNumber, numberZoneMode]);
+
+  // Compute trends FIRST (before hot/cold, used for tie-breaking)
+  const numberZoneTrends = useMemo(() => {
+    const ONE_CIRCLE = 37;
+    const trends: Record<number, "up" | "down" | null> = {};
+
+    for (let n = 0; n <= 36; n++) {
+      if (numberZoneMode === "distance") {
+        let currDist = 0;
+        for (let i = numbers.length - 1; i >= 0; i--) {
+          if (numbers[i] === 0) { currDist++; continue; }
+          if (numbers[i] === n) break;
+          currDist++;
+        }
+        const pastEnd = Math.max(0, numbers.length - 19);
+        let pastDist = 0;
+        for (let i = pastEnd; i >= 0; i--) {
+          if (numbers[i] === 0) { pastDist++; continue; }
+          if (numbers[i] === n) break;
+          pastDist++;
+        }
+        if (currDist < pastDist - 3) trends[n] = "up";
+        else if (currDist > pastDist + 3) trends[n] = "down";
+        else trends[n] = null;
+      } else if (numberZoneMode === "all") {
+        trends[n] = null;
+      } else {
+        const circles: Record<string, number> = { "1": ONE_CIRCLE, "2": ONE_CIRCLE * 2, "3": ONE_CIRCLE * 3, "5": ONE_CIRCLE * 5 };
+        const ws = circles[numberZoneMode] || ONE_CIRCLE;
+        const start = Math.max(0, numbers.length - ws);
+        const isShort = ws <= 74; // 1圈、2圈用半劈算法
+
+        if (isShort) {
+          // Short window: split in half, compare second half vs first half
+          const mid = start + Math.floor(ws / 2);
+          let firstHalf = 0, secondHalf = 0;
+          for (let i = start; i < mid; i++) { if (numbers[i] === n) firstHalf++; }
+          for (let i = mid; i < numbers.length; i++) { if (numbers[i] === n) secondHalf++; }
+          const diff = secondHalf - firstHalf;
+          if (diff >= 2) {
+            trends[n] = "up";
+          } else if (diff <= -2) {
+            trends[n] = "down";
+          } else {
+            trends[n] = null;
+          }
+        } else {
+          // Long window: compare recent 1/3 vs earlier 2/3 by rate
+          const recentLen = Math.min(Math.floor(ws / 3), 40);
+          const recentStart = numbers.length - recentLen;
+          let recentCount = 0, earlierCount = 0;
+          for (let i = recentStart; i < numbers.length; i++) { if (numbers[i] === n) recentCount++; }
+          for (let i = start; i < recentStart; i++) { if (numbers[i] === n) earlierCount++; }
+          const recentRate = recentCount / recentLen;
+          const earlierRate = earlierCount / Math.max(1, ws - recentLen);
+          const ratio = earlierRate > 0 ? recentRate / earlierRate : (recentRate > 0 ? 999 : 1);
+          if (ratio >= 1.5 && recentCount >= 2) {
+            trends[n] = "up";
+          } else if (ratio <= 0.5 && earlierCount >= 2) {
+            trends[n] = "down";
+          } else {
+            trends[n] = null;
+          }
+        }
+      }
+    }
+    return trends;
+  }, [numbers, numberZoneMode]);
+
+  const numberZoneHotCold = useMemo(() => {
+    const entries = Object.entries(numberZoneData)
+      .map(([num, d]) => ({ num: Number(num), value: d.value }))
+      .filter((e) => e.num !== 0);
+
+    const asc = numberZoneMode === "distance";
+    const sorted = [...entries].sort((a, b) => asc ? a.value - b.value : b.value - a.value);
+
+    const hotNums = new Set<number>();
+    const coldNums = new Set<number>();
+
+    // Hot: pick top 5. If ties at position 5, prefer trending-up numbers.
+    const hotPicked: Array<{ num: number; value: number; trend: string | null }> = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const e = sorted[i];
+      if (hotPicked.length < 5) {
+        hotPicked.push({ ...e, trend: numberZoneTrends[e.num] });
+      } else if (e.value === hotPicked[4].value) {
+        // Tie at cutoff — only add if trending up AND we can swap out a non-trending-up
+        const trend = numberZoneTrends[e.num];
+        if (trend === "up") {
+          // Check if any of the tied picks at cutoff are NOT trending up
+          const tiedAtCutoff = hotPicked.filter(p => p.value === hotPicked[4].value);
+          const nonUp = tiedAtCutoff.find(p => p.trend !== "up");
+          if (nonUp) {
+            hotPicked.splice(hotPicked.indexOf(nonUp), 1);
+            hotPicked.push({ ...e, trend });
+          }
+        }
+      } else {
+        break;
+      }
+    }
+    for (const p of hotPicked) hotNums.add(p.num);
+
+    // Cold: pick bottom 5. If ties at position 5, exclude trending-up numbers.
+    const coldPicked: Array<{ num: number; value: number; trend: string | null }> = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const e = sorted[i];
+      if (coldPicked.length < 5) {
+        coldPicked.push({ ...e, trend: numberZoneTrends[e.num] });
+      } else if (e.value === coldPicked[4].value) {
+        const trend = numberZoneTrends[e.num];
+        // Only add if NOT trending up (keep only the truly cold)
+        if (trend !== "up") {
+          const tiedAtCutoff = coldPicked.filter(p => p.value === coldPicked[4].value);
+          const upOne = tiedAtCutoff.find(p => p.trend === "up");
+          if (upOne) {
+            coldPicked.splice(coldPicked.indexOf(upOne), 1);
+            coldPicked.push({ ...e, trend });
+          }
+        }
+      } else {
+        break;
+      }
+    }
+    for (const p of coldPicked) coldNums.add(p.num);
+
+    return { hot: hotNums, cold: coldNums };
+  }, [numberZoneData, numberZoneMode, numberZoneTrends]);
+
   const renderGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
     item.highlighted && item.previousDistance !== null ? (
       <span className="group-block-distance">({item.previousDistance})</span>
@@ -894,6 +1090,13 @@ export function App() {
       localStorage.setItem("londoner.predictionTab", "overview");
     }
   }, [canUsePreferredNumber, predictionTab]);
+
+  useEffect(() => {
+    if (!canUseQuality124 && predictionTab === "quality124") {
+      setPredictionTab("overview");
+      localStorage.setItem("londoner.predictionTab", "overview");
+    }
+  }, [canUseQuality124, predictionTab]);
 
   function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
     const sorted = [...predictions].sort((a, b) => b.excess - a.excess);
@@ -2324,6 +2527,31 @@ export function App() {
         </div>
       </section>
 
+      {canUseQuality124 && showQuality124 && quality124Signals.length > 0 ? (
+        <section className="quality124-signal-area" aria-label="新124信号">
+          {quality124Signals.map((item) => (
+            <div
+              className={`quality124-signal-item quality124-tier-${item.tier}`}
+              key={`quality124-${item.ci}-${item.entryAfter}-${item.tier}`}
+              onClick={() => { setPredictionTab("quality124"); setPredictionWindowOpen(true); }}
+              role="button"
+              tabIndex={0}
+            >
+              <strong className="quality124-label">{item.label}</strong>
+              <span className="quality124-stars">{item.stars > 0 ? "★".repeat(item.stars) : ""}</span>
+              <span className="quality124-chase">
+                <span className="quality124-dots">
+                  {Array.from({ length: item.chaseLen }, (_, i) => i + 1).map((n) => (
+                    <span key={n} className={`quality124-dot ${n <= item.round ? "filled" : ""}`} />
+                  ))}
+                </span>
+                <span className="quality124-bet">{item.betAmt}</span>
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       {(() => { const filtered = signalDisplay.filter(item => (item.kind === "rhythm" ? show124 : showCold)); return filtered.length > 0 ? (
         <section className="prediction-signal-area" aria-label="预测信号">
           {filtered.map((item) => (
@@ -2462,6 +2690,7 @@ export function App() {
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
           <button onClick={openDataDialog} type="button">数据</button>
+          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
           <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
         </div>
         <div className="dock-actions dock-actions-primary">
@@ -2890,7 +3119,83 @@ export function App() {
                   {renderGroupBlockDistance(item)}
                 </div>
               ))}
+              <button
+                className="number-zone-trigger"
+                onClick={() => setNumberZoneOpen(true)}
+                style={{ gridColumn: "4", gridRow: "1 / 14", opacity: 0, cursor: "pointer" }}
+                title="打开号码区"
+                type="button"
+              >
+                号码区
+              </button>
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {numberZoneOpen ? (
+        <section className="data-screen number-zone-screen" aria-label="号码区">
+          <header className="data-screen-head">
+            <strong>号码</strong>
+            <button className="close-button title-close-button" onClick={() => setNumberZoneOpen(false)} type="button">x</button>
+          </header>
+          <div className="number-zone-body" onClick={() => { setNumberZoneOpen(false); setSixNumberViewOpen(true); }}>
+            <div className="number-zone-grid">
+              <div className="number-zone-zero-row">
+                <div className={`number-zone-cell zero-cell${latestNumber === 0 ? " current" : ""}`}>
+                  <span className="number-zone-value">0</span>
+                  <span className="number-zone-distance">
+                    {numberZoneMode === "distance" && latestNumber === 0 && numberZoneData[0]?.prevDistance !== null
+                      ? `(${numberZoneData[0].prevDistance})`
+                      : numberZoneData[0]?.value ?? "-"}
+                  </span>
+                </div>
+              </div>
+              {Array.from({ length: 12 }, (_, wi) => (
+                <div className="number-zone-row" key={wi}>
+                  {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
+                    const nd = numberZoneData[value];
+                    const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
+                    const showHotCold = numberZoneMode !== "distance";
+                    const isHot = showHotCold && numberZoneHotCold.hot.has(value);
+                    const isCold = showHotCold && numberZoneHotCold.cold.has(value);
+                    const trend = isHot ? numberZoneTrends[value] : null;
+                    const cls = [
+                      "number-zone-cell",
+                      nd?.isLatest ? "current" : "",
+                      isHot ? "hot" : "",
+                      isCold ? "cold" : "",
+                      trend === "up" ? "trend-up" : "",
+                      trend === "down" ? "trend-down" : "",
+                    ].filter(Boolean).join(" ");
+                    return (
+                      <div className={cls} key={value}>
+                        <span className="number-zone-value">{value}</span>
+                        <span className="number-zone-distance">
+                          {showPrev ? `(${nd!.prevDistance})` : nd?.value ?? "-"}
+                          {trend && <span className={`number-zone-trend ${trend}`}> {trend === "up" ? "▲" : "▼"}</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="number-zone-tabs">
+            {["distance", "1", "2", "3", "5", "all"].map((mode) => (
+              <button
+                className={`number-zone-tab${numberZoneMode === mode ? " selected" : ""}`}
+                key={mode}
+                onClick={() => {
+                  setNumberZoneMode(mode);
+                  localStorage.setItem("londoner.numberZoneMode", mode);
+                }}
+                type="button"
+              >
+                {mode === "distance" ? "距离" : mode === "all" ? "全部" : `${mode}圈`}
+              </button>
+            ))}
           </div>
         </section>
       ) : null}
@@ -3426,6 +3731,9 @@ export function App() {
             </div>
             <div className="prediction-tabs">
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
+              {canUseQuality124 ? (
+                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">新124</button>
+              ) : null}
               <button className={predictionTab === "rhythm" ? "selected" : ""} onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} type="button">124</button>
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
@@ -3459,6 +3767,43 @@ export function App() {
                     <span>前200个数字为历史号码</span>
                   </div>
                   <div className="overview-cards">
+                  {canUseQuality124 ? (
+                  <div className="overview-card overview-quality124 overview-other-card" onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} role="button" tabIndex={0}>
+                    <div className="overview-card-title">
+                      <span>新124</span>
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
+                      </span>
+                    </div>
+                    <div className="prediction-roi-table" style={{ margin: 0 }}>
+                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row">
+                        <strong>{quality124Roi.signals}</strong><strong>{quality124Roi.bet}</strong><strong>{quality124Roi.win}</strong>
+                        <strong className="roi-value" style={{ color: quality124Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124Roi.roi >= 0 ? "+" : ""}{quality124Roi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
+                        <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">低频 ★★★</span><span>{quality124.tierRois.low.bet}</span><span>{quality124.tierRois.low.win}</span>
+                        <strong className="roi-value" style={{ color: quality124.tierRois.low.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.low.roi >= 0 ? "+" : ""}{quality124.tierRois.low.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">中频 ★★</span><span>{quality124.tierRois.medium.bet}</span><span>{quality124.tierRois.medium.win}</span>
+                        <strong className="roi-value" style={{ color: quality124.tierRois.medium.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.medium.roi >= 0 ? "+" : ""}{quality124.tierRois.medium.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">高频 ★</span><span>{quality124.tierRois.high.bet}</span><span>{quality124.tierRois.high.win}</span>
+                        <strong className="roi-value" style={{ color: quality124.tierRois.high.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.high.roi >= 0 ? "+" : ""}{quality124.tierRois.high.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">超高频</span><span>{quality124.tierRois.ultra.bet}</span><span>{quality124.tierRois.ultra.win}</span>
+                        <strong className="roi-value" style={{ color: quality124.tierRois.ultra.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.ultra.roi >= 0 ? "+" : ""}{quality124.tierRois.ultra.roi.toFixed(1)}%</strong>
+                      </div>
+                    </div>
+                  </div>
+                  ) : null}
                   <div className="overview-card overview-rhythm overview-other-card" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>124</span>
@@ -3640,6 +3985,39 @@ export function App() {
                   </div>
                   </div>
                 </div>
+              ) : predictionTab === "quality124" && canUseQuality124 ? (
+                <>
+                  <p className="prediction-desc">新124四档：低频=二组k4/z≥0.25/c≥0.45；中频=三组k3-4/z≥0.25/c≥0.45/排除fast；高频=二组三组k3-4/z≥0.25/c≥0.45/排除fast；超高频=二组三组k3/z≥0.20/c≥0.45/排除fast。每个信号独立打一组1-2-4。</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>{quality124Roi.signals}</strong><strong>{quality124Roi.bet}</strong><strong>{quality124Roi.win}</strong>
+                      <strong className="roi-value" style={{ color: quality124Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124Roi.roi >= 0 ? "+" : ""}{quality124Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
+                      <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                  <div className="detail-stats-table">
+                    <div className="detail-stats-header"><span>档位</span><span>信号</span><span>命中</span><span>未中</span><span>ROI</span></div>
+                    {[
+                      ["低频 ★★★", quality124.tierRois.low],
+                      ["中频 ★★", quality124.tierRois.medium],
+                      ["高频 ★", quality124.tierRois.high],
+                      ["超高频", quality124.tierRois.ultra],
+                    ].map(([label, roi]) => {
+                      const item = roi as typeof quality124.tierRois.low;
+                      return (
+                        <div className="detail-stats-row" key={label as string}>
+                          <strong className="detail-stats-label">{label as string}</strong>
+                          <span>{item.signals}</span><span>{item.hits}</span><span>{item.signals - item.hits}</span>
+                          <span className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{item.roi >= 0 ? "+" : ""}{item.roi.toFixed(1)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               ) : predictionTab === "preferredNumber" && canUsePreferredNumber ? (
                 <>
                   <p className="prediction-desc">Markov Top2 纸面过滤：最近37口纸面预测命中≥2次，且当前号轮盘半径4区域最近37口≥8次时触发；真实下注未中后冷却3口。</p>
