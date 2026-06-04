@@ -4021,7 +4021,7 @@ export function App() {
                       </div>
                       {hotNumberSignal ? (
                         <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前</span><span>1</span><span>{hotNumberSignal.number}</span><span>{hotNumberSignal.count1}/{hotNumberSignal.count2}/{hotNumberSignal.count3}</span>
+                          <span className="prediction-roi-subheader">当前</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
                         </div>
                       ) : null}
                     </div>
@@ -4121,7 +4121,7 @@ export function App() {
                 </>
               ) : predictionTab === "hotNumber" ? (
                 <>
-                  <p className="prediction-desc">三窗共识（1圈/2圈/3圈同时热）+ 1圈趋势向上 + 排除20口内爆发≥4次。每口押1个号码，1单位平注。</p>
+                  <p className="prediction-desc">148口三段加速（S1→S2→S3严格递增）+ Top10候选池 + 排除20口内爆发≥4次。每口押1个号码，1单位平注。暖机148口。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>命中</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -4135,7 +4135,7 @@ export function App() {
                     {hotNumberSignal ? (
                       <>
                         <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前信号</span><strong>{hotNumberSignal.number}</strong><span>1圈={hotNumberSignal.count1}</span><span>2圈={hotNumberSignal.count2}</span><span>3圈={hotNumberSignal.count3}</span>
+                          <span className="prediction-roi-subheader">当前信号</span><strong>{hotNumberSignal.number}</strong><span>148口={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
                         </div>
                       </>
                     ) : (
