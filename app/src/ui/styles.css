@@ -4320,6 +4320,19 @@ button:disabled {
   color: #b07040;
 }
 
+.repeat-signal-item.repeat-hot .repeat-tier-badge.hot-badge {
+  color: #d4855a;
+}
+
+/* Overview card: 热门 */
+.overview-hot {
+  border-left: 3px solid #e0b898;
+}
+
+.overview-hot .overview-card-title span:first-child {
+  color: #c07040;
+}
+
 .repeat-signal-item:active {
   background: #d8cde4;
 }
