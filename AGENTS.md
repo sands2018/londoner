@@ -134,10 +134,19 @@ Bottom action buttons layout:
 
 ## Project memory
 
-- **This file (`AGENTS.md`) is the single source of project memory.**
-- When asked to remember something, write or update it here — do NOT use the Claude Code `memory/` directory.
-- After a restart, read this file to recover project context.
-- The `memory/` directory is deprecated; all important information lives here.
+- **This file (`AGENTS.md`) is the single source of project memory for both agents.**
+- When Wayne says “项目记忆”, “记一下”, or “写入记忆” → update this file.
+- After a restart, both agents should read this file to recover project context.
+
+**Per-agent long-term memory rules:**
+
+| Agent | Long-term memory | Trigger |
+|---|---|---|
+| GPT (Codex) | Codex long-term memory | Only when Wayne explicitly says “长期记忆” or “Codex 长期记忆” |
+| DeepSeek (Claude Code) | `memory/MEMORY.md` → points here | `memory/` directory is read-only pointer; all content lives in AGENTS.md |
+
+- The Claude Code `memory/` directory is **deprecated for content** — it contains only a pointer back to this file.
+- If either agent needs to persist information that is NOT project-related (e.g., personal preferences about how to interact with Wayne), use their own long-term memory mechanism.
 
 ## Agent dialog channel
 
