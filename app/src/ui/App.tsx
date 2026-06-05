@@ -253,6 +253,7 @@ export function App() {
   const [numberZoneOpen, setNumberZoneOpen] = useState(false);
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [statsTab, setStatsTab] = useState("game");
+  const [statsGroupTab, setStatsGroupTab] = useState(() => localStorage.getItem("londoner.statsGroupTab") || "colrow");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
   const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
@@ -1540,6 +1541,34 @@ export function App() {
     }
   }
 
+  async function receiveCurrentTransfer() {
+    if (numbers.length > 0) {
+      setNoticeDialog({ title: "接上数据", message: "当前已有数据，请先清空或保存后再接上。" });
+      return;
+    }
+    await ensureSharedConnected(async (u, p) => {
+      setSharedLoading(true);
+      try {
+        const sessions = await listTransferSessions(u, p);
+        if (sessions.length === 0) {
+          setNoticeDialog({ title: "接上数据", message: "传输区没有数据。" });
+          return;
+        }
+        const latest = sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        const importedNumbers = latest.numbers.filter(isRouletteNumber);
+        setNumbers(importedNumbers);
+        setRedoNumbers([]);
+        setLastSavedNumbers([]);
+        clearCurrentSession();
+        setNoticeDialog({ title: "接上数据", message: `已接上（${importedNumbers.length} 个数字）` });
+      } catch (error) {
+        setNoticeDialog({ title: "接上数据", message: formatSharedError(error) });
+      } finally {
+        setSharedLoading(false);
+      }
+    });
+  }
+
   function importTransferData() {
     const selected = transferSessions.find((item) => item.id === selectedTransferIds[0]);
     if (!selected) return;
@@ -1785,6 +1814,48 @@ export function App() {
       title: "导出数据",
       message: copied ? "数据已经用 JSON 格式导出到剪贴板。" : "数据复制失败，请检查浏览器剪贴板权限。",
     });
+  }
+
+  async function exportToFile() {
+    if (sortedSessions.length === 0) return;
+    const data = sortedSessions.map((session) => ({
+      Count: session.numbers.length,
+      Name: session.name,
+      Numbers: formatNumbers(session.numbers),
+      SaveTime: formatSessionTime(session.updatedAt),
+      tms: new Date(session.updatedAt).getTime(),
+      ImportIndex: session.importIndex,
+      SharedUploader: session.sharedUploader || "",
+    }));
+    const json = JSON.stringify(data, null, 2);
+    const filename = "history_data.json";
+
+    // Try File System Access API (desktop Chrome/Edge)
+    if ("showDirectoryPicker" in window) {
+      try {
+        const dirHandle = await (window as any).showDirectoryPicker();
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        setNoticeDialog({ title: "导出文件", message: `已保存到选定文件夹：${filename}` });
+        return;
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
+      }
+    }
+
+    // Fallback: browser download
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setNoticeDialog({ title: "导出文件", message: `已下载：${filename}` });
   }
 
   function toggleSessionSelection(id: string) {
@@ -2707,21 +2778,19 @@ export function App() {
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
           <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
-          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
+          <button disabled={numbers.length === 0} onClick={() => void receiveCurrentTransfer()} type="button">接上</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
+          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openDataDialog} type="button">数据</button>
-          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
-          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
         </div>
         <div className="dock-actions dock-actions-primary">
           <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
-          <button onClick={() => { setStatsTab("colrow"); setStatsViewOpen(true); }} type="button">行组</button>
-          <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
-          <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
-          <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
+          <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
+          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
           <button onClick={openConfigView} type="button">配置</button>
         </div>
@@ -2923,6 +2992,7 @@ export function App() {
             <button disabled={sortedSessions.length === 0} onClick={() => void exportSessions(selectedSessions)} type="button">
               导出
             </button>
+            <button disabled={sortedSessions.length === 0} onClick={() => void exportToFile()} type="button">导出文件</button>
             <button disabled={selectedSessions.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadLocalToShared(u, p)); }} type="button">上传</button>
             <button onClick={openToolsDialog} type="button">工具</button>
           </footer>
@@ -4319,10 +4389,10 @@ export function App() {
           ) : null}
           <footer className="data-screen-actions stats-nav-actions" aria-label="统计标签">
             <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
-            <button className={statsTab==="colrow"?"selected":""} onClick={()=>setStatsTab("colrow")} type="button">行组</button>
-            <button className={statsTab==="freq"?"selected":""} onClick={()=>setStatsTab("freq")} type="button">频率</button>
-            <button className={statsTab==="dist"?"selected":""} onClick={()=>setStatsTab("dist")} type="button">距离</button>
-            <button className={statsTab==="wave"?"selected":""} onClick={()=>setStatsTab("wave")} type="button">波浪</button>
+            <button className={statsTab==="colrow"?"selected":""} onClick={()=>{ setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab","colrow"); }} type="button">行组</button>
+            <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
+            <button className={statsTab==="dist"?"selected":""} onClick={()=>{ setStatsTab("dist"); setStatsGroupTab("dist"); localStorage.setItem("londoner.statsGroupTab","dist"); }} type="button">距离</button>
+            <button className={statsTab==="wave"?"selected":""} onClick={()=>{ setStatsTab("wave"); setStatsGroupTab("wave"); localStorage.setItem("londoner.statsGroupTab","wave"); }} type="button">波浪</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
           </footer>
         </section>

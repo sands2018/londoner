@@ -228,3 +228,33 @@ describe("roulette rules", () => {
     expect(stats.totalRoi.win).toBe(684);
   });
 });
+
+import { analyzeMerge } from "./numberMerge";
+
+describe("numberMerge", () => {
+  it("exact overlap", () => {
+    const a = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+    const b = [11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+    const r = analyzeMerge(a, b);
+    expect(r.found).toBe(true);
+    expect(r.type).toBe("overlap");
+  });
+  it("containment A in B", () => {
+    const r = analyzeMerge(
+      [5,6,7,8,9,10,11,12,13,14,15],
+      [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]);
+    expect(r.type).toBe("contained");
+  });
+  it("97pct match rate ok", () => {
+    // 35-number overlap with 1 mismatch = 34/35 = 97.1% >= 97% → OK
+    const a = Array.from({length:50},(_,i)=>i+1);
+    const b = [36,37,38,39,99,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70];
+    expect(analyzeMerge(a, b).found).toBe(true);
+  });
+  it("no overlap", () => {
+    expect(analyzeMerge([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], [20,21,22,23,24,25,26,27,28,29,30,31,32,33,34]).found).toBe(false);
+  });
+  it("too short", () => {
+    expect(analyzeMerge([1,2,3], [1,2,3]).found).toBe(false);
+  });
+});

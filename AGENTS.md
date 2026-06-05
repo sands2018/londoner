@@ -68,6 +68,7 @@ comms/dialog/         # GPT <-> DeepSeek dialog files
 
 ## Key conventions
 
+- **Data merge / dedup**: `app/src/core/numberMerge.ts` provides `analyzeMerge(a, b)` for sequence overlap detection. Min overlap = 10 numbers. Fuzzy matching allows ≤2 mismatches per 10. Returns overlap/contains/contained/none + merged result. Used by: (1) data page session comparison, (2) home "接上" button merging incoming data with current. Tests in `roulette.test.ts`.
 - **UI tuning workflow**: When adding or restyling signal cards, badges, or other visual components, first put the HTML+CSS into `app/public/ui-test.html`. Tune colors, sizes, and layout there until Wayne is satisfied. Only then copy the final styles into `app/src/ui/styles.css` and update `App.tsx` to match — exactly as tuned, no deviation.
 - **Encoding safety**: `App.tsx`, `styles.css`, docs, and any file containing Chinese text must remain UTF-8. Do not rewrite whole files with PowerShell `Set-Content`, especially after `Get-Content -Raw`, because it can mojibake Chinese text. Prefer `apply_patch` for edits. If a scripted rewrite is truly necessary, use Node.js `fs.readFileSync/writeFileSync(..., "utf8")` and verify representative Chinese strings plus a build before finishing.
 - **Roulette data scopes / 轮盘数据口径**: In real use, the first 200 numbers are often pre-entered past results used only as context. Name this first-200 context area **录号区数据**. Keep explicit scopes in prediction/stat UI and analysis:
@@ -96,8 +97,8 @@ The main screen has these sections, top to bottom:
 
 Bottom action buttons layout:
 
-- Row 1: 传递 | 导出 | 导入 | 保存 | 另存 | 数据 | 快照
-- Row 2: 预测 | 打法 | 行组 | 频率 | 距离 | 波浪 | 其它 | 配置
+- Row 1: 传递 | 接上 | 导出 | 导入 | 保存 | 另存 | 数据
+- Row 2: 预测 | 打法 | 行组 | 号码 | 快照 | 其它 | 配置
 
 ## Current prediction naming
 
