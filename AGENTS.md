@@ -167,6 +167,23 @@ Bottom action buttons layout:
 
 - **Prediction engine**: 124 rhythm, New124 four-tier, cold reversal, chase6/3, hot numbers, repeat/short-repeat.
 - **Number zone page**: 37-number popup with distance/circle modes, hot/cold highlighting, trend arrows.
-- **Research**: Hot number strategy is still under review. Current GPT-side tentative candidate is the conservative improved hot-number rule: 148-spin window, acceleration trend, Top10 candidate pool, pick Top1, chase 1-2, no overlapping active signal. Latest same-dataset comparison: DS exact rule 2491 signals / +1.16% ROI / max DD 290 / Top3 profit share 43.7%; improved main Top3-pool rule 2793 signals / +24.54% ROI / max DD 482 / Top3 profit share 27.4%; improved conservative Top10-pool rule 4380 signals / +20.48% ROI / max DD 466 / Top3 profit share 20.3%. Tentative decision: prefer the improved conservative version for now, then re-compare after DeepSeek finishes its hot-number work.
+- **Research**: Hot number strategy is still under review.
+
+## Hot path perf budget
+
+Several prediction engines are temporarily disabled while Wayne benchmarks performance. Search `[PERF]` in App.tsx for all disabled locations.
+
+| Engine | Compute | UI | Notes |
+|--------|---------|----|-------|
+| hotNumbers (热门) | disabled | card kept (zero data) | optimized 2026-06-06, still slow |
+| chase3 (追3) | disabled | tab+card removed earlier | |
+| repeat (长重号) | disabled | tabs/cards/detail/signals removed | |
+| shortRepeat (短重号) | disabled | tabs/cards/detail/signals removed | |
+| rhythm/124 | disabled | tab/card/detail/signals removed | default else branch → placeholder |
+| chase6 (追6) | **enabled** | tab restored 2026-06-06 | |
+
+**To re-enable any**: remove the `[PERF]` stub blocks, restore original `useMemo` calls, and restore the corresponding UI elements.
+
+**chase6 tab** was re-added 2026-06-06 between 长套 and 热门 with a simple detail page (total ROI + strong/wave). Current GPT-side tentative candidate is the conservative improved hot-number rule: 148-spin window, acceleration trend, Top10 candidate pool, pick Top1, chase 1-2, no overlapping active signal. Latest same-dataset comparison: DS exact rule 2491 signals / +1.16% ROI / max DD 290 / Top3 profit share 43.7%; improved main Top3-pool rule 2793 signals / +24.54% ROI / max DD 482 / Top3 profit share 27.4%; improved conservative Top10-pool rule 4380 signals / +20.48% ROI / max DD 466 / Top3 profit share 20.3%. Tentative decision: prefer the improved conservative version for now, then re-compare after DeepSeek finishes its hot-number work.
 - **Research**: Gear rotation for 124 entry timing.
 - Active scripts in `scripts/`, research notes in `docs/124-rhythm-research-notes.md`.

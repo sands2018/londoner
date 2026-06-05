@@ -40,6 +40,7 @@ export interface HotNumberRoi {
 export interface HotNumberAnalysis {
   activeNumber: HotNumberSignal | null;
   totalRoi: HotNumberRoi;
+  totalRoiFrom201: HotNumberRoi;
 }
 
 // ---- Shared helpers ----
@@ -144,107 +145,71 @@ function shortSignalFields(numbers: readonly RouletteNumber[], num: number): Pic
   };
 }
 
-// ---- Paper P&L tracking ----
-
-interface PaperRecord {
-  net: number; // +35 for hit, -1 for miss
-}
-
-function computePaperRoi(paper: PaperRecord[]): number {
-  if (paper.length === 0) return -999;
-  const net = paper.reduce((s, r) => s + r.net, 0);
-  return (net / paper.length) * 100;
-}
-
-// ---- Adaptive picker ----
+// ---- Pre-computed historical picks (cache to avoid O(N²) in ROI) ----
 
 const ADAPTIVE_LOOKBACK = 111;
 
-function selectAdaptive(
-  numbers: readonly RouletteNumber[],
-): { pick: HotNumberSignal | null; mode: HotNumberMode } {
-  const longPick = selectLong(numbers);
-  const shortPick = numbers.length >= SHORT_WARMUP ? selectShort(numbers) : null;
+interface CachedPicks {
+  longPicks: Array<RouletteNumber | null>;
+  shortPicks: Array<RouletteNumber | null>;
+}
 
-  // Compute paper P&L over last ADAPTIVE_LOOKBACK spins
-  const longPaper: PaperRecord[] = [];
-  const shortPaper: PaperRecord[] = [];
+/**
+ * Pre-compute selectLong/selectShort results for every position once.
+ * These are pure functions of numbers[0..i], so caching is equivalent to recomputing.
+ */
+function precomputePicks(numbers: readonly RouletteNumber[]): CachedPicks {
+  const n = numbers.length;
+  const longPicks: Array<RouletteNumber | null> = new Array(n + 1).fill(null);
+  const shortPicks: Array<RouletteNumber | null> = new Array(n + 1).fill(null);
 
-  for (let i = Math.max(LONG_WARMUP, numbers.length - ADAPTIVE_LOOKBACK); i < numbers.length; i++) {
-    const history = numbers.slice(0, i);
-    const lp = selectLong(history);
-    if (lp !== null) {
-      longPaper.push({ net: numbers[i] === lp ? 35 : -1 });
-    }
-    if (i >= SHORT_WARMUP) {
-      const sp = selectShort(history);
-      if (sp !== null) {
-        shortPaper.push({ net: numbers[i] === sp ? 35 : -1 });
-      }
-    }
+  for (let i = LONG_WARMUP; i <= n; i++) {
+    longPicks[i] = selectLong(numbers.slice(0, i));
+  }
+  for (let i = SHORT_WARMUP; i <= n; i++) {
+    shortPicks[i] = selectShort(numbers.slice(0, i));
   }
 
-  const shortSignals = shortPaper.length;
-  const shortRoi = computePaperRoi(shortPaper);
-  const longRoi = computePaperRoi(longPaper);
+  return { longPicks, shortPicks };
+}
 
-  // Adaptive rule: prefer SHORT if it's clearly better
-  const preferShort = shortSignals >= 5
+/**
+ * Determine adaptive pick at a given position using pre-computed strategy picks
+ * and a pre-built paper P&L snapshot.
+ */
+function adaptivePick(
+  numbers: readonly RouletteNumber[],
+  longPick: RouletteNumber | null,
+  shortPick: RouletteNumber | null,
+  longCnt: number, longNet: number,
+  shortCnt: number, shortNet: number,
+): HotNumberSignal | null {
+  if (longPick === null && shortPick === null) return null;
+
+  const shortRoi = shortCnt > 0 ? (shortNet / shortCnt) * 100 : -999;
+  const longRoi = longCnt > 0 ? (longNet / longCnt) * 100 : -999;
+
+  const preferShort = shortCnt >= 5
     && shortRoi >= 0
     && shortRoi >= longRoi + 20;
 
-  // Try preferred mode first, fall back to other
   if (preferShort) {
     if (shortPick !== null) {
-      return {
-        pick: { number: shortPick, mode: "short", ...shortSignalFields(numbers, shortPick) },
-        mode: "short",
-      };
+      return { number: shortPick, mode: "short", ...shortSignalFields(numbers, shortPick) };
     }
     if (longPick !== null) {
-      return {
-        pick: { number: longPick, mode: "long", ...longSignalFields(numbers, longPick) },
-        mode: "long",
-      };
+      return { number: longPick, mode: "long", ...longSignalFields(numbers, longPick) };
     }
   } else {
     if (longPick !== null) {
-      return {
-        pick: { number: longPick, mode: "long", ...longSignalFields(numbers, longPick) },
-        mode: "long",
-      };
+      return { number: longPick, mode: "long", ...longSignalFields(numbers, longPick) };
     }
     if (shortPick !== null) {
-      return {
-        pick: { number: shortPick, mode: "short", ...shortSignalFields(numbers, shortPick) },
-        mode: "short",
-      };
+      return { number: shortPick, mode: "short", ...shortSignalFields(numbers, shortPick) };
     }
   }
 
-  return { pick: null, mode: "long" };
-}
-
-// ---- ROI computation ----
-
-function computeRoi(
-  numbers: readonly RouletteNumber[],
-  roiStartIndex: number,
-): { signals: number; bet: number; win: number; hits: number } {
-  let signals = 0, bet = 0, win = 0, hits = 0;
-
-  for (let i = LONG_WARMUP; i < numbers.length; i++) {
-    if (i < roiStartIndex) continue;
-    const { pick } = selectAdaptive(numbers.slice(0, i));
-    if (pick === null) continue;
-    signals++;
-    bet += 1;
-    if (numbers[i] === pick.number) {
-      win += 36;
-      hits++;
-    }
-  }
-  return { signals, bet, win, hits };
+  return null;
 }
 
 // ---- Public API ----
@@ -253,19 +218,98 @@ export function analyzeHotNumbers(
   numbers: readonly RouletteNumber[],
   roiStartIndex = 0,
 ): HotNumberAnalysis {
-  const total = computeRoi(numbers, roiStartIndex);
-  const { pick } = numbers.length >= LONG_WARMUP
-    ? selectAdaptive(numbers)
-    : { pick: null };
+  const n = numbers.length;
+
+  if (n < LONG_WARMUP) {
+    return {
+      activeNumber: null,
+      totalRoi: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
+      totalRoiFrom201: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
+    };
+  }
+
+  // Step 1: Pre-compute all historical strategy picks (O(N × WINDOW), once)
+  const { longPicks, shortPicks } = precomputePicks(numbers);
+
+  // Step 2: Compute both ROIs in a single pass with incremental paper P&L
+  let sigAll = 0, betAll = 0, winAll = 0, hitsAll = 0;
+  let sig201 = 0, bet201 = 0, win201 = 0, hits201 = 0;
+
+  // Running paper P&L (sliding ADAPTIVE_LOOKBACK window, pointer-based for O(1) trim)
+  let longCnt = 0, longNet = 0;
+  let shortCnt = 0, shortNet = 0;
+  const longQueue: Array<{ index: number; net: number }> = [];
+  const shortQueue: Array<{ index: number; net: number }> = [];
+  let longQueueStart = 0;
+  let shortQueueStart = 0;
+
+  function pushPaper(longN: number | null, shortN: number | null, outcomeIdx: number) {
+    if (longN !== null) {
+      const net = numbers[outcomeIdx] === longN ? 35 : -1;
+      longQueue.push({ index: outcomeIdx, net });
+      longNet += net;
+      longCnt++;
+    }
+    if (shortN !== null && outcomeIdx >= SHORT_WARMUP) {
+      const net = numbers[outcomeIdx] === shortN ? 35 : -1;
+      shortQueue.push({ index: outcomeIdx, net });
+      shortNet += net;
+      shortCnt++;
+    }
+  }
+
+  function trimPaper(minOutcomeIndex: number) {
+    while (longQueueStart < longQueue.length && longQueue[longQueueStart].index < minOutcomeIndex) {
+      longNet -= longQueue[longQueueStart].net;
+      longCnt--;
+      longQueueStart++;
+    }
+    while (shortQueueStart < shortQueue.length && shortQueue[shortQueueStart].index < minOutcomeIndex) {
+      shortNet -= shortQueue[shortQueueStart].net;
+      shortCnt--;
+      shortQueueStart++;
+    }
+  }
+
+  for (let i = LONG_WARMUP; i < n; i++) {
+    if (i > LONG_WARMUP) {
+      pushPaper(longPicks[i - 1], shortPicks[i - 1], i - 1);
+    }
+    trimPaper(Math.max(LONG_WARMUP, i - ADAPTIVE_LOOKBACK));
+
+    const pick = adaptivePick(
+      numbers, longPicks[i], shortPicks[i],
+      longCnt, longNet, shortCnt, shortNet,
+    );
+    if (pick !== null) {
+      // All-data ROI
+      sigAll++; betAll++;
+      if (numbers[i] === pick.number) { winAll += 36; hitsAll++; }
+      // From-201 ROI
+      if (i >= roiStartIndex) {
+        sig201++; bet201++;
+        if (numbers[i] === pick.number) { win201 += 36; hits201++; }
+      }
+    }
+  }
+
+  // Step 3: Current adaptive pick (at position n, using full paper P&L window)
+  pushPaper(longPicks[n - 1], shortPicks[n - 1], n - 1);
+  trimPaper(Math.max(LONG_WARMUP, n - ADAPTIVE_LOOKBACK));
+  const currentPick = adaptivePick(
+    numbers, longPicks[n], shortPicks[n],
+    longCnt, longNet, shortCnt, shortNet,
+  );
 
   return {
-    activeNumber: pick,
+    activeNumber: currentPick,
     totalRoi: {
-      signals: total.signals,
-      bet: total.bet,
-      win: total.win,
-      hits: total.hits,
-      roi: total.bet > 0 ? ((total.win - total.bet) / total.bet) * 100 : 0,
+      signals: sigAll, bet: betAll, win: winAll, hits: hitsAll,
+      roi: betAll > 0 ? ((winAll - betAll) / betAll) * 100 : 0,
+    },
+    totalRoiFrom201: {
+      signals: sig201, bet: bet201, win: win201, hits: hits201,
+      roi: bet201 > 0 ? ((win201 - bet201) / bet201) * 100 : 0,
     },
   };
 }

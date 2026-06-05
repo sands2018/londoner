@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import {
   getNumberColor,
   getNumberColRows,
@@ -416,19 +417,20 @@ export function App() {
   const predictionRecordCount = predictionTracker.count;
 
   const sessionRoi = useMemo(() => computeRoi(numbers), [numbers]);
-  const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
-  const rhythmRowsOnlyRoi = useMemo(() => computeRhythmRoi(numbers, [3, 4, 5]), [numbers]);
-  const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
+  // [PERF] 124 (rhythm) temporarily disabled — see AGENTS.md "Hot path perf budget"
+  const rhythmRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const rhythmRowsOnlyRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rhythmDetailStats: any[] = [];
   const quality124 = useMemo(() => analyzeQuality124(numbers), [numbers]);
   const quality124Signals = quality124.activeSignals;
   const quality124Roi = quality124.totalRoi;
   const quality124From201 = useMemo(() => analyzeQuality124(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const quality124RoiFrom201 = quality124From201.totalRoi;
-  const hotNumber = useMemo(() => analyzeHotNumbers(numbers), [numbers]);
-  const hotNumberSignal = hotNumber.activeNumber;
-  const hotNumberRoi = hotNumber.totalRoi;
-  const hotNumberFrom201 = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
-  const hotNumberRoiFrom201 = hotNumberFrom201.totalRoi;
+  // const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const hotNumberSignal = null as HotNumberSignal | null; // hotNumber.activeNumber;
+  const hotNumberRoi = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 }; // hotNumber.totalRoi;
+  const hotNumberRoiFrom201 = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 }; // hotNumber.totalRoiFrom201;
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
   // 长套自适应: 从历史session计算行/组累计ROI
@@ -656,12 +658,14 @@ export function App() {
   const chaseSixG2Roi = cs.group2Roi;
   const chaseSixG3Roi = cs.group3Roi;
 
-  const c3 = useMemo(() => analyzeChaseThree(numbers), [numbers]);
-  const chaseThreeSignals = c3.activeSignals;
-  const chaseThreeRoi = c3.totalRoi;
-  const chaseThreeG1Roi = c3.group1Roi;
-  const chaseThreeG2Roi = c3.group2Roi;
-  const chaseThreeG3Roi = c3.group3Roi;
+  // [PERF] 追3 temporarily disabled — see AGENTS.md "Hot path perf budget"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chaseThreeSignals: any[] = [];
+  const chaseThreeRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const chaseThreeG1Roi = chaseThreeRoi;
+  const chaseThreeG2Roi = chaseThreeRoi;
+  const chaseThreeG3Roi = chaseThreeRoi;
+  const c3 = { star1Roi: chaseThreeRoi, star2Roi: chaseThreeRoi };
 
   const preferredNumber = useMemo(() => analyzePreferredNumber(numbers), [numbers]);
   const preferredNumberSignals = preferredNumber.activeSignals;
@@ -669,38 +673,25 @@ export function App() {
   const preferredNumberFrom201 = useMemo(() => analyzePreferredNumber(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const preferredNumberRoiFrom201 = preferredNumberFrom201.totalRoi;
 
-  const repeatSignalOptions = useMemo(
-    () => ({ tier: repeatFilter, requireInitialFilter: true, allowPreInitialSignals: !entryMode200 }),
-    [repeatFilter, entryMode200],
-  );
-  const repeatStatsOptions = useMemo(
-    () => ({ tier: repeatFilter, requireInitialFilter: true }),
-    [repeatFilter],
-  );
-  const repeat = useMemo(() => analyzeRepeatNumber(numbers, 0, repeatSignalOptions), [numbers, repeatSignalOptions]);
-  const repeatSignals = repeat.activeSignals;
-  const repeatAll = useMemo(() => analyzeRepeatNumber(numbers, 0, repeatStatsOptions), [numbers, repeatStatsOptions]);
-  const repeatFrom201 = useMemo(() => analyzeRepeatNumber(numbers, REPEAT_INITIAL_ROUNDS, repeatStatsOptions), [numbers, repeatStatsOptions]);
-  const repeatAggressiveRoi = repeatAll.aggressiveRoi;
-  const repeatCoreRoi = repeatAll.coreRoi;
-  const repeatFilteredRoi = repeatFilter === REPEAT_TIER_CORE ? repeatAll.coreRoi : repeatAll.aggressiveRoi;
-  const repeatFilteredRoiFrom201 = repeatFilter === REPEAT_TIER_CORE ? repeatFrom201.coreRoi : repeatFrom201.aggressiveRoi;
-  const shortRepeat = useMemo(() => analyzeShortRepeatNumber(numbers, 0, repeatSignalOptions), [numbers, repeatSignalOptions]);
-  const shortRepeatSignals = shortRepeat.activeSignals;
-  const shortRepeatAll = useMemo(() => analyzeShortRepeatNumber(numbers, 0, repeatStatsOptions), [numbers, repeatStatsOptions]);
-  const shortRepeatFrom201 = useMemo(() => analyzeShortRepeatNumber(numbers, REPEAT_INITIAL_ROUNDS, repeatStatsOptions), [numbers, repeatStatsOptions]);
-  const shortRepeatRoi = repeatFilter === REPEAT_TIER_CORE ? shortRepeatAll.coreRoi : shortRepeatAll.aggressiveRoi;
-  const shortRepeatRoiFrom201 = repeatFilter === REPEAT_TIER_CORE ? shortRepeatFrom201.coreRoi : shortRepeatFrom201.aggressiveRoi;
-  const repeatEnvironmentFilter = repeatAll.environmentFilter;
-  const shortRepeatEnvironmentFilter = shortRepeatAll.environmentFilter;
+  // [PERF] 长重号/短重号 temporarily disabled — see AGENTS.md "Hot path perf budget"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const repeatSignals: any[] = [];
+  const repeatAggressiveRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatCoreRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatFilteredRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatFilteredRoiFrom201 = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shortRepeatSignals: any[] = [];
+  const shortRepeatRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const shortRepeatRoiFrom201 = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatEnvironmentFilter = { g2Count:0, g3Count:0, passes:false };
+  const shortRepeatEnvironmentFilter = { g2Count:0, g3Count:0, passes:false };
 
   // 综合ROI: 按总览配置汇总所有已启用策略
   const combinedRoi = useMemo(() => {
     let bet = 0, win = 0;
-    if (show124) {
-      const r = rhythmMode === "仅行" ? rhythmRowsOnlyRoi : rhythmRoi;
-      bet += r.bet; win += r.win;
-    }
+    // [PERF] show124 disabled — see AGENTS.md
+    // if (show124) { const r = ...; bet += r.bet; win += r.win; }
     if (canUseQuality124 && showQuality124) {
       bet += quality124Roi.bet; win += quality124Roi.win;
     }
@@ -731,12 +722,13 @@ export function App() {
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
     if (numbers.length <= 200) return null;
-    const rhs = rhythmMode === "仅行" ? computeRhythmRoi(numbers, [3, 4, 5], 200) : computeRhythmRoi(numbers, undefined, 200);
+    // [PERF] const rhs = ... computeRhythmRoi ... — see AGENTS.md
     const cold = computeRoi(numbers, coldAdaptiveCis, 200);
     const c6 = analyzeChaseSixRolling(numbers, 200, 200);
-    const c3f = analyzeChaseThree(numbers.slice(200));
+    const c3f = { totalRoi: { signals:0, bet:0, win:0, hits:0, roi:0 } }; // [PERF] analyzeChaseThree numbers.slice(200) — see AGENTS.md
     let bet = 0, win = 0;
-    if (show124) { bet += rhs.bet; win += rhs.win; }
+    // [PERF] show124 disabled
+    // if (show124) { bet += rhs.bet; win += rhs.win; }
     if (canUseQuality124 && showQuality124) { bet += quality124RoiFrom201.bet; win += quality124RoiFrom201.win; }
     if (showCold) { bet += cold.bet; win += cold.win; }
     if (chase6Filter !== "全关") { bet += c6.totalRoi.bet; win += c6.totalRoi.win; }
@@ -1148,15 +1140,19 @@ export function App() {
 
   function addNumber(value: RouletteNumber) {
     playKeySound();
+    const next = [...numbers, value];
+
+    // Force key pop to render immediately before heavy computation
+    const popId = keyPopIdRef.current++;
+    flushSync(() => {
+      setKeyPops(prev => [...prev, { id: popId, value }]);
+    });
+
     if (predictions.length > 0 && value !== 0) {
       predictionTracker.record(predictions, value);
     }
-
-    setNumbers([...numbers, value]);
+    setNumbers(next);
     setRedoNumbers([]);
-
-    const popId = keyPopIdRef.current++;
-    setKeyPops(prev => [...prev, { id: popId, value }]);
   }
 
   function undo() {
@@ -2813,7 +2809,7 @@ export function App() {
         </section>
       ) : null}
 
-      {(() => { const filtered = signalDisplay.filter(item => (item.kind === "rhythm" ? show124 : showCold)); return filtered.length > 0 ? (
+      {(() => { const filtered = signalDisplay.filter(item => item.kind === "cold" && showCold); return filtered.length > 0 ? (
         <section className="prediction-signal-area" aria-label="预测信号">
           {filtered.map((item) => (
             <div
@@ -2885,12 +2881,8 @@ export function App() {
 
       {(() => {
         const filteredPreferredNumber = canUsePreferredNumber && showPreferredNumber ? preferredNumberSignals : [];
-        const filteredRepeat = showRepeat
-          ? repeatSignals
-          : [];
-        const filteredShortRepeat = showShortRepeat ? shortRepeatSignals : [];
         const filteredHotNumber = showHotNumber && hotNumberSignal ? [hotNumberSignal] : [];
-        return filteredPreferredNumber.length > 0 || filteredRepeat.length > 0 || filteredShortRepeat.length > 0 || filteredHotNumber.length > 0 ? (
+        return filteredPreferredNumber.length > 0 || filteredHotNumber.length > 0 ? (
           <section className="repeat-signal-area" aria-label="单号信号">
             {filteredHotNumber.map((item) => (
               <div
@@ -2917,37 +2909,6 @@ export function App() {
                   {item.numbers.map((value) => (
                     <strong className="repeat-number" key={value}>{value}</strong>
                   ))}
-                </span>
-              </div>
-            ))}
-            {filteredRepeat.map((item) => (
-              <div
-                className={`repeat-signal-item ${item.tier === REPEAT_TIER_CORE ? "repeat-premium" : ""}`}
-                key={`repeat-${item.number}`}
-                onClick={() => { setPredictionTab("repeat"); setPredictionWindowOpen(true); }}
-                role="button"
-                tabIndex={0}
-              >
-                <span className="repeat-tier-badge">{item.tier === REPEAT_TIER_CORE ? "核心" : "进取"}</span>
-                <strong className="repeat-number">{item.number}</strong>
-              </div>
-            ))}
-            {filteredShortRepeat.map((item) => (
-              <div
-                className="repeat-signal-item repeat-short"
-                key={`short-repeat-${item.number}`}
-                onClick={() => { setPredictionTab("shortRepeat"); setPredictionWindowOpen(true); }}
-                role="button"
-                tabIndex={0}
-              >
-                <strong className="repeat-number">{item.number}</strong>
-                <span className="short-repeat-chase">
-                  <span className="short-repeat-dots">
-                    {Array.from({ length: item.chaseLen }, (_, i) => i + 1).map((n) => (
-                      <span key={n} className={`short-repeat-dot ${n <= item.round ? "filled" : ""}`} />
-                    ))}
-                  </span>
-                  <span className="short-repeat-bet">{item.betAmt}</span>
                 </span>
               </div>
             ))}
@@ -4044,14 +4005,12 @@ export function App() {
               {canUseQuality124 ? (
                 <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">新124</button>
               ) : null}
-              <button className={predictionTab === "rhythm" ? "selected" : ""} onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} type="button">124</button>
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
+              <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
               <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUsePreferredNumber ? (
                 <button className={predictionTab === "preferredNumber" ? "selected" : ""} onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} type="button">优选号</button>
               ) : null}
-              <button className={predictionTab === "repeat" ? "selected" : ""} onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} type="button">长重号</button>
-              <button className={predictionTab === "shortRepeat" ? "selected" : ""} onClick={() => { setPredictionTab("shortRepeat"); localStorage.setItem("londoner.predictionTab", "shortRepeat"); }} type="button">短重号</button>
             </div>
             <div className="prediction-body">
               {predictionTab === "overview" ? (
@@ -4115,32 +4074,6 @@ export function App() {
                     </div>
                   </div>
                   ) : null}
-                  <div className="overview-card overview-rhythm overview-other-card" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>124</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${show124 ? " on" : ""}`} onClick={() => { const v = !show124; setShow124(v); localStorage.setItem("londoner.show124", v ? "1" : "0"); }} type="button" />
-                        {show124 ? (
-                          <span className="signal-tier-opts">
-                            {["全部","仅行"].map(t => (
-                              <button key={t} className={`signal-tier-btn${rhythmMode === t ? " active" : ""}`} onClick={() => { setRhythmMode(t); const ro = t === "仅行"; setRhythmRowsOnly(ro); localStorage.setItem("londoner.rhythmMode", t); localStorage.setItem("londoner.rhythmRowsOnly", ro ? "true" : "false"); }} type="button">{t}</button>
-                            ))}
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">ROI-仅行</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
-                        <strong className="roi-value" style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
                   <div className="overview-card overview-cold overview-other-card" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>长套</span>
@@ -4242,52 +4175,6 @@ export function App() {
                     </div>
                   </div>
                   ) : null}
-                  <div className="overview-card overview-repeat overview-repeat-card" onClick={() => { setPredictionTab("repeat"); localStorage.setItem("londoner.predictionTab", "repeat"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>长重号</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showRepeat ? " on" : ""}`} onClick={() => { const v = !showRepeat; setShowRepeat(v); localStorage.setItem("londoner.showRepeat", v ? "1" : "0"); }} type="button" />
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{repeatFilteredRoi.bet}</strong><strong>{repeatFilteredRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: repeatFilteredRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoi.roi >= 0 ? "+" : ""}{repeatFilteredRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">200后</span><span>{repeatFilteredRoiFrom201.bet}</span><span>{repeatFilteredRoiFrom201.win}</span>
-                        <strong className="roi-value" style={{ color: repeatFilteredRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoiFrom201.roi >= 0 ? "+" : ""}{repeatFilteredRoiFrom201.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">进取信号</span><span>{repeatAggressiveRoi.bet}</span><span>{repeatAggressiveRoi.win}</span>
-                        <strong className="roi-value" style={{ color: repeatAggressiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatAggressiveRoi.roi >= 0 ? "+" : ""}{repeatAggressiveRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">核心信号</span><span>{repeatCoreRoi.bet}</span><span>{repeatCoreRoi.win}</span>
-                        <strong className="roi-value" style={{ color: repeatCoreRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatCoreRoi.roi >= 0 ? "+" : ""}{repeatCoreRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="overview-card overview-short-repeat overview-repeat-card" onClick={() => { setPredictionTab("shortRepeat"); localStorage.setItem("londoner.predictionTab", "shortRepeat"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>短重号</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showShortRepeat ? " on" : ""}`} onClick={() => { const v = !showShortRepeat; setShowShortRepeat(v); localStorage.setItem("londoner.showShortRepeat", v ? "1" : "0"); }} type="button" />
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{shortRepeatRoi.bet}</strong><strong>{shortRepeatRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: shortRepeatRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoi.roi >= 0 ? "+" : ""}{shortRepeatRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">200后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
-                        <strong className="roi-value" style={{ color: shortRepeatRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoiFrom201.roi >= 0 ? "+" : ""}{shortRepeatRoiFrom201.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
                   </div>
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
@@ -4381,6 +4268,25 @@ export function App() {
                     ))}
                   </div>
                 </>
+              ) : predictionTab === "chase6" ? (
+                <>
+                  <p className="prediction-desc">追6：行组冷波触发，1-2-4-8-16-32六级倍投追打6轮。波浪过滤排除弱信号。</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>{chase6Filter}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
+                      <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">强信号 ★</span><span>{cs.strongRoi.bet}</span><span>{cs.strongRoi.win}</span>
+                      <strong className="roi-value" style={{ color: cs.strongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.strongRoi.roi >= 0 ? "+" : ""}{cs.strongRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
+                      <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                </>
               ) : predictionTab === "hotNumber" ? (
                 <>
                   <p className="prediction-desc">自适应双模：默认长热148加速（S1-S2-S3递增+burst&lt;4）；短热DS三窗（37/74/111共识+趋势+burst&lt;4）。111口纸面复盘：短热信号&gt;=5且ROI&gt;=0且比长热高20%则优先短热。信号不减，优先档无信号回落另一档。</p>
@@ -4407,101 +4313,8 @@ export function App() {
                     )}
                   </div>
                 </>
-              ) : predictionTab === "repeat" ? (
-                <>
-                  <p className="prediction-desc">长重号核心：gap=9-10；进取：在核心基础上增加gap=8/11/12且短重环境1-2。长重号使用移动{REPEAT_ENV_WINDOW}口环境，g3次数大于g2次数时开启。</p>
-                  <div className="repeat-filter-panel">
-                    <span>当前环境：{repeatEnvironmentFilter.ready ? (repeatEnvironmentFilter.passed ? "通过" : "未通过") : "窗口未满"}</span>
-                    <span>g3={repeatEnvironmentFilter.g3Count}</span>
-                    <span>g2={repeatEnvironmentFilter.g2Count}</span>
-                  </div>
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                    <div className="prediction-roi-row">
-                      <strong>{repeatFilter}</strong><strong>{repeatFilteredRoi.bet}</strong><strong>{repeatFilteredRoi.win}</strong>
-                      <strong className="roi-value" style={{ color: repeatFilteredRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoi.roi >= 0 ? "+" : ""}{repeatFilteredRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">200后</span><span>{repeatFilteredRoiFrom201.bet}</span><span>{repeatFilteredRoiFrom201.win}</span>
-                      <strong className="roi-value" style={{ color: repeatFilteredRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatFilteredRoiFrom201.roi >= 0 ? "+" : ""}{repeatFilteredRoiFrom201.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">核心信号</span><span>{repeatCoreRoi.bet}</span><span>{repeatCoreRoi.win}</span>
-                      <strong className="roi-value" style={{ color: repeatCoreRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatCoreRoi.roi >= 0 ? "+" : ""}{repeatCoreRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">进取信号</span><span>{repeatAggressiveRoi.bet}</span><span>{repeatAggressiveRoi.win}</span>
-                      <strong className="roi-value" style={{ color: repeatAggressiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{repeatAggressiveRoi.roi >= 0 ? "+" : ""}{repeatAggressiveRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                  </div>
-                  <div className="detail-stats-table">
-                    <div className="detail-stats-header"><span>类型</span><span>信号</span><span>命中</span><span>未中</span><span>命中率</span></div>
-                    <div className="detail-stats-row">
-                      <strong className="detail-stats-label">进取</strong>
-                      <span>{repeatAggressiveRoi.signals}</span><span>{repeatAggressiveRoi.hits}</span><span>{repeatAggressiveRoi.signals - repeatAggressiveRoi.hits}</span>
-                      <span>{repeatAggressiveRoi.signals > 0 ? `${(repeatAggressiveRoi.hits / repeatAggressiveRoi.signals * 100).toFixed(1)}%` : "0.0%"}</span>
-                    </div>
-                    <div className="detail-stats-row">
-                      <strong className="detail-stats-label">核心</strong>
-                      <span>{repeatCoreRoi.signals}</span><span>{repeatCoreRoi.hits}</span><span>{repeatCoreRoi.signals - repeatCoreRoi.hits}</span>
-                      <span>{repeatCoreRoi.signals > 0 ? `${(repeatCoreRoi.hits / repeatCoreRoi.signals * 100).toFixed(1)}%` : "0.0%"}</span>
-                    </div>
-                  </div>
-                </>
-              ) : predictionTab === "shortRepeat" ? (
-                <>
-                  <p className="prediction-desc">短重号核心/进取均只保留gap=3且近37口出现≥3次，追同号2轮，每轮1单位；短重号使用移动{SHORT_REPEAT_ENV_WINDOW}口环境，g3次数大于g2次数时开启。</p>
-                  <div className="repeat-filter-panel">
-                    <span>当前环境：{shortRepeatEnvironmentFilter.ready ? (shortRepeatEnvironmentFilter.passed ? "通过" : "未通过") : "窗口未满"}</span>
-                    <span>g3={shortRepeatEnvironmentFilter.g3Count}</span>
-                    <span>g2={shortRepeatEnvironmentFilter.g2Count}</span>
-                  </div>
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                    <div className="prediction-roi-row">
-                      <strong>短重号</strong><strong>{shortRepeatRoi.bet}</strong><strong>{shortRepeatRoi.win}</strong>
-                      <strong className="roi-value" style={{ color: shortRepeatRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoi.roi >= 0 ? "+" : ""}{shortRepeatRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">200后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
-                      <strong className="roi-value" style={{ color: shortRepeatRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoiFrom201.roi >= 0 ? "+" : ""}{shortRepeatRoiFrom201.roi.toFixed(1)}%</strong>
-                    </div>
-                  </div>
-                  <div className="detail-stats-table">
-                    <div className="detail-stats-header"><span>类型</span><span>信号</span><span>命中</span><span>未中</span><span>命中率</span></div>
-                    <div className="detail-stats-row">
-                      <strong className="detail-stats-label">短重号</strong>
-                      <span>{shortRepeatRoi.signals}</span><span>{shortRepeatRoi.hits}</span><span>{shortRepeatRoi.signals - shortRepeatRoi.hits}</span>
-                      <span>{shortRepeatRoi.signals > 0 ? `${(shortRepeatRoi.hits / shortRepeatRoi.signals * 100).toFixed(1)}%` : "0.0%"}</span>
-                    </div>
-                  </div>
-                </>
               ) : (
-                <>
-                  <p className="prediction-desc">间隔1-4自适应入场，集中度≥65%触发，1-2-4追打2-3轮，失败波浪恢复</p>
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                    <div className="prediction-roi-row">
-                      <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
-                      <strong className="roi-value" style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">ROI-仅行</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
-                      <strong className="roi-value" style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                  </div>
-                  <div className="detail-stats-table">
-                    <div className="detail-stats-header"><span>行组</span><span>成功</span><span>失败</span><span>ROI</span><span>趋势</span></div>
-                    {rhythmDetailStats.map((row) => (
-                      <div className="detail-stats-row" key={row.ci}>
-                        <strong className="detail-stats-label">{row.label}</strong>
-                        <span>{row.successes}</span><span>{row.failures}</span>
-                        <span className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
-                        <span className={`detail-trend trend-${row.trend}`}>{row.trend === "up" ? "↑" : row.trend === "down" ? "↓" : "→"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <p className="prediction-desc">请选择一个预测方法查看详情。</p>
               )}
             </div>
           </section>
