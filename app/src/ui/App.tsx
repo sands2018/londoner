@@ -100,6 +100,12 @@ import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf
 import { analyzeQuality124 } from "../core/quality124";
 import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
 import {
+  analyzeNumberMergeV2,
+  buildNumberMergeV2Union,
+  type NumberMergeConflictChoice,
+  type NumberMergeV2Result,
+} from "../core/numberMergeV2";
+import {
   REPEAT_INITIAL_ROUNDS,
   REPEAT_ENV_WINDOW,
   REPEAT_TIER_AGGRESSIVE,
@@ -161,6 +167,8 @@ interface NoticeDialog {
 interface ConfirmDialog extends NoticeDialog {
   confirmText?: string;
   onConfirm: () => Promise<void> | void;
+  cancelText?: string;
+  onCancel?: () => Promise<void> | void;
 }
 
 interface PromptDialog {
@@ -169,6 +177,14 @@ interface PromptDialog {
   message: string;
   onConfirm: (value: string) => Promise<void> | void;
   title: string;
+}
+
+interface SessionMergeDialog {
+  conflictChoice: NumberMergeConflictChoice;
+  left: SavedSession;
+  result: NumberMergeV2Result;
+  right: SavedSession;
+  targetId: string;
 }
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
@@ -356,6 +372,7 @@ export function App() {
   const [noticeDialog, setNoticeDialog] = useState<NoticeDialog | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [promptDialog, setPromptDialog] = useState<PromptDialog | null>(null);
+  const [sessionMergeDialog, setSessionMergeDialog] = useState<SessionMergeDialog | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
@@ -1827,6 +1844,95 @@ export function App() {
     setSelectedSessionIds([]);
   }
 
+  function openSessionMerge(items: SavedSession[]) {
+    if (items.length !== 2) return;
+
+    const [left, right] = items;
+    const result = analyzeNumberMergeV2(left.numbers, right.numbers);
+    if (result.relationship === "none" || result.relationship === "insufficient") {
+      setNoticeDialog({
+        title: "无法合并",
+        message: `"${left.name}"与"${right.name}"没有找到足够可靠的重叠关系，不能合并。${result.description}`,
+      });
+      return;
+    }
+    if (result.relationship === "ambiguous") {
+      setNoticeDialog({
+        title: "无法安全合并",
+        message: `"${left.name}"与"${right.name}"存在 ${result.alternatives?.length ?? "多个"} 个同等可能的接法，无法确定正确顺序。本次不进行合并。`,
+      });
+      return;
+    }
+
+    const relationship = result.alignment?.relationship ?? result.relationship;
+    const targetId = relationship === "b-contains-a" || relationship === "a-then-b"
+      ? right.id
+      : left.id;
+    setSessionMergeDialog({
+      conflictChoice: "a",
+      left,
+      result,
+      right,
+      targetId,
+    });
+  }
+
+  async function applySessionMerge() {
+    const dialog = sessionMergeDialog;
+    if (!dialog) return;
+
+    const { left, right, result } = dialog;
+    const merged = result.safeToMerge
+      ? result.merged
+      : result.alignment
+        ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, dialog.conflictChoice)
+        : undefined;
+    if (!merged) {
+      setSessionMergeDialog(null);
+      setNoticeDialog({ title: "合并失败", message: "无法构造安全的合并结果，本次没有修改数据。" });
+      return;
+    }
+
+    const mergedNumbers = merged.filter(isRouletteNumber);
+    if (mergedNumbers.length !== merged.length) {
+      setSessionMergeDialog(null);
+      setNoticeDialog({ title: "合并失败", message: "合并结果中出现无效号码，本次没有修改数据。" });
+      return;
+    }
+
+    const target = dialog.targetId === left.id ? left : right;
+    const removed = target.id === left.id ? right : left;
+    try {
+      await storage.saveSession({
+        ...target,
+        numbers: mergedNumbers,
+        updatedAt: new Date().toISOString(),
+      });
+      await storage.deleteSession(removed.id);
+      await refreshSessions();
+      setSelectedSessionIds([target.id]);
+
+      if (currentSessionId === left.id || currentSessionId === right.id) {
+        setNumbers(mergedNumbers);
+        setRedoNumbers([]);
+        setLastSavedNumbers(mergedNumbers);
+        setCurrentSessionId(target.id);
+      }
+
+      setSessionMergeDialog(null);
+      setNoticeDialog({
+        title: "合并完成",
+        message: `合并结果已保存到"${target.name}"（${mergedNumbers.length} 个号码），并删除"${removed.name}"。`,
+      });
+    } catch (error) {
+      setSessionMergeDialog(null);
+      setNoticeDialog({
+        title: "合并失败",
+        message: error instanceof Error ? error.message : "保存本地数据时发生错误，请重试。",
+      });
+    }
+  }
+
   function renameSession(session: SavedSession) {
     setPromptValue(session.name);
     setPromptDialog({
@@ -1873,9 +1979,27 @@ export function App() {
     });
   }
 
+  async function openExportDialog() {
+    const items = selectedSessionIds.length > 0
+      ? sortedSessions.filter((s) => selectedSessionIds.includes(s.id))
+      : sortedSessions;
+    if (items.length === 0) return;
+    setConfirmDialog({
+      title: "导出数据",
+      message: `已选 ${items.length} 条数据。`,
+      confirmText: "导出到文件",
+      onConfirm: () => void exportToFile(),
+      cancelText: "导出到剪贴板",
+      onCancel: () => void exportSessions(items),
+    });
+  }
+
   async function exportToFile() {
-    if (sortedSessions.length === 0) return;
-    const data = sortedSessions.map((session) => ({
+    const items = selectedSessionIds.length > 0
+      ? sortedSessions.filter((s) => selectedSessionIds.includes(s.id))
+      : sortedSessions;
+    if (items.length === 0) return;
+    const data = items.map((session) => ({
       Count: session.numbers.length,
       Name: session.name,
       Numbers: formatNumbers(session.numbers),
@@ -3001,57 +3125,67 @@ export function App() {
               </div>
             );
           })()}
-          <footer className="data-screen-actions">
-            <button
-              disabled={sortedSessions.length === 0}
-              onClick={() =>
-                setSelectedSessionIds(
-                  selectedSessionIds.length === sortedSessions.length
-                    ? []
-                    : sortedSessions.map((s) => s.id),
-                )
-              }
-              type="button"
-            >
-              全选
-            </button>
-            <button disabled={selectedSessions.length !== 1} onClick={() => openSession(selectedSessions[0])} type="button">
-              打开
-            </button>
-            <button disabled={selectedSessions.length !== 1} onClick={() => renameSession(selectedSessions[0])} type="button">
-              更名
-            </button>
-            <button
-              disabled={selectedSessions.length < 1}
-              onClick={() =>
-                setConfirmDialog({
-                  title: "请确认",
-                  message: "确定要删除当前选中的数据吗？",
-                  confirmText: "删除",
-                  onConfirm: () => deleteSessions(selectedSessions),
-                })
-              }
-              type="button"
-            >
-              删除
-            </button>
-            <button
-              onClick={() => {
-                setImportMode("files");
-                setDataText("");
-                setDialogMessage("");
-                setActiveDialog("import");
-              }}
-              type="button"
-            >
-              导入
-            </button>
-            <button disabled={sortedSessions.length === 0} onClick={() => void exportSessions(selectedSessions)} type="button">
-              导出
-            </button>
-            <button disabled={sortedSessions.length === 0} onClick={() => void exportToFile()} type="button">导出文件</button>
-            <button disabled={selectedSessions.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadLocalToShared(u, p)); }} type="button">上传</button>
-            <button onClick={openToolsDialog} type="button">工具</button>
+          <footer className="data-screen-actions data-actions-stack">
+            <div className="data-actions-full">
+              <button
+                disabled={sortedSessions.length === 0}
+                onClick={() =>
+                  setSelectedSessionIds(
+                    selectedSessionIds.length === sortedSessions.length
+                      ? []
+                      : sortedSessions.map((s) => s.id),
+                  )
+                }
+                type="button"
+              >
+                全选
+              </button>
+              <button disabled={selectedSessionIds.length !== 1} onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) openSession(s); }} type="button">
+                打开
+              </button>
+              <button disabled={selectedSessionIds.length !== 1} onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) renameSession(s); }} type="button">
+                更名
+              </button>
+              <button
+                disabled={selectedSessionIds.length < 1}
+                onClick={() =>
+                  setConfirmDialog({
+                    title: "请确认",
+                    message: "确定要删除当前选中的数据吗？",
+                    confirmText: "删除",
+                    onConfirm: () => deleteSessions(sortedSessions.filter((s) => selectedSessionIds.includes(s.id))),
+                  })
+                }
+                type="button"
+              >
+                删除
+              </button>
+              <button
+                disabled={selectedSessionIds.length !== 2}
+                onClick={() => openSessionMerge(sortedSessions.filter((s) => selectedSessionIds.includes(s.id)))}
+                type="button"
+              >
+                合并
+              </button>
+            </div>
+            <div className="data-actions-centered">
+              <button
+                onClick={() => {
+                  setImportMode("files");
+                  setDataText("");
+                  setDialogMessage("");
+                  setActiveDialog("import");
+                }}
+                type="button"
+              >
+                导入
+              </button>
+              <button disabled={sortedSessions.length === 0} onClick={() => openExportDialog()} type="button">
+                导出
+              </button>
+              <button disabled={selectedSessionIds.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadLocalToShared(u, p)); }} type="button">上传</button>
+              <button onClick={openToolsDialog} type="button">工具</button>
+            </div>
           </footer>
             </>
           ) : dataTab === "shared" ? (
@@ -3105,25 +3239,29 @@ export function App() {
                   </div>
                 )}
               </div>
-              <footer className="data-screen-actions shared-data-actions">
-                <button
-                  disabled={!sharedConnected || sharedLoading || sortedSharedSessions.length === 0}
-                  onClick={() =>
-                    setSelectedSharedSessionIds(
-                      selectedSharedSessionIds.length === sortedSharedSessions.length
-                        ? []
-                        : sortedSharedSessions.map((s) => s.id),
-                    )
-                  }
-                  type="button"
-                >
-                  全选
-                </button>
-                <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
-                <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
-                <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
-                <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void removeSharedData()} type="button">删除</button>
-                <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+              <footer className="data-screen-actions data-actions-stack">
+                <div className="data-actions-shared-row">
+                  <button
+                    disabled={!sharedConnected || sharedLoading || sortedSharedSessions.length === 0}
+                    onClick={() =>
+                      setSelectedSharedSessionIds(
+                        selectedSharedSessionIds.length === sortedSharedSessions.length
+                          ? []
+                          : sortedSharedSessions.map((s) => s.id),
+                      )
+                    }
+                    type="button"
+                  >
+                    全选
+                  </button>
+                  <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void removeSharedData()} type="button">删除</button>
+                  <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
+                </div>
+                <div className="data-actions-shared-row">
+                  <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
+                  <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
+                  <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+                </div>
               </footer>
             </>
           ) : (
@@ -3181,7 +3319,7 @@ export function App() {
                 >
                   全选
                 </button>
-                <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={importTransferData} type="button">导入</button>
+                <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={importTransferData} type="button">导入当前</button>
                 <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={removeTransferData} type="button">删除</button>
                 <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadTransferData(u, p)); }} type="button">刷新</button>
               </footer>
@@ -3896,7 +4034,6 @@ export function App() {
       ) : null}
 
       {predictionWindowOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
           <section className="prediction-screen" aria-label="预测明细">
             <div className="modal-head">
               <strong>预测明细</strong>
@@ -3919,15 +4056,17 @@ export function App() {
             <div className="prediction-body">
               {predictionTab === "overview" ? (
                 <div className={`overview-pane overview-pane-${predictionOverviewTab}`}>
-                  <div className="overview-subtabs" aria-label="总览分类">
+                  <div className="overview-subtabs" aria-label="总览分类" role="tablist">
                     {[
                       ["repeat", "单号"],
                       ["other", "行组"],
                     ].map(([key, label]) => (
                       <button
+                        aria-selected={predictionOverviewTab === key}
                         className={predictionOverviewTab === key ? "selected" : ""}
                         key={key}
                         onClick={() => { setPredictionOverviewTab(key); localStorage.setItem("londoner.predictionOverviewTab", key); }}
+                        role="tab"
                         type="button"
                       >
                         {label}
@@ -4058,34 +4197,28 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-chase3 overview-other-card" onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-hot overview-repeat-card" onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>追3</span>
+                      <span>热门</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${chase3Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase3Filter === "全关" ? "全部" : "全关"; setChase3Filter(v); localStorage.setItem("londoner.chase3Filter", v); }} type="button" />
-                        {chase3Filter !== "全关" ? (
-                          <span className="signal-tier-opts">
-                            {["全部","TOP2","TOP1"].map(t => (
-                              <button key={t} className={`signal-tier-btn${chase3Filter === t ? " active" : ""}`} onClick={() => { setChase3Filter(t); localStorage.setItem("londoner.chase3Filter", t); }} type="button">{t}</button>
-                            ))}
-                          </span>
-                        ) : null}
+                        <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
                       </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{chaseThreeRoi.bet}</strong><strong>{chaseThreeRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: chaseThreeRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeRoi.roi >= 0 ? "+" : ""}{chaseThreeRoi.roi.toFixed(1)}%</strong>
+                        <strong>{hotNumberRoi.signals}</strong><strong>{hotNumberRoi.bet}</strong><strong>{hotNumberRoi.win}</strong>
+                        <strong className="roi-value" style={{ color: hotNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoi.roi >= 0 ? "+" : ""}{hotNumberRoi.roi.toFixed(1)}%</strong>
                       </div>
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">波浪强 ★</span><span>{c3.star1Roi.bet}</span><span>{c3.star1Roi.win}</span>
-                        <strong className="roi-value" style={{ color: c3.star1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star1Roi.roi >= 0 ? "+" : ""}{c3.star1Roi.roi.toFixed(1)}%</strong>
+                        <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span>
+                        <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">波浪精选 ★★</span><span>{c3.star2Roi.bet}</span><span>{c3.star2Roi.win}</span>
-                        <strong className="roi-value" style={{ color: c3.star2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star2Roi.roi >= 0 ? "+" : ""}{c3.star2Roi.roi.toFixed(1)}%</strong>
-                      </div>
+                      {hotNumberSignal ? (
+                        <div className="prediction-roi-row">
+                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   {canUsePreferredNumber ? (
@@ -4153,30 +4286,6 @@ export function App() {
                         <span className="prediction-roi-subheader">200后</span><span>{shortRepeatRoiFrom201.bet}</span><span>{shortRepeatRoiFrom201.win}</span>
                         <strong className="roi-value" style={{ color: shortRepeatRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{shortRepeatRoiFrom201.roi >= 0 ? "+" : ""}{shortRepeatRoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
-                    </div>
-                  </div>
-                  <div className="overview-card overview-hot overview-repeat-card" onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>热门</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{hotNumberRoi.signals}</strong><strong>{hotNumberRoi.bet}</strong><strong>{hotNumberRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: hotNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoi.roi >= 0 ? "+" : ""}{hotNumberRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span>
-                        <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
-                      </div>
-                      {hotNumberSignal ? (
-                        <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
-                        </div>
-                      ) : null}
                     </div>
                   </div>
                   </div>
@@ -4396,7 +4505,6 @@ export function App() {
               )}
             </div>
           </section>
-        </div>
       ) : null}
 
       {statsViewOpen ? (
@@ -4690,23 +4798,23 @@ export function App() {
                   onChange={(event) => setDataText(event.target.value)}
                   value={dataText}
                 />
-                <div className="modal-actions single-action">
+                <div className="modal-actions">
                   <button className="primary-action" onClick={importMode === "files" ? importFilesFromText : importData} type="button">
                     导入
                   </button>
+                  {importMode === "files" ? (
+                    <>
+                      <button className="primary-action" onClick={() => fileInputRef.current?.click()} type="button">从文件导入</button>
+                      <input
+                        accept=".json"
+                        onChange={importFromFile}
+                        ref={fileInputRef}
+                        style={{ display: "none" }}
+                        type="file"
+                      />
+                    </>
+                  ) : null}
                 </div>
-                {importMode === "files" ? (
-                  <div className="modal-actions single-action" style={{ marginTop: 4, borderTop: "1px solid #e8e0d6", paddingTop: 8 }}>
-                    <button className="primary-action" onClick={() => fileInputRef.current?.click()} type="button">从文件导入</button>
-                    <input
-                      accept=".json"
-                      onChange={importFromFile}
-                      ref={fileInputRef}
-                      style={{ display: "none" }}
-                      type="file"
-                    />
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
@@ -4726,7 +4834,21 @@ export function App() {
           onClose={() => setConfirmDialog(null)}
           actions={
             <>
-              <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
+              {confirmDialog.cancelText ? null : (
+                <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
+              )}
+              {confirmDialog.cancelText ? (
+                <button
+                  onClick={() => {
+                    const action = confirmDialog.onCancel;
+                    setConfirmDialog(null);
+                    if (action) void action();
+                  }}
+                  type="button"
+                >
+                  {confirmDialog.cancelText}
+                </button>
+              ) : null}
               <button
                 className="primary-action"
                 onClick={() => {
@@ -4744,6 +4866,102 @@ export function App() {
           {confirmDialog.message}
         </MessageDialog>
       ) : null}
+
+      {sessionMergeDialog ? (() => {
+        const { left, right, result } = sessionMergeDialog;
+        const target = sessionMergeDialog.targetId === left.id ? left : right;
+        const removed = target.id === left.id ? right : left;
+        const conflicts = result.alignment?.conflicts ?? [];
+        const mergedLength = result.safeToMerge
+          ? result.merged?.length
+          : result.alignment
+            ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, sessionMergeDialog.conflictChoice).length
+            : undefined;
+        return (
+          <MessageDialog
+            actions={
+              <>
+                <button onClick={() => setSessionMergeDialog(null)} type="button">取消</button>
+                <button className="primary-action" onClick={() => void applySessionMerge()} type="button">确认合并</button>
+              </>
+            }
+            onClose={() => setSessionMergeDialog(null)}
+            panelClassName="merge-message-panel"
+            title="合并本地数据"
+          >
+            <div className="merge-dialog-stack">
+              <div className="merge-analysis-summary">
+                <strong>{formatSessionMergeRelationship(result)}</strong>
+                <span>
+                  重叠 {result.alignment?.overlapLength ?? 0} 个
+                  {conflicts.length > 0 ? `，发现 ${conflicts.length} 个冲突` : "，没有冲突"}
+                  {mergedLength !== undefined ? `；合并后 ${mergedLength} 个` : ""}
+                </span>
+              </div>
+
+              {conflicts.length > 0 ? (
+                <section className="merge-choice-section">
+                  <span>冲突位置采用哪条数据</span>
+                  <div className="merge-choice-buttons">
+                    <button
+                      aria-pressed={sessionMergeDialog.conflictChoice === "a"}
+                      className={sessionMergeDialog.conflictChoice === "a" ? "selected" : ""}
+                      onClick={() => setSessionMergeDialog((current) => current ? { ...current, conflictChoice: "a" } : current)}
+                      type="button"
+                    >
+                      采用 A
+                    </button>
+                    <button
+                      aria-pressed={sessionMergeDialog.conflictChoice === "b"}
+                      className={sessionMergeDialog.conflictChoice === "b" ? "selected" : ""}
+                      onClick={() => setSessionMergeDialog((current) => current ? { ...current, conflictChoice: "b" } : current)}
+                      type="button"
+                    >
+                      采用 B
+                    </button>
+                  </div>
+                  <div className="merge-conflict-list">
+                    {conflicts.slice(0, 6).map((conflict) => (
+                      <span key={`${conflict.indexA}-${conflict.indexB}`}>
+                        A 第 {conflict.indexA + 1} 个：{conflict.valueA}；B 第 {conflict.indexB + 1} 个：{conflict.valueB}
+                      </span>
+                    ))}
+                    {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="merge-choice-section">
+                <span>合并结果保存到哪条数据</span>
+                <div className="merge-target-grid">
+                  {([
+                    { label: "A", session: left },
+                    { label: "B", session: right },
+                  ] satisfies Array<{ label: string; session: SavedSession }>).map(({ label, session: item }) => {
+                    const selected = sessionMergeDialog.targetId === item.id;
+                    return (
+                      <button
+                        aria-pressed={selected}
+                        className={selected ? "selected" : ""}
+                        key={item.id}
+                        onClick={() => setSessionMergeDialog((current) => current ? { ...current, targetId: item.id } : current)}
+                        type="button"
+                      >
+                        <span>{label} · {item.numbers.length} 个</span>
+                        <strong>{item.name}</strong>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <p className="merge-delete-warning">
+                确认后将更新“{target.name}”，并删除“{removed.name}”。此操作会直接修改本地数据。
+              </p>
+            </div>
+          </MessageDialog>
+        );
+      })() : null}
 
       {sharedLoginOpen ? (
         <MessageDialog
@@ -4888,17 +5106,33 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(2)}%`;
 }
 
+function formatSessionMergeRelationship(result: NumberMergeV2Result): string {
+  const relationship = result.relationship === "conflict"
+    ? result.alignment?.relationship
+    : result.relationship;
+
+  switch (relationship) {
+    case "identical": return result.relationship === "conflict" ? "两条数据几乎相同，但存在冲突" : "两条数据完全相同";
+    case "a-contains-b": return result.relationship === "conflict" ? "A 基本包含 B，但存在冲突" : "A 完整包含 B";
+    case "b-contains-a": return result.relationship === "conflict" ? "B 基本包含 A，但存在冲突" : "B 完整包含 A";
+    case "a-then-b": return result.relationship === "conflict" ? "B 可以接在 A 后面，但存在冲突" : "B 可以接在 A 后面";
+    case "b-then-a": return result.relationship === "conflict" ? "A 可以接在 B 后面，但存在冲突" : "A 可以接在 B 后面";
+    default: return "无法确定合并关系";
+  }
+}
+
 interface MessageDialogProps {
   actions?: ReactNode;
   children: ReactNode;
   onClose: () => void;
+  panelClassName?: string;
   title: string;
 }
 
-function MessageDialog({ actions, children, onClose, title }: MessageDialogProps) {
+function MessageDialog({ actions, children, onClose, panelClassName = "", title }: MessageDialogProps) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="message-panel">
+      <div className={`message-panel ${panelClassName}`.trim()}>
         <div className="modal-head">
           <strong>{title}</strong>
           <button className="close-button" onClick={onClose} type="button">X</button>

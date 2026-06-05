@@ -100,8 +100,7 @@ html.android .app-shell {
 }
 
 html.android .prediction-screen {
-  max-width: 520px;
-  width: 100dvw;
+  zoom: 0.92;
 }
 
 * {
@@ -2234,8 +2233,10 @@ button:disabled {
   width: 25%;
 }
 
-.data-screen-actions.shared-data-actions {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+.data-actions-shared-row {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .transfer-data-table th:nth-child(1),
@@ -2298,6 +2299,29 @@ button:disabled {
   background: #eee7da;
   border-color: #a98d64;
   color: #74572d;
+}
+
+.data-actions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-bottom: max(2px, env(safe-area-inset-bottom));
+}
+
+.data-actions-full {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.data-actions-centered {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+
+.data-actions-centered button {
+  min-width: 88px;
 }
 
 .stats-bottom-actions {
@@ -2702,6 +2726,104 @@ button:disabled {
   padding: 0 16px;
 }
 
+.merge-message-panel {
+  max-width: min(520px, calc(100dvw - 24px));
+  width: min(100%, 520px);
+}
+
+.merge-dialog-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.merge-analysis-summary {
+  background: #f4efe6;
+  border-left: 3px solid #b79a69;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.merge-analysis-summary strong {
+  color: #59462d;
+  font-size: 15px;
+  font-weight: var(--weight-emphasis);
+}
+
+.merge-analysis-summary span,
+.merge-choice-section > span {
+  color: #796b59;
+  font-size: 13px;
+}
+
+.merge-choice-section {
+  display: grid;
+  gap: 6px;
+}
+
+.merge-choice-buttons,
+.merge-target-grid {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.merge-choice-buttons button,
+.merge-target-grid button {
+  background: #fbfaf6;
+  border: 1px solid #d2c8b8;
+  border-radius: 5px;
+  color: #6b5e50;
+  cursor: pointer;
+  font-size: 13px;
+  min-height: 36px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.merge-choice-buttons button.selected,
+.merge-target-grid button.selected {
+  background: #eee5d7;
+  border-color: #aa8c5c;
+  color: #5b4322;
+}
+
+.merge-target-grid button {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.merge-target-grid button span {
+  color: #8a7659;
+  font-size: 12px;
+}
+
+.merge-target-grid button strong {
+  font-size: 13px;
+  font-weight: var(--weight-ui);
+  overflow-wrap: anywhere;
+}
+
+.merge-conflict-list {
+  background: #fffaf4;
+  border: 1px solid #eadccb;
+  color: #775949;
+  display: grid;
+  font-size: 12px;
+  gap: 3px;
+  max-height: 120px;
+  overflow: auto;
+  padding: 7px 8px;
+}
+
+.merge-delete-warning {
+  color: #8a5547;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .modal-head {
   align-items: center;
   background: var(--window-title-background);
@@ -3088,15 +3210,12 @@ button:disabled {
 /* 预测视图样式 */
 .prediction-screen {
   background: #fffdf9;
-  border: 1px solid #d8d0c0;
-  border-radius: 10px;
-  box-shadow: 0 16px 48px rgb(32 36 31 / 0.18);
+  color: #20241f;
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  max-height: min(80dvh, 640px);
-  max-width: min(480px, calc(100dvw - 24px));
-  overflow: hidden;
-  width: min(92dvw, 480px);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  inset: 0;
+  position: fixed;
+  z-index: 18;
 }
 
 .prediction-roi-table {
@@ -3149,27 +3268,40 @@ button:disabled {
 }
 
 .overview-subtabs {
-  display: grid;
-  gap: 4px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-bottom: 6px;
+  align-items: end;
+  background: #fffdf9;
+  border-bottom: 1px solid #d6ccba;
+  display: flex;
+  gap: 1px;
+  margin: -8px -18px 12px;
+  padding: 0;
+  width: calc(100% + 36px);
 }
 
 .overview-subtabs button {
-  background: #f0ece4;
+  background: #e9e3d8;
   border: 1px solid #d6ccba;
-  border-radius: 5px;
+  border-radius: 7px 7px 0 0;
   color: #6b5e50;
   cursor: pointer;
+  flex: 1 1 0;
   font-size: 14px;
-  font-weight: var(--weight-ui);
-  min-height: 30px;
+  font-weight: var(--weight-regular);
+  min-height: 32px;
+  min-width: 0;
+  padding: 5px 2px;
+  transition: background 120ms ease;
 }
 
 .overview-subtabs button.selected {
-  background: #7c6b5a;
-  border-color: #7c6b5a;
-  color: #fffdf9;
+  background: #fffdf9;
+  border-color: #d6ccba;
+  border-bottom-color: #fffdf9;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+  color: #5a4020;
+  font-weight: var(--weight-emphasis);
+  margin-bottom: -1px;
+  z-index: 1;
 }
 
 .overview-pane-repeat .overview-other-card,
@@ -3386,9 +3518,16 @@ button:disabled {
 
 .prediction-screen .modal-head {
   align-items: center;
-  border-radius: 10px 10px 0 0;
-  margin: 0 0 0 0;
-  min-height: 40px;
+  background: var(--window-title-background);
+  border-top: 1px solid #cfc5b3;
+  border-bottom: 1px solid #cfc5b3;
+  border-radius: 0;
+  color: var(--window-title-color);
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  margin: 0;
+  min-height: max(40px, calc(40px + env(safe-area-inset-top)));
+  padding-top: env(safe-area-inset-top);
 }
 
 .prediction-desc {
@@ -4382,8 +4521,9 @@ button:disabled {
 }
 
 /* Overview card: 热门 */
-.overview-hot {
-  border-left: 3px solid #e0b898;
+.overview-card.overview-hot {
+  background: #f4ece0;
+  border-color: #e0c8b0;
 }
 
 .overview-hot .overview-card-title span:first-child {
