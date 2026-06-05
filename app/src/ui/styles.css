@@ -1314,6 +1314,46 @@ button:disabled {
   scrollbar-gutter: stable;
 }
 
+.data-summary-row {
+  align-items: center;
+  background: #f8f5f0;
+  border-top: 1px solid #e2dbcf;
+  color: #6e604f;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: var(--weight-ui);
+  gap: 14px;
+  padding: 8px 10px;
+}
+
+.data-summary-row strong {
+  color: #4a3a28;
+  font-weight: var(--weight-strong);
+}
+
+.data-summary-row .data-summary-nums {
+  color: #7a7062;
+  font-weight: var(--weight-regular);
+}
+
+.data-summary-row .data-summary-year {
+  color: #b08850;
+}
+
+.data-summary-row .data-summary-total {
+  font-size: 15px;
+  margin-right: 4px;
+}
+
+.data-summary-row .data-summary-total strong {
+  font-size: 17px;
+}
+
+.data-summary-row .data-summary-total .data-summary-nums {
+  font-size: 15px;
+}
+
 .data-table {
   border-bottom: 1px solid #e2dbcf;
   border-collapse: separate;

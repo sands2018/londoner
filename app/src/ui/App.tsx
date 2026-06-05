@@ -2851,6 +2851,30 @@ export function App() {
               </tbody>
             </table>
           </div>
+          {(() => {
+            const totalNums = sortedSessions.reduce((sum, s) => sum + s.numbers.length, 0);
+            const thisYear = new Date().getFullYear();
+            const years = [thisYear, thisYear - 1, thisYear - 2];
+            const yearCounts: Record<number, { sessions: number; numbers: number }> = {};
+            for (const y of years) yearCounts[y] = { sessions: 0, numbers: 0 };
+            for (const s of sortedSessions) {
+              const t = s.updatedAt ? new Date(s.updatedAt).getFullYear() : null;
+              if (t && yearCounts[t]) {
+                yearCounts[t].sessions += 1;
+                yearCounts[t].numbers += s.numbers.length;
+              }
+            }
+            return (
+              <div className="data-summary-row">
+                <span className="data-summary-total"><strong>{sortedSessions.length}</strong> / <span className="data-summary-nums">{totalNums}</span></span>
+                {years.map((y) => (
+                  yearCounts[y].sessions > 0 ? (
+                    <span key={y}><span className="data-summary-year">{y}</span> <strong>{yearCounts[y].sessions}</strong> / <span className="data-summary-nums">{yearCounts[y].numbers}</span></span>
+                  ) : null
+                ))}
+              </div>
+            );
+          })()}
           <footer className="data-screen-actions">
             <button
               disabled={sortedSessions.length === 0}
