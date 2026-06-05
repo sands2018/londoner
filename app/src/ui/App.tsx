@@ -278,7 +278,7 @@ export function App() {
   const [otherLongRound, setOtherLongRound] = useState(5);
   const [otherNumberSortField, setOtherNumberSortField] = useState<OtherNumberSortField>("number");
   const [otherNumberSortDirection, setOtherNumberSortDirection] = useState<SortDirection>("desc");
-  const [keyPops, setKeyPops] = useState<Array<{ id: number; value: RouletteNumber }>>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);  const [keyPops, setKeyPops] = useState<Array<{ id: number; value: RouletteNumber }>>([]);
   const keyPopIdRef = useRef(0);
   const [refineRoundStart, setRefineRoundStart] = useState(0);
   const [refineRoundBet, setRefineRoundBet] = useState(1);
@@ -1408,6 +1408,63 @@ export function App() {
       title: "整理数据文本",
       message: copied ? "已复制到剪贴板。" : "数据复制失败，请检查浏览器剪贴板权限。",
     });
+  }
+
+  function importFromFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        let parsed = JSON.parse(text);
+        // Handle both array and object formats
+        const items = Array.isArray(parsed) ? parsed : Object.values(parsed);
+        if (!Array.isArray(items) || items.length === 0) {
+          setDialogMessage("文件格式不正确，需要 JSON 数组。");
+          return;
+        }
+        const imported: SavedSession[] = [];
+        for (const item of items) {
+          // Try multiple field names for numbers
+          const numsStr = (item as any).Numbers ?? (item as any).numbers ?? (item as any).Nums ?? "";
+          const nums = typeof numsStr === "string"
+            ? parseNumbersText(numsStr)
+            : parseNumbersText(Array.isArray(numsStr) ? numsStr.join(",") : "");
+          if (nums.numbers.length === 0) continue;
+          const name = String((item as any).Name ?? (item as any).name ?? `导入-${imported.length + 1}`);
+          const tms = (item as any).tms ?? (item as any).SaveTime ?? undefined;
+          imported.push({
+            id: (item as any).id ?? crypto.randomUUID?.() ?? `${Date.now()}-${imported.length}`,
+            name,
+            numbers: nums.numbers,
+            updatedAt: tms ? new Date(tms).toISOString() : new Date().toISOString(),
+            importIndex: (item as any).ImportIndex ?? imported.length,
+            sharedUploader: (item as any).SharedUploader ?? (item as any).sharedUploader ?? "",
+          });
+        }
+        if (imported.length === 0) {
+          setDialogMessage("文件中没有识别到有效数据。");
+          return;
+        }
+        // Save all at once to avoid localStorage race conditions
+        storage.listSessions().then((existing) => {
+          const existingIds = new Set(existing.map((s) => s.id));
+          const merged = [...existing, ...imported.filter((s) => !existingIds.has(s.id))];
+          // Write directly to localStorage
+          localStorage.setItem("londoner.sessions", JSON.stringify(merged));
+          refreshSessions().then(() => {
+            setActiveDialog(null);
+            setNoticeDialog({ title: "文件导入", message: `已导入 ${imported.length} 条数据。` });
+          });
+        }).catch((err) => {
+          setDialogMessage(`保存失败：${err instanceof Error ? err.message : String(err)}`);
+        });
+      } catch {
+        setDialogMessage("文件解析失败，请检查是否为有效的 JSON 文件。");
+      }
+    };
+    reader.readAsText(file);
   }
 
   function importData() {
@@ -4638,6 +4695,18 @@ export function App() {
                     导入
                   </button>
                 </div>
+                {importMode === "files" ? (
+                  <div className="modal-actions single-action" style={{ marginTop: 4, borderTop: "1px solid #e8e0d6", paddingTop: 8 }}>
+                    <button className="primary-action" onClick={() => fileInputRef.current?.click()} type="button">从文件导入</button>
+                    <input
+                      accept=".json"
+                      onChange={importFromFile}
+                      ref={fileInputRef}
+                      style={{ display: "none" }}
+                      type="file"
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
