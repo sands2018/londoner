@@ -45,19 +45,30 @@ export interface HotNumberAnalysis {
 
 // ---- Shared helpers ----
 
-function countInWindow(numbers: readonly RouletteNumber[], num: number, window: number): number {
-  const start = Math.max(0, numbers.length - window);
+function countInWindow(
+  numbers: readonly RouletteNumber[],
+  num: number,
+  window: number,
+  end = numbers.length,
+): number {
+  const start = Math.max(0, end - window);
   let count = 0;
-  for (let i = start; i < numbers.length; i++) {
+  for (let i = start; i < end; i++) {
     if (numbers[i] === num) count++;
   }
   return count;
 }
 
-function getTopN(numbers: readonly RouletteNumber[], window: number, n: number, ties = false): RouletteNumber[] {
-  const start = Math.max(0, numbers.length - window);
+function getTopN(
+  numbers: readonly RouletteNumber[],
+  window: number,
+  n: number,
+  ties = false,
+  end = numbers.length,
+): RouletteNumber[] {
+  const start = Math.max(0, end - window);
   const counts = new Map<RouletteNumber, number>();
-  for (let i = start; i < numbers.length; i++) {
+  for (let i = start; i < end; i++) {
     const val = numbers[i];
     if (val === 0) continue;
     counts.set(val, (counts.get(val) ?? 0) + 1);
@@ -71,28 +82,68 @@ function getTopN(numbers: readonly RouletteNumber[], window: number, n: number, 
   return sorted.slice(0, n).map(([num]) => num);
 }
 
+function topNFromCounts(counts: ArrayLike<number>, n: number): RouletteNumber[] {
+  const top: RouletteNumber[] = [];
+  for (let num = 1; num <= 36; num++) {
+    const value = counts[num];
+    if (value <= 0) continue;
+    let insertAt = top.length;
+    for (let index = 0; index < top.length; index++) {
+      const current = top[index];
+      if (value > counts[current] || (value === counts[current] && num < current)) {
+        insertAt = index;
+        break;
+      }
+    }
+    top.splice(insertAt, 0, num as RouletteNumber);
+    if (top.length > n) top.pop();
+  }
+  return top;
+}
+
 // ---- LONG strategy (148 acceleration) ----
 
 const LONG_WARMUP = 148;
 const ACCEL_WINDOW = 148;
 const SEG_SIZE = 49;
 
-function selectLong(numbers: readonly RouletteNumber[]): RouletteNumber | null {
-  if (numbers.length < LONG_WARMUP) return null;
-  const start = numbers.length - ACCEL_WINDOW;
-  const top10 = getTopN(numbers, ACCEL_WINDOW, 10);
+function selectLong(numbers: readonly RouletteNumber[], end = numbers.length): RouletteNumber | null {
+  if (end < LONG_WARMUP) return null;
+  const start = end - ACCEL_WINDOW;
+  const count148 = new Uint8Array(37);
+  const count74 = new Uint8Array(37);
+  const count20 = new Uint8Array(37);
+  const seg1Counts = new Uint8Array(37);
+  const seg2Counts = new Uint8Array(37);
+  const seg3Counts = new Uint8Array(37);
+
+  for (let i = start; i < end; i++) {
+    const num = numbers[i];
+    if (num === 0) continue;
+    count148[num]++;
+    if (i >= end - 74) count74[num]++;
+    if (i >= end - 20) count20[num]++;
+    if (i < start + SEG_SIZE) {
+      seg1Counts[num]++;
+    } else if (i < start + SEG_SIZE * 2) {
+      seg2Counts[num]++;
+    } else {
+      seg3Counts[num]++;
+    }
+  }
+
+  const top10 = topNFromCounts(count148, 10);
   let bestNum: RouletteNumber | null = null;
   let bestCount = 0;
   let bestDiff = 0;
 
   for (const num of top10) {
-    let seg1 = 0, seg2 = 0, seg3 = 0;
-    for (let i = start; i < start + SEG_SIZE; i++) { if (numbers[i] === num) seg1++; }
-    for (let i = start + SEG_SIZE; i < start + SEG_SIZE * 2; i++) { if (numbers[i] === num) seg2++; }
-    for (let i = start + SEG_SIZE * 2; i < numbers.length; i++) { if (numbers[i] === num) seg3++; }
+    const seg1 = seg1Counts[num];
+    const seg2 = seg2Counts[num];
+    const seg3 = seg3Counts[num];
     if (!(seg3 > seg2 && seg2 > seg1)) continue;
-    if (countInWindow(numbers, num, 20) >= 4) continue;
-    const cnt = countInWindow(numbers, num, 74);
+    if (count20[num] >= 4) continue;
+    const cnt = count74[num];
     const diff = seg3 - seg1;
     if (cnt > bestCount || (cnt === bestCount && diff > bestDiff)) {
       bestNum = num; bestCount = cnt; bestDiff = diff;
@@ -114,28 +165,48 @@ function longSignalFields(numbers: readonly RouletteNumber[], num: number): Pick
 
 const SHORT_WARMUP = 111;
 
-function selectShort(numbers: readonly RouletteNumber[]): RouletteNumber | null {
-  if (numbers.length < SHORT_WARMUP) return null;
-  const h37 = new Set(getTopN(numbers, 37, 5));
-  const h74 = new Set(getTopN(numbers, 74, 5));
-  const h111 = new Set(getTopN(numbers, 111, 5));
+function selectShort(numbers: readonly RouletteNumber[], end = numbers.length): RouletteNumber | null {
+  if (end < SHORT_WARMUP) return null;
+  const count37 = new Uint8Array(37);
+  const count74 = new Uint8Array(37);
+  const count111 = new Uint8Array(37);
+  const count20 = new Uint8Array(37);
+  const firstHalf37 = new Uint8Array(37);
+  const secondHalf37 = new Uint8Array(37);
+  const start111 = end - 111;
+  const start74 = end - 74;
+  const start37 = end - 37;
+  const mid37 = start37 + 18;
+
+  for (let i = start111; i < end; i++) {
+    const num = numbers[i];
+    if (num === 0) continue;
+    count111[num]++;
+    if (i >= start74) count74[num]++;
+    if (i >= start37) {
+      count37[num]++;
+      if (i < mid37) {
+        firstHalf37[num]++;
+      } else {
+        secondHalf37[num]++;
+      }
+    }
+    if (i >= end - 20) count20[num]++;
+  }
+
+  const h37 = new Set(topNFromCounts(count37, 5));
+  const h74 = new Set(topNFromCounts(count74, 5));
+  const h111 = new Set(topNFromCounts(count111, 5));
   const candidates = [...h37].filter(n => h74.has(n) && h111.has(n));
   if (candidates.length === 0) return null;
   // Half-up trend in 37
-  const trending = candidates.filter(n => {
-    const start = Math.max(0, numbers.length - 37);
-    const mid = start + 18;
-    let first = 0, second = 0;
-    for (let i = start; i < mid; i++) { if (numbers[i] === n) first++; }
-    for (let i = mid; i < numbers.length; i++) { if (numbers[i] === n) second++; }
-    return second > first;
-  });
+  const trending = candidates.filter(n => secondHalf37[n] > firstHalf37[n]);
   if (trending.length === 0) return null;
   // Burst filter
-  const filtered = trending.filter(n => countInWindow(numbers, n, 20) < 4);
+  const filtered = trending.filter(n => count20[n] < 4);
   if (filtered.length === 0) return null;
   // Pick #1 by 37-spin count
-  return filtered.sort((a, b) => countInWindow(numbers, b, 37) - countInWindow(numbers, a, 37))[0];
+  return filtered.sort((a, b) => count37[b] - count37[a])[0];
 }
 
 function shortSignalFields(numbers: readonly RouletteNumber[], num: number): Pick<HotNumberSignal, "count148" | "seg1" | "seg2" | "seg3"> {
@@ -164,10 +235,10 @@ function precomputePicks(numbers: readonly RouletteNumber[]): CachedPicks {
   const shortPicks: Array<RouletteNumber | null> = new Array(n + 1).fill(null);
 
   for (let i = LONG_WARMUP; i <= n; i++) {
-    longPicks[i] = selectLong(numbers.slice(0, i));
+    longPicks[i] = selectLong(numbers, i);
   }
   for (let i = SHORT_WARMUP; i <= n; i++) {
-    shortPicks[i] = selectShort(numbers.slice(0, i));
+    shortPicks[i] = selectShort(numbers, i);
   }
 
   return { longPicks, shortPicks };

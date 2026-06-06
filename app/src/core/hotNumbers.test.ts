@@ -39,7 +39,7 @@ describe("analyzeHotNumbers", () => {
   it("keeps total and betting-area ROI internally consistent", () => {
     const numbers = makeNumbers(500);
     const total = analyzeHotNumbers(numbers).totalRoi;
-    const from201 = analyzeHotNumbers(numbers, 200).totalRoi;
+    const from201 = analyzeHotNumbers(numbers, 200).totalRoiFrom201;
 
     expect(total.signals).toBe(total.bet);
     expect(from201.signals).toBe(from201.bet);
