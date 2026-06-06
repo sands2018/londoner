@@ -165,25 +165,34 @@ Bottom action buttons layout:
 
 ## Current focus
 
-- **Prediction engine**: 124 rhythm, New124 four-tier, cold reversal, chase6/3, hot numbers, repeat/short-repeat.
+- **Performance**: Several engines paused for benchmarking. Search `[PERF]` in App.tsx.
+- **Number merge**: GPT rewrote as `numberMergeV2.ts` (timeline-alignment, safe, no silent data discard). DS V1 (`numberMerge.ts`) is deprecated. V2 used for: (a) local-data "合并" button, (b) home "接上" button.
+- **Prediction engine**: New124, cold reversal, chase6 are enabled. Hot numbers optimized + re-enabled by GPT 2026-06-07.
 - **Number zone page**: 37-number popup with distance/circle modes, hot/cold highlighting, trend arrows.
-- **Research**: Hot number strategy is still under review.
+- **Research**: Gear rotation for 124 entry timing.
 
-## Hot path perf budget
-
-Several prediction engines are temporarily disabled while Wayne benchmarks performance. Search `[PERF]` in App.tsx for all disabled locations.
+## Perf budget / Engine status (2026-06-07)
 
 | Engine | Compute | UI | Notes |
 |--------|---------|----|-------|
-| hotNumbers (热门) | disabled | card kept (zero data) | optimized 2026-06-06, still slow |
-| chase3 (追3) | disabled | tab+card removed earlier | |
-| repeat (长重号) | disabled | tabs/cards/detail/signals removed | |
-| shortRepeat (短重号) | disabled | tabs/cards/detail/signals removed | |
-| rhythm/124 | disabled | tab/card/detail/signals removed | default else branch → placeholder |
-| chase6 (追6) | **enabled** | tab restored 2026-06-06 | |
+| hotNumbers (热门) | ✅ enabled | ✅ | GPT optimized 2026-06-07, DS pre-compute + single-pass before that |
+| chase6 (追6) | ✅ enabled | ✅ tab restored | tab between 长套 and 热门, detail page shows ROI + strong/wave |
+| chase3 (追3) | ❌ disabled | ❌ | `[PERF]` zero stubs |
+| repeat (长重号) | ❌ disabled | ❌ | `[PERF]` zero stubs, all UI removed |
+| shortRepeat (短重号) | ❌ disabled | ❌ | `[PERF]` zero stubs, all UI removed |
+| rhythm/124 | ❌ disabled | ❌ | `[PERF]` zero stubs, tab/card/detail removed, else→placeholder |
+| new124 | ✅ enabled | ✅ | |
+| cold (长套) | ✅ enabled | ✅ | |
+| preferredNumber (优选号) | ✅ enabled | ✅ | |
 
-**To re-enable any**: remove the `[PERF]` stub blocks, restore original `useMemo` calls, and restore the corresponding UI elements.
+**To re-enable any**: remove the `[PERF]` stub blocks, restore `useMemo` calls, restore UI elements.
 
-**chase6 tab** was re-added 2026-06-06 between 长套 and 热门 with a simple detail page (total ROI + strong/wave). Current GPT-side tentative candidate is the conservative improved hot-number rule: 148-spin window, acceleration trend, Top10 candidate pool, pick Top1, chase 1-2, no overlapping active signal. Latest same-dataset comparison: DS exact rule 2491 signals / +1.16% ROI / max DD 290 / Top3 profit share 43.7%; improved main Top3-pool rule 2793 signals / +24.54% ROI / max DD 482 / Top3 profit share 27.4%; improved conservative Top10-pool rule 4380 signals / +20.48% ROI / max DD 466 / Top3 profit share 20.3%. Tentative decision: prefer the improved conservative version for now, then re-compare after DeepSeek finishes its hot-number work.
-- **Research**: Gear rotation for 124 entry timing.
-- Active scripts in `scripts/`, research notes in `docs/124-rhythm-research-notes.md`.
+## Key UI changes (2026-06-05 to 2026-06-07)
+
+- **Prediction detail**: Fullscreen (was modal with max-height:640px). `position:fixed;inset:0` like data-screen.
+- **Data page buttons**: Two-row layout via `data-actions-stack`. Row1: 全选/打开/更名/删除/合并. Row2: 导入/导出/上传/工具.
+- **Shared data page buttons**: Two rows via `data-actions-shared-row`. Row1: 全选/删除/刷新. Row2: 上传当前/导入本地/退出登录.
+- **追3 overview card**: Removed from 总览→行组 tab.
+- **热门 overview card**: Moved to first in 单号 tab. Background `#f4ece0`, border `#e0c8b0`.
+- **Key pop**: Uses `flushSync` to render animation before heavy compute.
+- **接上**: Now uses V2 merge engine. Detects overlap between current live data and transfer buffer. Auto-connects safe results; conflict dialog for mismatches. Keeps transfer buffer intact.
