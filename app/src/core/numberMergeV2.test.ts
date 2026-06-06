@@ -99,13 +99,11 @@ describe("numberMergeV2", () => {
     expect(result.relationship).toBe("none");
   });
 
-  it("uses a conservative default but allows an explicit seven-number overlap", () => {
+  it("accepts a seven-number overlap by default", () => {
     const a = range(1, 10);
     const b = range(4, 13);
 
-    expect(analyzeNumberMergeV2(a, b).relationship).toBe("none");
-
-    const result = analyzeNumberMergeV2(a, b, { minOverlap: 7 });
+    const result = analyzeNumberMergeV2(a, b);
     expect(result.safeToMerge).toBe(true);
     expect(result.merged).toEqual(range(1, 13));
   });
@@ -136,7 +134,7 @@ describe("numberMergeV2", () => {
         const unionStart = Math.min(startA, startB);
         const unionEnd = Math.max(startA + a.length, startB + b.length);
         const overlap = Math.min(startA + a.length, startB + b.length) - Math.max(startA, startB);
-        if (overlap < 10) continue;
+        if (overlap < 7) continue;
 
         const result = analyzeNumberMergeV2(a, b);
         expect(result.safeToMerge).toBe(true);

@@ -144,7 +144,7 @@ const keypadRows: RouletteNumber[][] = [
   [31, 32, 33, 34, 35, 36],
 ];
 
-type DialogName = "import" | "save" | null;
+type DialogName = "connect" | "import" | "save" | null;
 type DataTab = "local" | "shared" | "transfer";
 type DataSortField = "name" | "count" | "time" | "sharedUploader";
 type SortDirection = "asc" | "desc";
@@ -186,6 +186,17 @@ interface SessionMergeDialog {
   result: NumberMergeV2Result;
   right: SavedSession;
   targetId: string;
+}
+
+interface ConnectIncomingData {
+  label: string;
+  numbers: RouletteNumber[];
+}
+
+interface ConnectDialog {
+  conflictChoice: NumberMergeConflictChoice;
+  incoming: ConnectIncomingData;
+  result: NumberMergeV2Result;
 }
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
@@ -374,6 +385,7 @@ export function App() {
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [promptDialog, setPromptDialog] = useState<PromptDialog | null>(null);
   const [sessionMergeDialog, setSessionMergeDialog] = useState<SessionMergeDialog | null>(null);
+  const [transferConnectDialog, setTransferConnectDialog] = useState<ConnectDialog | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
@@ -1371,6 +1383,12 @@ export function App() {
     setActiveDialog("import");
   }
 
+  function openConnectDialog() {
+    setDataText("");
+    setDialogMessage("");
+    setActiveDialog("connect");
+  }
+
   function openToolsDialog() {
     setToolsText("");
     setToolsKeepBreaks(false);
@@ -1611,32 +1629,111 @@ export function App() {
     }
   }
 
-  async function receiveCurrentTransfer() {
-    if (numbers.length > 0) {
-      setNoticeDialog({ title: "接上数据", message: "当前已有数据，请先清空或保存后再接上。" });
+  function connectInputData() {
+    const parsed = parseNumbersText(dataText);
+    if (parsed.invalidTokens.length > 0) {
+      setDialogMessage(`存在无效数字：${parsed.invalidTokens.slice(0, 5).join("、")}`);
       return;
     }
-    await ensureSharedConnected(async (u, p) => {
-      setSharedLoading(true);
-      try {
-        const sessions = await listTransferSessions(u, p);
-        if (sessions.length === 0) {
-          setNoticeDialog({ title: "接上数据", message: "传输区没有数据。" });
-          return;
-        }
-        const latest = sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-        const importedNumbers = latest.numbers.filter(isRouletteNumber);
-        setNumbers(importedNumbers);
-        setRedoNumbers([]);
-        setLastSavedNumbers([]);
-        clearCurrentSession();
-        setNoticeDialog({ title: "接上数据", message: `已接上（${importedNumbers.length} 个数字）` });
-      } catch (error) {
-        setNoticeDialog({ title: "接上数据", message: formatSharedError(error) });
-      } finally {
-        setSharedLoading(false);
+    const incoming: ConnectIncomingData = {
+      label: "输入数据",
+      numbers: parsed.numbers,
+    };
+    if (incoming.numbers.length === 0) {
+      setDialogMessage("没有识别到有效数字。");
+      return;
+    }
+    if (numbers.length === 0) {
+      setNumbers(incoming.numbers);
+      setRedoNumbers([]);
+      setLastSavedNumbers([]);
+      clearCurrentSession();
+      setActiveDialog(null);
+      setNoticeDialog({ title: "接上数据", message: `已接上（${incoming.numbers.length} 个数字）` });
+      return;
+    }
+
+    const result = analyzeNumberMergeV2(numbers, incoming.numbers);
+    if (result.relationship === "none" || result.relationship === "insufficient") {
+      setDialogMessage(`当前数据与输入数据没有找到足够可靠的尾部重叠关系，不能接上。${result.description}`);
+      return;
+    }
+    if (result.relationship === "ambiguous") {
+      setDialogMessage(`当前数据与输入数据存在 ${result.alternatives?.length ?? "多个"} 个同等可能的接法，无法确定正确顺序。本次不进行接上。`);
+      return;
+    }
+
+    const relationship = result.relationship === "conflict"
+      ? result.alignment?.relationship
+      : result.relationship;
+    if (relationship === "b-then-a") {
+      setDialogMessage("输入数据位于当前数据之前，不是当前局后续数据。本次没有修改。");
+      return;
+    }
+    if (relationship === "identical" || relationship === "a-contains-b") {
+      setDialogMessage(`输入数据已包含在当前数据中，没有新增号码。当前 ${numbers.length} 个，输入 ${incoming.numbers.length} 个。`);
+      return;
+    }
+    if (result.safeToMerge) {
+      applyTransferConnectNumbers(result.merged, incoming, result);
+      return;
+    }
+    if (result.alignment) {
+      const preview = buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, "a");
+      if (preview.length <= numbers.length) {
+        setDialogMessage("输入数据没有提供当前局后续号码，只发现重叠冲突。本次没有修改。");
+        return;
       }
+      setActiveDialog(null);
+      setTransferConnectDialog({
+        conflictChoice: "a",
+        incoming,
+        result,
+      });
+      return;
+    }
+    setDialogMessage("无法构造安全的接上结果，本次没有修改数据。");
+  }
+
+  function applyTransferConnectNumbers(
+    merged: readonly number[] | undefined,
+    incoming: ConnectIncomingData,
+    result: NumberMergeV2Result,
+  ) {
+    if (!merged) {
+      setNoticeDialog({ title: "接上失败", message: "无法构造安全的接上结果，本次没有修改数据。" });
+      return;
+    }
+    const mergedNumbers = merged.filter(isRouletteNumber);
+    if (mergedNumbers.length !== merged.length) {
+      setNoticeDialog({ title: "接上失败", message: "接上结果中出现无效号码，本次没有修改数据。" });
+      return;
+    }
+    if (mergedNumbers.length <= numbers.length) {
+      setNoticeDialog({
+        title: "无需接上",
+        message: `输入数据没有新增号码。当前 ${numbers.length} 个，输入 ${incoming.numbers.length} 个。`,
+      });
+      return;
+    }
+
+    const originalLength = numbers.length;
+    const added = mergedNumbers.length - originalLength;
+    setNumbers(mergedNumbers);
+    setRedoNumbers([]);
+    setActiveDialog(null);
+    setTransferConnectDialog(null);
+    setNoticeDialog({
+      title: "接上完成",
+      message: `已接上输入数据：原来 ${originalLength} 个，输入 ${incoming.numbers.length} 个，新增 ${added} 个，接上后 ${mergedNumbers.length} 个。${result.alignment ? `重叠 ${result.alignment.overlapLength} 个。` : ""}`,
     });
+  }
+
+  function applyTransferConnectConflict() {
+    const dialog = transferConnectDialog;
+    if (!dialog?.result.alignment) return;
+    const merged = buildNumberMergeV2Union(numbers, dialog.incoming.numbers, dialog.result.alignment, dialog.conflictChoice);
+    applyTransferConnectNumbers(merged, dialog.incoming, dialog.result);
   }
 
   function importTransferData() {
@@ -2920,7 +3017,7 @@ export function App() {
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
           <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
-          <button disabled={numbers.length === 0} onClick={() => void receiveCurrentTransfer()} type="button">接上</button>
+          <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
@@ -4588,7 +4685,7 @@ export function App() {
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal-panel">
             <div className="modal-head">
-              <strong>{activeDialog === "save" ? "保存" : "导入"}</strong>
+              <strong>{activeDialog === "save" ? "保存" : activeDialog === "connect" ? "接上" : "导入"}</strong>
               <button className="close-button" onClick={() => setActiveDialog(null)} type="button">X</button>
             </div>
 
@@ -4604,7 +4701,7 @@ export function App() {
               </div>
             ) : null}
 
-            {activeDialog === "import" ? (
+            {activeDialog === "import" || activeDialog === "connect" ? (
               <div className="modal-stack">
                 <textarea
                   className="data-textarea"
@@ -4612,10 +4709,14 @@ export function App() {
                   value={dataText}
                 />
                 <div className="modal-actions">
-                  <button className="primary-action" onClick={importMode === "files" ? importFilesFromText : importData} type="button">
-                    导入
+                  <button
+                    className="primary-action"
+                    onClick={activeDialog === "connect" ? connectInputData : importMode === "files" ? importFilesFromText : importData}
+                    type="button"
+                  >
+                    {activeDialog === "connect" ? "接上" : "导入"}
                   </button>
-                  {importMode === "files" ? (
+                  {activeDialog === "import" && importMode === "files" ? (
                     <>
                       <button className="primary-action" onClick={() => fileInputRef.current?.click()} type="button">从文件导入</button>
                       <input
@@ -4770,6 +4871,73 @@ export function App() {
 
               <p className="merge-delete-warning">
                 确认后将更新“{target.name}”，并删除“{removed.name}”。此操作会直接修改本地数据。
+              </p>
+            </div>
+          </MessageDialog>
+        );
+      })() : null}
+
+      {transferConnectDialog ? (() => {
+        const { incoming, result } = transferConnectDialog;
+        const conflicts = result.alignment?.conflicts ?? [];
+        const mergedLength = result.alignment
+          ? buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, transferConnectDialog.conflictChoice).length
+          : undefined;
+        return (
+          <MessageDialog
+            actions={
+              <>
+                <button onClick={() => setTransferConnectDialog(null)} type="button">取消</button>
+                <button className="primary-action" onClick={applyTransferConnectConflict} type="button">确认接上</button>
+              </>
+            }
+            onClose={() => setTransferConnectDialog(null)}
+            panelClassName="merge-message-panel"
+            title="接上输入数据"
+          >
+            <div className="merge-dialog-stack">
+              <div className="merge-analysis-summary">
+                <strong>{formatSessionMergeRelationship(result)}</strong>
+                <span>
+                  当前 {numbers.length} 个，输入 {incoming.numbers.length} 个；
+                  重叠 {result.alignment?.overlapLength ?? 0} 个
+                  {conflicts.length > 0 ? `，发现 ${conflicts.length} 个冲突` : "，没有冲突"}
+                  {mergedLength !== undefined ? `；接上后 ${mergedLength} 个` : ""}
+                </span>
+              </div>
+
+              <section className="merge-choice-section">
+                <span>冲突位置采用哪边数据</span>
+                <div className="merge-choice-buttons">
+                  <button
+                    aria-pressed={transferConnectDialog.conflictChoice === "a"}
+                    className={transferConnectDialog.conflictChoice === "a" ? "selected" : ""}
+                    onClick={() => setTransferConnectDialog((current) => current ? { ...current, conflictChoice: "a" } : current)}
+                    type="button"
+                  >
+                    采用当前
+                  </button>
+                  <button
+                    aria-pressed={transferConnectDialog.conflictChoice === "b"}
+                    className={transferConnectDialog.conflictChoice === "b" ? "selected" : ""}
+                    onClick={() => setTransferConnectDialog((current) => current ? { ...current, conflictChoice: "b" } : current)}
+                    type="button"
+                  >
+                    采用输入
+                  </button>
+                </div>
+                <div className="merge-conflict-list">
+                  {conflicts.slice(0, 6).map((conflict) => (
+                    <span key={`${conflict.indexA}-${conflict.indexB}`}>
+                      当前第 {conflict.indexA + 1} 个：{conflict.valueA}；输入第 {conflict.indexB + 1} 个：{conflict.valueB}
+                    </span>
+                  ))}
+                  {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                </div>
+              </section>
+
+              <p className="merge-delete-warning">
+                确认后只更新当前正在打的数据；如当前数据已保存，本次接上会成为未保存修改。
               </p>
             </div>
           </MessageDialog>

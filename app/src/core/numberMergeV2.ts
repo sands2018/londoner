@@ -86,7 +86,7 @@ interface ResolvedOptions {
 }
 
 const DEFAULT_OPTIONS: ResolvedOptions = {
-  minOverlap: 10,
+  minOverlap: 7,
   seedLength: 4,
   minMatchRate: 0.97,
   mismatchWindow: 10,
