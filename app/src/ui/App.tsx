@@ -439,10 +439,10 @@ export function App() {
   const quality124Roi = quality124.totalRoi;
   const quality124From201 = useMemo(() => analyzeQuality124(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const quality124RoiFrom201 = quality124From201.totalRoi;
-  // const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
-  const hotNumberSignal = null as HotNumberSignal | null; // hotNumber.activeNumber;
-  const hotNumberRoi = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 }; // hotNumber.totalRoi;
-  const hotNumberRoiFrom201 = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 }; // hotNumber.totalRoiFrom201;
+  const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const hotNumberSignal = hotNumber.activeNumber;
+  const hotNumberRoi = hotNumber.totalRoi;
+  const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
   // 长套自适应: 从历史session计算行/组累计ROI
