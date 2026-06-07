@@ -102,8 +102,10 @@ import { analyzeQuality124 } from "../core/quality124";
 import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
 import {
   analyzeNumberMergeV2,
+  buildNumberMergeV2TolerantUnion,
   buildNumberMergeV2Union,
   type NumberMergeConflictChoice,
+  type NumberMergeEditIssue,
   type NumberMergeV2Result,
 } from "../core/numberMergeV2";
 import {
@@ -1678,6 +1680,24 @@ export function App() {
       applyTransferConnectNumbers(result.merged, incoming, result);
       return;
     }
+    if (result.tolerantAlignment) {
+      if (result.tolerantAlignment.relationship === "b-then-a") {
+        setDialogMessage("输入数据位于当前数据之前，不是当前局后续数据。本次没有修改。");
+        return;
+      }
+      const preview = buildNumberMergeV2TolerantUnion(result.tolerantAlignment, "a");
+      if (preview.length <= numbers.length) {
+        setDialogMessage("输入数据没有提供当前局后续号码，只发现重叠问题。本次没有修改。");
+        return;
+      }
+      setActiveDialog(null);
+      setTransferConnectDialog({
+        conflictChoice: "a",
+        incoming,
+        result,
+      });
+      return;
+    }
     if (result.alignment) {
       const preview = buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, "a");
       if (preview.length <= numbers.length) {
@@ -1698,7 +1718,7 @@ export function App() {
   function applyTransferConnectNumbers(
     merged: readonly number[] | undefined,
     incoming: ConnectIncomingData,
-    result: NumberMergeV2Result,
+    result?: NumberMergeV2Result,
   ) {
     if (!merged) {
       setNoticeDialog({ title: "接上失败", message: "无法构造安全的接上结果，本次没有修改数据。" });
@@ -1719,19 +1739,26 @@ export function App() {
 
     const originalLength = numbers.length;
     const added = mergedNumbers.length - originalLength;
+    const overlapLength = result?.alignment?.overlapLength ?? result?.tolerantAlignment?.overlapLength;
     setNumbers(mergedNumbers);
     setRedoNumbers([]);
     setActiveDialog(null);
     setTransferConnectDialog(null);
     setNoticeDialog({
       title: "接上完成",
-      message: `已接上输入数据：原来 ${originalLength} 个，输入 ${incoming.numbers.length} 个，新增 ${added} 个，接上后 ${mergedNumbers.length} 个。${result.alignment ? `重叠 ${result.alignment.overlapLength} 个。` : ""}`,
+      message: `已接上输入数据：原来 ${originalLength} 个，输入 ${incoming.numbers.length} 个，新增 ${added} 个，接上后 ${mergedNumbers.length} 个。${overlapLength !== undefined ? `重叠 ${overlapLength} 个。` : ""}`,
     });
   }
 
   function applyTransferConnectConflict() {
     const dialog = transferConnectDialog;
-    if (!dialog?.result.alignment) return;
+    if (!dialog) return;
+    if (dialog.result.tolerantAlignment) {
+      const merged = buildNumberMergeV2TolerantUnion(dialog.result.tolerantAlignment, dialog.conflictChoice);
+      applyTransferConnectNumbers(merged, dialog.incoming, dialog.result);
+      return;
+    }
+    if (!dialog.result.alignment) return;
     const merged = buildNumberMergeV2Union(numbers, dialog.incoming.numbers, dialog.result.alignment, dialog.conflictChoice);
     applyTransferConnectNumbers(merged, dialog.incoming, dialog.result);
   }
@@ -1957,7 +1984,7 @@ export function App() {
       return;
     }
 
-    const relationship = result.alignment?.relationship ?? result.relationship;
+    const relationship = result.tolerantAlignment?.relationship ?? result.alignment?.relationship ?? result.relationship;
     const targetId = relationship === "b-contains-a" || relationship === "a-then-b"
       ? right.id
       : left.id;
@@ -1977,6 +2004,8 @@ export function App() {
     const { left, right, result } = dialog;
     const merged = result.safeToMerge
       ? result.merged
+      : result.tolerantAlignment
+        ? buildNumberMergeV2TolerantUnion(result.tolerantAlignment, dialog.conflictChoice)
       : result.alignment
         ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, dialog.conflictChoice)
         : undefined;
@@ -4786,11 +4815,15 @@ export function App() {
         const target = sessionMergeDialog.targetId === left.id ? left : right;
         const removed = target.id === left.id ? right : left;
         const conflicts = result.alignment?.conflicts ?? [];
+        const tolerant = result.tolerantAlignment;
         const mergedLength = result.safeToMerge
           ? result.merged?.length
+          : tolerant
+            ? buildNumberMergeV2TolerantUnion(tolerant, sessionMergeDialog.conflictChoice).length
           : result.alignment
             ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, sessionMergeDialog.conflictChoice).length
             : undefined;
+        const issueCount = tolerant ? tolerant.issues.length : conflicts.length;
         return (
           <MessageDialog
             actions={
@@ -4807,15 +4840,16 @@ export function App() {
               <div className="merge-analysis-summary">
                 <strong>{formatSessionMergeRelationship(result)}</strong>
                 <span>
-                  重叠 {result.alignment?.overlapLength ?? 0} 个
-                  {conflicts.length > 0 ? `，发现 ${conflicts.length} 个冲突` : "，没有冲突"}
+                  重叠 {tolerant?.overlapLength ?? result.alignment?.overlapLength ?? 0} 个
+                  {issueCount > 0 ? `，发现 ${issueCount} 个${tolerant ? "问题" : "冲突"}` : "，没有冲突"}
+                  {tolerant ? `；匹配率 ${(tolerant.matchRate * 100).toFixed(1)}%` : ""}
                   {mergedLength !== undefined ? `；合并后 ${mergedLength} 个` : ""}
                 </span>
               </div>
 
-              {conflicts.length > 0 ? (
+              {issueCount > 0 ? (
                 <section className="merge-choice-section">
-                  <span>冲突位置采用哪条数据</span>
+                  <span>{tolerant ? "问题位置采用哪条数据" : "冲突位置采用哪条数据"}</span>
                   <div className="merge-choice-buttons">
                     <button
                       aria-pressed={sessionMergeDialog.conflictChoice === "a"}
@@ -4835,12 +4869,23 @@ export function App() {
                     </button>
                   </div>
                   <div className="merge-conflict-list">
-                    {conflicts.slice(0, 6).map((conflict) => (
-                      <span key={`${conflict.indexA}-${conflict.indexB}`}>
-                        A 第 {conflict.indexA + 1} 个：{conflict.valueA}；B 第 {conflict.indexB + 1} 个：{conflict.valueB}
-                      </span>
-                    ))}
-                    {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                    {tolerant ? (
+                      <>
+                        {tolerant.issues.slice(0, 6).map((issue, index) => (
+                          <span key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>{formatMergeEditIssue(issue, "A", "B")}</span>
+                        ))}
+                        {tolerant.issues.length > 6 ? <span>另有 {tolerant.issues.length - 6} 个问题未展开。</span> : null}
+                      </>
+                    ) : (
+                      <>
+                        {conflicts.slice(0, 6).map((conflict) => (
+                          <span key={`${conflict.indexA}-${conflict.indexB}`}>
+                            A 第 {conflict.indexA + 1} 个：{conflict.valueA}；B 第 {conflict.indexB + 1} 个：{conflict.valueB}
+                          </span>
+                        ))}
+                        {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                      </>
+                    )}
                   </div>
                 </section>
               ) : null}
@@ -4879,10 +4924,18 @@ export function App() {
 
       {transferConnectDialog ? (() => {
         const { incoming, result } = transferConnectDialog;
-        const conflicts = result.alignment?.conflicts ?? [];
-        const mergedLength = result.alignment
-          ? buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, transferConnectDialog.conflictChoice).length
-          : undefined;
+        const tolerant = result.tolerantAlignment;
+        const conflicts = result?.alignment?.conflicts ?? [];
+        const mergedLength = tolerant
+          ? buildNumberMergeV2TolerantUnion(tolerant, transferConnectDialog.conflictChoice).length
+          : result?.alignment
+            ? buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, transferConnectDialog.conflictChoice).length
+            : undefined;
+        const summaryTitle = tolerant
+          ? "发现输入数据可容错接上"
+          : result ? formatSessionMergeRelationship(result) : "发现接上冲突";
+        const overlapLength = tolerant?.overlapLength ?? result?.alignment?.overlapLength ?? 0;
+        const conflictCount = tolerant ? tolerant.issues.length : conflicts.length;
         return (
           <MessageDialog
             actions={
@@ -4897,11 +4950,12 @@ export function App() {
           >
             <div className="merge-dialog-stack">
               <div className="merge-analysis-summary">
-                <strong>{formatSessionMergeRelationship(result)}</strong>
+                <strong>{summaryTitle}</strong>
                 <span>
                   当前 {numbers.length} 个，输入 {incoming.numbers.length} 个；
-                  重叠 {result.alignment?.overlapLength ?? 0} 个
-                  {conflicts.length > 0 ? `，发现 ${conflicts.length} 个冲突` : "，没有冲突"}
+                  重叠 {overlapLength} 个
+                  {conflictCount > 0 ? `，发现 ${conflictCount} 个问题` : "，没有冲突"}
+                  {tolerant ? `；匹配率 ${(tolerant.matchRate * 100).toFixed(1)}%` : ""}
                   {mergedLength !== undefined ? `；接上后 ${mergedLength} 个` : ""}
                 </span>
               </div>
@@ -4927,12 +4981,25 @@ export function App() {
                   </button>
                 </div>
                 <div className="merge-conflict-list">
-                  {conflicts.slice(0, 6).map((conflict) => (
-                    <span key={`${conflict.indexA}-${conflict.indexB}`}>
-                      当前第 {conflict.indexA + 1} 个：{conflict.valueA}；输入第 {conflict.indexB + 1} 个：{conflict.valueB}
-                    </span>
-                  ))}
-                  {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                  {tolerant ? (
+                    <>
+                      {tolerant.issues.slice(0, 6).map((issue, index) => (
+                        <span key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>
+                          {formatMergeEditIssue(issue, "当前", "输入")}
+                        </span>
+                      ))}
+                      {tolerant.issues.length > 6 ? <span>另有 {tolerant.issues.length - 6} 个问题未展开。</span> : null}
+                    </>
+                  ) : (
+                    <>
+                      {conflicts.slice(0, 6).map((conflict) => (
+                        <span key={`${conflict.indexA}-${conflict.indexB}`}>
+                          当前第 {conflict.indexA + 1} 个：{conflict.valueA}；输入第 {conflict.indexB + 1} 个：{conflict.valueB}
+                        </span>
+                      ))}
+                      {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                    </>
+                  )}
                 </div>
               </section>
 
@@ -5088,6 +5155,13 @@ function formatPercent(value: number) {
 }
 
 function formatSessionMergeRelationship(result: NumberMergeV2Result): string {
+  if (result.tolerantAlignment) {
+    switch (result.tolerantAlignment.relationship) {
+      case "a-then-b": return "B 可以容错接在 A 后面";
+      case "b-then-a": return "A 可以容错接在 B 后面";
+    }
+  }
+
   const relationship = result.relationship === "conflict"
     ? result.alignment?.relationship
     : result.relationship;
@@ -5100,6 +5174,16 @@ function formatSessionMergeRelationship(result: NumberMergeV2Result): string {
     case "b-then-a": return result.relationship === "conflict" ? "A 可以接在 B 后面，但存在冲突" : "A 可以接在 B 后面";
     default: return "无法确定合并关系";
   }
+}
+
+function formatMergeEditIssue(issue: NumberMergeEditIssue, labelA: string, labelB: string): string {
+  if (issue.kind === "a-extra") {
+    return `${labelA} 第 ${issue.indexA + 1} 个多出：${issue.valueA}`;
+  }
+  if (issue.kind === "b-extra") {
+    return `${labelB} 第 ${issue.indexB + 1} 个多出：${issue.valueB}`;
+  }
+  return `${labelA} 第 ${issue.indexA + 1} 个：${issue.valueA}；${labelB} 第 ${issue.indexB + 1} 个：${issue.valueB}`;
 }
 
 interface MessageDialogProps {

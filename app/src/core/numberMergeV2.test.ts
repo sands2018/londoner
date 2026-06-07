@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeNumberMergeV2, buildNumberMergeV2Union } from "./numberMergeV2";
+import { analyzeNumberMergeV2, buildNumberMergeV2TolerantUnion, buildNumberMergeV2Union } from "./numberMergeV2";
 
 function range(start: number, end: number): number[] {
   return Array.from({ length: end - start + 1 }, (_, index) => start + index);
@@ -86,7 +86,7 @@ describe("numberMergeV2", () => {
     ]);
   });
 
-  it("rejects clustered mismatches even when the overall rate reaches 97 percent", () => {
+  it("reports clustered mismatches as manual tolerant review instead of auto-merging", () => {
     const a = range(1, 100);
     const b = [...a];
     b[10] = 201;
@@ -95,8 +95,11 @@ describe("numberMergeV2", () => {
 
     const result = analyzeNumberMergeV2(a, b);
 
-    expect(result.found).toBe(false);
-    expect(result.relationship).toBe("none");
+    expect(result.found).toBe(true);
+    expect(result.relationship).toBe("conflict");
+    expect(result.safeToMerge).toBe(false);
+    expect(result.tolerantAlignment).toBeDefined();
+    expect(result.tolerantAlignment?.issues.length).toBe(3);
   });
 
   it("accepts a seven-number overlap by default", () => {
@@ -148,5 +151,47 @@ describe("numberMergeV2", () => {
       minOverlap: 3,
       seedLength: 4,
     })).toThrow(/seedLength/);
+  });
+
+  it("reports fuzzy tail/head overlap with omissions and substitution", () => {
+    const shared = range(1, 80).map((value) => value % 37);
+    const a = [...range(90, 99), ...shared];
+    const b = [...shared];
+    b.splice(10, 1);
+    b.splice(25, 1);
+    b[40] = 99;
+    b.push(5, 6, 7);
+
+    const result = analyzeNumberMergeV2(a, b);
+
+    expect(result.relationship).toBe("conflict");
+    expect(result.safeToMerge).toBe(false);
+    expect(result.tolerantAlignment).toBeDefined();
+    expect(result.tolerantAlignment?.relationship).toBe("a-then-b");
+    expect(result.tolerantAlignment?.issues.length).toBe(3);
+    expect(result.tolerantAlignment?.matchRate).toBeGreaterThanOrEqual(0.95);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a").slice(-3)).toEqual([5, 6, 7]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b").slice(-3)).toEqual([5, 6, 7]);
+  });
+
+  it("reports reversed fuzzy tail/head overlap with omissions and substitution", () => {
+    const shared = range(1, 80).map((value) => value % 37);
+    const a = [...shared];
+    a.splice(10, 1);
+    a.splice(25, 1);
+    a[40] = 99;
+    a.push(5, 6, 7);
+    const b = [...range(90, 99), ...shared];
+
+    const result = analyzeNumberMergeV2(a, b);
+
+    expect(result.relationship).toBe("conflict");
+    expect(result.safeToMerge).toBe(false);
+    expect(result.tolerantAlignment).toBeDefined();
+    expect(result.tolerantAlignment?.relationship).toBe("b-then-a");
+    expect(result.tolerantAlignment?.issues.length).toBe(3);
+    expect(result.tolerantAlignment?.matchRate).toBeGreaterThanOrEqual(0.95);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a").slice(-3)).toEqual([5, 6, 7]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b").slice(-3)).toEqual([5, 6, 7]);
   });
 });

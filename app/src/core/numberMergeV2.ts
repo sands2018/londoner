@@ -20,6 +20,8 @@ export interface NumberMergeV2Options {
   mismatchWindow?: number;
   /** Maximum mismatches allowed in every rolling mismatch-control window. */
   maxMismatchesPerWindow?: number;
+  /** Minimum match rate for fuzzy tail/head de-duplication. */
+  tolerantMatchRate?: number;
 }
 
 export type NumberMergeAlignmentRelationship =
@@ -45,6 +47,14 @@ export interface NumberMergeConflict {
   valueB: number;
 }
 
+export interface NumberMergeEditIssue {
+  indexA: number;
+  indexB: number;
+  kind: "a-extra" | "b-extra" | "substitution";
+  valueA?: number;
+  valueB?: number;
+}
+
 export interface NumberMergeAlignment {
   /** Position of B[0] on A's timeline. Negative means B begins before A. */
   offsetB: number;
@@ -60,6 +70,17 @@ export interface NumberMergeAlignment {
   conflicts: NumberMergeConflict[];
 }
 
+export interface NumberMergeTolerantAlignment {
+  comparedCount: number;
+  issues: NumberMergeEditIssue[];
+  matchRate: number;
+  matchedCount: number;
+  mergedA: number[];
+  mergedB: number[];
+  overlapLength: number;
+  relationship: Extract<NumberMergeAlignmentRelationship, "a-then-b" | "b-then-a">;
+}
+
 export interface NumberMergeV2Result {
   /** Whether at least one plausible full-overlap alignment was found. */
   found: boolean;
@@ -70,6 +91,8 @@ export interface NumberMergeV2Result {
   merged?: number[];
   /** Best alignment, including conflicts when manual review is required. */
   alignment?: NumberMergeAlignment;
+  /** Fuzzy tail/head alignment allowing omissions, insertions, and substitutions. */
+  tolerantAlignment?: NumberMergeTolerantAlignment;
   /** Equally strong alignments when more than one timeline placement is possible. */
   alternatives?: NumberMergeAlignment[];
   description: string;
@@ -83,6 +106,7 @@ interface ResolvedOptions {
   minMatchRate: number;
   mismatchWindow: number;
   maxMismatchesPerWindow: number;
+  tolerantMatchRate: number;
 }
 
 const DEFAULT_OPTIONS: ResolvedOptions = {
@@ -91,6 +115,7 @@ const DEFAULT_OPTIONS: ResolvedOptions = {
   minMatchRate: 0.97,
   mismatchWindow: 10,
   maxMismatchesPerWindow: 1,
+  tolerantMatchRate: 0.95,
 };
 
 function resolveOptions(options: NumberMergeV2Options): ResolvedOptions {
@@ -110,6 +135,9 @@ function resolveOptions(options: NumberMergeV2Options): ResolvedOptions {
   }
   if (!Number.isInteger(resolved.maxMismatchesPerWindow) || resolved.maxMismatchesPerWindow < 0) {
     throw new Error("maxMismatchesPerWindow must be a non-negative integer");
+  }
+  if (resolved.tolerantMatchRate <= 0 || resolved.tolerantMatchRate > 1) {
+    throw new Error("tolerantMatchRate must be greater than 0 and no greater than 1");
   }
 
   return resolved;
@@ -306,6 +334,208 @@ function relationshipText(relationship: NumberMergeAlignmentRelationship): strin
   }
 }
 
+type TolerantOp = "a-extra" | "b-extra" | "match" | "substitution";
+
+interface TolerantState {
+  issues: number;
+  matches: number;
+  op?: TolerantOp;
+  prevI?: number;
+  prevJ?: number;
+}
+
+function betterTolerantState(candidate: TolerantState, current: TolerantState | undefined): boolean {
+  return !current
+    || candidate.issues < current.issues
+    || (candidate.issues === current.issues && candidate.matches > current.matches);
+}
+
+function analyzeTolerantTailHead(
+  a: readonly number[],
+  b: readonly number[],
+  options: ResolvedOptions,
+): NumberMergeTolerantAlignment | null {
+  const maxTailLength = b.length + Math.max(8, Math.ceil(b.length * 0.1));
+  const startMin = Math.max(0, a.length - maxTailLength);
+  let best: NumberMergeTolerantAlignment | null = null;
+
+  function analyzeStart(startA: number): NumberMergeTolerantAlignment | null {
+    const tailA = a.slice(startA);
+    const m = tailA.length;
+    const n = b.length;
+    const dp: Array<Array<TolerantState | undefined>> = Array.from({ length: m + 1 }, () => new Array(n + 1));
+    dp[0][0] = { issues: 0, matches: 0 };
+
+    for (let i = 0; i <= m; i++) {
+      for (let j = 0; j <= n; j++) {
+        const state = dp[i][j];
+        if (!state) continue;
+
+        if (i < m && j < n) {
+          const same = tailA[i] === b[j];
+          const next: TolerantState = {
+            issues: state.issues + (same ? 0 : 1),
+            matches: state.matches + (same ? 1 : 0),
+            op: same ? "match" : "substitution",
+            prevI: i,
+            prevJ: j,
+          };
+          if (betterTolerantState(next, dp[i + 1][j + 1])) dp[i + 1][j + 1] = next;
+        }
+
+        if (i < m) {
+          const next: TolerantState = {
+            issues: state.issues + 1,
+            matches: state.matches,
+            op: "a-extra",
+            prevI: i,
+            prevJ: j,
+          };
+          if (betterTolerantState(next, dp[i + 1][j])) dp[i + 1][j] = next;
+        }
+
+        if (j < n) {
+          const next: TolerantState = {
+            issues: state.issues + 1,
+            matches: state.matches,
+            op: "b-extra",
+            prevI: i,
+            prevJ: j,
+          };
+          if (betterTolerantState(next, dp[i][j + 1])) dp[i][j + 1] = next;
+        }
+      }
+    }
+
+    let bestEnd: { j: number; rate: number; state: TolerantState } | null = null;
+    for (let j = 1; j <= n; j++) {
+      const state = dp[m][j];
+      // Perfect matches are handled by the strict path; this pass only reports imperfect overlaps.
+      if (!state || state.issues === 0) continue;
+      const comparedCount = state.matches + state.issues;
+      const rate = comparedCount > 0 ? state.matches / comparedCount : 0;
+      if (state.matches < options.minOverlap || rate < options.tolerantMatchRate) continue;
+      if (
+        !bestEnd
+        || state.matches > bestEnd.state.matches
+        || (state.matches === bestEnd.state.matches && state.issues < bestEnd.state.issues)
+        || (state.matches === bestEnd.state.matches && state.issues === bestEnd.state.issues && j > bestEnd.j)
+      ) {
+        bestEnd = { j, rate, state };
+      }
+    }
+    if (!bestEnd) return null;
+
+    const issues: NumberMergeEditIssue[] = [];
+    const bOverlapValues: number[] = [];
+    let i = m;
+    let j = bestEnd.j;
+    while (i > 0 || j > 0) {
+      const state = dp[i][j];
+      if (!state?.op || state.prevI === undefined || state.prevJ === undefined) break;
+      const prevI = state.prevI;
+      const prevJ = state.prevJ;
+      if (state.op === "match") {
+        bOverlapValues.push(tailA[prevI]);
+      } else if (state.op === "substitution") {
+        bOverlapValues.push(b[prevJ]);
+        issues.push({
+          indexA: startA + prevI,
+          indexB: prevJ,
+          kind: "substitution",
+          valueA: tailA[prevI],
+          valueB: b[prevJ],
+        });
+      } else if (state.op === "a-extra") {
+        issues.push({
+          indexA: startA + prevI,
+          indexB: prevJ,
+          kind: "a-extra",
+          valueA: tailA[prevI],
+        });
+      } else {
+        bOverlapValues.push(b[prevJ]);
+        issues.push({
+          indexA: startA + prevI,
+          indexB: prevJ,
+          kind: "b-extra",
+          valueB: b[prevJ],
+        });
+      }
+      i = prevI;
+      j = prevJ;
+    }
+    issues.reverse();
+    bOverlapValues.reverse();
+
+    return {
+      comparedCount: bestEnd.state.matches + bestEnd.state.issues,
+      issues,
+      matchRate: bestEnd.rate,
+      matchedCount: bestEnd.state.matches,
+      mergedA: [...a, ...b.slice(bestEnd.j)],
+      mergedB: [...a.slice(0, startA), ...bOverlapValues, ...b.slice(bestEnd.j)],
+      overlapLength: bestEnd.state.matches + bestEnd.state.issues,
+      relationship: "a-then-b",
+    };
+  }
+
+  for (let startA = startMin; startA <= a.length - options.minOverlap; startA++) {
+    const result = analyzeStart(startA);
+    if (!result) continue;
+    if (
+      !best
+      || result.matchedCount > best.matchedCount
+      || (result.matchedCount === best.matchedCount && result.matchRate > best.matchRate)
+      || (result.matchedCount === best.matchedCount && result.matchRate === best.matchRate && result.issues.length < best.issues.length)
+    ) {
+      best = result;
+    }
+  }
+
+  return best;
+}
+
+function reverseTolerantAlignment(result: NumberMergeTolerantAlignment): NumberMergeTolerantAlignment {
+  return {
+    ...result,
+    issues: result.issues.map((issue) => ({
+      indexA: issue.indexB,
+      indexB: issue.indexA,
+      kind: issue.kind === "a-extra" ? "b-extra" : issue.kind === "b-extra" ? "a-extra" : "substitution",
+      valueA: issue.valueB,
+      valueB: issue.valueA,
+    })),
+    mergedA: result.mergedB,
+    mergedB: result.mergedA,
+    relationship: "b-then-a",
+  };
+}
+
+function analyzeTolerantRelationships(
+  a: readonly number[],
+  b: readonly number[],
+  options: ResolvedOptions,
+): NumberMergeTolerantAlignment | null {
+  const forward = analyzeTolerantTailHead(a, b, options);
+  const backward = analyzeTolerantTailHead(b, a, options);
+  const reversed = backward ? reverseTolerantAlignment(backward) : null;
+  const candidates = [forward, reversed].filter((item): item is NumberMergeTolerantAlignment => item !== null);
+  candidates.sort((left, right) => (
+    right.matchedCount - left.matchedCount
+    || right.matchRate - left.matchRate
+    || left.issues.length - right.issues.length
+  ));
+  return candidates[0] ?? null;
+}
+
+export function buildNumberMergeV2TolerantUnion(
+  alignment: NumberMergeTolerantAlignment,
+  conflictChoice: NumberMergeConflictChoice,
+): number[] {
+  return conflictChoice === "a" ? alignment.mergedA : alignment.mergedB;
+}
+
 /**
  * Analyze two sequences without modifying either input.
  *
@@ -338,6 +568,17 @@ export function analyzeNumberMergeV2(
     ));
 
   if (candidates.length === 0) {
+    const tolerantAlignment = analyzeTolerantRelationships(a, b, resolved);
+    if (tolerantAlignment) {
+      return {
+        found: true,
+        safeToMerge: false,
+        relationship: "conflict",
+        tolerantAlignment,
+        description: `发现可容错的首尾重叠关系，匹配率 ${(tolerantAlignment.matchRate * 100).toFixed(1)}%，有 ${tolerantAlignment.issues.length} 个问题；需要人工确认，未自动合并。`,
+      };
+    }
+
     return {
       found: false,
       safeToMerge: false,
