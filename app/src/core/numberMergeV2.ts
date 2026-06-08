@@ -55,6 +55,16 @@ export interface NumberMergeEditIssue {
   valueB?: number;
 }
 
+export type NumberMergeTolerantStepKind = "a-extra" | "b-extra" | "match" | "substitution";
+
+export interface NumberMergeTolerantStep {
+  indexA: number;
+  indexB: number;
+  kind: NumberMergeTolerantStepKind;
+  valueA?: number;
+  valueB?: number;
+}
+
 export interface NumberMergeAlignment {
   /** Position of B[0] on A's timeline. Negative means B begins before A. */
   offsetB: number;
@@ -77,8 +87,15 @@ export interface NumberMergeTolerantAlignment {
   matchedCount: number;
   mergedA: number[];
   mergedB: number[];
+  overlapStartA: number;
+  overlapEndA: number;
+  overlapStartB: number;
+  overlapEndB: number;
   overlapLength: number;
-  relationship: Extract<NumberMergeAlignmentRelationship, "a-then-b" | "b-then-a">;
+  prefix: number[];
+  relationship: NumberMergeAlignmentRelationship;
+  steps: NumberMergeTolerantStep[];
+  suffix: number[];
 }
 
 export interface NumberMergeV2Result {
@@ -334,7 +351,7 @@ function relationshipText(relationship: NumberMergeAlignmentRelationship): strin
   }
 }
 
-type TolerantOp = "a-extra" | "b-extra" | "match" | "substitution";
+type TolerantOp = NumberMergeTolerantStepKind;
 
 interface TolerantState {
   issues: number;
@@ -342,12 +359,62 @@ interface TolerantState {
   op?: TolerantOp;
   prevI?: number;
   prevJ?: number;
+  startA?: number;
 }
 
 function betterTolerantState(candidate: TolerantState, current: TolerantState | undefined): boolean {
   return !current
     || candidate.issues < current.issues
-    || (candidate.issues === current.issues && candidate.matches > current.matches);
+    || (candidate.issues === current.issues && candidate.matches > current.matches)
+    || (
+      candidate.issues === current.issues
+      && candidate.matches === current.matches
+      && candidate.startA !== undefined
+      && (current.startA === undefined || candidate.startA < current.startA)
+    );
+}
+
+function betterTolerantAlignment(
+  candidate: NumberMergeTolerantAlignment,
+  current: NumberMergeTolerantAlignment | null,
+): boolean {
+  return !current
+    || candidate.matchedCount > current.matchedCount
+    || (candidate.matchedCount === current.matchedCount && candidate.matchRate > current.matchRate)
+    || (candidate.matchedCount === current.matchedCount && candidate.matchRate === current.matchRate && candidate.issues.length < current.issues.length);
+}
+
+function tolerantStepToIssue(step: NumberMergeTolerantStep): NumberMergeEditIssue | null {
+  if (step.kind === "match") return null;
+  return {
+    indexA: step.indexA,
+    indexB: step.indexB,
+    kind: step.kind,
+    valueA: step.valueA,
+    valueB: step.valueB,
+  };
+}
+
+function buildTolerantOverlapValues(steps: readonly NumberMergeTolerantStep[], issueChoices: readonly NumberMergeConflictChoice[]): number[] {
+  const values: number[] = [];
+  let issueIndex = 0;
+  for (const step of steps) {
+    if (step.kind === "match") {
+      values.push(step.valueA!);
+      continue;
+    }
+
+    const issueChoice = issueChoices[issueIndex] ?? "a";
+    issueIndex++;
+    if (step.kind === "substitution") {
+      values.push(issueChoice === "a" ? step.valueA! : step.valueB!);
+    } else if (step.kind === "a-extra") {
+      if (issueChoice === "a") values.push(step.valueA!);
+    } else if (step.kind === "b-extra") {
+      if (issueChoice === "b") values.push(step.valueB!);
+    }
+  }
+  return values;
 }
 
 function analyzeTolerantTailHead(
@@ -426,8 +493,7 @@ function analyzeTolerantTailHead(
     }
     if (!bestEnd) return null;
 
-    const issues: NumberMergeEditIssue[] = [];
-    const bOverlapValues: number[] = [];
+    const steps: NumberMergeTolerantStep[] = [];
     let i = m;
     let j = bestEnd.j;
     while (i > 0 || j > 0) {
@@ -436,10 +502,15 @@ function analyzeTolerantTailHead(
       const prevI = state.prevI;
       const prevJ = state.prevJ;
       if (state.op === "match") {
-        bOverlapValues.push(tailA[prevI]);
+        steps.push({
+          indexA: startA + prevI,
+          indexB: prevJ,
+          kind: "match",
+          valueA: tailA[prevI],
+          valueB: b[prevJ],
+        });
       } else if (state.op === "substitution") {
-        bOverlapValues.push(b[prevJ]);
-        issues.push({
+        steps.push({
           indexA: startA + prevI,
           indexB: prevJ,
           kind: "substitution",
@@ -447,15 +518,14 @@ function analyzeTolerantTailHead(
           valueB: b[prevJ],
         });
       } else if (state.op === "a-extra") {
-        issues.push({
+        steps.push({
           indexA: startA + prevI,
           indexB: prevJ,
           kind: "a-extra",
           valueA: tailA[prevI],
         });
       } else {
-        bOverlapValues.push(b[prevJ]);
-        issues.push({
+        steps.push({
           indexA: startA + prevI,
           indexB: prevJ,
           kind: "b-extra",
@@ -465,18 +535,29 @@ function analyzeTolerantTailHead(
       i = prevI;
       j = prevJ;
     }
-    issues.reverse();
-    bOverlapValues.reverse();
+    steps.reverse();
+    const issues = steps
+      .map(tolerantStepToIssue)
+      .filter((issue): issue is NumberMergeEditIssue => issue !== null);
+    const prefix = a.slice(0, startA);
+    const suffix = b.slice(bestEnd.j);
 
     return {
       comparedCount: bestEnd.state.matches + bestEnd.state.issues,
       issues,
       matchRate: bestEnd.rate,
       matchedCount: bestEnd.state.matches,
-      mergedA: [...a, ...b.slice(bestEnd.j)],
-      mergedB: [...a.slice(0, startA), ...bOverlapValues, ...b.slice(bestEnd.j)],
+      mergedA: [...prefix, ...buildTolerantOverlapValues(steps, issues.map(() => "a")), ...suffix],
+      mergedB: [...prefix, ...buildTolerantOverlapValues(steps, issues.map(() => "b")), ...suffix],
+      overlapStartA: startA,
+      overlapEndA: a.length,
+      overlapStartB: 0,
+      overlapEndB: bestEnd.j,
       overlapLength: bestEnd.state.matches + bestEnd.state.issues,
+      prefix,
       relationship: "a-then-b",
+      steps,
+      suffix,
     };
   }
 
@@ -496,7 +577,155 @@ function analyzeTolerantTailHead(
   return best;
 }
 
+function analyzeTolerantAContainsB(
+  a: readonly number[],
+  b: readonly number[],
+  options: ResolvedOptions,
+): NumberMergeTolerantAlignment | null {
+  const m = a.length;
+  const n = b.length;
+  const dp: Array<Array<TolerantState | undefined>> = Array.from({ length: m + 1 }, () => new Array(n + 1));
+
+  for (let i = 0; i <= m; i++) {
+    dp[i][0] = { issues: 0, matches: 0, startA: i };
+  }
+
+  for (let i = 0; i <= m; i++) {
+    for (let j = 0; j <= n; j++) {
+      const state = dp[i][j];
+      if (!state) continue;
+
+      if (i < m && j < n) {
+        const same = a[i] === b[j];
+        const next: TolerantState = {
+          issues: state.issues + (same ? 0 : 1),
+          matches: state.matches + (same ? 1 : 0),
+          op: same ? "match" : "substitution",
+          prevI: i,
+          prevJ: j,
+          startA: state.startA ?? i,
+        };
+        if (betterTolerantState(next, dp[i + 1][j + 1])) dp[i + 1][j + 1] = next;
+      }
+
+      if (i < m && j > 0 && j < n) {
+        const next: TolerantState = {
+          issues: state.issues + 1,
+          matches: state.matches,
+          op: "a-extra",
+          prevI: i,
+          prevJ: j,
+          startA: state.startA ?? i,
+        };
+        if (betterTolerantState(next, dp[i + 1][j])) dp[i + 1][j] = next;
+      }
+
+      if (j < n) {
+        const next: TolerantState = {
+          issues: state.issues + 1,
+          matches: state.matches,
+          op: "b-extra",
+          prevI: i,
+          prevJ: j,
+          startA: state.startA ?? i,
+        };
+        if (betterTolerantState(next, dp[i][j + 1])) dp[i][j + 1] = next;
+      }
+    }
+  }
+
+  let bestEnd: { i: number; rate: number; state: TolerantState } | null = null;
+  for (let i = 0; i <= m; i++) {
+    const state = dp[i][n];
+    if (!state || state.issues === 0 || state.startA === undefined) continue;
+    const comparedCount = state.matches + state.issues;
+    const rate = comparedCount > 0 ? state.matches / comparedCount : 0;
+    if (state.matches < options.minOverlap || rate < options.tolerantMatchRate) continue;
+    if (
+      !bestEnd
+      || state.matches > bestEnd.state.matches
+      || (state.matches === bestEnd.state.matches && state.issues < bestEnd.state.issues)
+      || (state.matches === bestEnd.state.matches && state.issues === bestEnd.state.issues && i - state.startA > bestEnd.i - bestEnd.state.startA!)
+    ) {
+      bestEnd = { i, rate, state };
+    }
+  }
+  if (!bestEnd || bestEnd.state.startA === undefined) return null;
+
+  const steps: NumberMergeTolerantStep[] = [];
+  let i = bestEnd.i;
+  let j = n;
+  while (j > 0) {
+    const state = dp[i][j];
+    if (!state?.op || state.prevI === undefined || state.prevJ === undefined) break;
+    const prevI = state.prevI;
+    const prevJ = state.prevJ;
+    if (state.op === "match" || state.op === "substitution") {
+      steps.push({
+        indexA: prevI,
+        indexB: prevJ,
+        kind: state.op,
+        valueA: a[prevI],
+        valueB: b[prevJ],
+      });
+    } else if (state.op === "a-extra") {
+      steps.push({
+        indexA: prevI,
+        indexB: prevJ,
+        kind: "a-extra",
+        valueA: a[prevI],
+      });
+    } else {
+      steps.push({
+        indexA: prevI,
+        indexB: prevJ,
+        kind: "b-extra",
+        valueB: b[prevJ],
+      });
+    }
+    i = prevI;
+    j = prevJ;
+  }
+
+  steps.reverse();
+  const issues = steps
+    .map(tolerantStepToIssue)
+    .filter((issue): issue is NumberMergeEditIssue => issue !== null);
+  const startA = bestEnd.state.startA;
+  const endA = bestEnd.i;
+  const prefix = a.slice(0, startA);
+  const suffix = a.slice(endA);
+
+  return {
+    comparedCount: bestEnd.state.matches + bestEnd.state.issues,
+    issues,
+    matchRate: bestEnd.rate,
+    matchedCount: bestEnd.state.matches,
+    mergedA: [...prefix, ...buildTolerantOverlapValues(steps, issues.map(() => "a")), ...suffix],
+    mergedB: [...prefix, ...buildTolerantOverlapValues(steps, issues.map(() => "b")), ...suffix],
+    overlapStartA: startA,
+    overlapEndA: endA,
+    overlapStartB: 0,
+    overlapEndB: b.length,
+    overlapLength: bestEnd.state.matches + bestEnd.state.issues,
+    prefix,
+    relationship: "a-contains-b",
+    steps,
+    suffix,
+  };
+}
+
 function reverseTolerantAlignment(result: NumberMergeTolerantAlignment): NumberMergeTolerantAlignment {
+  const relationship: NumberMergeAlignmentRelationship = result.relationship === "a-then-b"
+    ? "b-then-a"
+    : result.relationship === "b-then-a"
+      ? "a-then-b"
+      : result.relationship === "a-contains-b"
+        ? "b-contains-a"
+        : result.relationship === "b-contains-a"
+          ? "a-contains-b"
+          : result.relationship;
+
   return {
     ...result,
     issues: result.issues.map((issue) => ({
@@ -508,7 +737,18 @@ function reverseTolerantAlignment(result: NumberMergeTolerantAlignment): NumberM
     })),
     mergedA: result.mergedB,
     mergedB: result.mergedA,
-    relationship: "b-then-a",
+    overlapStartA: result.overlapStartB,
+    overlapEndA: result.overlapEndB,
+    overlapStartB: result.overlapStartA,
+    overlapEndB: result.overlapEndA,
+    relationship,
+    steps: result.steps.map((step) => ({
+      indexA: step.indexB,
+      indexB: step.indexA,
+      kind: step.kind === "a-extra" ? "b-extra" : step.kind === "b-extra" ? "a-extra" : step.kind,
+      valueA: step.valueB,
+      valueB: step.valueA,
+    })),
   };
 }
 
@@ -519,8 +759,12 @@ function analyzeTolerantRelationships(
 ): NumberMergeTolerantAlignment | null {
   const forward = analyzeTolerantTailHead(a, b, options);
   const backward = analyzeTolerantTailHead(b, a, options);
-  const reversed = backward ? reverseTolerantAlignment(backward) : null;
-  const candidates = [forward, reversed].filter((item): item is NumberMergeTolerantAlignment => item !== null);
+  const aContainsB = analyzeTolerantAContainsB(a, b, options);
+  const bContainsA = analyzeTolerantAContainsB(b, a, options);
+  const reversedTailHead = backward ? reverseTolerantAlignment(backward) : null;
+  const reversedContains = bContainsA ? reverseTolerantAlignment(bContainsA) : null;
+  const candidates = [forward, reversedTailHead, aContainsB, reversedContains]
+    .filter((item): item is NumberMergeTolerantAlignment => item !== null);
   candidates.sort((left, right) => (
     right.matchedCount - left.matchedCount
     || right.matchRate - left.matchRate
@@ -533,7 +777,21 @@ export function buildNumberMergeV2TolerantUnion(
   alignment: NumberMergeTolerantAlignment,
   conflictChoice: NumberMergeConflictChoice,
 ): number[] {
-  return conflictChoice === "a" ? alignment.mergedA : alignment.mergedB;
+  return buildNumberMergeV2TolerantUnionWithChoices(
+    alignment,
+    alignment.issues.map(() => conflictChoice),
+  );
+}
+
+export function buildNumberMergeV2TolerantUnionWithChoices(
+  alignment: NumberMergeTolerantAlignment,
+  issueChoices: readonly NumberMergeConflictChoice[],
+): number[] {
+  return [
+    ...alignment.prefix,
+    ...buildTolerantOverlapValues(alignment.steps, issueChoices),
+    ...alignment.suffix,
+  ];
 }
 
 /**

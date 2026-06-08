@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { analyzeNumberMergeV2, buildNumberMergeV2TolerantUnion, buildNumberMergeV2Union } from "./numberMergeV2";
+import {
+  analyzeNumberMergeV2,
+  buildNumberMergeV2TolerantUnion,
+  buildNumberMergeV2TolerantUnionWithChoices,
+  buildNumberMergeV2Union,
+} from "./numberMergeV2";
 
 function range(start: number, end: number): number[] {
   return Array.from({ length: end - start + 1 }, (_, index) => start + index);
@@ -172,6 +177,16 @@ describe("numberMergeV2", () => {
     expect(result.tolerantAlignment?.matchRate).toBeGreaterThanOrEqual(0.95);
     expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a").slice(-3)).toEqual([5, 6, 7]);
     expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b").slice(-3)).toEqual([5, 6, 7]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a")).toEqual([
+      ...a,
+      5,
+      6,
+      7,
+    ]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b")).toEqual([
+      ...range(90, 99),
+      ...b,
+    ]);
   });
 
   it("reports reversed fuzzy tail/head overlap with omissions and substitution", () => {
@@ -193,5 +208,94 @@ describe("numberMergeV2", () => {
     expect(result.tolerantAlignment?.matchRate).toBeGreaterThanOrEqual(0.95);
     expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a").slice(-3)).toEqual([5, 6, 7]);
     expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b").slice(-3)).toEqual([5, 6, 7]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a")).toEqual([
+      ...range(90, 99),
+      ...a,
+    ]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b")).toEqual([
+      ...b,
+      5,
+      6,
+      7,
+    ]);
+  });
+
+  it("reports fuzzy containment when the containing recording has an extra number", () => {
+    const shared = range(1, 200).map((value) => value % 37);
+    const a = [...shared];
+    const b = [
+      31,
+      32,
+      ...shared.slice(0, 14),
+      10,
+      ...shared.slice(14),
+      33,
+      34,
+    ];
+
+    const result = analyzeNumberMergeV2(a, b);
+
+    expect(result.relationship).toBe("conflict");
+    expect(result.safeToMerge).toBe(false);
+    expect(result.tolerantAlignment).toBeDefined();
+    expect(result.tolerantAlignment?.relationship).toBe("b-contains-a");
+    expect(result.tolerantAlignment?.issues).toEqual([
+      {
+        indexA: 14,
+        indexB: 16,
+        kind: "b-extra",
+        valueA: undefined,
+        valueB: 10,
+      },
+    ]);
+    expect(result.tolerantAlignment?.matchRate).toBeGreaterThanOrEqual(0.95);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "a")).toEqual([
+      31,
+      32,
+      ...shared,
+      33,
+      34,
+    ]);
+    expect(buildNumberMergeV2TolerantUnion(result.tolerantAlignment!, "b")).toEqual(b);
+    expect(buildNumberMergeV2TolerantUnionWithChoices(result.tolerantAlignment!, ["a"])).toEqual([
+      31,
+      32,
+      ...shared,
+      33,
+      34,
+    ]);
+    expect(buildNumberMergeV2TolerantUnionWithChoices(result.tolerantAlignment!, ["b"])).toEqual(b);
+  });
+
+  it("reports fuzzy containment with extras on both sides and a substitution", () => {
+    const shared = range(1, 120).map((value) => value % 37);
+    const a = [...shared];
+    a.splice(20, 0, 88);
+    a[60] = 77;
+    const b = [31, 32, ...shared];
+    b.splice(42, 0, 66);
+    b.push(33, 34);
+
+    const result = analyzeNumberMergeV2(a, b);
+
+    expect(result.relationship).toBe("conflict");
+    expect(result.safeToMerge).toBe(false);
+    expect(result.tolerantAlignment).toBeDefined();
+    expect(result.tolerantAlignment?.relationship).toBe("b-contains-a");
+    expect(result.tolerantAlignment?.issues.map((issue) => issue.kind).sort()).toEqual([
+      "a-extra",
+      "b-extra",
+      "substitution",
+    ]);
+    expect(result.tolerantAlignment?.matchRate).toBeGreaterThanOrEqual(0.95);
+
+    const alignment = result.tolerantAlignment!;
+    const mixed = buildNumberMergeV2TolerantUnionWithChoices(
+      alignment,
+      alignment.issues.map((issue) => issue.kind === "b-extra" ? "b" : "a"),
+    );
+    expect(mixed).toContain(88);
+    expect(mixed).toContain(66);
+    expect(mixed).toContain(77);
   });
 });

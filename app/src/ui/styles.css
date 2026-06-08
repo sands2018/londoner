@@ -2817,6 +2817,55 @@ button:disabled {
   padding: 7px 8px;
 }
 
+.merge-issue-list {
+  gap: 7px;
+  max-height: 220px;
+}
+
+.merge-issue-item {
+  background: #fffdf8;
+  border: 1px solid #eadfce;
+  border-radius: 5px;
+  display: grid;
+  gap: 5px;
+  padding: 7px;
+}
+
+.merge-issue-item strong {
+  color: #684b39;
+  font-size: 12px;
+  font-weight: var(--weight-ui);
+}
+
+.merge-issue-item span {
+  color: #867363;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.merge-issue-actions {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.merge-issue-actions button {
+  background: #fbfaf6;
+  border: 1px solid #d2c8b8;
+  border-radius: 5px;
+  color: #6b5e50;
+  cursor: pointer;
+  font-size: 12px;
+  min-height: 30px;
+  padding: 4px 6px;
+}
+
+.merge-issue-actions button.selected {
+  background: #eee5d7;
+  border-color: #aa8c5c;
+  color: #5b4322;
+}
+
 .merge-delete-warning {
   color: #8a5547;
   font-size: 13px;

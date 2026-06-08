@@ -103,6 +103,7 @@ import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
 import {
   analyzeNumberMergeV2,
   buildNumberMergeV2TolerantUnion,
+  buildNumberMergeV2TolerantUnionWithChoices,
   buildNumberMergeV2Union,
   type NumberMergeConflictChoice,
   type NumberMergeEditIssue,
@@ -184,6 +185,7 @@ interface PromptDialog {
 
 interface SessionMergeDialog {
   conflictChoice: NumberMergeConflictChoice;
+  issueChoices: NumberMergeConflictChoice[];
   left: SavedSession;
   result: NumberMergeV2Result;
   right: SavedSession;
@@ -198,6 +200,7 @@ interface ConnectIncomingData {
 interface ConnectDialog {
   conflictChoice: NumberMergeConflictChoice;
   incoming: ConnectIncomingData;
+  issueChoices: NumberMergeConflictChoice[];
   result: NumberMergeV2Result;
 }
 
@@ -1665,9 +1668,9 @@ export function App() {
       return;
     }
 
-    const relationship = result.relationship === "conflict"
+    const relationship = result.tolerantAlignment?.relationship ?? (result.relationship === "conflict"
       ? result.alignment?.relationship
-      : result.relationship;
+      : result.relationship);
     if (relationship === "b-then-a") {
       setDialogMessage("输入数据位于当前数据之前，不是当前局后续数据。本次没有修改。");
       return;
@@ -1694,6 +1697,7 @@ export function App() {
       setTransferConnectDialog({
         conflictChoice: "a",
         incoming,
+        issueChoices: result.tolerantAlignment.issues.map(() => "a"),
         result,
       });
       return;
@@ -1708,6 +1712,7 @@ export function App() {
       setTransferConnectDialog({
         conflictChoice: "a",
         incoming,
+        issueChoices: [],
         result,
       });
       return;
@@ -1754,7 +1759,7 @@ export function App() {
     const dialog = transferConnectDialog;
     if (!dialog) return;
     if (dialog.result.tolerantAlignment) {
-      const merged = buildNumberMergeV2TolerantUnion(dialog.result.tolerantAlignment, dialog.conflictChoice);
+      const merged = buildNumberMergeV2TolerantUnionWithChoices(dialog.result.tolerantAlignment, dialog.issueChoices);
       applyTransferConnectNumbers(merged, dialog.incoming, dialog.result);
       return;
     }
@@ -1989,7 +1994,8 @@ export function App() {
       ? right.id
       : left.id;
     setSessionMergeDialog({
-      conflictChoice: "a",
+      conflictChoice: targetId === right.id ? "b" : "a",
+      issueChoices: result.tolerantAlignment?.issues.map(() => (targetId === right.id ? "b" : "a")) ?? [],
       left,
       result,
       right,
@@ -2005,7 +2011,7 @@ export function App() {
     const merged = result.safeToMerge
       ? result.merged
       : result.tolerantAlignment
-        ? buildNumberMergeV2TolerantUnion(result.tolerantAlignment, dialog.conflictChoice)
+        ? buildNumberMergeV2TolerantUnionWithChoices(result.tolerantAlignment, dialog.issueChoices)
       : result.alignment
         ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, dialog.conflictChoice)
         : undefined;
@@ -4816,10 +4822,12 @@ export function App() {
         const removed = target.id === left.id ? right : left;
         const conflicts = result.alignment?.conflicts ?? [];
         const tolerant = result.tolerantAlignment;
+        const allIssueA = tolerant ? sessionMergeDialog.issueChoices.every((choice) => choice === "a") : sessionMergeDialog.conflictChoice === "a";
+        const allIssueB = tolerant ? sessionMergeDialog.issueChoices.every((choice) => choice === "b") : sessionMergeDialog.conflictChoice === "b";
         const mergedLength = result.safeToMerge
           ? result.merged?.length
           : tolerant
-            ? buildNumberMergeV2TolerantUnion(tolerant, sessionMergeDialog.conflictChoice).length
+            ? buildNumberMergeV2TolerantUnionWithChoices(tolerant, sessionMergeDialog.issueChoices).length
           : result.alignment
             ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, sessionMergeDialog.conflictChoice).length
             : undefined;
@@ -4841,7 +4849,7 @@ export function App() {
                 <strong>{formatSessionMergeRelationship(result)}</strong>
                 <span>
                   重叠 {tolerant?.overlapLength ?? result.alignment?.overlapLength ?? 0} 个
-                  {issueCount > 0 ? `，发现 ${issueCount} 个${tolerant ? "问题" : "冲突"}` : "，没有冲突"}
+                  {issueCount > 0 ? `，${tolerant ? formatMergeIssueSummary(tolerant.issues) : `发现 ${issueCount} 个冲突`}` : "，没有冲突"}
                   {tolerant ? `；匹配率 ${(tolerant.matchRate * 100).toFixed(1)}%` : ""}
                   {mergedLength !== undefined ? `；合并后 ${mergedLength} 个` : ""}
                 </span>
@@ -4852,29 +4860,63 @@ export function App() {
                   <span>{tolerant ? "问题位置采用哪条数据" : "冲突位置采用哪条数据"}</span>
                   <div className="merge-choice-buttons">
                     <button
-                      aria-pressed={sessionMergeDialog.conflictChoice === "a"}
-                      className={sessionMergeDialog.conflictChoice === "a" ? "selected" : ""}
-                      onClick={() => setSessionMergeDialog((current) => current ? { ...current, conflictChoice: "a" } : current)}
+                      aria-pressed={allIssueA}
+                      className={allIssueA ? "selected" : ""}
+                      onClick={() => setSessionMergeDialog((current) => current ? {
+                        ...current,
+                        conflictChoice: "a",
+                        issueChoices: current.result.tolerantAlignment?.issues.map(() => "a") ?? current.issueChoices,
+                      } : current)}
                       type="button"
                     >
                       采用 A
                     </button>
                     <button
-                      aria-pressed={sessionMergeDialog.conflictChoice === "b"}
-                      className={sessionMergeDialog.conflictChoice === "b" ? "selected" : ""}
-                      onClick={() => setSessionMergeDialog((current) => current ? { ...current, conflictChoice: "b" } : current)}
+                      aria-pressed={allIssueB}
+                      className={allIssueB ? "selected" : ""}
+                      onClick={() => setSessionMergeDialog((current) => current ? {
+                        ...current,
+                        conflictChoice: "b",
+                        issueChoices: current.result.tolerantAlignment?.issues.map(() => "b") ?? current.issueChoices,
+                      } : current)}
                       type="button"
                     >
                       采用 B
                     </button>
                   </div>
-                  <div className="merge-conflict-list">
+                  <div className={`merge-conflict-list ${tolerant ? "merge-issue-list" : ""}`}>
                     {tolerant ? (
                       <>
-                        {tolerant.issues.slice(0, 6).map((issue, index) => (
-                          <span key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>{formatMergeEditIssue(issue, "A", "B")}</span>
+                        {tolerant.issues.map((issue, index) => (
+                          <div className="merge-issue-item" key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>
+                            <strong>{formatMergeEditIssue(issue, "A", "B")}</strong>
+                            <span>{formatMergeIssueContext(issue, "A", left.numbers, "B", right.numbers)}</span>
+                            <div className="merge-issue-actions">
+                              <button
+                                aria-pressed={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "a"}
+                                className={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "a" ? "selected" : ""}
+                                onClick={() => setSessionMergeDialog((current) => current ? {
+                                  ...current,
+                                  issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "a" : choice),
+                                } : current)}
+                                type="button"
+                              >
+                                采用 A
+                              </button>
+                              <button
+                                aria-pressed={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "b"}
+                                className={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "b" ? "selected" : ""}
+                                onClick={() => setSessionMergeDialog((current) => current ? {
+                                  ...current,
+                                  issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "b" : choice),
+                                } : current)}
+                                type="button"
+                              >
+                                采用 B
+                              </button>
+                            </div>
+                          </div>
                         ))}
-                        {tolerant.issues.length > 6 ? <span>另有 {tolerant.issues.length - 6} 个问题未展开。</span> : null}
                       </>
                     ) : (
                       <>
@@ -4927,7 +4969,7 @@ export function App() {
         const tolerant = result.tolerantAlignment;
         const conflicts = result?.alignment?.conflicts ?? [];
         const mergedLength = tolerant
-          ? buildNumberMergeV2TolerantUnion(tolerant, transferConnectDialog.conflictChoice).length
+          ? buildNumberMergeV2TolerantUnionWithChoices(tolerant, transferConnectDialog.issueChoices).length
           : result?.alignment
             ? buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, transferConnectDialog.conflictChoice).length
             : undefined;
@@ -4936,6 +4978,8 @@ export function App() {
           : result ? formatSessionMergeRelationship(result) : "发现接上冲突";
         const overlapLength = tolerant?.overlapLength ?? result?.alignment?.overlapLength ?? 0;
         const conflictCount = tolerant ? tolerant.issues.length : conflicts.length;
+        const allIssueCurrent = tolerant ? transferConnectDialog.issueChoices.every((choice) => choice === "a") : transferConnectDialog.conflictChoice === "a";
+        const allIssueIncoming = tolerant ? transferConnectDialog.issueChoices.every((choice) => choice === "b") : transferConnectDialog.conflictChoice === "b";
         return (
           <MessageDialog
             actions={
@@ -4954,41 +4998,73 @@ export function App() {
                 <span>
                   当前 {numbers.length} 个，输入 {incoming.numbers.length} 个；
                   重叠 {overlapLength} 个
-                  {conflictCount > 0 ? `，发现 ${conflictCount} 个问题` : "，没有冲突"}
+                  {conflictCount > 0 ? `，${tolerant ? formatMergeIssueSummary(tolerant.issues, "当前", "输入") : `发现 ${conflictCount} 个冲突`}` : "，没有冲突"}
                   {tolerant ? `；匹配率 ${(tolerant.matchRate * 100).toFixed(1)}%` : ""}
                   {mergedLength !== undefined ? `；接上后 ${mergedLength} 个` : ""}
                 </span>
               </div>
 
               <section className="merge-choice-section">
-                <span>冲突位置采用哪边数据</span>
+                <span>{tolerant ? "问题位置采用哪边数据" : "冲突位置采用哪边数据"}</span>
                 <div className="merge-choice-buttons">
                   <button
-                    aria-pressed={transferConnectDialog.conflictChoice === "a"}
-                    className={transferConnectDialog.conflictChoice === "a" ? "selected" : ""}
-                    onClick={() => setTransferConnectDialog((current) => current ? { ...current, conflictChoice: "a" } : current)}
+                    aria-pressed={allIssueCurrent}
+                    className={allIssueCurrent ? "selected" : ""}
+                    onClick={() => setTransferConnectDialog((current) => current ? {
+                      ...current,
+                      conflictChoice: "a",
+                      issueChoices: current.result.tolerantAlignment?.issues.map(() => "a") ?? current.issueChoices,
+                    } : current)}
                     type="button"
                   >
                     采用当前
                   </button>
                   <button
-                    aria-pressed={transferConnectDialog.conflictChoice === "b"}
-                    className={transferConnectDialog.conflictChoice === "b" ? "selected" : ""}
-                    onClick={() => setTransferConnectDialog((current) => current ? { ...current, conflictChoice: "b" } : current)}
+                    aria-pressed={allIssueIncoming}
+                    className={allIssueIncoming ? "selected" : ""}
+                    onClick={() => setTransferConnectDialog((current) => current ? {
+                      ...current,
+                      conflictChoice: "b",
+                      issueChoices: current.result.tolerantAlignment?.issues.map(() => "b") ?? current.issueChoices,
+                    } : current)}
                     type="button"
                   >
                     采用输入
                   </button>
                 </div>
-                <div className="merge-conflict-list">
+                <div className={`merge-conflict-list ${tolerant ? "merge-issue-list" : ""}`}>
                   {tolerant ? (
                     <>
-                      {tolerant.issues.slice(0, 6).map((issue, index) => (
-                        <span key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>
-                          {formatMergeEditIssue(issue, "当前", "输入")}
-                        </span>
+                      {tolerant.issues.map((issue, index) => (
+                        <div className="merge-issue-item" key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>
+                          <strong>{formatMergeEditIssue(issue, "当前", "输入")}</strong>
+                          <span>{formatMergeIssueContext(issue, "当前", numbers, "输入", incoming.numbers)}</span>
+                          <div className="merge-issue-actions">
+                            <button
+                              aria-pressed={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "a"}
+                              className={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "a" ? "selected" : ""}
+                              onClick={() => setTransferConnectDialog((current) => current ? {
+                                ...current,
+                                issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "a" : choice),
+                              } : current)}
+                              type="button"
+                            >
+                              采用当前
+                            </button>
+                            <button
+                              aria-pressed={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "b"}
+                              className={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "b" ? "selected" : ""}
+                              onClick={() => setTransferConnectDialog((current) => current ? {
+                                ...current,
+                                issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "b" : choice),
+                              } : current)}
+                              type="button"
+                            >
+                              采用输入
+                            </button>
+                          </div>
+                        </div>
                       ))}
-                      {tolerant.issues.length > 6 ? <span>另有 {tolerant.issues.length - 6} 个问题未展开。</span> : null}
                     </>
                   ) : (
                     <>
@@ -5157,6 +5233,9 @@ function formatPercent(value: number) {
 function formatSessionMergeRelationship(result: NumberMergeV2Result): string {
   if (result.tolerantAlignment) {
     switch (result.tolerantAlignment.relationship) {
+      case "identical": return "两条数据可容错视为相同";
+      case "a-contains-b": return "A 可以容错包含 B";
+      case "b-contains-a": return "B 可以容错包含 A";
       case "a-then-b": return "B 可以容错接在 A 后面";
       case "b-then-a": return "A 可以容错接在 B 后面";
     }
@@ -5184,6 +5263,45 @@ function formatMergeEditIssue(issue: NumberMergeEditIssue, labelA: string, label
     return `${labelB} 第 ${issue.indexB + 1} 个多出：${issue.valueB}`;
   }
   return `${labelA} 第 ${issue.indexA + 1} 个：${issue.valueA}；${labelB} 第 ${issue.indexB + 1} 个：${issue.valueB}`;
+}
+
+function formatMergeIssueContext(
+  issue: NumberMergeEditIssue,
+  labelA: string,
+  valuesA: readonly number[],
+  labelB: string,
+  valuesB: readonly number[],
+): string {
+  return `${labelA}附近：${formatNumberContext(valuesA, issue.indexA)}；${labelB}附近：${formatNumberContext(valuesB, issue.indexB)}`;
+}
+
+function formatNumberContext(values: readonly number[], index: number): string {
+  if (values.length === 0) return "无";
+  const clamped = Math.min(Math.max(index, 0), values.length - 1);
+  const start = Math.max(0, clamped - 2);
+  const end = Math.min(values.length, clamped + 3);
+  const position = index >= values.length ? "末尾后" : `第 ${index + 1} 个`;
+  const text = values.slice(start, end).map((value, offset) => {
+    const actualIndex = start + offset;
+    return actualIndex === clamped ? `[${value}]` : String(value);
+  }).join(" ");
+  return `${position}：${text}`;
+}
+
+function formatMergeIssueSummary(
+  issues: readonly NumberMergeEditIssue[],
+  labelA = "A",
+  labelB = "B",
+): string {
+  const aExtra = issues.filter((issue) => issue.kind === "a-extra").length;
+  const bExtra = issues.filter((issue) => issue.kind === "b-extra").length;
+  const substitutions = issues.filter((issue) => issue.kind === "substitution").length;
+  const parts = [
+    aExtra > 0 ? `${labelA}多 ${aExtra}` : "",
+    bExtra > 0 ? `${labelB}多 ${bExtra}` : "",
+    substitutions > 0 ? `不同 ${substitutions}` : "",
+  ].filter(Boolean);
+  return `发现 ${issues.length} 个问题${parts.length > 0 ? `（${parts.join("，")}）` : ""}`;
 }
 
 interface MessageDialogProps {
