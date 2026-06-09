@@ -2989,8 +2989,8 @@ button:disabled {
 }
 
 .modal-actions.single-action button {
-  min-width: 112px;
-  padding: 0 16px;
+  min-width: 138px;
+  padding: 0 24px;
 }
 
 .field-label {

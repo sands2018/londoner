@@ -169,6 +169,7 @@ interface NoticeDialog {
 }
 
 interface ConfirmDialog extends NoticeDialog {
+  confirmFirst?: boolean;
   confirmText?: string;
   onConfirm: () => Promise<void> | void;
   cancelText?: string;
@@ -303,7 +304,7 @@ export function App() {
   const [showShortRepeat, setShowShortRepeat] = useState(() => localStorage.getItem("londoner.showShortRepeat") !== "0");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [waveTab, setWaveTab] = useState<"rhythm" | "trend">("rhythm");
-  const [waveWindow, setWaveWindow] = useState(() => Number(localStorage.getItem("londoner.waveWindow")) || 20);
+  const [waveWindow, setWaveWindow] = useState(() => Number(localStorage.getItem("londoner.waveWindow")) || 13);
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
   const [otherRoundTab, setOtherRoundTab] = useState<OtherRoundTab>("bet");
@@ -1529,7 +1530,10 @@ export function App() {
       if (!raw) return null;
       const creds = JSON.parse(raw) as { u: string; p: string };
       const allowed = await checkSharedAccess(creds.u, creds.p);
-      if (!allowed) return null;
+      if (!allowed) {
+        localStorage.removeItem(savedLoginKey);
+        return null;
+      }
       setSharedUsername(creds.u);
       setSharedPassword(creds.p);
       setSharedConnected(true);
@@ -1552,7 +1556,11 @@ export function App() {
       const allowed = await checkSharedAccess(username, sharedPassword);
       if (!allowed) {
         setSharedConnected(false);
-        setNoticeDialog({ title: "共享数据", message: "用户名或密码不正确。" });
+        localStorage.removeItem(savedLoginKey);
+        setNoticeDialog({
+          title: "共享数据",
+          message: formatSharedLoginError("用户名或密码不正确。", "checkSharedAccess returned false"),
+        });
         return;
       }
       localStorage.setItem(savedLoginKey, JSON.stringify({ u: username, p: sharedPassword }));
@@ -1564,7 +1572,8 @@ export function App() {
       action?.(username, sharedPassword);
     } catch (error) {
       setSharedConnected(false);
-      setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+      localStorage.removeItem(savedLoginKey);
+      setNoticeDialog({ title: "共享数据", message: formatSharedLoginError(formatSharedError(error), getRawErrorMessage(error)) });
     } finally {
       setSharedLoading(false);
     }
@@ -3051,7 +3060,7 @@ export function App() {
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
-          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
+          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
           <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
@@ -4743,7 +4752,7 @@ export function App() {
                   onChange={(event) => setDataText(event.target.value)}
                   value={dataText}
                 />
-                <div className="modal-actions">
+                <div className={activeDialog === "connect" ? "modal-actions single-action" : "modal-actions"}>
                   <button
                     className="primary-action"
                     onClick={activeDialog === "connect" ? connectInputData : importMode === "files" ? importFilesFromText : importData}
@@ -4782,11 +4791,8 @@ export function App() {
           title={confirmDialog.title}
           onClose={() => setConfirmDialog(null)}
           actions={
-            <>
-              {confirmDialog.cancelText ? null : (
-                <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
-              )}
-              {confirmDialog.cancelText ? (
+            (() => {
+              const cancelButton = confirmDialog.cancelText ? (
                 <button
                   onClick={() => {
                     const action = confirmDialog.onCancel;
@@ -4797,7 +4803,10 @@ export function App() {
                 >
                   {confirmDialog.cancelText}
                 </button>
-              ) : null}
+              ) : (
+                <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
+              );
+              const confirmButton = (
               <button
                 className="primary-action"
                 onClick={() => {
@@ -4809,7 +4818,19 @@ export function App() {
               >
                 {confirmDialog.confirmText ?? "确定"}
               </button>
-            </>
+              );
+              return confirmDialog.confirmFirst || !confirmDialog.cancelText ? (
+                <>
+                  {confirmButton}
+                  {cancelButton}
+                </>
+              ) : (
+                <>
+                  {cancelButton}
+                  {confirmButton}
+                </>
+              );
+            })()
           }
         >
           {confirmDialog.message}
@@ -4836,8 +4857,8 @@ export function App() {
           <MessageDialog
             actions={
               <>
-                <button onClick={() => setSessionMergeDialog(null)} type="button">取消</button>
                 <button className="primary-action" onClick={() => void applySessionMerge()} type="button">确认合并</button>
+                <button onClick={() => setSessionMergeDialog(null)} type="button">取消</button>
               </>
             }
             onClose={() => setSessionMergeDialog(null)}
@@ -4984,8 +5005,8 @@ export function App() {
           <MessageDialog
             actions={
               <>
-                <button onClick={() => setTransferConnectDialog(null)} type="button">取消</button>
                 <button className="primary-action" onClick={applyTransferConnectConflict} type="button">确认接上</button>
+                <button onClick={() => setTransferConnectDialog(null)} type="button">取消</button>
               </>
             }
             onClose={() => setTransferConnectDialog(null)}
@@ -5093,7 +5114,6 @@ export function App() {
           onClose={() => { setSharedLoginOpen(false); postLoginAction.current = null; }}
           actions={
             <>
-              <button onClick={() => { setSharedLoginOpen(false); postLoginAction.current = null; }} type="button">取消</button>
               <button
                 className="primary-action"
                 disabled={sharedLoading || !sharedUsername.trim() || !sharedPassword}
@@ -5102,6 +5122,7 @@ export function App() {
               >
                 {sharedLoading ? "连接中" : "连接"}
               </button>
+              <button onClick={() => { setSharedLoginOpen(false); postLoginAction.current = null; }} type="button">取消</button>
             </>
           }
         >
@@ -5133,7 +5154,6 @@ export function App() {
           onClose={() => setPromptDialog(null)}
           actions={
             <>
-              <button onClick={() => setPromptDialog(null)} type="button">取消</button>
               <button
                 className="primary-action"
                 onClick={() => {
@@ -5146,6 +5166,7 @@ export function App() {
               >
                 {promptDialog.confirmText ?? "确定"}
               </button>
+              <button onClick={() => setPromptDialog(null)} type="button">取消</button>
             </>
           }
         >
@@ -5380,6 +5401,20 @@ function formatSharedError(error: unknown): string {
   if (message.includes("Failed to fetch")) return "无法连接共享库，请检查网络或 Supabase 配置。";
   if (message.includes("Could not find the function")) return "共享库尚未初始化，请先在 Supabase 执行建表 SQL。";
   return message || "共享数据操作失败。";
+}
+
+function getRawErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  try {
+    return typeof error === "string" ? error : JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+function formatSharedLoginError(message: string, raw: string): string {
+  const rawText = raw.trim();
+  return rawText ? `${message}\n原始错误：${rawText}` : message;
 }
 
 function sortRefineRows(
