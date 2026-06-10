@@ -2043,7 +2043,6 @@ export function App() {
       await storage.saveSession({
         ...target,
         numbers: mergedNumbers,
-        updatedAt: new Date().toISOString(),
       });
       await storage.deleteSession(removed.id);
       await refreshSessions();
