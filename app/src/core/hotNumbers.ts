@@ -6,8 +6,8 @@
  * LONG (default): 148-window acceleration, Top10, strict seg3>seg2>seg1, burst<4
  * SHORT: DS three-window consensus (37/74/111), Top5 no-ties, half-up trend, burst<4
  *
- * Adaptive switching (every 111-spin paper review):
- *   If short signals >= 5 AND short ROI >= 0 AND short ROI >= long ROI + 20%
+ * Adaptive switching (every 90-spin paper review):
+ *   If short signals >= 5 AND short ROI >= -40% AND short ROI >= long ROI - 60%
  *   → prefer SHORT, fall back to LONG
  *   Otherwise → prefer LONG, fall back to SHORT
  *
@@ -218,7 +218,10 @@ function shortSignalFields(numbers: readonly RouletteNumber[], num: number): Pic
 
 // ---- Pre-computed historical picks (cache to avoid O(N²) in ROI) ----
 
-const ADAPTIVE_LOOKBACK = 111;
+const ADAPTIVE_LOOKBACK = 90;
+const ADAPTIVE_MIN_SHORT_SIGNALS = 5;
+const ADAPTIVE_MIN_SHORT_ROI = -40;
+const ADAPTIVE_SHORT_EDGE = -60;
 
 interface CachedPicks {
   longPicks: Array<RouletteNumber | null>;
@@ -260,9 +263,9 @@ function adaptivePick(
   const shortRoi = shortCnt > 0 ? (shortNet / shortCnt) * 100 : -999;
   const longRoi = longCnt > 0 ? (longNet / longCnt) * 100 : -999;
 
-  const preferShort = shortCnt >= 5
-    && shortRoi >= 0
-    && shortRoi >= longRoi + 20;
+  const preferShort = shortCnt >= ADAPTIVE_MIN_SHORT_SIGNALS
+    && shortRoi >= ADAPTIVE_MIN_SHORT_ROI
+    && shortRoi >= longRoi + ADAPTIVE_SHORT_EDGE;
 
   if (preferShort) {
     if (shortPick !== null) {

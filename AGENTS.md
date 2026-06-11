@@ -121,6 +121,7 @@ Bottom action buttons layout:
 - Keep exploratory backtests in `scripts/`.
 - Prefer deterministic scripts that read `history_data.json` and print all-data, 押注区数据/from-201, recent sessions, max drawdown, and per-tier/per-rule breakdowns.
 - Research scripts are useful artifacts, but do not assume they should all be committed. Separate product code from scratch analysis when preparing commits.
+- `history_data.json` is the high-quality historical dataset; latest update: 2026.6.11.
 
 ## Developer
 
