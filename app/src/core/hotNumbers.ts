@@ -223,6 +223,21 @@ const ADAPTIVE_MIN_SHORT_SIGNALS = 5;
 const ADAPTIVE_MIN_SHORT_ROI = -40;
 const ADAPTIVE_SHORT_EDGE = -60;
 
+function netRoiPercent(nets: readonly number[]): number {
+  return nets.length > 0 ? (nets.reduce((sum, net) => sum + net, 0) / nets.length) * 100 : 0;
+}
+
+function isHotEnvironmentAllowed(preNets: readonly number[]): boolean {
+  if (preNets.length === 0) return true;
+
+  const overallRoi = netRoiPercent(preNets);
+  const splitIndex = Math.floor(preNets.length / 2);
+  const earlyRoi = netRoiPercent(preNets.slice(0, splitIndex));
+  const lateRoi = netRoiPercent(preNets.slice(splitIndex));
+
+  return overallRoi < 0 && lateRoi >= earlyRoi;
+}
+
 interface CachedPicks {
   longPicks: Array<RouletteNumber | null>;
   shortPicks: Array<RouletteNumber | null>;
@@ -308,6 +323,10 @@ export function analyzeHotNumbers(
   // Step 2: Compute both ROIs in a single pass with incremental paper P&L
   let sigAll = 0, betAll = 0, winAll = 0, hitsAll = 0;
   let sig201 = 0, bet201 = 0, win201 = 0, hits201 = 0;
+  const environmentIndex = roiStartIndex > 0 ? roiStartIndex : null;
+  const preEnvironmentNets: number[] = [];
+  let environmentEvaluated = environmentIndex === null;
+  let environmentAllowsSignals = true;
 
   // Running paper P&L (sliding ADAPTIVE_LOOKBACK window, pointer-based for O(1) trim)
   let longCnt = 0, longNet = 0;
@@ -351,29 +370,49 @@ export function analyzeHotNumbers(
     }
     trimPaper(Math.max(LONG_WARMUP, i - ADAPTIVE_LOOKBACK));
 
+    if (environmentIndex !== null && i < environmentIndex && shortPicks[i] !== null) {
+      preEnvironmentNets.push(numbers[i] === shortPicks[i] ? 35 : -1);
+    }
+    if (!environmentEvaluated && environmentIndex !== null && i >= environmentIndex) {
+      environmentAllowsSignals = isHotEnvironmentAllowed(preEnvironmentNets);
+      environmentEvaluated = true;
+    }
+
     const pick = adaptivePick(
       numbers, longPicks[i], shortPicks[i],
       longCnt, longNet, shortCnt, shortNet,
     );
     if (pick !== null) {
+      const hit = numbers[i] === pick.number;
+      if (environmentIndex !== null && i >= environmentIndex && !environmentAllowsSignals) {
+        continue;
+      }
+
       // All-data ROI
       sigAll++; betAll++;
-      if (numbers[i] === pick.number) { winAll += 36; hitsAll++; }
+      if (hit) { winAll += 36; hitsAll++; }
       // From-201 ROI
       if (i >= roiStartIndex) {
         sig201++; bet201++;
-        if (numbers[i] === pick.number) { win201 += 36; hits201++; }
+        if (hit) { win201 += 36; hits201++; }
       }
     }
   }
 
   // Step 3: Current adaptive pick (at position n, using full paper P&L window)
+  if (!environmentEvaluated && environmentIndex !== null && n >= environmentIndex) {
+    environmentAllowsSignals = isHotEnvironmentAllowed(preEnvironmentNets);
+    environmentEvaluated = true;
+  }
   pushPaper(longPicks[n - 1], shortPicks[n - 1], n - 1);
   trimPaper(Math.max(LONG_WARMUP, n - ADAPTIVE_LOOKBACK));
-  const currentPick = adaptivePick(
+  const rawCurrentPick = adaptivePick(
     numbers, longPicks[n], shortPicks[n],
     longCnt, longNet, shortCnt, shortNet,
   );
+  const currentPick = environmentIndex !== null && n >= environmentIndex && !environmentAllowsSignals
+    ? null
+    : rawCurrentPick;
 
   return {
     activeNumber: currentPick,
