@@ -98,7 +98,7 @@ import { analyzePreferredNumber } from "../core/preferredNumber";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
 import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
-import { analyzeQuality124 } from "../core/quality124";
+import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
 import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
 import {
   analyzeNumberMergeV2,
@@ -2925,11 +2925,11 @@ export function App() {
       </section>
 
       {canUseQuality124 && showQuality124 && quality124Signals.length > 0 ? (
-        <section className="quality124-signal-area" aria-label="新124信号">
+        <section className="quality124-signal-area" aria-label="行组节奏信号">
           {quality124Signals.map((item) => (
             <div
               className={`quality124-signal-item quality124-tier-${item.tier}`}
-              key={`quality124-${item.ci}-${item.entryAfter}-${item.tier}`}
+              key={`quality124-${item.kind}-${item.ci}-${item.entryAfter}-${item.tier}`}
               onClick={() => { setPredictionTab("quality124"); setPredictionWindowOpen(true); }}
               role="button"
               tabIndex={0}
@@ -4143,7 +4143,7 @@ export function App() {
             <div className="prediction-tabs">
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
               {canUseQuality124 ? (
-                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">新124</button>
+                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">节奏</button>
               ) : null}
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
@@ -4180,7 +4180,7 @@ export function App() {
                   {canUseQuality124 ? (
                   <div className="overview-card overview-quality124 overview-other-card" onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>新124</span>
+                      <span>行组节奏</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
                       </span>
@@ -4195,22 +4195,17 @@ export function App() {
                         <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
                         <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">低频 ★★★</span><span>{quality124.tierRois.low.bet}</span><span>{quality124.tierRois.low.win}</span>
-                        <strong className="roi-value" style={{ color: quality124.tierRois.low.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.low.roi >= 0 ? "+" : ""}{quality124.tierRois.low.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">中频 ★★</span><span>{quality124.tierRois.medium.bet}</span><span>{quality124.tierRois.medium.win}</span>
-                        <strong className="roi-value" style={{ color: quality124.tierRois.medium.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.medium.roi >= 0 ? "+" : ""}{quality124.tierRois.medium.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">高频 ★</span><span>{quality124.tierRois.high.bet}</span><span>{quality124.tierRois.high.win}</span>
-                        <strong className="roi-value" style={{ color: quality124.tierRois.high.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.high.roi >= 0 ? "+" : ""}{quality124.tierRois.high.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">超高频</span><span>{quality124.tierRois.ultra.bet}</span><span>{quality124.tierRois.ultra.win}</span>
-                        <strong className="roi-value" style={{ color: quality124.tierRois.ultra.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124.tierRois.ultra.roi >= 0 ? "+" : ""}{quality124.tierRois.ultra.roi.toFixed(1)}%</strong>
-                      </div>
+                      {QUALITY_124_TIER_ORDER.map((tier) => {
+                        const meta = QUALITY_124_TIER_META[tier];
+                        const roi = quality124.tierRois[tier];
+                        const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
+                        return (
+                          <div className="prediction-roi-row" key={tier}>
+                            <span className="prediction-roi-subheader">{meta.label}{stars}</span><span>{roi.bet}</span><span>{roi.win}</span>
+                            <strong className="roi-value" style={{ color: roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{roi.roi >= 0 ? "+" : ""}{roi.roi.toFixed(1)}%</strong>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                   ) : null}
@@ -4319,7 +4314,7 @@ export function App() {
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
-                  <p className="prediction-desc">新124四档：低频=二组k4/z≥0.25/c≥0.45；中频=三组k3-4/z≥0.25/c≥0.45/排除fast；高频=二组三组k3-4/z≥0.25/c≥0.45/排除fast；超高频=二组三组k3/z≥0.20/c≥0.45/排除fast。每个信号独立打一组1-2-4。</p>
+                  <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4打1-2-4，二组短追=空3打1-2；三组=空3-4打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -4333,16 +4328,13 @@ export function App() {
                   </div>
                   <div className="detail-stats-table">
                     <div className="detail-stats-header"><span>档位</span><span>信号</span><span>命中</span><span>未中</span><span>ROI</span></div>
-                    {[
-                      ["低频 ★★★", quality124.tierRois.low],
-                      ["中频 ★★", quality124.tierRois.medium],
-                      ["高频 ★", quality124.tierRois.high],
-                      ["超高频", quality124.tierRois.ultra],
-                    ].map(([label, roi]) => {
-                      const item = roi as typeof quality124.tierRois.low;
+                    {QUALITY_124_TIER_ORDER.map((tier) => {
+                      const meta = QUALITY_124_TIER_META[tier];
+                      const item = quality124.tierRois[tier];
+                      const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
                       return (
-                        <div className="detail-stats-row" key={label as string}>
-                          <strong className="detail-stats-label">{label as string}</strong>
+                        <div className="detail-stats-row" key={tier}>
+                          <strong className="detail-stats-label">{meta.label}{stars}</strong>
                           <span>{item.signals}</span><span>{item.hits}</span><span>{item.signals - item.hits}</span>
                           <span className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{item.roi >= 0 ? "+" : ""}{item.roi.toFixed(1)}%</span>
                         </div>

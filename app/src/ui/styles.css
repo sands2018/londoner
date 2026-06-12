@@ -4119,11 +4119,11 @@ button:disabled {
   background: #f2ecee;
   display: flex;
   flex: 1;
-  gap: 6px;
+  gap: 5px;
   justify-content: space-between;
   min-height: 34px;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 7px;
 }
 
 .quality124-signal-item:active .quality124-signal-chase {
@@ -4139,7 +4139,7 @@ button:disabled {
 
 .quality124-dots {
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 
 .quality124-dot {
@@ -4161,24 +4161,23 @@ button:disabled {
   color: #5c3848;
 }
 
-.quality124-signal-item.quality124-tier-low .quality124-signal-label {
+.quality124-signal-item.quality124-tier-group2 .quality124-signal-label {
   background: #e8ced2;
   color: #4e2c36;
 }
 
-.quality124-signal-item.quality124-tier-medium .quality124-signal-label {
+.quality124-signal-item.quality124-tier-group3 .quality124-signal-label,
+.quality124-signal-item.quality124-tier-row2 .quality124-signal-label,
+.quality124-signal-item.quality124-tier-row3 .quality124-signal-label {
   background: #ecd8de;
   color: #4e3040;
 }
 
-.quality124-signal-item.quality124-tier-high .quality124-signal-label {
+.quality124-signal-item.quality124-tier-group2tempo .quality124-signal-label,
+.quality124-signal-item.quality124-tier-group1 .quality124-signal-label,
+.quality124-signal-item.quality124-tier-row1 .quality124-signal-label {
   background: #ecdee2;
   color: #4e3848;
-}
-
-.quality124-signal-item.quality124-tier-ultra .quality124-signal-label {
-  background: #e8dee2;
-  color: #4e4050;
 }
 
 .prediction-chase {
