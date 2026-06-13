@@ -393,6 +393,11 @@ export function App() {
   const [sessionMergeDialog, setSessionMergeDialog] = useState<SessionMergeDialog | null>(null);
   const [transferConnectDialog, setTransferConnectDialog] = useState<ConnectDialog | null>(null);
   const [promptValue, setPromptValue] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editUploader, setEditUploader] = useState("");
+  const [editTime, setEditTime] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
     return localStorage.getItem(currentSessionIdKey);
@@ -2092,6 +2097,51 @@ export function App() {
     });
   }
 
+  function editSession(session: SavedSession) {
+    setEditSessionId(session.id);
+    setEditName(session.name);
+    setEditUploader(session.sharedUploader ?? "");
+    setEditTime(isoToDatetimeLocal(session.updatedAt));
+    setEditDialogOpen(true);
+  }
+
+  async function saveEditSession() {
+    if (!editSessionId) return;
+    const session = sessions.find((s) => s.id === editSessionId);
+    if (!session) return;
+
+    const name = editName.trim();
+    const nameError = validateSessionName(name, sessions, editSessionId);
+    if (nameError) {
+      setNoticeDialog({ title: "编辑失败", message: nameError });
+      return;
+    }
+
+    const timeString = editTime.trim();
+    let updatedAt = session.updatedAt;
+    if (timeString) {
+      const parsedDate = new Date(timeString);
+      if (Number.isNaN(parsedDate.getTime())) {
+        setNoticeDialog({ title: "编辑失败", message: "保存时间格式无效，请输入正确的日期时间。" });
+        return;
+      }
+      updatedAt = parsedDate.toISOString();
+    }
+
+    const updated: SavedSession = {
+      ...session,
+      name,
+      sharedUploader: editUploader.trim(),
+      updatedAt,
+    };
+
+    await storage.saveSession(updated);
+    await refreshSessions();
+    setSelectedSessionIds([session.id]);
+    setEditDialogOpen(false);
+    setNoticeDialog({ title: "编辑成功", message: `数据"${name}"已更新。` });
+  }
+
   async function exportSessions(items: SavedSession[]) {
     const exportItems = items.length > 0 ? items : sortedSessions;
     if (exportItems.length === 0) return;
@@ -3248,6 +3298,13 @@ export function App() {
                 更名
               </button>
               <button
+                disabled={selectedSessionIds.length !== 1}
+                onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) editSession(s); }}
+                type="button"
+              >
+                编辑
+              </button>
+              <button
                 disabled={selectedSessionIds.length < 1}
                 onClick={() =>
                   setConfirmDialog({
@@ -3261,6 +3318,8 @@ export function App() {
               >
                 删除
               </button>
+            </div>
+            <div className="data-actions-full">
               <button
                 disabled={selectedSessionIds.length !== 2}
                 onClick={() => openSessionMerge(sortedSessions.filter((s) => selectedSessionIds.includes(s.id)))}
@@ -3268,8 +3327,6 @@ export function App() {
               >
                 合并
               </button>
-            </div>
-            <div className="data-actions-centered">
               <button
                 onClick={() => {
                   setImportMode("files");
@@ -4314,7 +4371,7 @@ export function App() {
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
-                  <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4打1-2-4，二组短追=空3打1-2；三组=空3-4打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
+                  <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -5167,6 +5224,37 @@ export function App() {
           </label>
         </MessageDialog>
       ) : null}
+      {editDialogOpen ? (
+        <MessageDialog
+          title="编辑数据"
+          onClose={() => setEditDialogOpen(false)}
+          actions={
+            <>
+              <button
+                className="primary-action"
+                onClick={() => { setEditDialogOpen(false); void saveEditSession(); }}
+                type="button"
+              >
+                确定
+              </button>
+              <button onClick={() => setEditDialogOpen(false)} type="button">取消</button>
+            </>
+          }
+        >
+          <label className="field-label">
+            名称
+            <input value={editName} onChange={(event) => setEditName(event.target.value)} />
+          </label>
+          <label className="field-label">
+            ID（上传者）
+            <input value={editUploader} onChange={(event) => setEditUploader(event.target.value)} />
+          </label>
+          <label className="field-label">
+            保存时间
+            <input type="datetime-local" value={editTime} onChange={(event) => setEditTime(event.target.value)} />
+          </label>
+        </MessageDialog>
+      ) : null}
       <div className="key-pop-overlay" aria-hidden="true">
         {keyPops.map((pop, i) => (
           <span
@@ -5532,6 +5620,14 @@ function formatSessionTime(value: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
     date.getMinutes(),
   )}`;
+}
+
+/** Convert ISO date string to datetime-local input format (YYYY-MM-DDTHH:MM). */
+function isoToDatetimeLocal(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 interface NumberButtonProps {

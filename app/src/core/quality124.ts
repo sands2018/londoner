@@ -6,6 +6,7 @@ const PROGRESSION_124 = [1, 2, 4] as const;
 // 三组的第四口历史上适合降斜率追，避免直接跳到 8 带来过大的回撤。
 const PROGRESSION_1235 = [1, 2, 3, 5] as const;
 const PROGRESSION_1248 = [1, 2, 4, 8] as const;
+const STRONG_GROUP_CONCENTRATION = 0.55;
 
 export const QUALITY_124_PROGRESSION = PROGRESSION_124;
 
@@ -27,9 +28,9 @@ type TempoBand = "unknown" | "fast" | "medium_fast" | "medium" | "slow";
 
 export const QUALITY_124_TIER_META: Record<Quality124Tier, { label: string; stars: number; description: string }> = {
   group1: { label: "一组", stars: 1, description: "一组空4，近12口节奏活跃，只打一口" },
-  group2: { label: "二组", stars: 3, description: "二组空4，近18口核心区集中，打1-2-4" },
+  group2: { label: "二组", stars: 3, description: "二组空4，近18口核心区高度集中，打1-2-4" },
   group2tempo: { label: "二组短追", stars: 1, description: "二组空3，近18口排除fast，打1-2" },
-  group3: { label: "三组", stars: 2, description: "三组空3/4，近18口排除fast，打1-2-3-5" },
+  group3: { label: "三组", stars: 2, description: "三组空3/4，近18口高度集中且排除fast，打1-2-3-5" },
   row1: { label: "1行", stars: 1, description: "1行空3，近12口中高速，只打一口" },
   row2: { label: "2行", stars: 2, description: "2行空3，近24口集中，打1-2-4" },
   row3: { label: "3行", stars: 2, description: "3行空3，近37口中慢集中，打1-2-4-8" },
@@ -195,13 +196,13 @@ function selectRule(state: EntityState, entryAfter: number): RuleSelection | nul
       const conc = concentration(state.gaps, 18);
       const notFast = isNotFast(band);
 
-      if (state.ci === 1 && entryAfter === 4 && zone >= 0.25 && conc >= 0.45) {
+      if (state.ci === 1 && entryAfter === 4 && zone >= 0.25 && conc >= STRONG_GROUP_CONCENTRATION) {
         return { tier: "group2", progression: PROGRESSION_124, zone, conc, band };
       }
-      if (state.ci === 2 && (entryAfter === 3 || entryAfter === 4) && zone >= 0.25 && conc >= 0.45 && notFast) {
+      if (state.ci === 2 && (entryAfter === 3 || entryAfter === 4) && zone >= 0.25 && conc >= STRONG_GROUP_CONCENTRATION && notFast) {
         return { tier: "group3", progression: PROGRESSION_1235, zone, conc, band };
       }
-      if (state.ci === 1 && (entryAfter === 3 || entryAfter === 4) && zone >= 0.25 && conc >= 0.45 && notFast) {
+      if (state.ci === 1 && entryAfter === 3 && zone >= 0.25 && conc >= 0.45 && notFast) {
         return { tier: "group2tempo", progression: PROGRESSION_12, zone, conc, band };
       }
     }
