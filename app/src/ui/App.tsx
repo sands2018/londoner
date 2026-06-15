@@ -1,7 +1,9 @@
 ﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import {
   getNumberColor,
   getNumberColRows,
+  getRowIndex,
   isRouletteNumber,
   type ColRowIndex,
   type RouletteNumber,
@@ -92,9 +94,31 @@ import {
   type RhythmDetailRow,
   type RhythmSignal,
 } from "../core/prediction";
+import { analyzePreferredNumber } from "../core/preferredNumber";
 import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
-import { analyzeChaseSix } from "../core/chaseSix";
-import { analyzeChaseThree } from "../core/chaseThree";
+import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
+import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
+import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
+import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
+import {
+  analyzeNumberMergeV2,
+  buildNumberMergeV2TolerantUnion,
+  buildNumberMergeV2TolerantUnionWithChoices,
+  buildNumberMergeV2Union,
+  type NumberMergeConflictChoice,
+  type NumberMergeEditIssue,
+  type NumberMergeV2Result,
+} from "../core/numberMergeV2";
+import {
+  REPEAT_INITIAL_ROUNDS,
+  REPEAT_ENV_WINDOW,
+  REPEAT_TIER_AGGRESSIVE,
+  REPEAT_TIER_CORE,
+  SHORT_REPEAT_ENV_WINDOW,
+  analyzeRepeatNumber,
+  analyzeShortRepeatNumber,
+  type RepeatTier,
+} from "../core/repeatNumber";
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
@@ -103,6 +127,7 @@ const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
 const windowModeKey = "londoner.windowMode";
+const repeatFilterOptions: RepeatTier[] = [REPEAT_TIER_CORE, REPEAT_TIER_AGGRESSIVE];
 type WindowMode = "classic" | "fibonacci";
 const classicStatScopes: readonly number[] = [8, 13, 21, 40, 60, 100, -1];
 const fibonacciStatScopes: readonly number[] = [8, 13, 21, 34, 55, 89, 144, -1];
@@ -122,7 +147,7 @@ const keypadRows: RouletteNumber[][] = [
   [31, 32, 33, 34, 35, 36],
 ];
 
-type DialogName = "import" | "save" | null;
+type DialogName = "connect" | "import" | "save" | null;
 type DataTab = "local" | "shared" | "transfer";
 type DataSortField = "name" | "count" | "time" | "sharedUploader";
 type SortDirection = "asc" | "desc";
@@ -130,6 +155,12 @@ type ColRowTab = "detail" | "chart" | "summary" | "compare";
 type RefineTab = "compare" | "detail";
 type OtherTab = "longs" | "numbers" | "rounds";
 type OtherRoundTab = "bet" | "summary";
+
+function normalizeRepeatTier(value: string | null): RepeatTier {
+  if (value === REPEAT_TIER_CORE || value === "精选信号") return REPEAT_TIER_CORE;
+  if (value === REPEAT_TIER_AGGRESSIVE || value === "全部信号") return REPEAT_TIER_AGGRESSIVE;
+  return REPEAT_TIER_AGGRESSIVE;
+}
 type RefineSortField = "name" | "succeeded" | "failureRate";
 
 interface NoticeDialog {
@@ -138,8 +169,11 @@ interface NoticeDialog {
 }
 
 interface ConfirmDialog extends NoticeDialog {
+  confirmFirst?: boolean;
   confirmText?: string;
   onConfirm: () => Promise<void> | void;
+  cancelText?: string;
+  onCancel?: () => Promise<void> | void;
 }
 
 interface PromptDialog {
@@ -148,6 +182,27 @@ interface PromptDialog {
   message: string;
   onConfirm: (value: string) => Promise<void> | void;
   title: string;
+}
+
+interface SessionMergeDialog {
+  conflictChoice: NumberMergeConflictChoice;
+  issueChoices: NumberMergeConflictChoice[];
+  left: SavedSession;
+  result: NumberMergeV2Result;
+  right: SavedSession;
+  targetId: string;
+}
+
+interface ConnectIncomingData {
+  label: string;
+  numbers: RouletteNumber[];
+}
+
+interface ConnectDialog {
+  conflictChoice: NumberMergeConflictChoice;
+  incoming: ConnectIncomingData;
+  issueChoices: NumberMergeConflictChoice[];
+  result: NumberMergeV2Result;
 }
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
@@ -228,16 +283,28 @@ export function App() {
   const [refineViewOpen, setRefineViewOpen] = useState(false);
   const [otherViewOpen, setOtherViewOpen] = useState(false);
   const [statsViewOpen, setStatsViewOpen] = useState(false);
+  const [sixNumberViewOpen, setSixNumberViewOpen] = useState(false);
+  const [numberZoneOpen, setNumberZoneOpen] = useState(false);
+  const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [statsTab, setStatsTab] = useState("game");
+  const [statsGroupTab, setStatsGroupTab] = useState(() => localStorage.getItem("londoner.statsGroupTab") || "colrow");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
-  const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "rhythm");
+  const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
+  const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
+  const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
+  const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
+  const [showPreferredNumber, setShowPreferredNumber] = useState(() => localStorage.getItem("londoner.showPreferredNumber") !== "0");
+  const [showRepeat, setShowRepeat] = useState(() => localStorage.getItem("londoner.showRepeat") !== "0");
+  const [repeatFilter, setRepeatFilter] = useState<RepeatTier>(() => normalizeRepeatTier(localStorage.getItem("londoner.repeatFilter")));
+  const [entryMode200, setEntryMode200] = useState(() => localStorage.getItem("londoner.entryMode200") !== "0");
+  const [showShortRepeat, setShowShortRepeat] = useState(() => localStorage.getItem("londoner.showShortRepeat") !== "0");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [waveTab, setWaveTab] = useState<"rhythm" | "trend">("rhythm");
-  const [waveWindow, setWaveWindow] = useState(() => Number(localStorage.getItem("londoner.waveWindow")) || 20);
+  const [waveWindow, setWaveWindow] = useState(() => Number(localStorage.getItem("londoner.waveWindow")) || 13);
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
   const [otherRoundTab, setOtherRoundTab] = useState<OtherRoundTab>("bet");
@@ -245,6 +312,8 @@ export function App() {
   const [otherLongRound, setOtherLongRound] = useState(5);
   const [otherNumberSortField, setOtherNumberSortField] = useState<OtherNumberSortField>("number");
   const [otherNumberSortDirection, setOtherNumberSortDirection] = useState<SortDirection>("desc");
+  const fileInputRef = useRef<HTMLInputElement>(null);  const [keyPops, setKeyPops] = useState<Array<{ id: number; value: RouletteNumber }>>([]);
+  const keyPopIdRef = useRef(0);
   const [refineRoundStart, setRefineRoundStart] = useState(0);
   const [refineRoundBet, setRefineRoundBet] = useState(1);
   const [refineSortField, setRefineSortField] = useState<RefineSortField>("succeeded");
@@ -281,9 +350,12 @@ export function App() {
   const [sharedSessions, setSharedSessions] = useState<SharedSession[]>([]);
   const [selectedSharedSessionIds, setSelectedSharedSessionIds] = useState<string[]>([]);
   const [transferSessions, setTransferSessions] = useState<TransferSession[]>([]);
-  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
+  const [selectedTransferIds, setSelectedTransferIds] = useState<string[]>([]);
   const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
+  // 优选号算法逻辑保留用于研究/回测，但当前 UI 暂时隐藏，不对任何用户开放。
+  const canUsePreferredNumber = false;
+  const canUseQuality124 = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
 
   const sortedSharedSessions = useMemo(() => {
     const sorted = [...sharedSessions];
@@ -318,7 +390,14 @@ export function App() {
   const [noticeDialog, setNoticeDialog] = useState<NoticeDialog | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog | null>(null);
   const [promptDialog, setPromptDialog] = useState<PromptDialog | null>(null);
+  const [sessionMergeDialog, setSessionMergeDialog] = useState<SessionMergeDialog | null>(null);
+  const [transferConnectDialog, setTransferConnectDialog] = useState<ConnectDialog | null>(null);
   const [promptValue, setPromptValue] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editUploader, setEditUploader] = useState("");
+  const [editTime, setEditTime] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
     return localStorage.getItem(currentSessionIdKey);
@@ -330,7 +409,7 @@ export function App() {
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
   const [selectedAcrModes, setSelectedAcrModes] = useState<string[]>([]);
   const [selectedManageBetKeys, setSelectedManageBetKeys] = useState<string[]>([]);
-  const [sessionSortField, setSessionSortField] = useState<DataSortField>("name");
+  const [sessionSortField, setSessionSortField] = useState<DataSortField>("time");
   const [sessionSortDirection, setSessionSortDirection] = useState<SortDirection>("desc");
   const [gameSortField, setGameSortField] = useState<GameSortField>("won");
   const [gameSortDirection, setGameSortDirection] = useState<GameSortDirection>("desc");
@@ -361,9 +440,20 @@ export function App() {
   const predictionRecordCount = predictionTracker.count;
 
   const sessionRoi = useMemo(() => computeRoi(numbers), [numbers]);
-  const rhythmRoi = useMemo(() => computeRhythmRoi(numbers), [numbers]);
-  const rhythmRowsOnlyRoi = useMemo(() => computeRhythmRoi(numbers, [3, 4, 5]), [numbers]);
-  const rhythmDetailStats = useMemo(() => computeRhythmDetailStats(numbers), [numbers]);
+  // [PERF] 124 (rhythm) temporarily disabled — see AGENTS.md "Hot path perf budget"
+  const rhythmRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const rhythmRowsOnlyRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rhythmDetailStats: any[] = [];
+  const quality124 = useMemo(() => analyzeQuality124(numbers), [numbers]);
+  const quality124Signals = quality124.activeSignals;
+  const quality124Roi = quality124.totalRoi;
+  const quality124From201 = useMemo(() => analyzeQuality124(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const quality124RoiFrom201 = quality124From201.totalRoi;
+  const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const hotNumberSignal = hotNumber.activeNumber;
+  const hotNumberRoi = hotNumber.totalRoi;
+  const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
   // 长套自适应: 从历史session计算行/组累计ROI
@@ -584,19 +674,96 @@ export function App() {
   }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
 
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
-  const cs = useMemo(() => analyzeChaseSix(numbers), [numbers]);
+  const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
   const chaseSixSignals = cs.activeSignals;
   const chaseSixRoi = cs.totalRoi;
   const chaseSixG1Roi = cs.group1Roi;
   const chaseSixG2Roi = cs.group2Roi;
   const chaseSixG3Roi = cs.group3Roi;
 
-  const c3 = useMemo(() => analyzeChaseThree(numbers), [numbers]);
-  const chaseThreeSignals = c3.activeSignals;
-  const chaseThreeRoi = c3.totalRoi;
-  const chaseThreeG1Roi = c3.group1Roi;
-  const chaseThreeG2Roi = c3.group2Roi;
-  const chaseThreeG3Roi = c3.group3Roi;
+  // [PERF] 追3 temporarily disabled — see AGENTS.md "Hot path perf budget"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chaseThreeSignals: any[] = [];
+  const chaseThreeRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const chaseThreeG1Roi = chaseThreeRoi;
+  const chaseThreeG2Roi = chaseThreeRoi;
+  const chaseThreeG3Roi = chaseThreeRoi;
+  const c3 = { star1Roi: chaseThreeRoi, star2Roi: chaseThreeRoi };
+
+  const preferredNumber = useMemo(() => analyzePreferredNumber(numbers), [numbers]);
+  const preferredNumberSignals = preferredNumber.activeSignals;
+  const preferredNumberRoi = preferredNumber.totalRoi;
+  const preferredNumberFrom201 = useMemo(() => analyzePreferredNumber(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const preferredNumberRoiFrom201 = preferredNumberFrom201.totalRoi;
+
+  // [PERF] 长重号/短重号 temporarily disabled — see AGENTS.md "Hot path perf budget"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const repeatSignals: any[] = [];
+  const repeatAggressiveRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatCoreRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatFilteredRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatFilteredRoiFrom201 = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shortRepeatSignals: any[] = [];
+  const shortRepeatRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const shortRepeatRoiFrom201 = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const repeatEnvironmentFilter = { g2Count:0, g3Count:0, passes:false };
+  const shortRepeatEnvironmentFilter = { g2Count:0, g3Count:0, passes:false };
+
+  // 综合ROI: 按总览配置汇总所有已启用策略
+  const combinedRoi = useMemo(() => {
+    let bet = 0, win = 0;
+    // [PERF] show124 disabled — see AGENTS.md
+    // if (show124) { const r = ...; bet += r.bet; win += r.win; }
+    if (canUseQuality124 && showQuality124) {
+      bet += quality124Roi.bet; win += quality124Roi.win;
+    }
+    if (showCold) {
+      bet += coldActiveRoi.bet; win += coldActiveRoi.win;
+    }
+    if (chase6Filter !== "全关") {
+      bet += chaseSixRoi.bet; win += chaseSixRoi.win;
+    }
+    if (chase3Filter !== "全关") {
+      bet += chaseThreeRoi.bet; win += chaseThreeRoi.win;
+    }
+    if (canUsePreferredNumber && showPreferredNumber) {
+      bet += preferredNumberRoi.bet; win += preferredNumberRoi.win;
+    }
+    if (showRepeat) {
+      bet += repeatFilteredRoi.bet; win += repeatFilteredRoi.win;
+    }
+    if (showShortRepeat) {
+      bet += shortRepeatRoi.bet; win += shortRepeatRoi.win;
+    }
+    if (showHotNumber) {
+      bet += hotNumberRoi.bet; win += hotNumberRoi.win;
+    }
+    return { bet, win, net: win - bet };
+  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
+
+  // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
+  const combinedRoiFrom201 = useMemo(() => {
+    if (numbers.length <= 200) return null;
+    // [PERF] const rhs = ... computeRhythmRoi ... — see AGENTS.md
+    const cold = computeRoi(numbers, coldAdaptiveCis, 200);
+    const c6 = analyzeChaseSixRolling(numbers, 200, 200);
+    const c3f = { totalRoi: { signals:0, bet:0, win:0, hits:0, roi:0 } }; // [PERF] analyzeChaseThree numbers.slice(200) — see AGENTS.md
+    let bet = 0, win = 0;
+    // [PERF] show124 disabled
+    // if (show124) { bet += rhs.bet; win += rhs.win; }
+    if (canUseQuality124 && showQuality124) { bet += quality124RoiFrom201.bet; win += quality124RoiFrom201.win; }
+    if (showCold) { bet += cold.bet; win += cold.win; }
+    if (chase6Filter !== "全关") { bet += c6.totalRoi.bet; win += c6.totalRoi.win; }
+    if (chase3Filter !== "全关") { bet += c3f.totalRoi.bet; win += c3f.totalRoi.win; }
+    if (canUsePreferredNumber && showPreferredNumber) { bet += preferredNumberRoiFrom201.bet; win += preferredNumberRoiFrom201.win; }
+    if (showRepeat) {
+      bet += repeatFilteredRoiFrom201.bet; win += repeatFilteredRoiFrom201.win;
+    }
+    if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
+    if (showHotNumber) { bet += hotNumberRoiFrom201.bet; win += hotNumberRoiFrom201.win; }
+    return { bet, win, net: win - bet };
+  }, [numbers, show124, rhythmMode, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -620,6 +787,276 @@ export function App() {
   );
   const finishedLongs = useMemo(() => calculateFinishedLongs(numbers), [numbers]);
   const queueItems = useMemo(() => numbers.slice(-105).reverse(), [numbers]);
+  const latestNumber = numbers.length > 0 ? numbers[numbers.length - 1] : null;
+  const sixNumberSnapshot = useMemo(() => {
+    const getMissDistanceBefore = (wi: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        const value = numbers[index];
+        if (isInChaseSixWindow(wi, value)) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return Array.from({ length: 11 }, (_, wi) => {
+      const highlighted = latestNumber !== null && isInChaseSixWindow(wi, latestNumber);
+      return {
+        distance: getMissDistanceBefore(wi, numbers.length - 1),
+        highlighted,
+        label: `${chaseSixWindowStart(wi)}-${chaseSixWindowEnd(wi)}`,
+        previousDistance: highlighted ? getMissDistanceBefore(wi, numbers.length - 2) : null,
+        wi,
+      };
+    });
+  }, [latestNumber, numbers]);
+  const threeNumberSnapshot = useMemo(() => {
+    const latestStreet = latestNumber !== null ? streetOf(latestNumber) : -1;
+    const getMissDistanceBefore = (wi: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        if (streetOf(numbers[index]) === wi) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return Array.from({ length: 12 }, (_, wi) => {
+      const highlighted = latestStreet === wi;
+      return {
+        distance: getMissDistanceBefore(wi, numbers.length - 1),
+        highlighted,
+        label: `${chaseThreeStreetStart(wi)}-${chaseThreeStreetEnd(wi)}`,
+        previousDistance: highlighted ? getMissDistanceBefore(wi, numbers.length - 2) : null,
+        wi,
+      };
+    });
+  }, [latestNumber, numbers]);
+  const groupBlockSnapshot = useMemo(() => {
+    const groupOfNumber = (value: number) => value === 0 ? -1 : Math.floor((value - 1) / 12);
+    const latestGroup = latestNumber !== null ? groupOfNumber(latestNumber) : -1;
+    const getMissDistanceBefore = (gi: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        if (groupOfNumber(numbers[index]) === gi) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return Array.from({ length: 3 }, (_, gi) => {
+      const highlighted = latestGroup === gi;
+      const start = gi * 12 + 1;
+      return {
+        distance: getMissDistanceBefore(gi, numbers.length - 1),
+        highlighted,
+        label: `${start}-${start + 11}`,
+        previousDistance: highlighted ? getMissDistanceBefore(gi, numbers.length - 2) : null,
+        gi,
+      };
+    });
+  }, [latestNumber, numbers]);
+  const rowBlockSnapshot = useMemo(() => {
+    const latestRow = latestNumber !== null ? getRowIndex(latestNumber) : null;
+    const getMissDistanceBefore = (ri: number, startIndex: number) => {
+      let distance = 0;
+      for (let index = startIndex; index >= 0; index -= 1) {
+        if (getRowIndex(numbers[index]) === ri) break;
+        distance += 1;
+      }
+      return distance;
+    };
+    return [2, 1, 0].map((ri) => {
+      const highlighted = latestRow === ri;
+      return {
+        distance: getMissDistanceBefore(ri, numbers.length - 1),
+        highlighted,
+        label: `${ri + 1}行`,
+        previousDistance: highlighted ? getMissDistanceBefore(ri, numbers.length - 2) : null,
+        ri,
+      };
+    });
+  }, [latestNumber, numbers]);
+  const numberZoneData = useMemo(() => {
+    const ONE_CIRCLE = 37;
+    const circles: Record<string, number> = {
+      "1": ONE_CIRCLE,
+      "2": ONE_CIRCLE * 2,
+      "3": ONE_CIRCLE * 3,
+      "4": ONE_CIRCLE * 4,
+      "5": ONE_CIRCLE * 5,
+      "6": ONE_CIRCLE * 6,
+    };
+
+    const data: Record<number, { value: number; isLatest: boolean; prevDistance: number | null }> = {};
+
+    for (let n = 0; n <= 36; n++) {
+      let value: number;
+      let prevDistance: number | null = null;
+
+      if (numberZoneMode === "distance") {
+        let dist = 0;
+        let foundIdx = -1;
+        for (let i = numbers.length - 1; i >= 0; i--) {
+          if (numbers[i] === n) { foundIdx = i; break; }
+          dist++;
+        }
+        value = dist;
+        // For latest number: compute previous distance before this appearance
+        if (n === latestNumber && foundIdx >= 0) {
+          let prevDist = 0;
+          for (let i = foundIdx - 1; i >= 0; i--) {
+            if (numbers[i] === n) break;
+            prevDist++;
+          }
+          prevDistance = prevDist;
+        }
+      } else if (numberZoneMode === "all") {
+        value = numbers.filter((x) => x === n).length;
+      } else {
+        const windowSize = circles[numberZoneMode] || ONE_CIRCLE;
+        const start = Math.max(0, numbers.length - windowSize);
+        value = 0;
+        for (let i = start; i < numbers.length; i++) {
+          if (numbers[i] === n) value++;
+        }
+      }
+
+      data[n] = { value, isLatest: latestNumber === n, prevDistance };
+    }
+    return data;
+  }, [numbers, latestNumber, numberZoneMode]);
+
+  // Compute trends FIRST (before hot/cold, used for tie-breaking)
+  const numberZoneTrends = useMemo(() => {
+    const ONE_CIRCLE = 37;
+    const trends: Record<number, "up" | "down" | null> = {};
+
+    for (let n = 0; n <= 36; n++) {
+      if (numberZoneMode === "distance") {
+        let currDist = 0;
+        for (let i = numbers.length - 1; i >= 0; i--) {
+          if (numbers[i] === n) break;
+          currDist++;
+        }
+        const pastEnd = Math.max(0, numbers.length - 19);
+        let pastDist = 0;
+        for (let i = pastEnd; i >= 0; i--) {
+          if (numbers[i] === n) break;
+          pastDist++;
+        }
+        if (currDist < pastDist - 3) trends[n] = "up";
+        else if (currDist > pastDist + 3) trends[n] = "down";
+        else trends[n] = null;
+      } else if (numberZoneMode === "all") {
+        trends[n] = null;
+      } else {
+        const circles: Record<string, number> = { "1": ONE_CIRCLE, "2": ONE_CIRCLE * 2, "3": ONE_CIRCLE * 3, "5": ONE_CIRCLE * 5 };
+        const ws = circles[numberZoneMode] || ONE_CIRCLE;
+        const start = Math.max(0, numbers.length - ws);
+        const isShort = ws <= 74; // 1圈、2圈用半劈算法
+
+        if (isShort) {
+          // Short window: split in half, compare second half vs first half
+          const mid = start + Math.floor(ws / 2);
+          let firstHalf = 0, secondHalf = 0;
+          for (let i = start; i < mid; i++) { if (numbers[i] === n) firstHalf++; }
+          for (let i = mid; i < numbers.length; i++) { if (numbers[i] === n) secondHalf++; }
+          const diff = secondHalf - firstHalf;
+          if (diff >= 2) {
+            trends[n] = "up";
+          } else if (diff <= -2) {
+            trends[n] = "down";
+          } else {
+            trends[n] = null;
+          }
+        } else {
+          // Long window: compare recent 1/3 vs earlier 2/3 by rate
+          const recentLen = Math.min(Math.floor(ws / 3), 40);
+          const recentStart = numbers.length - recentLen;
+          let recentCount = 0, earlierCount = 0;
+          for (let i = recentStart; i < numbers.length; i++) { if (numbers[i] === n) recentCount++; }
+          for (let i = start; i < recentStart; i++) { if (numbers[i] === n) earlierCount++; }
+          const recentRate = recentCount / recentLen;
+          const earlierRate = earlierCount / Math.max(1, ws - recentLen);
+          const ratio = earlierRate > 0 ? recentRate / earlierRate : (recentRate > 0 ? 999 : 1);
+          if (ratio >= 1.5 && recentCount >= 2) {
+            trends[n] = "up";
+          } else if (ratio <= 0.5 && earlierCount >= 2) {
+            trends[n] = "down";
+          } else {
+            trends[n] = null;
+          }
+        }
+      }
+    }
+    return trends;
+  }, [numbers, numberZoneMode]);
+
+  const numberZoneHotCold = useMemo(() => {
+    const entries = Object.entries(numberZoneData)
+      .map(([num, d]) => ({ num: Number(num), value: d.value }))
+      .filter((e) => e.num !== 0);
+
+    const asc = numberZoneMode === "distance";
+    const sorted = [...entries].sort((a, b) => asc ? a.value - b.value : b.value - a.value);
+
+    const hotNums = new Set<number>();
+    const coldNums = new Set<number>();
+
+    // Hot: pick top 5. If ties at position 5, prefer trending-up numbers.
+    const hotPicked: Array<{ num: number; value: number; trend: string | null }> = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const e = sorted[i];
+      if (hotPicked.length < 5) {
+        hotPicked.push({ ...e, trend: numberZoneTrends[e.num] });
+      } else if (e.value === hotPicked[4].value) {
+        // Tie at cutoff — only add if trending up AND we can swap out a non-trending-up
+        const trend = numberZoneTrends[e.num];
+        if (trend === "up") {
+          // Check if any of the tied picks at cutoff are NOT trending up
+          const tiedAtCutoff = hotPicked.filter(p => p.value === hotPicked[4].value);
+          const nonUp = tiedAtCutoff.find(p => p.trend !== "up");
+          if (nonUp) {
+            hotPicked.splice(hotPicked.indexOf(nonUp), 1);
+            hotPicked.push({ ...e, trend });
+          }
+        }
+      } else {
+        break;
+      }
+    }
+    for (const p of hotPicked) hotNums.add(p.num);
+
+    // Cold: pick bottom 5. If ties at position 5, exclude trending-up numbers.
+    const coldPicked: Array<{ num: number; value: number; trend: string | null }> = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const e = sorted[i];
+      if (coldPicked.length < 5) {
+        coldPicked.push({ ...e, trend: numberZoneTrends[e.num] });
+      } else if (e.value === coldPicked[4].value) {
+        const trend = numberZoneTrends[e.num];
+        // Only add if NOT trending up (keep only the truly cold)
+        if (trend !== "up") {
+          const tiedAtCutoff = coldPicked.filter(p => p.value === coldPicked[4].value);
+          const upOne = tiedAtCutoff.find(p => p.trend === "up");
+          if (upOne) {
+            coldPicked.splice(coldPicked.indexOf(upOne), 1);
+            coldPicked.push({ ...e, trend });
+          }
+        }
+      } else {
+        break;
+      }
+    }
+    for (const p of coldPicked) coldNums.add(p.num);
+
+    return { hot: hotNums, cold: coldNums };
+  }, [numberZoneData, numberZoneMode, numberZoneTrends]);
+
+  const renderGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
+    item.highlighted && item.previousDistance !== null ? (
+      <span className="group-block-distance">({item.previousDistance})</span>
+    ) : (
+      <span className="group-block-distance">{item.distance}</span>
+    );
   const hasUnsavedChanges = useMemo(
     () => numbers.length > 0 && !areSameNumbers(numbers, lastSavedNumbers),
     [lastSavedNumbers, numbers],
@@ -687,18 +1124,57 @@ export function App() {
     }
   }, [currentSessionId]);
 
+  useEffect(() => {
+    if (!canUsePreferredNumber && predictionTab === "preferredNumber") {
+      setPredictionTab("overview");
+      localStorage.setItem("londoner.predictionTab", "overview");
+    }
+  }, [canUsePreferredNumber, predictionTab]);
+
+  useEffect(() => {
+    if (!canUseQuality124 && predictionTab === "quality124") {
+      setPredictionTab("overview");
+      localStorage.setItem("londoner.predictionTab", "overview");
+    }
+  }, [canUseQuality124, predictionTab]);
+
   function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
     const sorted = [...predictions].sort((a, b) => b.excess - a.excess);
     const index = sorted.findIndex((p) => p.index === item.index);
     return Math.min(3, index);
   }
 
+  let audioCtx: AudioContext | null = null;
+  function playKeySound() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1800, now);
+    osc.frequency.exponentialRampToValueAtTime(500, now + 0.022);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.028);
+  }
+
   function addNumber(value: RouletteNumber) {
+    playKeySound();
+    const next = [...numbers, value];
+
+    // Force key pop to render immediately before heavy computation
+    const popId = keyPopIdRef.current++;
+    flushSync(() => {
+      setKeyPops(prev => [...prev, { id: popId, value }]);
+    });
+
     if (predictions.length > 0 && value !== 0) {
       predictionTracker.record(predictions, value);
     }
-
-    setNumbers([...numbers, value]);
+    setNumbers(next);
     setRedoNumbers([]);
   }
 
@@ -762,8 +1238,9 @@ export function App() {
 
   async function refreshTransferSessions(username = sharedUsername, password = sharedPassword) {
     const list = await listTransferSessions(username.trim(), password);
+    list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     setTransferSessions(list);
-    setSelectedTransferId((current) => (current && list.some((item) => item.id === current) ? current : null));
+    setSelectedTransferIds((current) => current.filter((id) => list.some((item) => item.id === id)));
   }
 
   function clearCurrentSession() {
@@ -917,6 +1394,12 @@ export function App() {
     setActiveDialog("import");
   }
 
+  function openConnectDialog() {
+    setDataText("");
+    setDialogMessage("");
+    setActiveDialog("connect");
+  }
+
   function openToolsDialog() {
     setToolsText("");
     setToolsKeepBreaks(false);
@@ -969,6 +1452,63 @@ export function App() {
     });
   }
 
+  function importFromFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        let parsed = JSON.parse(text);
+        // Handle both array and object formats
+        const items = Array.isArray(parsed) ? parsed : Object.values(parsed);
+        if (!Array.isArray(items) || items.length === 0) {
+          setDialogMessage("文件格式不正确，需要 JSON 数组。");
+          return;
+        }
+        const imported: SavedSession[] = [];
+        for (const item of items) {
+          // Try multiple field names for numbers
+          const numsStr = (item as any).Numbers ?? (item as any).numbers ?? (item as any).Nums ?? "";
+          const nums = typeof numsStr === "string"
+            ? parseNumbersText(numsStr)
+            : parseNumbersText(Array.isArray(numsStr) ? numsStr.join(",") : "");
+          if (nums.numbers.length === 0) continue;
+          const name = String((item as any).Name ?? (item as any).name ?? `导入-${imported.length + 1}`);
+          const tms = (item as any).tms ?? (item as any).SaveTime ?? undefined;
+          imported.push({
+            id: (item as any).id ?? crypto.randomUUID?.() ?? `${Date.now()}-${imported.length}`,
+            name,
+            numbers: nums.numbers,
+            updatedAt: tms ? new Date(tms).toISOString() : new Date().toISOString(),
+            importIndex: (item as any).ImportIndex ?? imported.length,
+            sharedUploader: (item as any).SharedUploader ?? (item as any).sharedUploader ?? "",
+          });
+        }
+        if (imported.length === 0) {
+          setDialogMessage("文件中没有识别到有效数据。");
+          return;
+        }
+        // Save all at once to avoid localStorage race conditions
+        storage.listSessions().then((existing) => {
+          const existingIds = new Set(existing.map((s) => s.id));
+          const merged = [...existing, ...imported.filter((s) => !existingIds.has(s.id))];
+          // Write directly to localStorage
+          localStorage.setItem("londoner.sessions", JSON.stringify(merged));
+          refreshSessions().then(() => {
+            setActiveDialog(null);
+            setNoticeDialog({ title: "文件导入", message: `已导入 ${imported.length} 条数据。` });
+          });
+        }).catch((err) => {
+          setDialogMessage(`保存失败：${err instanceof Error ? err.message : String(err)}`);
+        });
+      } catch {
+        setDialogMessage("文件解析失败，请检查是否为有效的 JSON 文件。");
+      }
+    };
+    reader.readAsText(file);
+  }
+
   function importData() {
     const parsed = parseNumbersText(dataText);
     if (parsed.invalidTokens.length > 0) {
@@ -983,6 +1523,7 @@ export function App() {
 
     setNumbers(parsed.numbers);
     setRedoNumbers([]);
+    setLastSavedNumbers([]);
     clearCurrentSession();
     setActiveDialog(null);
     setNoticeDialog({ title: "导入数据", message: `已导入 ${parsed.numbers.length} 个数字。` });
@@ -994,7 +1535,10 @@ export function App() {
       if (!raw) return null;
       const creds = JSON.parse(raw) as { u: string; p: string };
       const allowed = await checkSharedAccess(creds.u, creds.p);
-      if (!allowed) return null;
+      if (!allowed) {
+        localStorage.removeItem(savedLoginKey);
+        return null;
+      }
       setSharedUsername(creds.u);
       setSharedPassword(creds.p);
       setSharedConnected(true);
@@ -1017,7 +1561,11 @@ export function App() {
       const allowed = await checkSharedAccess(username, sharedPassword);
       if (!allowed) {
         setSharedConnected(false);
-        setNoticeDialog({ title: "共享数据", message: "用户名或密码不正确。" });
+        localStorage.removeItem(savedLoginKey);
+        setNoticeDialog({
+          title: "共享数据",
+          message: formatSharedLoginError("用户名或密码不正确。", "checkSharedAccess returned false"),
+        });
         return;
       }
       localStorage.setItem(savedLoginKey, JSON.stringify({ u: username, p: sharedPassword }));
@@ -1029,7 +1577,8 @@ export function App() {
       action?.(username, sharedPassword);
     } catch (error) {
       setSharedConnected(false);
-      setNoticeDialog({ title: "共享数据", message: formatSharedError(error) });
+      localStorage.removeItem(savedLoginKey);
+      setNoticeDialog({ title: "共享数据", message: formatSharedLoginError(formatSharedError(error), getRawErrorMessage(error)) });
     } finally {
       setSharedLoading(false);
     }
@@ -1099,8 +1648,142 @@ export function App() {
     }
   }
 
+  function connectInputData() {
+    const parsed = parseNumbersText(dataText);
+    if (parsed.invalidTokens.length > 0) {
+      setDialogMessage(`存在无效数字：${parsed.invalidTokens.slice(0, 5).join("、")}`);
+      return;
+    }
+    const incoming: ConnectIncomingData = {
+      label: "输入数据",
+      numbers: parsed.numbers,
+    };
+    if (incoming.numbers.length === 0) {
+      setDialogMessage("没有识别到有效数字。");
+      return;
+    }
+    if (numbers.length === 0) {
+      setNumbers(incoming.numbers);
+      setRedoNumbers([]);
+      setLastSavedNumbers([]);
+      clearCurrentSession();
+      setActiveDialog(null);
+      setNoticeDialog({ title: "接上数据", message: `已接上（${incoming.numbers.length} 个数字）` });
+      return;
+    }
+
+    const result = analyzeNumberMergeV2(numbers, incoming.numbers);
+    if (result.relationship === "none" || result.relationship === "insufficient") {
+      setDialogMessage(`当前数据与输入数据没有找到足够可靠的尾部重叠关系，不能接上。${result.description}`);
+      return;
+    }
+    if (result.relationship === "ambiguous") {
+      setDialogMessage(`当前数据与输入数据存在 ${result.alternatives?.length ?? "多个"} 个同等可能的接法，无法确定正确顺序。本次不进行接上。`);
+      return;
+    }
+
+    const relationship = result.tolerantAlignment?.relationship ?? (result.relationship === "conflict"
+      ? result.alignment?.relationship
+      : result.relationship);
+    if (relationship === "b-then-a") {
+      setDialogMessage("输入数据位于当前数据之前，不是当前局后续数据。本次没有修改。");
+      return;
+    }
+    if (relationship === "identical" || relationship === "a-contains-b") {
+      setDialogMessage(`输入数据已包含在当前数据中，没有新增号码。当前 ${numbers.length} 个，输入 ${incoming.numbers.length} 个。`);
+      return;
+    }
+    if (result.safeToMerge) {
+      applyTransferConnectNumbers(result.merged, incoming, result);
+      return;
+    }
+    if (result.tolerantAlignment) {
+      if (result.tolerantAlignment.relationship === "b-then-a") {
+        setDialogMessage("输入数据位于当前数据之前，不是当前局后续数据。本次没有修改。");
+        return;
+      }
+      const preview = buildNumberMergeV2TolerantUnion(result.tolerantAlignment, "a");
+      if (preview.length <= numbers.length) {
+        setDialogMessage("输入数据没有提供当前局后续号码，只发现重叠问题。本次没有修改。");
+        return;
+      }
+      setActiveDialog(null);
+      setTransferConnectDialog({
+        conflictChoice: "a",
+        incoming,
+        issueChoices: result.tolerantAlignment.issues.map(() => "a"),
+        result,
+      });
+      return;
+    }
+    if (result.alignment) {
+      const preview = buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, "a");
+      if (preview.length <= numbers.length) {
+        setDialogMessage("输入数据没有提供当前局后续号码，只发现重叠冲突。本次没有修改。");
+        return;
+      }
+      setActiveDialog(null);
+      setTransferConnectDialog({
+        conflictChoice: "a",
+        incoming,
+        issueChoices: [],
+        result,
+      });
+      return;
+    }
+    setDialogMessage("无法构造安全的接上结果，本次没有修改数据。");
+  }
+
+  function applyTransferConnectNumbers(
+    merged: readonly number[] | undefined,
+    incoming: ConnectIncomingData,
+    result?: NumberMergeV2Result,
+  ) {
+    if (!merged) {
+      setNoticeDialog({ title: "接上失败", message: "无法构造安全的接上结果，本次没有修改数据。" });
+      return;
+    }
+    const mergedNumbers = merged.filter(isRouletteNumber);
+    if (mergedNumbers.length !== merged.length) {
+      setNoticeDialog({ title: "接上失败", message: "接上结果中出现无效号码，本次没有修改数据。" });
+      return;
+    }
+    if (mergedNumbers.length <= numbers.length) {
+      setNoticeDialog({
+        title: "无需接上",
+        message: `输入数据没有新增号码。当前 ${numbers.length} 个，输入 ${incoming.numbers.length} 个。`,
+      });
+      return;
+    }
+
+    const originalLength = numbers.length;
+    const added = mergedNumbers.length - originalLength;
+    const overlapLength = result?.alignment?.overlapLength ?? result?.tolerantAlignment?.overlapLength;
+    setNumbers(mergedNumbers);
+    setRedoNumbers([]);
+    setActiveDialog(null);
+    setTransferConnectDialog(null);
+    setNoticeDialog({
+      title: "接上完成",
+      message: `已接上输入数据：原来 ${originalLength} 个，输入 ${incoming.numbers.length} 个，新增 ${added} 个，接上后 ${mergedNumbers.length} 个。${overlapLength !== undefined ? `重叠 ${overlapLength} 个。` : ""}`,
+    });
+  }
+
+  function applyTransferConnectConflict() {
+    const dialog = transferConnectDialog;
+    if (!dialog) return;
+    if (dialog.result.tolerantAlignment) {
+      const merged = buildNumberMergeV2TolerantUnionWithChoices(dialog.result.tolerantAlignment, dialog.issueChoices);
+      applyTransferConnectNumbers(merged, dialog.incoming, dialog.result);
+      return;
+    }
+    if (!dialog.result.alignment) return;
+    const merged = buildNumberMergeV2Union(numbers, dialog.incoming.numbers, dialog.result.alignment, dialog.conflictChoice);
+    applyTransferConnectNumbers(merged, dialog.incoming, dialog.result);
+  }
+
   function importTransferData() {
-    const selected = transferSessions.find((item) => item.id === selectedTransferId);
+    const selected = transferSessions.find((item) => item.id === selectedTransferIds[0]);
     if (!selected) return;
 
     setConfirmDialog({
@@ -1111,6 +1794,7 @@ export function App() {
         const importedNumbers = selected.numbers.filter(isRouletteNumber);
         setNumbers(importedNumbers);
         setRedoNumbers([]);
+        setLastSavedNumbers([]);
         clearCurrentSession();
         setDataViewOpen(false);
         setNoticeDialog({ title: "导入传输数据", message: `已导入 ${importedNumbers.length} 个数字。` });
@@ -1119,7 +1803,7 @@ export function App() {
   }
 
   function removeTransferData() {
-    const selected = transferSessions.find((item) => item.id === selectedTransferId);
+    const selected = transferSessions.find((item) => item.id === selectedTransferIds[0]);
     if (!selected) return;
 
     setConfirmDialog({
@@ -1131,7 +1815,7 @@ export function App() {
         try {
           await deleteTransferSession(sharedUsername.trim(), sharedPassword, selected.id);
           await refreshTransferSessions();
-          setSelectedTransferId(null);
+          setSelectedTransferIds([]);
           setNoticeDialog({ title: "传输数据", message: "已删除选中的传输数据。" });
         } catch (error) {
           setNoticeDialog({ title: "传输数据", message: formatSharedError(error) });
@@ -1299,6 +1983,97 @@ export function App() {
     setSelectedSessionIds([]);
   }
 
+  function openSessionMerge(items: SavedSession[]) {
+    if (items.length !== 2) return;
+
+    const [left, right] = items;
+    const result = analyzeNumberMergeV2(left.numbers, right.numbers);
+    if (result.relationship === "none" || result.relationship === "insufficient") {
+      setNoticeDialog({
+        title: "无法合并",
+        message: `"${left.name}"与"${right.name}"没有找到足够可靠的重叠关系，不能合并。${result.description}`,
+      });
+      return;
+    }
+    if (result.relationship === "ambiguous") {
+      setNoticeDialog({
+        title: "无法安全合并",
+        message: `"${left.name}"与"${right.name}"存在 ${result.alternatives?.length ?? "多个"} 个同等可能的接法，无法确定正确顺序。本次不进行合并。`,
+      });
+      return;
+    }
+
+    const relationship = result.tolerantAlignment?.relationship ?? result.alignment?.relationship ?? result.relationship;
+    const targetId = relationship === "b-contains-a" || relationship === "a-then-b"
+      ? right.id
+      : left.id;
+    setSessionMergeDialog({
+      conflictChoice: targetId === right.id ? "b" : "a",
+      issueChoices: result.tolerantAlignment?.issues.map(() => (targetId === right.id ? "b" : "a")) ?? [],
+      left,
+      result,
+      right,
+      targetId,
+    });
+  }
+
+  async function applySessionMerge() {
+    const dialog = sessionMergeDialog;
+    if (!dialog) return;
+
+    const { left, right, result } = dialog;
+    const merged = result.safeToMerge
+      ? result.merged
+      : result.tolerantAlignment
+        ? buildNumberMergeV2TolerantUnionWithChoices(result.tolerantAlignment, dialog.issueChoices)
+      : result.alignment
+        ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, dialog.conflictChoice)
+        : undefined;
+    if (!merged) {
+      setSessionMergeDialog(null);
+      setNoticeDialog({ title: "合并失败", message: "无法构造安全的合并结果，本次没有修改数据。" });
+      return;
+    }
+
+    const mergedNumbers = merged.filter(isRouletteNumber);
+    if (mergedNumbers.length !== merged.length) {
+      setSessionMergeDialog(null);
+      setNoticeDialog({ title: "合并失败", message: "合并结果中出现无效号码，本次没有修改数据。" });
+      return;
+    }
+
+    const target = dialog.targetId === left.id ? left : right;
+    const removed = target.id === left.id ? right : left;
+    try {
+      await storage.saveSession({
+        ...target,
+        numbers: mergedNumbers,
+      });
+      await storage.deleteSession(removed.id);
+      await refreshSessions();
+      setSelectedSessionIds([target.id]);
+
+      if (currentSessionId === left.id || currentSessionId === right.id) {
+        setNumbers(mergedNumbers);
+        setRedoNumbers([]);
+        setLastSavedNumbers(mergedNumbers);
+        setCurrentSessionId(target.id);
+      }
+
+      setSessionMergeDialog(null);
+      setNoticeDialog({
+        title: "合并完成",
+        message: `合并结果已保存到"${target.name}"（${mergedNumbers.length} 个号码），并删除"${removed.name}"。`,
+      });
+    } catch (error) {
+      setSessionMergeDialog(null);
+      setNoticeDialog({
+        title: "合并失败",
+        message: error instanceof Error ? error.message : "保存本地数据时发生错误，请重试。",
+      });
+    }
+  }
+
   function renameSession(session: SavedSession) {
     setPromptValue(session.name);
     setPromptDialog({
@@ -1320,6 +2095,51 @@ export function App() {
         setNoticeDialog({ title: "重命名成功", message: `"${session.name}"重命名为"${name}"成功。` });
       },
     });
+  }
+
+  function editSession(session: SavedSession) {
+    setEditSessionId(session.id);
+    setEditName(session.name);
+    setEditUploader(session.sharedUploader ?? "");
+    setEditTime(isoToDatetimeLocal(session.updatedAt));
+    setEditDialogOpen(true);
+  }
+
+  async function saveEditSession() {
+    if (!editSessionId) return;
+    const session = sessions.find((s) => s.id === editSessionId);
+    if (!session) return;
+
+    const name = editName.trim();
+    const nameError = validateSessionName(name, sessions, editSessionId);
+    if (nameError) {
+      setNoticeDialog({ title: "编辑失败", message: nameError });
+      return;
+    }
+
+    const timeString = editTime.trim();
+    let updatedAt = session.updatedAt;
+    if (timeString) {
+      const parsedDate = new Date(timeString);
+      if (Number.isNaN(parsedDate.getTime())) {
+        setNoticeDialog({ title: "编辑失败", message: "保存时间格式无效，请输入正确的日期时间。" });
+        return;
+      }
+      updatedAt = parsedDate.toISOString();
+    }
+
+    const updated: SavedSession = {
+      ...session,
+      name,
+      sharedUploader: editUploader.trim(),
+      updatedAt,
+    };
+
+    await storage.saveSession(updated);
+    await refreshSessions();
+    setSelectedSessionIds([session.id]);
+    setEditDialogOpen(false);
+    setNoticeDialog({ title: "编辑成功", message: `数据"${name}"已更新。` });
   }
 
   async function exportSessions(items: SavedSession[]) {
@@ -1345,6 +2165,66 @@ export function App() {
     });
   }
 
+  async function openExportDialog() {
+    const items = selectedSessionIds.length > 0
+      ? sortedSessions.filter((s) => selectedSessionIds.includes(s.id))
+      : sortedSessions;
+    if (items.length === 0) return;
+    setConfirmDialog({
+      title: "导出数据",
+      message: `已选 ${items.length} 条数据。`,
+      confirmText: "导出到文件",
+      onConfirm: () => void exportToFile(),
+      cancelText: "导出到剪贴板",
+      onCancel: () => void exportSessions(items),
+    });
+  }
+
+  async function exportToFile() {
+    const items = selectedSessionIds.length > 0
+      ? sortedSessions.filter((s) => selectedSessionIds.includes(s.id))
+      : sortedSessions;
+    if (items.length === 0) return;
+    const data = items.map((session) => ({
+      Count: session.numbers.length,
+      Name: session.name,
+      Numbers: formatNumbers(session.numbers),
+      SaveTime: formatSessionTime(session.updatedAt),
+      tms: new Date(session.updatedAt).getTime(),
+      ImportIndex: session.importIndex,
+      SharedUploader: session.sharedUploader || "",
+    }));
+    const json = JSON.stringify(data, null, 2);
+    const filename = "history_data.json";
+
+    // Try File System Access API (desktop Chrome/Edge)
+    if ("showDirectoryPicker" in window) {
+      try {
+        const dirHandle = await (window as any).showDirectoryPicker();
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        setNoticeDialog({ title: "导出文件", message: `已保存到选定文件夹：${filename}` });
+        return;
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
+      }
+    }
+
+    // Fallback: browser download
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setNoticeDialog({ title: "导出文件", message: `已下载：${filename}` });
+  }
+
   function toggleSessionSelection(id: string) {
     setSelectedSessionIds((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
@@ -1356,7 +2236,7 @@ export function App() {
       setSessionSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
     } else {
       setSessionSortField(field);
-      setSessionSortDirection(field === "name" ? "desc" : "asc");
+      setSessionSortDirection(field === "time" ? "desc" : "asc");
     }
   }
 
@@ -1957,6 +2837,24 @@ export function App() {
 
   return (
     <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
+      <section className="top-stats-strip" aria-label="统计数据">
+        <strong className="top-stats-count">{numbers.length}</strong>
+        <span className="top-stats-roi">
+          <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
+          <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
+            净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
+          </span>
+          {combinedRoiFrom201 ? (
+            <>
+              <span className="top-stats-sep">|</span>
+              <span className="top-stats-item">投<strong>{combinedRoiFrom201.bet}</strong></span>
+              <span className={`top-stats-item top-stats-net ${combinedRoiFrom201.net >= 0 ? "net-positive" : "net-negative"}`}>
+                净<strong>{combinedRoiFrom201.net >= 0 ? "+" : ""}{combinedRoiFrom201.net}</strong>
+              </span>
+            </>
+          ) : null}
+        </span>
+      </section>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => !value)}>
         {topColRows.map((item) => (
           <div
@@ -2076,7 +2974,32 @@ export function App() {
         </div>
       </section>
 
-      {(() => { const filtered = signalDisplay.filter(item => (item.kind === "rhythm" ? show124 : showCold)); return filtered.length > 0 ? (
+      {canUseQuality124 && showQuality124 && quality124Signals.length > 0 ? (
+        <section className="quality124-signal-area" aria-label="行组节奏信号">
+          {quality124Signals.map((item) => (
+            <div
+              className={`quality124-signal-item quality124-tier-${item.tier}`}
+              key={`quality124-${item.kind}-${item.ci}-${item.entryAfter}-${item.tier}`}
+              onClick={() => { setPredictionTab("quality124"); setPredictionWindowOpen(true); }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="quality124-signal-label">{item.label}</span>
+              <span className="quality124-signal-chase">
+                <span className="quality124-stars">{item.stars > 0 ? "★".repeat(item.stars) : ""}</span>
+                <span className="quality124-dots">
+                  {Array.from({ length: item.chaseLen }, (_, i) => i + 1).map((n) => (
+                    <span key={n} className={`quality124-dot ${n <= item.round ? "filled" : ""}`} />
+                  ))}
+                </span>
+                <span className="quality124-bet">{item.betAmt}</span>
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
+      {(() => { const filtered = signalDisplay.filter(item => item.kind === "cold" && showCold); return filtered.length > 0 ? (
         <section className="prediction-signal-area" aria-label="预测信号">
           {filtered.map((item) => (
             <div
@@ -2146,25 +3069,62 @@ export function App() {
         </section>
       ) : null; })()}
 
+      {(() => {
+        const filteredPreferredNumber = canUsePreferredNumber && showPreferredNumber ? preferredNumberSignals : [];
+        const filteredHotNumber = showHotNumber && hotNumberSignal ? [hotNumberSignal] : [];
+        return filteredPreferredNumber.length > 0 || filteredHotNumber.length > 0 ? (
+          <section className="repeat-signal-area" aria-label="单号信号">
+            {filteredHotNumber.map((item) => (
+              <div
+                className="repeat-signal-item repeat-hot"
+                key={`hot-${item.number}`}
+                onClick={() => { setPredictionTab("hotNumber"); setPredictionWindowOpen(true); }}
+                role="button"
+                tabIndex={0}
+              >
+                <span className="repeat-tier-badge hot-badge">{item.mode === "short" ? "热门S" : "热门"}</span>
+                <strong className="repeat-number">{item.number}</strong>
+              </div>
+            ))}
+            {filteredPreferredNumber.map((item, index) => (
+              <div
+                className="repeat-signal-item repeat-preferred"
+                key={`preferred-${index}-${item.numbers.join("-")}`}
+                onClick={() => { setPredictionTab("preferredNumber"); setPredictionWindowOpen(true); }}
+                role="button"
+                tabIndex={0}
+              >
+                <span className="repeat-tier-badge">优选</span>
+                <span className="preferred-number-picks">
+                  {item.numbers.map((value) => (
+                    <strong className="repeat-number" key={value}>{value}</strong>
+                  ))}
+                </span>
+              </div>
+            ))}
+          </section>
+        ) : null;
+      })()}
+
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
         <div className="dock-actions">
-          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传输</button>
-          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
+          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
+          <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
           <button onClick={openImportDialog} type="button">导入</button>
           <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
+          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openDataDialog} type="button">数据</button>
-          <button onClick={openConfigView} type="button">配置</button>
         </div>
-        <div className="dock-actions">
+        <div className="dock-actions dock-actions-primary">
           <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
-          <button onClick={() => { setStatsTab("colrow"); setStatsViewOpen(true); }} type="button">行组</button>
-          <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
-          <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
-          <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
+          <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
+          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
+          <button onClick={openConfigView} type="button">配置</button>
         </div>
 
         {keyboardMode === "keypad" ? (
@@ -2249,7 +3209,7 @@ export function App() {
           <div className="stats-tabs data-tabs" aria-label="数据来源">
             <button className={dataTab === "local" ? "selected" : ""} onClick={() => setDataTab("local")} type="button">本地数据</button>
             <button className={dataTab === "shared" ? "selected" : ""} onClick={() => setDataTab("shared")} type="button">共享数据</button>
-            <button className={dataTab === "transfer" ? "selected" : ""} onClick={() => { setDataTab("transfer"); if (sharedConnected) void reloadTransferData(); }} type="button">传输数据</button>
+            <button className={dataTab === "transfer" ? "selected" : ""} onClick={() => { setDataTab("transfer"); if (sharedConnected) void reloadTransferData(); }} type="button">临时数据</button>
           </div>
           {dataTab === "local" ? (
             <>
@@ -2292,43 +3252,98 @@ export function App() {
               </tbody>
             </table>
           </div>
-          <footer className="data-screen-actions">
-            <button disabled={selectedSessions.length !== 1} onClick={() => openSession(selectedSessions[0])} type="button">
-              打开
-            </button>
-            <button disabled={selectedSessions.length !== 1} onClick={() => renameSession(selectedSessions[0])} type="button">
-              更名
-            </button>
-            <button
-              disabled={selectedSessions.length < 1}
-              onClick={() =>
-                setConfirmDialog({
-                  title: "请确认",
-                  message: "确定要删除当前选中的数据吗？",
-                  confirmText: "删除",
-                  onConfirm: () => deleteSessions(selectedSessions),
-                })
+          {(() => {
+            const totalNums = sortedSessions.reduce((sum, s) => sum + s.numbers.length, 0);
+            const thisYear = new Date().getFullYear();
+            const years = [thisYear, thisYear - 1, thisYear - 2];
+            const yearCounts: Record<number, { sessions: number; numbers: number }> = {};
+            for (const y of years) yearCounts[y] = { sessions: 0, numbers: 0 };
+            for (const s of sortedSessions) {
+              const t = s.updatedAt ? new Date(s.updatedAt).getFullYear() : null;
+              if (t && yearCounts[t]) {
+                yearCounts[t].sessions += 1;
+                yearCounts[t].numbers += s.numbers.length;
               }
-              type="button"
-            >
-              删除
-            </button>
-            <button
-              onClick={() => {
-                setImportMode("files");
-                setDataText("");
-                setDialogMessage("");
-                setActiveDialog("import");
-              }}
-              type="button"
-            >
-              导入
-            </button>
-            <button disabled={sortedSessions.length === 0} onClick={() => void exportSessions(selectedSessions)} type="button">
-              导出
-            </button>
-            <button disabled={selectedSessions.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadLocalToShared(u, p)); }} type="button">上传</button>
-            <button onClick={openToolsDialog} type="button">工具</button>
+            }
+            return (
+              <div className="data-summary-row">
+                <span className="data-summary-total"><strong>{sortedSessions.length}</strong> / <span className="data-summary-nums">{totalNums}</span></span>
+                {years.map((y) => (
+                  yearCounts[y].sessions > 0 ? (
+                    <span key={y}><span className="data-summary-year">{y}</span> <strong>{yearCounts[y].sessions}</strong> / <span className="data-summary-nums">{yearCounts[y].numbers}</span></span>
+                  ) : null
+                ))}
+              </div>
+            );
+          })()}
+          <footer className="data-screen-actions data-actions-stack">
+            <div className="data-actions-full">
+              <button
+                disabled={sortedSessions.length === 0}
+                onClick={() =>
+                  setSelectedSessionIds(
+                    selectedSessionIds.length === sortedSessions.length
+                      ? []
+                      : sortedSessions.map((s) => s.id),
+                  )
+                }
+                type="button"
+              >
+                全选
+              </button>
+              <button disabled={selectedSessionIds.length !== 1} onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) openSession(s); }} type="button">
+                打开
+              </button>
+              <button disabled={selectedSessionIds.length !== 1} onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) renameSession(s); }} type="button">
+                更名
+              </button>
+              <button
+                disabled={selectedSessionIds.length !== 1}
+                onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) editSession(s); }}
+                type="button"
+              >
+                编辑
+              </button>
+              <button
+                disabled={selectedSessionIds.length < 1}
+                onClick={() =>
+                  setConfirmDialog({
+                    title: "请确认",
+                    message: "确定要删除当前选中的数据吗？",
+                    confirmText: "删除",
+                    onConfirm: () => deleteSessions(sortedSessions.filter((s) => selectedSessionIds.includes(s.id))),
+                  })
+                }
+                type="button"
+              >
+                删除
+              </button>
+            </div>
+            <div className="data-actions-full">
+              <button
+                disabled={selectedSessionIds.length !== 2}
+                onClick={() => openSessionMerge(sortedSessions.filter((s) => selectedSessionIds.includes(s.id)))}
+                type="button"
+              >
+                合并
+              </button>
+              <button
+                onClick={() => {
+                  setImportMode("files");
+                  setDataText("");
+                  setDialogMessage("");
+                  setActiveDialog("import");
+                }}
+                type="button"
+              >
+                导入
+              </button>
+              <button disabled={sortedSessions.length === 0} onClick={() => openExportDialog()} type="button">
+                导出
+              </button>
+              <button disabled={selectedSessionIds.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadLocalToShared(u, p)); }} type="button">上传</button>
+              <button onClick={openToolsDialog} type="button">工具</button>
+            </div>
           </footer>
             </>
           ) : dataTab === "shared" ? (
@@ -2382,12 +3397,29 @@ export function App() {
                   </div>
                 )}
               </div>
-              <footer className="data-screen-actions shared-data-actions">
-                <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
-                <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
-                <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
-                <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void removeSharedData()} type="button">删除</button>
-                <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+              <footer className="data-screen-actions data-actions-stack">
+                <div className="data-actions-shared-row">
+                  <button
+                    disabled={!sharedConnected || sharedLoading || sortedSharedSessions.length === 0}
+                    onClick={() =>
+                      setSelectedSharedSessionIds(
+                        selectedSharedSessionIds.length === sortedSharedSessions.length
+                          ? []
+                          : sortedSharedSessions.map((s) => s.id),
+                      )
+                    }
+                    type="button"
+                  >
+                    全选
+                  </button>
+                  <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void removeSharedData()} type="button">删除</button>
+                  <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadSharedData(u, p)); }} type="button">刷新</button>
+                </div>
+                <div className="data-actions-shared-row">
+                  <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
+                  <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
+                  <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+                </div>
               </footer>
             </>
           ) : (
@@ -2411,9 +3443,9 @@ export function App() {
                         ) : null}
                         {transferSessions.map((item) => (
                           <tr
-                            className={selectedTransferId === item.id ? "selected" : ""}
+                            className={selectedTransferIds.includes(item.id) ? "selected" : ""}
                             key={item.id}
-                            onClick={() => setSelectedTransferId(item.id)}
+                            onClick={() => setSelectedTransferIds((prev) => prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id])}
                           >
                             <td>{item.numbers.length}</td>
                             <td>{item.uploader}</td>
@@ -2432,8 +3464,21 @@ export function App() {
                 )}
               </div>
               <footer className="data-screen-actions transfer-data-actions">
-                <button disabled={!sharedConnected || sharedLoading || !selectedTransferId} onClick={importTransferData} type="button">导入</button>
-                <button disabled={!sharedConnected || sharedLoading || !selectedTransferId} onClick={removeTransferData} type="button">删除</button>
+                <button
+                  disabled={!sharedConnected || sharedLoading || transferSessions.length === 0}
+                  onClick={() =>
+                    setSelectedTransferIds(
+                      selectedTransferIds.length === transferSessions.length
+                        ? []
+                        : transferSessions.map((s) => s.id),
+                    )
+                  }
+                  type="button"
+                >
+                  全选
+                </button>
+                <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={importTransferData} type="button">导入当前</button>
+                <button disabled={!sharedConnected || sharedLoading || selectedTransferIds.length === 0} onClick={removeTransferData} type="button">删除</button>
                 <button disabled={!sharedConnected || sharedLoading} onClick={() => { ensureSharedConnected((u, p) => void reloadTransferData(u, p)); }} type="button">刷新</button>
               </footer>
             </>
@@ -2494,6 +3539,132 @@ export function App() {
                   : null}
               </tbody>
             </table>
+          </div>
+        </section>
+      ) : null}
+
+      {sixNumberViewOpen ? (
+        <section className="data-screen six-number-screen" aria-label="行组快照">
+          <header className="data-screen-head">
+            <strong>行组快照</strong>
+            <button className="close-button title-close-button" onClick={() => setSixNumberViewOpen(false)} type="button">x</button>
+          </header>
+          <div className="group-block-body">
+            <div className="group-block-head" aria-hidden="true">
+              <span>组</span><span>6数字</span><span>3数字</span><span>号码</span>
+            </div>
+            <div className="group-block-grid">
+              {threeNumberSnapshot.map((item) => (
+                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                  {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
+                    <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
+                  ))}
+                </div>
+              ))}
+              <div className="group-block-row-stats" style={{ gridRow: "13" }}>
+                {rowBlockSnapshot.map((item) => (
+                  <div className={`group-block-row-stat${item.highlighted ? " highlighted" : ""}`} key={item.ri}>
+                    <span className="group-block-row-label">{item.label}</span>
+                    <strong>{renderGroupBlockDistance(item)}</strong>
+                  </div>
+                ))}
+              </div>
+              {threeNumberSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                  {renderGroupBlockDistance(item)}
+                </div>
+              ))}
+              {sixNumberSnapshot.map((item) => (
+                <div
+                  className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`}
+                  key={`y-${item.wi}`}
+                  style={{ gridRow: `${item.wi + 1} / span 2` }}
+                >
+                  {renderGroupBlockDistance(item)}
+                </div>
+              ))}
+              {groupBlockSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${item.gi * 4 + 1} / span 4` }}>
+                  {renderGroupBlockDistance(item)}
+                </div>
+              ))}
+              <button
+                className="number-zone-trigger"
+                onClick={() => setNumberZoneOpen(true)}
+                style={{ gridColumn: "4", gridRow: "1 / 14", opacity: 0, cursor: "pointer" }}
+                title="打开号码区"
+                type="button"
+              >
+                号码区
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {numberZoneOpen ? (
+        <section className="data-screen number-zone-screen" aria-label="号码区">
+          <header className="data-screen-head">
+            <strong>号码</strong>
+            <button className="close-button title-close-button" onClick={() => setNumberZoneOpen(false)} type="button">x</button>
+          </header>
+          <div className="number-zone-body" onClick={() => { setNumberZoneOpen(false); setSixNumberViewOpen(true); }}>
+            <div className="number-zone-grid">
+              <div className="number-zone-zero-row">
+                <div className={`number-zone-cell zero-cell${latestNumber === 0 ? " current" : ""}`}>
+                  <span className="number-zone-value">0</span>
+                  <span className="number-zone-distance">
+                    {numberZoneMode === "distance" && latestNumber === 0 && numberZoneData[0]?.prevDistance !== null
+                      ? `(${numberZoneData[0].prevDistance})`
+                      : numberZoneData[0]?.value ?? "-"}
+                  </span>
+                </div>
+              </div>
+              {Array.from({ length: 12 }, (_, wi) => (
+                <div className="number-zone-row" key={wi}>
+                  {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
+                    const nd = numberZoneData[value];
+                    const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
+                    const showHotCold = numberZoneMode !== "distance";
+                    const isHot = showHotCold && numberZoneHotCold.hot.has(value);
+                    const isCold = showHotCold && numberZoneHotCold.cold.has(value);
+                    const trend = isHot ? numberZoneTrends[value] : null;
+                    const cls = [
+                      "number-zone-cell",
+                      nd?.isLatest ? "current" : "",
+                      isHot ? "hot" : "",
+                      isCold ? "cold" : "",
+                      trend === "up" ? "trend-up" : "",
+                      trend === "down" ? "trend-down" : "",
+                    ].filter(Boolean).join(" ");
+                    return (
+                      <div className={cls} key={value}>
+                        <span className="number-zone-value">{value}</span>
+                        <span className="number-zone-distance">
+                          {showPrev ? `(${nd!.prevDistance})` : nd?.value ?? "-"}
+                          {trend && <span className={`number-zone-trend ${trend}`}> {trend === "up" ? "▲" : "▼"}</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="number-zone-tabs">
+            {["distance", "1", "2", "3", "5", "all"].map((mode) => (
+              <button
+                className={`number-zone-tab${numberZoneMode === mode ? " selected" : ""}`}
+                key={mode}
+                onClick={() => {
+                  setNumberZoneMode(mode);
+                  localStorage.setItem("londoner.numberZoneMode", mode);
+                }}
+                type="button"
+              >
+                {mode === "distance" ? "距离" : mode === "all" ? "全部" : `${mode}圈`}
+              </button>
+            ))}
           </div>
         </section>
       ) : null}
@@ -3021,7 +4192,6 @@ export function App() {
       ) : null}
 
       {predictionWindowOpen ? (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
           <section className="prediction-screen" aria-label="预测明细">
             <div className="modal-head">
               <strong>预测明细</strong>
@@ -3029,41 +4199,74 @@ export function App() {
             </div>
             <div className="prediction-tabs">
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
-              <button className={predictionTab === "rhythm" ? "selected" : ""} onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} type="button">124</button>
+              {canUseQuality124 ? (
+                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">节奏</button>
+              ) : null}
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
-              <button className={predictionTab === "chase3" ? "selected" : ""} onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} type="button">追3</button>
+              <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
+              {canUsePreferredNumber ? (
+                <button className={predictionTab === "preferredNumber" ? "selected" : ""} onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} type="button">优选号</button>
+              ) : null}
             </div>
             <div className="prediction-body">
               {predictionTab === "overview" ? (
-                <div className="overview-cards">
-                  <div className="overview-card overview-rhythm" onClick={() => { setPredictionTab("rhythm"); localStorage.setItem("londoner.predictionTab", "rhythm"); }} role="button" tabIndex={0}>
+                <div className={`overview-pane overview-pane-${predictionOverviewTab}`}>
+                  <div className="overview-subtabs" aria-label="总览分类" role="tablist">
+                    {[
+                      ["repeat", "单号"],
+                      ["other", "行组"],
+                    ].map(([key, label]) => (
+                      <button
+                        aria-selected={predictionOverviewTab === key}
+                        className={predictionOverviewTab === key ? "selected" : ""}
+                        key={key}
+                        onClick={() => { setPredictionOverviewTab(key); localStorage.setItem("londoner.predictionOverviewTab", key); }}
+                        role="tab"
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="repeat-filter-panel" style={{ margin: "0 0 6px", padding: "6px 10px", fontSize: 13 }}>
+                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
+                    <span>前200个数字为历史号码</span>
+                  </div>
+                  <div className="overview-cards">
+                  {canUseQuality124 ? (
+                  <div className="overview-card overview-quality124 overview-other-card" onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>124</span>
+                      <span>行组节奏</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${show124 ? " on" : ""}`} onClick={() => { const v = !show124; setShow124(v); localStorage.setItem("londoner.show124", v ? "1" : "0"); }} type="button" />
-                        {show124 ? (
-                          <span className="signal-tier-opts">
-                            {["全部","仅行"].map(t => (
-                              <button key={t} className={`signal-tier-btn${rhythmMode === t ? " active" : ""}`} onClick={() => { setRhythmMode(t); const ro = t === "仅行"; setRhythmRowsOnly(ro); localStorage.setItem("londoner.rhythmMode", t); localStorage.setItem("londoner.rhythmRowsOnly", ro ? "true" : "false"); }} type="button">{t}</button>
-                            ))}
-                          </span>
-                        ) : null}
+                        <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
                       </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
+                        <strong>{quality124Roi.signals}</strong><strong>{quality124Roi.bet}</strong><strong>{quality124Roi.win}</strong>
+                        <strong className="roi-value" style={{ color: quality124Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124Roi.roi >= 0 ? "+" : ""}{quality124Roi.roi.toFixed(1)}%</strong>
                       </div>
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">ROI-仅行</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
-                        <strong className="roi-value" style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
+                        <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
+                        <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
+                      {QUALITY_124_TIER_ORDER.map((tier) => {
+                        const meta = QUALITY_124_TIER_META[tier];
+                        const roi = quality124.tierRois[tier];
+                        const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
+                        return (
+                          <div className="prediction-roi-row" key={tier}>
+                            <span className="prediction-roi-subheader">{meta.label}{stars}</span><span>{roi.bet}</span><span>{roi.win}</span>
+                            <strong className="roi-value" style={{ color: roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{roi.roi >= 0 ? "+" : ""}{roi.roi.toFixed(1)}%</strong>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                  <div className="overview-card overview-cold" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
+                  ) : null}
+                  <div className="overview-card overview-cold overview-other-card" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>长套</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3089,7 +4292,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-chase6" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-chase6 overview-other-card" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>追6</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
@@ -3119,37 +4322,111 @@ export function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="overview-card overview-chase3" onClick={() => { setPredictionTab("chase3"); localStorage.setItem("londoner.predictionTab", "chase3"); }} role="button" tabIndex={0}>
+                  <div className="overview-card overview-hot overview-repeat-card" onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>追3</span>
+                      <span>热门</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${chase3Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase3Filter === "全关" ? "全部" : "全关"; setChase3Filter(v); localStorage.setItem("londoner.chase3Filter", v); }} type="button" />
-                        {chase3Filter !== "全关" ? (
-                          <span className="signal-tier-opts">
-                            {["全部","TOP2","TOP1"].map(t => (
-                              <button key={t} className={`signal-tier-btn${chase3Filter === t ? " active" : ""}`} onClick={() => { setChase3Filter(t); localStorage.setItem("londoner.chase3Filter", t); }} type="button">{t}</button>
-                            ))}
-                          </span>
-                        ) : null}
+                        <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
+                      </span>
+                    </div>
+                    <div className="prediction-roi-table" style={{ margin: 0 }}>
+                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                      <div className="prediction-roi-row">
+                        <strong>{hotNumberRoi.signals}</strong><strong>{hotNumberRoi.bet}</strong><strong>{hotNumberRoi.win}</strong>
+                        <strong className="roi-value" style={{ color: hotNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoi.roi >= 0 ? "+" : ""}{hotNumberRoi.roi.toFixed(1)}%</strong>
+                      </div>
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span>
+                        <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
+                      </div>
+                      {hotNumberSignal ? (
+                        <div className="prediction-roi-row">
+                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  {canUsePreferredNumber ? (
+                  <div className="overview-card overview-preferred overview-repeat-card" onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} role="button" tabIndex={0}>
+                    <div className="overview-card-title">
+                      <span>优选号</span>
+                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
+                        <button className={`signal-toggle${showPreferredNumber ? " on" : ""}`} onClick={() => { const v = !showPreferredNumber; setShowPreferredNumber(v); localStorage.setItem("londoner.showPreferredNumber", v ? "1" : "0"); }} type="button" />
                       </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
                       <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                       <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{chaseThreeRoi.bet}</strong><strong>{chaseThreeRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: chaseThreeRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeRoi.roi >= 0 ? "+" : ""}{chaseThreeRoi.roi.toFixed(1)}%</strong>
+                        <strong>{numbers.length}</strong><strong>{preferredNumberRoi.bet}</strong><strong>{preferredNumberRoi.win}</strong>
+                        <strong className="roi-value" style={{ color: preferredNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoi.roi >= 0 ? "+" : ""}{preferredNumberRoi.roi.toFixed(1)}%</strong>
                       </div>
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">波浪强 ★</span><span>{c3.star1Roi.bet}</span><span>{c3.star1Roi.win}</span>
-                        <strong className="roi-value" style={{ color: c3.star1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star1Roi.roi >= 0 ? "+" : ""}{c3.star1Roi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">波浪精选 ★★</span><span>{c3.star2Roi.bet}</span><span>{c3.star2Roi.win}</span>
-                        <strong className="roi-value" style={{ color: c3.star2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star2Roi.roi >= 0 ? "+" : ""}{c3.star2Roi.roi.toFixed(1)}%</strong>
+                        <span className="prediction-roi-subheader">200后</span><span>{preferredNumberRoiFrom201.bet}</span><span>{preferredNumberRoiFrom201.win}</span>
+                        <strong className="roi-value" style={{ color: preferredNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoiFrom201.roi >= 0 ? "+" : ""}{preferredNumberRoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
                     </div>
                   </div>
+                  ) : null}
+                  </div>
                 </div>
+              ) : predictionTab === "quality124" && canUseQuality124 ? (
+                <>
+                  <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>{quality124Roi.signals}</strong><strong>{quality124Roi.bet}</strong><strong>{quality124Roi.win}</strong>
+                      <strong className="roi-value" style={{ color: quality124Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124Roi.roi >= 0 ? "+" : ""}{quality124Roi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
+                      <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                  <div className="detail-stats-table">
+                    <div className="detail-stats-header"><span>档位</span><span>信号</span><span>命中</span><span>未中</span><span>ROI</span></div>
+                    {QUALITY_124_TIER_ORDER.map((tier) => {
+                      const meta = QUALITY_124_TIER_META[tier];
+                      const item = quality124.tierRois[tier];
+                      const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
+                      return (
+                        <div className="detail-stats-row" key={tier}>
+                          <strong className="detail-stats-label">{meta.label}{stars}</strong>
+                          <span>{item.signals}</span><span>{item.hits}</span><span>{item.signals - item.hits}</span>
+                          <span className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{item.roi >= 0 ? "+" : ""}{item.roi.toFixed(1)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : predictionTab === "preferredNumber" && canUsePreferredNumber ? (
+                <>
+                  <p className="prediction-desc">Markov Top2 纸面过滤：最近37口纸面预测命中≥2次，且当前号轮盘半径4区域最近37口≥8次时触发；真实下注未中后冷却3口。</p>
+                  <p className="prediction-desc">
+                    当前区域：{preferredNumberSignals[0]
+                      ? `通过（${preferredNumberSignals[0].zoneHits}/${preferredNumberSignals[0].zoneWindow}，半径${preferredNumberSignals[0].zoneRadius}）`
+                      : "未触发"}
+                  </p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row">
+                      <strong>优选号</strong><strong>{preferredNumberRoi.bet}</strong><strong>{preferredNumberRoi.win}</strong>
+                      <strong className="roi-value" style={{ color: preferredNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoi.roi >= 0 ? "+" : ""}{preferredNumberRoi.roi.toFixed(1)}%</strong>
+                    </div>
+                    <div className="prediction-roi-row">
+                      <span className="prediction-roi-subheader">200后</span><span>{preferredNumberRoiFrom201.bet}</span><span>{preferredNumberRoiFrom201.win}</span>
+                      <strong className="roi-value" style={{ color: preferredNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoiFrom201.roi >= 0 ? "+" : ""}{preferredNumberRoiFrom201.roi.toFixed(1)}%</strong>
+                    </div>
+                  </div>
+                  <div className="detail-stats-table">
+                    <div className="detail-stats-header"><span>类型</span><span>信号</span><span>命中</span><span>未中</span><span>命中率</span></div>
+                    <div className="detail-stats-row">
+                      <strong className="detail-stats-label">优选号</strong>
+                      <span>{preferredNumberRoi.signals}</span><span>{preferredNumberRoi.hits}</span><span>{preferredNumberRoi.signals - preferredNumberRoi.hits}</span>
+                      <span>{preferredNumberRoi.signals > 0 ? `${(preferredNumberRoi.hits / preferredNumberRoi.signals * 100).toFixed(1)}%` : "0.0%"}</span>
+                    </div>
+                  </div>
+                </>
               ) : predictionTab === "cold" ? (
                 <>
                   <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮。{coldAdaptiveMode !== "off" ? " 自适应"+ (coldAdaptiveMode === "adaptiveRow" ? "(冷启动押行)" : "") + "已启用" : ""}</p>
@@ -3182,11 +4459,11 @@ export function App() {
                 </>
               ) : predictionTab === "chase6" ? (
                 <>
-                  <p className="prediction-desc">6号滑窗gap∈[25,29]时触发，211追打3轮。minAppearances≥5触发；≥20为强信号；波浪过滤：强信号中近5次gap均值≤8且近10次长冷比例&lt;20%者标记为波浪过滤信号，进一步精选。</p>
+                  <p className="prediction-desc">追6：行组冷波触发，1-2-4-8-16-32六级倍投追打6轮。波浪过滤排除弱信号。</p>
                   <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
-                      <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
+                      <strong>{chase6Filter}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
                       <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
@@ -3197,81 +4474,39 @@ export function App() {
                       <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
                       <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row">
-                      <span><strong className="prediction-roi-subheader">一组</strong> 1-15</span><span>{chaseSixG1Roi.bet}</span><span>{chaseSixG1Roi.win}</span>
-                      <strong className="roi-value" style={{ color: chaseSixG1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG1Roi.roi >= 0 ? "+" : ""}{chaseSixG1Roi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span><strong className="prediction-roi-subheader">二组</strong> 10-27</span><span>{chaseSixG2Roi.bet}</span><span>{chaseSixG2Roi.win}</span>
-                      <strong className="roi-value" style={{ color: chaseSixG2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG2Roi.roi >= 0 ? "+" : ""}{chaseSixG2Roi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span><strong className="prediction-roi-subheader">三组</strong> 22-36</span><span>{chaseSixG3Roi.bet}</span><span>{chaseSixG3Roi.win}</span>
-                      <strong className="roi-value" style={{ color: chaseSixG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixG3Roi.roi >= 0 ? "+" : ""}{chaseSixG3Roi.roi.toFixed(1)}%</strong>
-                    </div>
                   </div>
                 </>
-              ) : predictionTab === "chase3" ? (
+              ) : predictionTab === "hotNumber" ? (
                 <>
-                  <p className="prediction-desc">12街口gap∈[47,53]时触发，1单位只追下一口。minAppearances≥5触发。波浪强★：avg10≤18且prevGap≤15；波浪精选★★：avg10≤18且long30Rate10≥0.1。</p>
+                  <p className="prediction-desc">自适应双模：默认长热148加速（S1-S2-S3递增+burst&lt;4）；短热DS三窗（37/74/111共识+趋势+burst&lt;4）。111口纸面复盘：短热信号&gt;=5且ROI&gt;=0且比长热高20%则优先短热。信号不减，优先档无信号回落另一档。</p>
                   <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
+                    <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>命中</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
-                      <strong>{numbers.length}</strong><strong>{chaseThreeRoi.bet}</strong><strong>{chaseThreeRoi.win}</strong>
-                      <strong className="roi-value" style={{ color: chaseThreeRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeRoi.roi >= 0 ? "+" : ""}{chaseThreeRoi.roi.toFixed(1)}%</strong>
+                      <strong>{hotNumberRoi.signals}</strong><strong>{hotNumberRoi.bet}</strong><strong>{hotNumberRoi.win}</strong><strong>{hotNumberRoi.hits}</strong>
+                      <strong className="roi-value" style={{ color: hotNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoi.roi >= 0 ? "+" : ""}{hotNumberRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">波浪强 ★</span><span>{c3.star1Roi.bet}</span><span>{c3.star1Roi.win}</span>
-                      <strong className="roi-value" style={{ color: c3.star1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star1Roi.roi >= 0 ? "+" : ""}{c3.star1Roi.roi.toFixed(1)}%</strong>
+                      <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span><span>{hotNumberRoiFrom201.hits}</span>
+                      <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">波浪精选 ★★</span><span>{c3.star2Roi.bet}</span><span>{c3.star2Roi.win}</span>
-                      <strong className="roi-value" style={{ color: c3.star2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{c3.star2Roi.roi >= 0 ? "+" : ""}{c3.star2Roi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span><strong className="prediction-roi-subheader">一组</strong> 1-12</span><span>{chaseThreeG1Roi.bet}</span><span>{chaseThreeG1Roi.win}</span>
-                      <strong className="roi-value" style={{ color: chaseThreeG1Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeG1Roi.roi >= 0 ? "+" : ""}{chaseThreeG1Roi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span><strong className="prediction-roi-subheader">二组</strong> 13-24</span><span>{chaseThreeG2Roi.bet}</span><span>{chaseThreeG2Roi.win}</span>
-                      <strong className="roi-value" style={{ color: chaseThreeG2Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeG2Roi.roi >= 0 ? "+" : ""}{chaseThreeG2Roi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span><strong className="prediction-roi-subheader">三组</strong> 25-36</span><span>{chaseThreeG3Roi.bet}</span><span>{chaseThreeG3Roi.win}</span>
-                      <strong className="roi-value" style={{ color: chaseThreeG3Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseThreeG3Roi.roi >= 0 ? "+" : ""}{chaseThreeG3Roi.roi.toFixed(1)}%</strong>
-                    </div>
+                    {hotNumberSignal ? (
+                      <>
+                        <div className="prediction-roi-row">
+                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><strong>{hotNumberSignal.number}</strong><span>148={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">当前</span><span>暂无信号</span>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
-                <>
-                  <p className="prediction-desc">间隔1-4自适应入场，集中度≥65%触发，1-2-4追打2-3轮，失败波浪恢复</p>
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                    <div className="prediction-roi-row">
-                      <strong>{numbers.length}</strong><strong>{rhythmRoi.bet}</strong><strong>{rhythmRoi.win}</strong>
-                      <strong className="roi-value" style={{ color: rhythmRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRoi.roi >= 0 ? "+" : ""}{rhythmRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">ROI-仅行</span><span>{rhythmRowsOnlyRoi.bet}</span><span>{rhythmRowsOnlyRoi.win}</span>
-                      <strong className="roi-value" style={{ color: rhythmRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{rhythmRowsOnlyRoi.roi >= 0 ? "+" : ""}{rhythmRowsOnlyRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                  </div>
-                  <div className="detail-stats-table">
-                    <div className="detail-stats-header"><span>行组</span><span>成功</span><span>失败</span><span>ROI</span><span>趋势</span></div>
-                    {rhythmDetailStats.map((row) => (
-                      <div className="detail-stats-row" key={row.ci}>
-                        <strong className="detail-stats-label">{row.label}</strong>
-                        <span>{row.successes}</span><span>{row.failures}</span>
-                        <span className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
-                        <span className={`detail-trend trend-${row.trend}`}>{row.trend === "up" ? "↑" : row.trend === "down" ? "↓" : "→"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <p className="prediction-desc">请选择一个预测方法查看详情。</p>
               )}
             </div>
           </section>
-        </div>
       ) : null}
 
       {statsViewOpen ? (
@@ -3321,10 +4556,10 @@ export function App() {
           ) : null}
           <footer className="data-screen-actions stats-nav-actions" aria-label="统计标签">
             <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
-            <button className={statsTab==="colrow"?"selected":""} onClick={()=>setStatsTab("colrow")} type="button">行组</button>
-            <button className={statsTab==="freq"?"selected":""} onClick={()=>setStatsTab("freq")} type="button">频率</button>
-            <button className={statsTab==="dist"?"selected":""} onClick={()=>setStatsTab("dist")} type="button">距离</button>
-            <button className={statsTab==="wave"?"selected":""} onClick={()=>setStatsTab("wave")} type="button">波浪</button>
+            <button className={statsTab==="colrow"?"selected":""} onClick={()=>{ setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab","colrow"); }} type="button">行组</button>
+            <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
+            <button className={statsTab==="dist"?"selected":""} onClick={()=>{ setStatsTab("dist"); setStatsGroupTab("dist"); localStorage.setItem("londoner.statsGroupTab","dist"); }} type="button">距离</button>
+            <button className={statsTab==="wave"?"selected":""} onClick={()=>{ setStatsTab("wave"); setStatsGroupTab("wave"); localStorage.setItem("londoner.statsGroupTab","wave"); }} type="button">波浪</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
           </footer>
         </section>
@@ -3542,7 +4777,7 @@ export function App() {
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal-panel">
             <div className="modal-head">
-              <strong>{activeDialog === "save" ? "保存" : "导入"}</strong>
+              <strong>{activeDialog === "save" ? "保存" : activeDialog === "connect" ? "接上" : "导入"}</strong>
               <button className="close-button" onClick={() => setActiveDialog(null)} type="button">X</button>
             </div>
 
@@ -3558,17 +4793,33 @@ export function App() {
               </div>
             ) : null}
 
-            {activeDialog === "import" ? (
+            {activeDialog === "import" || activeDialog === "connect" ? (
               <div className="modal-stack">
                 <textarea
                   className="data-textarea"
                   onChange={(event) => setDataText(event.target.value)}
                   value={dataText}
                 />
-                <div className="modal-actions single-action">
-                  <button className="primary-action" onClick={importMode === "files" ? importFilesFromText : importData} type="button">
-                    导入
+                <div className={activeDialog === "connect" ? "modal-actions single-action" : "modal-actions"}>
+                  <button
+                    className="primary-action"
+                    onClick={activeDialog === "connect" ? connectInputData : importMode === "files" ? importFilesFromText : importData}
+                    type="button"
+                  >
+                    {activeDialog === "connect" ? "接上" : "导入"}
                   </button>
+                  {activeDialog === "import" && importMode === "files" ? (
+                    <>
+                      <button className="primary-action" onClick={() => fileInputRef.current?.click()} type="button">从文件导入</button>
+                      <input
+                        accept=".json"
+                        onChange={importFromFile}
+                        ref={fileInputRef}
+                        style={{ display: "none" }}
+                        type="file"
+                      />
+                    </>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -3588,8 +4839,22 @@ export function App() {
           title={confirmDialog.title}
           onClose={() => setConfirmDialog(null)}
           actions={
-            <>
-              <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
+            (() => {
+              const cancelButton = confirmDialog.cancelText ? (
+                <button
+                  onClick={() => {
+                    const action = confirmDialog.onCancel;
+                    setConfirmDialog(null);
+                    if (action) void action();
+                  }}
+                  type="button"
+                >
+                  {confirmDialog.cancelText}
+                </button>
+              ) : (
+                <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
+              );
+              const confirmButton = (
               <button
                 className="primary-action"
                 onClick={() => {
@@ -3601,12 +4866,295 @@ export function App() {
               >
                 {confirmDialog.confirmText ?? "确定"}
               </button>
-            </>
+              );
+              return confirmDialog.confirmFirst || !confirmDialog.cancelText ? (
+                <>
+                  {confirmButton}
+                  {cancelButton}
+                </>
+              ) : (
+                <>
+                  {cancelButton}
+                  {confirmButton}
+                </>
+              );
+            })()
           }
         >
           {confirmDialog.message}
         </MessageDialog>
       ) : null}
+
+      {sessionMergeDialog ? (() => {
+        const { left, right, result } = sessionMergeDialog;
+        const target = sessionMergeDialog.targetId === left.id ? left : right;
+        const removed = target.id === left.id ? right : left;
+        const conflicts = result.alignment?.conflicts ?? [];
+        const tolerant = result.tolerantAlignment;
+        const allIssueA = tolerant ? sessionMergeDialog.issueChoices.every((choice) => choice === "a") : sessionMergeDialog.conflictChoice === "a";
+        const allIssueB = tolerant ? sessionMergeDialog.issueChoices.every((choice) => choice === "b") : sessionMergeDialog.conflictChoice === "b";
+        const mergedLength = result.safeToMerge
+          ? result.merged?.length
+          : tolerant
+            ? buildNumberMergeV2TolerantUnionWithChoices(tolerant, sessionMergeDialog.issueChoices).length
+          : result.alignment
+            ? buildNumberMergeV2Union(left.numbers, right.numbers, result.alignment, sessionMergeDialog.conflictChoice).length
+            : undefined;
+        const issueCount = tolerant ? tolerant.issues.length : conflicts.length;
+        return (
+          <MessageDialog
+            actions={
+              <>
+                <button className="primary-action" onClick={() => void applySessionMerge()} type="button">确认合并</button>
+                <button onClick={() => setSessionMergeDialog(null)} type="button">取消</button>
+              </>
+            }
+            onClose={() => setSessionMergeDialog(null)}
+            panelClassName="merge-message-panel"
+            title="合并本地数据"
+          >
+            <div className="merge-dialog-stack">
+              <div className="merge-analysis-summary">
+                <strong>{formatSessionMergeRelationship(result)}</strong>
+                <span>
+                  重叠 {tolerant?.overlapLength ?? result.alignment?.overlapLength ?? 0} 个
+                  {issueCount > 0 ? `，${tolerant ? formatMergeIssueSummary(tolerant.issues) : `发现 ${issueCount} 个冲突`}` : "，没有冲突"}
+                  {tolerant ? `；匹配率 ${(tolerant.matchRate * 100).toFixed(1)}%` : ""}
+                  {mergedLength !== undefined ? `；合并后 ${mergedLength} 个` : ""}
+                </span>
+              </div>
+
+              {issueCount > 0 ? (
+                <section className="merge-choice-section">
+                  <span>{tolerant ? "问题位置采用哪条数据" : "冲突位置采用哪条数据"}</span>
+                  <div className="merge-choice-buttons">
+                    <button
+                      aria-pressed={allIssueA}
+                      className={allIssueA ? "selected" : ""}
+                      onClick={() => setSessionMergeDialog((current) => current ? {
+                        ...current,
+                        conflictChoice: "a",
+                        issueChoices: current.result.tolerantAlignment?.issues.map(() => "a") ?? current.issueChoices,
+                      } : current)}
+                      type="button"
+                    >
+                      采用 A
+                    </button>
+                    <button
+                      aria-pressed={allIssueB}
+                      className={allIssueB ? "selected" : ""}
+                      onClick={() => setSessionMergeDialog((current) => current ? {
+                        ...current,
+                        conflictChoice: "b",
+                        issueChoices: current.result.tolerantAlignment?.issues.map(() => "b") ?? current.issueChoices,
+                      } : current)}
+                      type="button"
+                    >
+                      采用 B
+                    </button>
+                  </div>
+                  <div className={`merge-conflict-list ${tolerant ? "merge-issue-list" : ""}`}>
+                    {tolerant ? (
+                      <>
+                        {tolerant.issues.map((issue, index) => (
+                          <div className="merge-issue-item" key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>
+                            <strong>{formatMergeEditIssue(issue, "A", "B")}</strong>
+                            <span>{formatMergeIssueContext(issue, "A", left.numbers, "B", right.numbers)}</span>
+                            <div className="merge-issue-actions">
+                              <button
+                                aria-pressed={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "a"}
+                                className={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "a" ? "selected" : ""}
+                                onClick={() => setSessionMergeDialog((current) => current ? {
+                                  ...current,
+                                  issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "a" : choice),
+                                } : current)}
+                                type="button"
+                              >
+                                采用 A
+                              </button>
+                              <button
+                                aria-pressed={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "b"}
+                                className={(sessionMergeDialog.issueChoices[index] ?? sessionMergeDialog.conflictChoice) === "b" ? "selected" : ""}
+                                onClick={() => setSessionMergeDialog((current) => current ? {
+                                  ...current,
+                                  issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "b" : choice),
+                                } : current)}
+                                type="button"
+                              >
+                                采用 B
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {conflicts.slice(0, 6).map((conflict) => (
+                          <span key={`${conflict.indexA}-${conflict.indexB}`}>
+                            A 第 {conflict.indexA + 1} 个：{conflict.valueA}；B 第 {conflict.indexB + 1} 个：{conflict.valueB}
+                          </span>
+                        ))}
+                        {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                      </>
+                    )}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="merge-choice-section">
+                <span>合并结果保存到哪条数据</span>
+                <div className="merge-target-grid">
+                  {([
+                    { label: "A", session: left },
+                    { label: "B", session: right },
+                  ] satisfies Array<{ label: string; session: SavedSession }>).map(({ label, session: item }) => {
+                    const selected = sessionMergeDialog.targetId === item.id;
+                    return (
+                      <button
+                        aria-pressed={selected}
+                        className={selected ? "selected" : ""}
+                        key={item.id}
+                        onClick={() => setSessionMergeDialog((current) => current ? { ...current, targetId: item.id } : current)}
+                        type="button"
+                      >
+                        <span>{label} · {item.numbers.length} 个</span>
+                        <strong>{item.name}</strong>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <p className="merge-delete-warning">
+                确认后将更新“{target.name}”，并删除“{removed.name}”。此操作会直接修改本地数据。
+              </p>
+            </div>
+          </MessageDialog>
+        );
+      })() : null}
+
+      {transferConnectDialog ? (() => {
+        const { incoming, result } = transferConnectDialog;
+        const tolerant = result.tolerantAlignment;
+        const conflicts = result?.alignment?.conflicts ?? [];
+        const mergedLength = tolerant
+          ? buildNumberMergeV2TolerantUnionWithChoices(tolerant, transferConnectDialog.issueChoices).length
+          : result?.alignment
+            ? buildNumberMergeV2Union(numbers, incoming.numbers, result.alignment, transferConnectDialog.conflictChoice).length
+            : undefined;
+        const summaryTitle = tolerant
+          ? "发现输入数据可容错接上"
+          : result ? formatSessionMergeRelationship(result) : "发现接上冲突";
+        const overlapLength = tolerant?.overlapLength ?? result?.alignment?.overlapLength ?? 0;
+        const conflictCount = tolerant ? tolerant.issues.length : conflicts.length;
+        const allIssueCurrent = tolerant ? transferConnectDialog.issueChoices.every((choice) => choice === "a") : transferConnectDialog.conflictChoice === "a";
+        const allIssueIncoming = tolerant ? transferConnectDialog.issueChoices.every((choice) => choice === "b") : transferConnectDialog.conflictChoice === "b";
+        return (
+          <MessageDialog
+            actions={
+              <>
+                <button className="primary-action" onClick={applyTransferConnectConflict} type="button">确认接上</button>
+                <button onClick={() => setTransferConnectDialog(null)} type="button">取消</button>
+              </>
+            }
+            onClose={() => setTransferConnectDialog(null)}
+            panelClassName="merge-message-panel"
+            title="接上输入数据"
+          >
+            <div className="merge-dialog-stack">
+              <div className="merge-analysis-summary">
+                <strong>{summaryTitle}</strong>
+                <span>
+                  当前 {numbers.length} 个，输入 {incoming.numbers.length} 个；
+                  重叠 {overlapLength} 个
+                  {conflictCount > 0 ? `，${tolerant ? formatMergeIssueSummary(tolerant.issues, "当前", "输入") : `发现 ${conflictCount} 个冲突`}` : "，没有冲突"}
+                  {tolerant ? `；匹配率 ${(tolerant.matchRate * 100).toFixed(1)}%` : ""}
+                  {mergedLength !== undefined ? `；接上后 ${mergedLength} 个` : ""}
+                </span>
+              </div>
+
+              <section className="merge-choice-section">
+                <span>{tolerant ? "问题位置采用哪边数据" : "冲突位置采用哪边数据"}</span>
+                <div className="merge-choice-buttons">
+                  <button
+                    aria-pressed={allIssueCurrent}
+                    className={allIssueCurrent ? "selected" : ""}
+                    onClick={() => setTransferConnectDialog((current) => current ? {
+                      ...current,
+                      conflictChoice: "a",
+                      issueChoices: current.result.tolerantAlignment?.issues.map(() => "a") ?? current.issueChoices,
+                    } : current)}
+                    type="button"
+                  >
+                    采用当前
+                  </button>
+                  <button
+                    aria-pressed={allIssueIncoming}
+                    className={allIssueIncoming ? "selected" : ""}
+                    onClick={() => setTransferConnectDialog((current) => current ? {
+                      ...current,
+                      conflictChoice: "b",
+                      issueChoices: current.result.tolerantAlignment?.issues.map(() => "b") ?? current.issueChoices,
+                    } : current)}
+                    type="button"
+                  >
+                    采用输入
+                  </button>
+                </div>
+                <div className={`merge-conflict-list ${tolerant ? "merge-issue-list" : ""}`}>
+                  {tolerant ? (
+                    <>
+                      {tolerant.issues.map((issue, index) => (
+                        <div className="merge-issue-item" key={`${issue.kind}-${issue.indexA}-${issue.indexB}-${index}`}>
+                          <strong>{formatMergeEditIssue(issue, "当前", "输入")}</strong>
+                          <span>{formatMergeIssueContext(issue, "当前", numbers, "输入", incoming.numbers)}</span>
+                          <div className="merge-issue-actions">
+                            <button
+                              aria-pressed={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "a"}
+                              className={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "a" ? "selected" : ""}
+                              onClick={() => setTransferConnectDialog((current) => current ? {
+                                ...current,
+                                issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "a" : choice),
+                              } : current)}
+                              type="button"
+                            >
+                              采用当前
+                            </button>
+                            <button
+                              aria-pressed={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "b"}
+                              className={(transferConnectDialog.issueChoices[index] ?? transferConnectDialog.conflictChoice) === "b" ? "selected" : ""}
+                              onClick={() => setTransferConnectDialog((current) => current ? {
+                                ...current,
+                                issueChoices: current.issueChoices.map((choice, choiceIndex) => choiceIndex === index ? "b" : choice),
+                              } : current)}
+                              type="button"
+                            >
+                              采用输入
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {conflicts.slice(0, 6).map((conflict) => (
+                        <span key={`${conflict.indexA}-${conflict.indexB}`}>
+                          当前第 {conflict.indexA + 1} 个：{conflict.valueA}；输入第 {conflict.indexB + 1} 个：{conflict.valueB}
+                        </span>
+                      ))}
+                      {conflicts.length > 6 ? <span>另有 {conflicts.length - 6} 个冲突未展开。</span> : null}
+                    </>
+                  )}
+                </div>
+              </section>
+
+              <p className="merge-delete-warning">
+                确认后只更新当前正在打的数据；如当前数据已保存，本次接上会成为未保存修改。
+              </p>
+            </div>
+          </MessageDialog>
+        );
+      })() : null}
 
       {sharedLoginOpen ? (
         <MessageDialog
@@ -3614,7 +5162,6 @@ export function App() {
           onClose={() => { setSharedLoginOpen(false); postLoginAction.current = null; }}
           actions={
             <>
-              <button onClick={() => { setSharedLoginOpen(false); postLoginAction.current = null; }} type="button">取消</button>
               <button
                 className="primary-action"
                 disabled={sharedLoading || !sharedUsername.trim() || !sharedPassword}
@@ -3623,6 +5170,7 @@ export function App() {
               >
                 {sharedLoading ? "连接中" : "连接"}
               </button>
+              <button onClick={() => { setSharedLoginOpen(false); postLoginAction.current = null; }} type="button">取消</button>
             </>
           }
         >
@@ -3654,7 +5202,6 @@ export function App() {
           onClose={() => setPromptDialog(null)}
           actions={
             <>
-              <button onClick={() => setPromptDialog(null)} type="button">取消</button>
               <button
                 className="primary-action"
                 onClick={() => {
@@ -3667,6 +5214,7 @@ export function App() {
               >
                 {promptDialog.confirmText ?? "确定"}
               </button>
+              <button onClick={() => setPromptDialog(null)} type="button">取消</button>
             </>
           }
         >
@@ -3676,6 +5224,47 @@ export function App() {
           </label>
         </MessageDialog>
       ) : null}
+      {editDialogOpen ? (
+        <MessageDialog
+          title="编辑数据"
+          onClose={() => setEditDialogOpen(false)}
+          actions={
+            <>
+              <button
+                className="primary-action"
+                onClick={() => { setEditDialogOpen(false); void saveEditSession(); }}
+                type="button"
+              >
+                确定
+              </button>
+              <button onClick={() => setEditDialogOpen(false)} type="button">取消</button>
+            </>
+          }
+        >
+          <label className="field-label">
+            名称
+            <input value={editName} onChange={(event) => setEditName(event.target.value)} />
+          </label>
+          <label className="field-label">
+            ID（上传者）
+            <input value={editUploader} onChange={(event) => setEditUploader(event.target.value)} />
+          </label>
+          <label className="field-label">
+            保存时间
+            <input type="datetime-local" value={editTime} onChange={(event) => setEditTime(event.target.value)} />
+          </label>
+        </MessageDialog>
+      ) : null}
+      <div className="key-pop-overlay" aria-hidden="true">
+        {keyPops.map((pop, i) => (
+          <span
+            key={pop.id}
+            className="key-pop"
+            style={{ zIndex: i }}
+            onAnimationEnd={() => setKeyPops(prev => prev.filter(p => p.id !== pop.id))}
+          >{pop.value}</span>
+        ))}
+      </div>
     </main>
   );
 }
@@ -3741,17 +5330,92 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(2)}%`;
 }
 
+function formatSessionMergeRelationship(result: NumberMergeV2Result): string {
+  if (result.tolerantAlignment) {
+    switch (result.tolerantAlignment.relationship) {
+      case "identical": return "两条数据可容错视为相同";
+      case "a-contains-b": return "A 可以容错包含 B";
+      case "b-contains-a": return "B 可以容错包含 A";
+      case "a-then-b": return "B 可以容错接在 A 后面";
+      case "b-then-a": return "A 可以容错接在 B 后面";
+    }
+  }
+
+  const relationship = result.relationship === "conflict"
+    ? result.alignment?.relationship
+    : result.relationship;
+
+  switch (relationship) {
+    case "identical": return result.relationship === "conflict" ? "两条数据几乎相同，但存在冲突" : "两条数据完全相同";
+    case "a-contains-b": return result.relationship === "conflict" ? "A 基本包含 B，但存在冲突" : "A 完整包含 B";
+    case "b-contains-a": return result.relationship === "conflict" ? "B 基本包含 A，但存在冲突" : "B 完整包含 A";
+    case "a-then-b": return result.relationship === "conflict" ? "B 可以接在 A 后面，但存在冲突" : "B 可以接在 A 后面";
+    case "b-then-a": return result.relationship === "conflict" ? "A 可以接在 B 后面，但存在冲突" : "A 可以接在 B 后面";
+    default: return "无法确定合并关系";
+  }
+}
+
+function formatMergeEditIssue(issue: NumberMergeEditIssue, labelA: string, labelB: string): string {
+  if (issue.kind === "a-extra") {
+    return `${labelA} 第 ${issue.indexA + 1} 个多出：${issue.valueA}`;
+  }
+  if (issue.kind === "b-extra") {
+    return `${labelB} 第 ${issue.indexB + 1} 个多出：${issue.valueB}`;
+  }
+  return `${labelA} 第 ${issue.indexA + 1} 个：${issue.valueA}；${labelB} 第 ${issue.indexB + 1} 个：${issue.valueB}`;
+}
+
+function formatMergeIssueContext(
+  issue: NumberMergeEditIssue,
+  labelA: string,
+  valuesA: readonly number[],
+  labelB: string,
+  valuesB: readonly number[],
+): string {
+  return `${labelA}附近：${formatNumberContext(valuesA, issue.indexA)}；${labelB}附近：${formatNumberContext(valuesB, issue.indexB)}`;
+}
+
+function formatNumberContext(values: readonly number[], index: number): string {
+  if (values.length === 0) return "无";
+  const clamped = Math.min(Math.max(index, 0), values.length - 1);
+  const start = Math.max(0, clamped - 2);
+  const end = Math.min(values.length, clamped + 3);
+  const position = index >= values.length ? "末尾后" : `第 ${index + 1} 个`;
+  const text = values.slice(start, end).map((value, offset) => {
+    const actualIndex = start + offset;
+    return actualIndex === clamped ? `[${value}]` : String(value);
+  }).join(" ");
+  return `${position}：${text}`;
+}
+
+function formatMergeIssueSummary(
+  issues: readonly NumberMergeEditIssue[],
+  labelA = "A",
+  labelB = "B",
+): string {
+  const aExtra = issues.filter((issue) => issue.kind === "a-extra").length;
+  const bExtra = issues.filter((issue) => issue.kind === "b-extra").length;
+  const substitutions = issues.filter((issue) => issue.kind === "substitution").length;
+  const parts = [
+    aExtra > 0 ? `${labelA}多 ${aExtra}` : "",
+    bExtra > 0 ? `${labelB}多 ${bExtra}` : "",
+    substitutions > 0 ? `不同 ${substitutions}` : "",
+  ].filter(Boolean);
+  return `发现 ${issues.length} 个问题${parts.length > 0 ? `（${parts.join("，")}）` : ""}`;
+}
+
 interface MessageDialogProps {
   actions?: ReactNode;
   children: ReactNode;
   onClose: () => void;
+  panelClassName?: string;
   title: string;
 }
 
-function MessageDialog({ actions, children, onClose, title }: MessageDialogProps) {
+function MessageDialog({ actions, children, onClose, panelClassName = "", title }: MessageDialogProps) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="message-panel">
+      <div className={`message-panel ${panelClassName}`.trim()}>
         <div className="modal-head">
           <strong>{title}</strong>
           <button className="close-button" onClick={onClose} type="button">X</button>
@@ -3816,6 +5480,20 @@ function formatSharedError(error: unknown): string {
   if (message.includes("Failed to fetch")) return "无法连接共享库，请检查网络或 Supabase 配置。";
   if (message.includes("Could not find the function")) return "共享库尚未初始化，请先在 Supabase 执行建表 SQL。";
   return message || "共享数据操作失败。";
+}
+
+function getRawErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  try {
+    return typeof error === "string" ? error : JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+function formatSharedLoginError(message: string, raw: string): string {
+  const rawText = raw.trim();
+  return rawText ? `${message}\n原始错误：${rawText}` : message;
 }
 
 function sortRefineRows(
@@ -3942,6 +5620,14 @@ function formatSessionTime(value: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(
     date.getMinutes(),
   )}`;
+}
+
+/** Convert ISO date string to datetime-local input format (YYYY-MM-DDTHH:MM). */
+function isoToDatetimeLocal(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 interface NumberButtonProps {

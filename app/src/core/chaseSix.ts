@@ -391,3 +391,189 @@ export function analyzeChaseSix(numbers: readonly RouletteNumber[]): ChaseSixAna
     waveFilteredRoi: makeRoi(global.waveFilteredRoi.bet, global.waveFilteredRoi.win),
   };
 }
+
+export function analyzeChaseSixRolling(
+  numbers: readonly RouletteNumber[],
+  historyWindow = 200,
+  startRound = 0,
+): ChaseSixAnalysis {
+  const W = CHASE6_WINDOWS;
+  const PROG = CHASE6_PROGRESSION;
+  const CHASE_LEN = CHASE6_CHASE_LEN;
+
+  interface ActiveChase {
+    wi: number;
+    sr: number;
+    isStrong: boolean;
+    isWaveQualified: boolean;
+  }
+
+  interface Candidate {
+    gap: number;
+    isStrong: boolean;
+    isWaveQualified: boolean;
+    wi: number;
+  }
+
+  interface PassResult {
+    roiByWi: Array<{ bet: number; win: number }>;
+    strongRoi: { bet: number; win: number };
+    waveStrongRoi: { bet: number; win: number };
+    waveFilteredRoi: { bet: number; win: number };
+    activeChases: ActiveChase[];
+  }
+
+  function getCandidate(
+    history: readonly RouletteNumber[],
+    value: RouletteNumber,
+    allowedWindows: readonly number[] | null,
+  ): Candidate | null {
+    if (value === 0) return null;
+
+    const gaps = new Array<number>(W).fill(0);
+    const appearCount = new Array<number>(W).fill(0);
+    const gapHistory: number[][] = Array.from({ length: W }, () => []);
+
+    for (const current of history) {
+      if (current === 0) continue;
+      for (let wi = 0; wi < W; wi++) {
+        if (isInChaseSixWindow(wi, current)) {
+          gapHistory[wi].unshift(gaps[wi]);
+          if (gapHistory[wi].length > MAX_GAP_HISTORY) {
+            gapHistory[wi].length = MAX_GAP_HISTORY;
+          }
+          gaps[wi] = 0;
+          appearCount[wi] += 1;
+        } else {
+          gaps[wi] += 1;
+        }
+      }
+    }
+
+    const candidates: Array<{ gap: number; wi: number }> = [];
+    for (let wi = 0; wi < W; wi++) {
+      if (allowedWindows && !allowedWindows.includes(wi)) continue;
+      if (
+        isInChaseSixWindow(wi, value) &&
+        gaps[wi] >= CHASE6_MIN_GAP &&
+        gaps[wi] <= CHASE6_MAX_GAP &&
+        appearCount[wi] >= CHASE6_MIN_APPEARANCES
+      ) {
+        candidates.push({ wi, gap: gaps[wi] });
+      }
+    }
+
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
+
+    const selected = candidates[0];
+    const wave = computeWaveFeatures(gapHistory[selected.wi]);
+    return {
+      wi: selected.wi,
+      gap: selected.gap,
+      isStrong: appearCount[selected.wi] >= CHASE6_STRONG_APPEARANCES,
+      isWaveQualified:
+        wave.avg5 <= CHASE6_WAVE_AVG5_MAX &&
+        wave.long20Rate10 < CHASE6_WAVE_LONG20_RATE10_MAX,
+    };
+  }
+
+  function runPass(allowedWindows: readonly number[] | null): PassResult {
+    const activeChases: ActiveChase[] = [];
+    const roiByWi: Array<{ bet: number; win: number }> =
+      Array.from({ length: W }, () => ({ bet: 0, win: 0 }));
+    let strongRoi = { bet: 0, win: 0 };
+    let waveStrongRoi = { bet: 0, win: 0 };
+    let waveFilteredRoi = { bet: 0, win: 0 };
+
+    for (let r = 0; r < numbers.length; r++) {
+      const value = numbers[r];
+
+      const surviving: ActiveChase[] = [];
+      for (const chase of activeChases) {
+        const roundIndex = r - chase.sr;
+        if (roundIndex >= CHASE_LEN) continue;
+
+        const betAmt = PROG[roundIndex] ?? PROG[PROG.length - 1];
+        const shouldCount = r >= startRound;
+        if (shouldCount) {
+          roiByWi[chase.wi].bet += betAmt;
+          if (chase.isStrong) {
+            strongRoi.bet += betAmt;
+            if (chase.isWaveQualified) waveStrongRoi.bet += betAmt;
+            else waveFilteredRoi.bet += betAmt;
+          }
+        }
+
+        if (value !== 0 && isInChaseSixWindow(chase.wi, value)) {
+          if (shouldCount) {
+            const won = betAmt * 6;
+            roiByWi[chase.wi].win += won;
+            if (chase.isStrong) {
+              strongRoi.win += won;
+              if (chase.isWaveQualified) waveStrongRoi.win += won;
+              else waveFilteredRoi.win += won;
+            }
+          }
+          continue;
+        }
+
+        if (roundIndex + 1 < CHASE_LEN) surviving.push(chase);
+      }
+
+      activeChases.length = 0;
+      activeChases.push(...surviving);
+
+      const historyStart = Math.max(0, r - historyWindow);
+      const history = numbers.slice(historyStart, r);
+      const candidate = getCandidate(history, value, allowedWindows);
+      if (candidate && !activeChases.some((chase) => chase.wi === candidate.wi)) {
+        activeChases.push({
+          wi: candidate.wi,
+          sr: r + 1,
+          isStrong: candidate.isStrong,
+          isWaveQualified: candidate.isWaveQualified,
+        });
+      }
+    }
+
+    return { roiByWi, strongRoi, waveStrongRoi, waveFilteredRoi, activeChases };
+  }
+
+  const global = runPass(null);
+
+  const activeSignals: ChaseSixActiveSignal[] = [];
+  for (const chase of global.activeChases) {
+    const roundsPlayed = Math.max(0, numbers.length - chase.sr);
+    const nextRound = roundsPlayed + 1;
+    if (nextRound > CHASE_LEN) continue;
+    const windowStart = chaseSixWindowStart(chase.wi);
+    const windowEnd = chaseSixWindowEnd(chase.wi);
+    activeSignals.push({
+      wi: chase.wi,
+      windowName: `${windowStart}-${windowEnd}`,
+      round: nextRound,
+      betAmt: PROG[nextRound - 1] ?? PROG[PROG.length - 1],
+      isNew: nextRound === 1,
+      chaseLen: CHASE_LEN,
+      isStrong: chase.isStrong,
+      isWaveStrong: chase.isStrong && chase.isWaveQualified,
+    });
+  }
+
+  function groupPass(wis: readonly number[]): ChaseSixRoi {
+    const result = runPass(wis);
+    return sumRoi(wis.map((wi) => makeRoi(result.roiByWi[wi].bet, result.roiByWi[wi].win)));
+  }
+
+  return {
+    activeSignals,
+    totalRoi: sumRoi(global.roiByWi.map((part) => makeRoi(part.bet, part.win))),
+    group1Roi: groupPass(GROUP1_WINDOWS),
+    group2Roi: groupPass(GROUP2_WINDOWS),
+    group3Roi: groupPass(GROUP3_WINDOWS),
+    strongRoi: makeRoi(global.strongRoi.bet, global.strongRoi.win),
+    waveStrongRoi: makeRoi(global.waveStrongRoi.bet, global.waveStrongRoi.win),
+    waveFilteredRoi: makeRoi(global.waveFilteredRoi.bet, global.waveFilteredRoi.win),
+  };
+}

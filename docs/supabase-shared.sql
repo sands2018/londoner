@@ -26,7 +26,7 @@ alter table public.londoner_shared_sessions enable row level security;
 
 insert into public.londoner_shared_users (username, display_name, password_hash, can_delete)
 values
-  ('ww', 'ww', extensions.crypt('ww@dqgs', extensions.gen_salt('bf')), true),
+  ('ww', 'ww', extensions.crypt('zxczxc123!@#', extensions.gen_salt('bf')), true),
   ('wzs', 'wzs', extensions.crypt('wzs@dqgs', extensions.gen_salt('bf')), true),
   ('sxr', 'sxr', extensions.crypt('sxr@dqgs', extensions.gen_salt('bf')), true),
   ('ybh', 'ybh', extensions.crypt('ybh@dqgs', extensions.gen_salt('bf')), true)

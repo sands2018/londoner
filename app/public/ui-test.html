@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>信号卡片 - UI 调色</title>
+<style>
+  :root {
+    --dot-size: 12px;
+    --weight-regular: 400;
+    --weight-ui: 500;
+    --weight-emphasis: 500;
+    --weight-strong: 500;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #fffdf9;
+    color: #20241f;
+    font-family: Roboto, "Noto Sans SC", Arial, sans-serif;
+    padding: 16px 12px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  h2 {
+    font-size: 13px;
+    color: #8a6b5b;
+    margin: 20px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e8e0d6;
+  }
+  h2:first-child { margin-top: 0; }
+
+  /* ===== 124 节奏 + 长套 冷 ===== */
+  .prediction-signal-area { display:flex; flex-wrap:wrap; gap:4px; }
+  .prediction-signal-item {
+    align-items:stretch; border:1px solid #c8d8e0; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 8px) / 3);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .prediction-signal-label {
+    align-items:center; background:#c8d8e0; color:#486068;
+    display:flex; flex:0 0 40px; font-size:15px; font-weight:500;
+    justify-content:center; min-height:34px; white-space:nowrap;
+  }
+  .prediction-chase {
+    align-items:center; background:#e8eef2; display:flex; flex:1;
+    gap:6px; justify-content:space-around; min-height:34px;
+    min-width:0; padding:0 6px;
+  }
+  .prediction-dots { display:flex; gap:3px; }
+  .prediction-dot {
+    border:1.5px solid #aebfc8; border-radius:50%; display:inline-block;
+    height:var(--dot-size); width:var(--dot-size);
+  }
+  .prediction-dot.filled { background:#8aa8b8; border-color:#8aa8b8; }
+  .prediction-bet { color:#486068; font-size:14px; font-weight:500; }
+
+  /* 124 rhythm variant */
+  .prediction-signal-item.rhythm-signal { border-color:#e0e8dc; }
+  .prediction-signal-item.rhythm-signal .prediction-signal-label { background:#e0e8dc; color:#4a6040; }
+  .prediction-signal-item.rhythm-signal .prediction-chase { background:#eef4ea; }
+  .prediction-signal-item.rhythm-signal .prediction-bet { color:#4a6040; }
+  .prediction-signal-item.rhythm-signal .prediction-dot { border-color:#a0b8a0; }
+  .prediction-signal-item.rhythm-signal .prediction-dot.filled { background:#8aaa8a; border-color:#8aaa8a; }
+
+  /* active state */
+  .prediction-signal-item.chase-active .prediction-chase { background:#d8e2ea; }
+  .prediction-signal-item.chase-active .prediction-signal-label { background:#b4c8d4; }
+  .prediction-signal-item.rhythm-signal.chase-active .prediction-chase { background:#e0e8dc; }
+  .prediction-signal-item.rhythm-signal.chase-active .prediction-signal-label { background:#ccd8c8; }
+
+  /* ===== 追6 ===== */
+  .chase6-signal-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .chase6-signal-item {
+    align-items:stretch; border:1px solid #f2e8da; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .chase6-label {
+    align-items:center; background:#f2e8da; color:#6b5a38;
+    display:flex; flex:0 0 44px; font-size:14px; font-weight:500;
+    justify-content:center; min-height:36px; white-space:nowrap;
+  }
+  .chase6-chase {
+    align-items:center; background:#f8f4ea; display:flex; flex:1;
+    gap:8px; justify-content:space-around; min-height:36px;
+    min-width:0; padding:0 8px;
+  }
+  .chase6-dots { display:flex; gap:3px; }
+  .chase6-dot {
+    border:1.5px solid #c8b690; border-radius:50%;
+    height:var(--dot-size); width:var(--dot-size);
+  }
+  .chase6-dot.filled { background:#bc9c68; border-color:#bc9c68; }
+  .chase6-bet { color:#6b5a38; font-size:14px; font-weight:500; }
+  .chase6-stars { font-size:15px; letter-spacing:-2px; margin-left:10px; opacity:0.85; color:#b89440; }
+
+  /* HQ */
+  .chase6-signal-item.chase6-hq { border-color:#eee0bf; }
+  .chase6-signal-item.chase6-hq .chase6-label { background:#eee0bf; color:#553820; }
+  .chase6-signal-item.chase6-hq .chase6-chase { background:#f4eede; }
+  .chase6-signal-item.chase6-hq .chase6-bet { color:#553820; }
+  .chase6-signal-item.chase6-hq .chase6-dot { border-color:#c4a868; }
+  .chase6-signal-item.chase6-hq .chase6-dot.filled { background:#b49850; border-color:#b49850; }
+  .chase6-signal-item.chase6-hq .chase6-stars { color:#b89440; }
+
+  /* wave */
+  .chase6-signal-item.chase6-wave { border-color:#ead8b6; }
+  .chase6-signal-item.chase6-wave .chase6-label { background:#ead8b6; color:#4a3018; }
+  .chase6-signal-item.chase6-wave .chase6-chase { background:#f2e8d0; }
+  .chase6-signal-item.chase6-wave .chase6-bet { color:#4a3018; }
+  .chase6-signal-item.chase6-wave .chase6-dot { border-color:#cab478; }
+  .chase6-signal-item.chase6-wave .chase6-dot.filled { background:#a88040; border-color:#a88040; }
+  .chase6-signal-item.chase6-wave .chase6-stars { color:#b08830; }
+
+  /* active */
+  .chase6-signal-item.chase6-active .chase6-chase { background:#eee8d8; }
+  .chase6-signal-item.chase6-active .chase6-label { background:#e8d8c4; }
+  .chase6-signal-item.chase6-hq.chase6-active .chase6-chase { background:#e8e0ca; }
+  .chase6-signal-item.chase6-hq.chase6-active .chase6-label { background:#e4d4a8; }
+  .chase6-signal-item.chase6-wave.chase6-active .chase6-chase { background:#e8dcc0; }
+  .chase6-signal-item.chase6-wave.chase6-active .chase6-label { background:#dcc898; }
+
+  /* ===== 追3 ===== */
+  .chase3-signal-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .chase3-signal-item {
+    align-items:stretch; border:1px solid #ece4e4; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .chase3-label {
+    align-items:center; background:#ece4e4; color:#7a4a48;
+    display:flex; flex:0 0 44px; font-size:14px; font-weight:500;
+    justify-content:center; min-height:36px; white-space:nowrap;
+  }
+  .chase3-chase {
+    align-items:center; background:#f4f2f2; display:flex; flex:1;
+    gap:8px; justify-content:space-around; min-height:36px;
+    min-width:0; padding:0 8px;
+  }
+  .chase3-gap { color:#8a5a58; font-size:14px; font-weight:500; }
+  .chase3-bet { color:#7a4a48; font-size:14px; font-weight:500; }
+  .chase3-stars { font-size:15px; letter-spacing:-2px; opacity:0.85; }
+
+  /* star1 */
+  .chase3-signal-item.chase3-star1 { border-color:#e6dcdc; }
+  .chase3-signal-item.chase3-star1 .chase3-label { background:#e6dcdc; color:#6a3a38; }
+  .chase3-signal-item.chase3-star1 .chase3-chase { background:#f2ecec; }
+  .chase3-signal-item.chase3-star1 .chase3-gap { color:#7a4848; }
+  .chase3-signal-item.chase3-star1 .chase3-bet { color:#6a3a38; }
+  .chase3-signal-item.chase3-star1 .chase3-stars { color:#a06868; }
+
+  /* star2 */
+  .chase3-signal-item.chase3-star2 { border-color:#ded2d2; }
+  .chase3-signal-item.chase3-star2 .chase3-label { background:#ded2d2; color:#4a2828; }
+  .chase3-signal-item.chase3-star2 .chase3-chase { background:#eae0e0; }
+  .chase3-signal-item.chase3-star2 .chase3-gap { color:#6a4040; }
+  .chase3-signal-item.chase3-star2 .chase3-bet { color:#4a2828; }
+  .chase3-signal-item.chase3-star2 .chase3-stars { color:#884848; }
+
+  /* active */
+  .chase3-signal-item.chase3-active .chase3-chase { background:#ece6e6; }
+  .chase3-signal-item.chase3-active .chase3-label { background:#e0d6d6; }
+  .chase3-signal-item.chase3-star1.chase3-active .chase3-chase { background:#eae0e0; }
+  .chase3-signal-item.chase3-star1.chase3-active .chase3-label { background:#dacece; }
+  .chase3-signal-item.chase3-star2.chase3-active .chase3-chase { background:#e2d6d6; }
+  .chase3-signal-item.chase3-star2.chase3-active .chase3-label { background:#d2c2c2; }
+
+  /* ===== 重号 ===== */
+  .repeat-signal-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .repeat-signal-item {
+    align-items:center; background:#e5dcec; border:1px solid #d6cee0;
+    border-radius:5px; color:#51406a; cursor:pointer; display:flex;
+    flex:0 0 calc((100% - 8px) / 3); gap:20px;
+    justify-content:center; min-height:38px; position:relative;
+    touch-action:manipulation;
+  }
+  .repeat-signal-item.repeat-premium { background:#dbd0e6; border-color:#cec2d9; color:#443460; }
+  .repeat-signal-item.repeat-short { background:#eddce2; border-color:#e4d3d9; color:#64425a; }
+  .repeat-signal-item.repeat-short:active { background:#e8dee1; }
+  .repeat-signal-item.repeat-preferred {
+    background:#ede0d2; border-color:#e3d4c2; color:#5c3a28;
+  }
+  .repeat-signal-item.repeat-preferred .repeat-tier-badge { color:#b07040; }
+  .repeat-signal-item.repeat-preferred:active { background:#e0d0bc; }
+  .preferred-number-picks { align-items:center; display:flex; gap:10px; }
+  .repeat-number { font-size:24px; font-weight:500; line-height:1; }
+  .repeat-star { color:#8a6aa8; font-size:15px; font-weight:500; line-height:1; }
+  .repeat-tier-badge {
+    color:#8a6aa8; font-size:11px; font-weight:500; line-height:1;
+    opacity:0.75; position:absolute; right:5px; top:2px;
+  }
+  .short-repeat-chase { align-items:center; display:flex; gap:5px; }
+  .short-repeat-dots { align-items:center; display:flex; gap:3px; }
+  .short-repeat-dot {
+    background:transparent; border:1.5px solid #a08195; border-radius:50%;
+    display:inline-block; height:var(--dot-size); width:var(--dot-size);
+  }
+  .short-repeat-dot.filled { background:#835876; border-color:#835876; }
+  .short-repeat-bet { color:#64425a; font-size:17px; font-weight:500; line-height:1; }
+
+  /* ===== 颜色对比条 ===== */
+  .swatch-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+  .swatch {
+    width:28px; height:28px; border-radius:4px; border:1px solid #ccc;
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; color:#888;
+  }
+  .label-row { font-size:11px; color:#8a6b5b; margin-top:2px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 124 节奏 + 长套 冷 ============ -->
+<h2>124 节奏 / 长套（冷） — 冷门反转蓝 / 节奏灰绿</h2>
+
+<section class="prediction-signal-area">
+  <!-- 冷门反转: chase-active (追打中), 3轮 -->
+  <div class="prediction-signal-item chase-active">
+    <strong class="prediction-signal-label">R1</strong>
+    <span class="prediction-chase">
+      <span class="prediction-dots">
+        <span class="prediction-dot filled"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+      </span>
+      <span class="prediction-bet">2</span>
+    </span>
+  </div>
+  <!-- 冷门反转: 新信号, 4轮 -->
+  <div class="prediction-signal-item">
+    <strong class="prediction-signal-label">C2</strong>
+    <span class="prediction-chase">
+      <span class="prediction-dots">
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+      </span>
+      <span class="prediction-bet">1</span>
+    </span>
+  </div>
+  <!-- 冷门反转: 追打中, 2轮已过 -->
+  <div class="prediction-signal-item chase-active">
+    <strong class="prediction-signal-label">R3</strong>
+    <span class="prediction-chase">
+      <span class="prediction-dots">
+        <span class="prediction-dot filled"></span>
+        <span class="prediction-dot filled"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+      </span>
+      <span class="prediction-bet">4</span>
+    </span>
+  </div>
+</section>
+
+<section class="prediction-signal-area" style="margin-top:6px">
+  <!-- 节奏: 新信号, 3轮 -->
+  <div class="prediction-signal-item rhythm-signal">
+    <strong class="prediction-signal-label">R1</strong>
+    <span class="prediction-chase">
+      <span class="prediction-dots">
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+      </span>
+      <span class="prediction-bet">1</span>
+    </span>
+  </div>
+  <!-- 节奏: 追打中, 1轮已过 -->
+  <div class="prediction-signal-item rhythm-signal chase-active">
+    <strong class="prediction-signal-label">C3</strong>
+    <span class="prediction-chase">
+      <span class="prediction-dots">
+        <span class="prediction-dot filled"></span>
+        <span class="prediction-dot"></span>
+        <span class="prediction-dot"></span>
+      </span>
+      <span class="prediction-bet">2</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============ 追6 ============ -->
+<h2>追6 — 普通 / HQ ★ / 波浪 ★★</h2>
+
+<section class="chase6-signal-area">
+  <!-- 普通, 新信号 -->
+  <div class="chase6-signal-item">
+    <strong class="chase6-label">01-06</strong>
+    <span class="chase6-chase">
+      <span class="chase6-dots">
+        <span class="chase6-dot"></span>
+        <span class="chase6-dot"></span>
+        <span class="chase6-dot"></span>
+      </span>
+      <span class="chase6-bet">1</span>
+      <span class="chase6-stars" style="visibility:hidden">★</span>
+    </span>
+  </div>
+  <!-- HQ, 追打中 1轮 -->
+  <div class="chase6-signal-item chase6-hq chase6-active">
+    <strong class="chase6-label">04-09</strong>
+    <span class="chase6-chase">
+      <span class="chase6-dots">
+        <span class="chase6-dot filled"></span>
+        <span class="chase6-dot"></span>
+        <span class="chase6-dot"></span>
+      </span>
+      <span class="chase6-bet">2</span>
+      <span class="chase6-stars">★</span>
+    </span>
+  </div>
+</section>
+
+<section class="chase6-signal-area">
+  <!-- 波浪, 新信号 -->
+  <div class="chase6-signal-item chase6-wave">
+    <strong class="chase6-label">07-12</strong>
+    <span class="chase6-chase">
+      <span class="chase6-dots">
+        <span class="chase6-dot"></span>
+        <span class="chase6-dot"></span>
+        <span class="chase6-dot"></span>
+      </span>
+      <span class="chase6-bet">1</span>
+      <span class="chase6-stars">★★</span>
+    </span>
+  </div>
+  <!-- 波浪+HQ, 追打中 2轮 -->
+  <div class="chase6-signal-item chase6-hq chase6-wave chase6-active">
+    <strong class="chase6-label">10-15</strong>
+    <span class="chase6-chase">
+      <span class="chase6-dots">
+        <span class="chase6-dot filled"></span>
+        <span class="chase6-dot filled"></span>
+        <span class="chase6-dot"></span>
+      </span>
+      <span class="chase6-bet">4</span>
+      <span class="chase6-stars">★★</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============ 追3 ============ -->
+<h2>追3 — 普通 / 波浪强 ★ / 波浪精选 ★★</h2>
+
+<section class="chase3-signal-area">
+  <!-- 普通, 新信号 -->
+  <div class="chase3-signal-item">
+    <strong class="chase3-label">01-03</strong>
+    <span class="chase3-chase">
+      <span class="chase3-gap">冷48</span>
+      <span class="chase3-bet">1</span>
+      <span class="chase3-stars" style="visibility:hidden">★</span>
+    </span>
+  </div>
+  <!-- 普通, 追打中 -->
+  <div class="chase3-signal-item chase3-active">
+    <strong class="chase3-label">04-06</strong>
+    <span class="chase3-chase">
+      <span class="chase3-gap">冷50</span>
+      <span class="chase3-bet">1</span>
+      <span class="chase3-stars" style="visibility:hidden">★</span>
+    </span>
+  </div>
+</section>
+
+<section class="chase3-signal-area">
+  <!-- 波浪强★, 新信号 -->
+  <div class="chase3-signal-item chase3-star1">
+    <strong class="chase3-label">07-09</strong>
+    <span class="chase3-chase">
+      <span class="chase3-gap">冷51</span>
+      <span class="chase3-bet">1</span>
+      <span class="chase3-stars">★</span>
+    </span>
+  </div>
+  <!-- 波浪强★, 追打中 -->
+  <div class="chase3-signal-item chase3-star1 chase3-active">
+    <strong class="chase3-label">10-12</strong>
+    <span class="chase3-chase">
+      <span class="chase3-gap">冷49</span>
+      <span class="chase3-bet">1</span>
+      <span class="chase3-stars">★</span>
+    </span>
+  </div>
+</section>
+
+<section class="chase3-signal-area">
+  <!-- 波浪精选★★, 新信号 -->
+  <div class="chase3-signal-item chase3-star2">
+    <strong class="chase3-label">13-15</strong>
+    <span class="chase3-chase">
+      <span class="chase3-gap">冷52</span>
+      <span class="chase3-bet">1</span>
+      <span class="chase3-stars">★★</span>
+    </span>
+  </div>
+  <!-- 波浪精选★★, 追打中 -->
+  <div class="chase3-signal-item chase3-star2 chase3-active">
+    <strong class="chase3-label">16-18</strong>
+    <span class="chase3-chase">
+      <span class="chase3-gap">冷47</span>
+      <span class="chase3-bet">1</span>
+      <span class="chase3-stars">★★</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============ 优选号 ============ -->
+<h2>优选号 — 蓝灰</h2>
+
+<p class="label-row" style="margin-bottom:6px">Markov Top2：纸面37口≥2命中 + 轮盘半径4区域37口≥8次，押Top2各1单位。未中后冷却3口。</p>
+
+<section class="repeat-signal-area">
+  <!-- 优选号 单独出现 -->
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">12</strong>
+      <strong class="repeat-number">28</strong>
+    </span>
+  </div>
+  <!-- 优选号 另一个示例 -->
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">5</strong>
+      <strong class="repeat-number">0</strong>
+    </span>
+  </div>
+  <!-- 优选号 宽示例 (0是两位数视觉) -->
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">33</strong>
+      <strong class="repeat-number">17</strong>
+    </span>
+  </div>
+</section>
+
+<!-- 同时出现：优选号 + 重号 -->
+<section class="repeat-signal-area">
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">14</strong>
+      <strong class="repeat-number">9</strong>
+    </span>
+  </div>
+  <div class="repeat-signal-item repeat-premium">
+    <span class="repeat-tier-badge">核心</span>
+    <strong class="repeat-number">14</strong>
+  </div>
+</section>
+
+<!-- 同时出现：优选号 + 短重号 -->
+<section class="repeat-signal-area">
+  <div class="repeat-signal-item repeat-preferred">
+    <span class="repeat-tier-badge">优选</span>
+    <span class="preferred-number-picks">
+      <strong class="repeat-number">7</strong>
+      <strong class="repeat-number">22</strong>
+    </span>
+  </div>
+  <div class="repeat-signal-item repeat-short">
+    <strong class="repeat-number">7</strong>
+    <span class="short-repeat-chase">
+      <span class="short-repeat-dots">
+        <span class="short-repeat-dot filled"></span>
+        <span class="short-repeat-dot"></span>
+      </span>
+      <span class="short-repeat-bet">1</span>
+    </span>
+  </div>
+</section>
+
+<!-- ============ 重号 + 短重号 ============ -->
+<h2>重号 / 短重号 — 冷紫 / 暖粉紫</h2>
+
+<p class="label-row" style="margin-bottom:6px">规则：核心=长重gap 9-10 / 短重gap=3；进取=核心 + 长重gap 8/11/12且短重环境1-2。前200口 g3&gt;g2 才纳入统计。</p>
+
+<!-- 重号：核心 vs 进取 -->
+<section class="repeat-signal-area">
+  <div class="repeat-signal-item">
+    <span class="repeat-tier-badge">进取</span>
+    <strong class="repeat-number">18</strong>
+  </div>
+  <div class="repeat-signal-item repeat-premium">
+    <span class="repeat-tier-badge">核心</span>
+    <strong class="repeat-number">23</strong>
+  </div>
+</section>
+
+<section class="repeat-signal-area">
+  <!-- 短重号 Round 1, 新signal -->
+  <div class="repeat-signal-item repeat-short">
+    <strong class="repeat-number">7</strong>
+    <span class="short-repeat-chase">
+      <span class="short-repeat-dots">
+        <span class="short-repeat-dot filled"></span>
+        <span class="short-repeat-dot"></span>
+      </span>
+      <span class="short-repeat-bet">1</span>
+    </span>
+  </div>
+  <!-- 短重号 Round 2 -->
+  <div class="repeat-signal-item repeat-short">
+    <strong class="repeat-number">32</strong>
+    <span class="short-repeat-chase">
+      <span class="short-repeat-dots">
+        <span class="short-repeat-dot filled"></span>
+        <span class="short-repeat-dot filled"></span>
+      </span>
+      <span class="short-repeat-bet">1</span>
+    </span>
+  </div>
+</section>
+
+<!-- 同时出现（重号 + 短重号） -->
+<section class="repeat-signal-area">
+  <div class="repeat-signal-item repeat-premium">
+    <span class="repeat-tier-badge">核心</span>
+    <strong class="repeat-number">14</strong>
+  </div>
+  <div class="repeat-signal-item repeat-short">
+    <strong class="repeat-number">7</strong>
+    <span class="short-repeat-chase">
+      <span class="short-repeat-dots">
+        <span class="short-repeat-dot filled"></span>
+        <span class="short-repeat-dot"></span>
+      </span>
+      <span class="short-repeat-bet">1</span>
+    </span>
+  </div>
+</section>
+
+<!-- ===== 新124 四档信号 ===== -->
+<style>
+.quality124-signal-area { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0; }
+.quality124-signal-item {
+  align-items:stretch; border:1px solid #e4c8cf; border-radius:5px;
+  cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+  overflow:hidden; touch-action:manipulation;
+}
+.quality124-signal-label {
+  align-items:center; color:#65414a; display:flex; flex:0 0 40px;
+  font-size:15px; font-weight:500; justify-content:center;
+  min-height:34px; white-space:nowrap;
+}
+.quality124-signal-chase {
+  align-items:center; background:#f5f0f2; display:flex; flex:1;
+  gap:6px; justify-content:space-between; min-height:34px;
+  min-width:0; padding:0 8px;
+}
+.quality124-stars { color:#8a5a66; font-size:11px; font-weight:500; white-space:nowrap; }
+.quality124-dots { display:flex; gap:3px; }
+.quality124-dot {
+  background:rgba(255,255,255,0.55); border:1px solid #c498a4;
+  border-radius:999px; height:var(--dot-size); width:var(--dot-size);
+}
+.quality124-dot.filled { background:#8e5a68; border-color:#8e5a68; }
+.quality124-bet { font-size:14px; font-weight:500; color:#5c3848; }
+
+.quality124-signal-item { border-color:#dbccd0; }
+/* 低频 ★★★ */
+.quality124-tier-low .quality124-signal-label { background:#e8ced2; color:#4e2c36; }
+.quality124-tier-low .quality124-signal-chase { background:#eee4e8; }
+/* 中频 ★★ */
+.quality124-tier-medium .quality124-signal-label { background:#ecd8de; color:#4e3040; }
+.quality124-tier-medium .quality124-signal-chase { background:#f2eaee; }
+/* 高频 ★ */
+.quality124-tier-high .quality124-signal-label { background:#ecdee2; color:#4e3848; }
+.quality124-tier-high .quality124-signal-chase { background:#f4eef2; }
+/* 超高频 */
+.quality124-tier-ultra .quality124-signal-label { background:#e8dee2; color:#4e4050; }
+.quality124-tier-ultra .quality124-signal-chase { background:#f2ecee; }
+</style>
+
+<h2>新124 — 四档信号</h2>
+<section class="quality124-signal-area">
+  <!-- 低频 ★★★ 二组 k=4 -->
+  <div class="quality124-signal-item quality124-tier-low">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 低频 ★★★ 二组 k=4 round=2 -->
+  <div class="quality124-signal-item quality124-tier-low">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">2</span>
+    </span>
+  </div>
+  <!-- 低频 ★★★ 二组 round=3 -->
+  <div class="quality124-signal-item quality124-tier-low">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+      </span>
+      <span class="quality124-bet">4</span>
+    </span>
+  </div>
+  <!-- 中频 ★★ 三组 k=3 -->
+  <div class="quality124-signal-item quality124-tier-medium">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 中频 ★★ 三组 round=2 -->
+  <div class="quality124-signal-item quality124-tier-medium">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">2</span>
+    </span>
+  </div>
+  <!-- 高频 ★ 二组 k=3 -->
+  <div class="quality124-signal-item quality124-tier-high">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 高频 ★ 三组 k=4 -->
+  <div class="quality124-signal-item quality124-tier-high">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars">★</span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 超高频 三组 k=3 -->
+  <div class="quality124-signal-item quality124-tier-ultra">
+    <span class="quality124-signal-label">三组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars"></span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">1</span>
+    </span>
+  </div>
+  <!-- 超高频 二组 k=3 round=2 -->
+  <div class="quality124-signal-item quality124-tier-ultra">
+    <span class="quality124-signal-label">二组</span>
+    <span class="quality124-signal-chase">
+      <span class="quality124-stars"></span>
+      <span class="quality124-dots">
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot filled"></span>
+        <span class="quality124-dot"></span>
+      </span>
+      <span class="quality124-bet">2</span>
+    </span>
+  </div>
+</section>
+
+<!-- repeat-filter-panel -->
+<div class="repeat-filter-panel" style="margin-top:8px">
+  <span>前200口环境：g3 12 / g2 8，通过</span>
+  <span style="display:inline-flex;align-items:center;gap:4px">
+    <span style="width:28px;height:18px;border-radius:9px;background:#c09858;display:inline-block"></span>
+    <span>前200口显示信号</span>
+  </span>
+</div>
+
+<!-- ============ 调色参考 ============ -->
+<h2>调色参考</h2>
+<p class="label-row">冷门反转（蓝）: label=#c8d8e0 / chase=#e8eef2 / border=#c8d8e0 / text=#486068 / dot=#aebfc8 / dot-filled=#8aa8b8</p>
+<p class="label-row">节奏（绿）: label=#e0e8dc / chase=#eef4ea / border=#e0e8dc / text=#4a6040 / dot=#a0b8a0 / dot-filled=#8aaa8a</p>
+<p class="label-row">追6 普通（暖黄）: label=#f2e8da / chase=#f8f4ea / border=#f2e8da / text=#6b5a38 / dot=#c8b690 / dot-filled=#bc9c68</p>
+<p class="label-row">追6 HQ★（浅金）: label=#eee0bf / chase=#f4eede / border=#eee0bf / text=#553820 / dot=#c4a868 / dot-filled=#b49850</p>
+<p class="label-row">追6 波浪★★（琥珀金）: label=#ead8b6 / chase=#f2e8d0 / border=#ead8b6 / text=#4a3018 / dot=#cab478 / dot-filled=#a88040</p>
+<p class="label-row">追3 普通（淡红）: label=#ece4e4 / chase=#f4f2f2 / border=#ece4e4 / text=#7a4a48</p>
+<p class="label-row">追3 波浪强★: label=#e6dcdc / chase=#f2ecec / border=#e6dcdc / text=#6a3a38</p>
+<p class="label-row">追3 波浪精选★★: label=#ded2d2 / chase=#eae0e0 / border=#ded2d2 / text=#4a2828</p>
+<p class="label-row">优选号（金红）: bg=#ede0d2 / border=#e3d4c2 / text=#5c3a28 / badge=#b07040</p>
+<p class="label-row">重号 核心（冷紫）: bg=#e5dcec / border=#d6cee0 / text=#51406a / badge=#8a6aa8</p>
+<p class="label-row">重号 核心精选: bg=#dbd0e6 / border=#cec2d9 / text=#443460</p>
+<p class="label-row">短重号（暖粉紫）: bg=#eddce2 / border=#e4d3d9 / text=#64425a / dot=#a08195 / dot-filled=#835876</p>
+<p class="label-row">新124 低频★★★: label=#eacdd4 chase=#eee4e8 / text=#4e2c36</p>
+<p class="label-row">新124 中频★★: label=#efd8e0 chase=#f2eaee / text=#4e3040</p>
+<p class="label-row">新124 高频★: label=#eedee4 chase=#f4eef2 / text=#4e3848</p>
+<p class="label-row">新124 超高频: label=#eee4e8 chase=#f2ecee / text=#4e4050</p>
+<p class="label-row">repeat-filter-panel: bg=#f7f3f8 / border=#e5dcec / text=#685a78</p>
+
+</body>
+</html>
