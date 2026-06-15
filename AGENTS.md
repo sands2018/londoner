@@ -96,7 +96,8 @@ The prediction signal area must remain concise — one line per signal, immediat
 ## Agent dialog channel
 
 - Project root is `W:\VibeCoding\Projects\Sands2018`.
-- Cross-agent dialog files live in `W:\VibeCoding\comms\dialog\Sands2018`.
+- The project-local comms folder is `W:\VibeCoding\Projects\Sands2018\comms`.
+- Cross-agent dialog files live in `W:\VibeCoding\Projects\Sands2018\comms\dialog`.
 - GPT writes messages for DeepSeek to `gpt.txt`; every message must include a timestamp.
 - GPT reads DeepSeek feedback from `deepseek.txt`.
 - Shared scratch/results may be placed in the same dialog directory, for example `temp.txt`.
