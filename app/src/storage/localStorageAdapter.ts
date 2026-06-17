@@ -4,6 +4,7 @@ import type { CasinoTable, SavedSession, StorageAdapter } from "./storage";
 const currentNumbersKey = "londoner.currentNumbers";
 const sessionsKey = "londoner.sessions";
 const casinoTablesKey = "londoner.casinoTables";
+const sessionMetadataKey = "londoner.sessionMetadata";
 const legacyFileIndexKey = "FILE_INDEX_DATA";
 
 const DEFAULT_UNKNOWN_CASINO_ID = "c_unknown";
@@ -48,6 +49,11 @@ interface LegacyFileIndex {
   total?: number;
 }
 
+interface SessionMetadata {
+  sharedUploader?: string;
+  tableId?: string;
+}
+
 function parseNumbers(value: string | null): RouletteNumber[] {
   if (!value) return [];
 
@@ -59,6 +65,7 @@ function parseNumbers(value: string | null): RouletteNumber[] {
 
 function readLegacySessions(): SavedSession[] {
   const legacyIndex = parseJson<LegacyFileIndex>(localStorage.getItem(legacyFileIndexKey), {});
+  const metadata = parseJson<Record<string, SessionMetadata>>(localStorage.getItem(sessionMetadataKey), {});
   if (!Array.isArray(legacyIndex.rows)) return [];
 
   return legacyIndex.rows
@@ -68,6 +75,8 @@ function readLegacySessions(): SavedSession[] {
       name: row.n as string,
       numbers: parseNumbers(localStorage.getItem(row.p as string)),
       updatedAt: new Date(row.t ?? Date.now()).toISOString(),
+      sharedUploader: metadata[row.p as string]?.sharedUploader ?? "",
+      tableId: metadata[row.p as string]?.tableId,
     }));
 }
 
@@ -105,12 +114,18 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (isLegacyId(session.id)) {
       const legacyIndex = parseJson<LegacyFileIndex>(localStorage.getItem(legacyFileIndexKey), {});
       const rows = Array.isArray(legacyIndex.rows) ? legacyIndex.rows : [];
+      const metadata = parseJson<Record<string, SessionMetadata>>(localStorage.getItem(sessionMetadataKey), {});
       const time = new Date(session.updatedAt).getTime();
       saveLegacyRows(
         rows.map((row) =>
           row.p === session.id ? { ...row, c: session.numbers.length, n: session.name, t: time } : row,
         ),
       );
+      metadata[session.id] = {
+        sharedUploader: session.sharedUploader ?? "",
+        tableId: session.tableId,
+      };
+      localStorage.setItem(sessionMetadataKey, JSON.stringify(metadata));
       localStorage.setItem(session.id, session.numbers.join(","));
       return;
     }
@@ -140,7 +155,10 @@ export class LocalStorageAdapter implements StorageAdapter {
     if (isLegacyId(id)) {
       const legacyIndex = parseJson<LegacyFileIndex>(localStorage.getItem(legacyFileIndexKey), {});
       const rows = Array.isArray(legacyIndex.rows) ? legacyIndex.rows : [];
+      const metadata = parseJson<Record<string, SessionMetadata>>(localStorage.getItem(sessionMetadataKey), {});
+      delete metadata[id];
       localStorage.removeItem(id);
+      localStorage.setItem(sessionMetadataKey, JSON.stringify(metadata));
       saveLegacyRows(rows.filter((row) => row.p !== id));
       return;
     }

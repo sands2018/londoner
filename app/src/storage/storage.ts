@@ -9,6 +9,8 @@ export interface SavedSession {
   importIndex?: number;
   /** 从共享库导入时的上传者名, 本地保存的为空字符串 */
   sharedUploader?: string;
+  /** Optional local casino table assignment. Unknown or unassigned sessions omit this. */
+  tableId?: string;
 }
 
 /** Single flat table entry: casino has parentId="0", table has parentId=casino ID. */

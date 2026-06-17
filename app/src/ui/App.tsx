@@ -101,6 +101,11 @@ import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
 import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
 import {
+  buildTableProfiles,
+  evaluateHotNumberTableSupport,
+  type HotTableSupport,
+} from "../core/tableHotProfile";
+import {
   analyzeNumberMergeV2,
   buildNumberMergeV2TolerantUnion,
   buildNumberMergeV2TolerantUnionWithChoices,
@@ -149,7 +154,7 @@ const keypadRows: RouletteNumber[][] = [
 
 type DialogName = "connect" | "import" | "save" | null;
 type DataTab = "local" | "shared" | "transfer";
-type DataSortField = "name" | "count" | "time" | "sharedUploader";
+type DataSortField = "name" | "count" | "time" | "sharedUploader" | "table";
 type SortDirection = "asc" | "desc";
 type ColRowTab = "detail" | "chart" | "summary" | "compare";
 type RefineTab = "compare" | "detail";
@@ -341,6 +346,7 @@ export function App() {
   const [draftCasinoTables, setDraftCasinoTables] = useState<CasinoTable[]>([]);
   const [draftSelectedCasinoId, setDraftSelectedCasinoId] = useState("");
   const [draftSelectedTableId, setDraftSelectedTableId] = useState("");
+  const [casinoTables, setCasinoTables] = useState<CasinoTable[]>([]);
   const [allSavedSessions, setAllSavedSessions] = useState<SavedSession[]>([]);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
@@ -359,7 +365,20 @@ export function App() {
   // 优选号算法逻辑保留用于研究/回测，但当前 UI 暂时隐藏，不对任何用户开放。
   const canUsePreferredNumber = false;
   const canUseQuality124 = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
-
+  const tableSelectOptions = useMemo(() => {
+    const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
+    return casinoTables
+      .filter((item) => item.parentId !== "0" && !item.id.startsWith("t_unknown_"))
+      .map((table) => ({
+        id: table.id,
+        label: `${casinoById.get(table.parentId) ?? "未知"} / ${table.name}`,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, "zh-Hans-CN"));
+  }, [casinoTables]);
+  const tableLabelById = useMemo(
+    () => new Map(tableSelectOptions.map((option) => [option.id, option.label])),
+    [tableSelectOptions],
+  );
   const sortedSharedSessions = useMemo(() => {
     const sorted = [...sharedSessions];
     sorted.sort((a, b) => {
@@ -401,12 +420,21 @@ export function App() {
   const [editName, setEditName] = useState("");
   const [editUploader, setEditUploader] = useState("");
   const [editTime, setEditTime] = useState("");
+  const [editTableId, setEditTableId] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
     return localStorage.getItem(currentSessionIdKey);
   });
   const [saveName, setSaveName] = useState("");
   const [sessions, setSessions] = useState<SavedSession[]>([]);
+  const tableProfiles = useMemo(
+    () => buildTableProfiles(allSavedSessions.filter((session) => session.id !== currentSessionId), casinoTables),
+    [allSavedSessions, casinoTables, currentSessionId],
+  );
+  const currentSessionTableId = useMemo(
+    () => allSavedSessions.find((session) => session.id === currentSessionId)?.tableId,
+    [allSavedSessions, currentSessionId],
+  );
   const [allGameBets, setAllGameBets] = useState<number[][]>([]);
   const [selectedBetKeys, setSelectedBetKeys] = useState<string[]>([]);
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
@@ -457,6 +485,10 @@ export function App() {
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
   const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
+  const hotTableSupport = useMemo(
+    () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles, currentSessionTableId),
+    [currentSessionTableId, hotNumberSignal?.number, numbers, tableProfiles],
+  );
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
   // 长套自适应: 从历史session计算行/组累计ROI
@@ -1080,6 +1112,7 @@ export function App() {
       setLoaded(true);
     });
     storage.listSessions().then(setAllSavedSessions);
+    storage.listCasinoTables().then(setCasinoTables);
   }, []);
 
   useEffect(() => {
@@ -1233,6 +1266,12 @@ export function App() {
     setAllSavedSessions(list);
   }
 
+  async function refreshCasinoTables() {
+    const list = await storage.listCasinoTables();
+    setCasinoTables(list);
+    return list;
+  }
+
   async function refreshSharedSessions(username = sharedUsername, password = sharedPassword) {
     const list = await listSharedSessions(username.trim(), password);
     setSharedSessions(list);
@@ -1302,6 +1341,7 @@ export function App() {
       numbers,
       updatedAt: new Date().toISOString(),
       importIndex: currentSession.importIndex,
+      tableId: currentSession.tableId,
     });
     await refreshSessions();
     setLastSavedNumbers(numbers);
@@ -1317,6 +1357,7 @@ export function App() {
       numbers,
       updatedAt: new Date().toISOString(),
       importIndex: existing?.importIndex,
+      tableId: existing?.tableId,
     });
     await refreshSessions();
     setCurrentSessionId(id);
@@ -1486,6 +1527,7 @@ export function App() {
             updatedAt: tms ? new Date(tms).toISOString() : new Date().toISOString(),
             importIndex: (item as any).ImportIndex ?? imported.length,
             sharedUploader: (item as any).SharedUploader ?? (item as any).sharedUploader ?? "",
+            tableId: (item as any).TableId ?? (item as any).tableId ?? undefined,
           });
         }
         if (imported.length === 0) {
@@ -2105,6 +2147,7 @@ export function App() {
     setEditName(session.name);
     setEditUploader(session.sharedUploader ?? "");
     setEditTime(isoToDatetimeLocal(session.updatedAt));
+    setEditTableId(session.tableId ?? "");
     setEditDialogOpen(true);
   }
 
@@ -2135,6 +2178,7 @@ export function App() {
       ...session,
       name,
       sharedUploader: editUploader.trim(),
+      tableId: editTableId || undefined,
       updatedAt,
     };
 
@@ -2158,6 +2202,7 @@ export function App() {
         tms: new Date(session.updatedAt).getTime(),
         ImportIndex: session.importIndex,
         SharedUploader: session.sharedUploader || "",
+        TableId: session.tableId || "",
       })),
     );
 
@@ -2196,6 +2241,7 @@ export function App() {
       tms: new Date(session.updatedAt).getTime(),
       ImportIndex: session.importIndex,
       SharedUploader: session.sharedUploader || "",
+      TableId: session.tableId || "",
     }));
     const json = JSON.stringify(data, null, 2);
     const filename = "history_data.json";
@@ -2413,7 +2459,7 @@ export function App() {
   function openConfigView() {
     reloadGameConfigState();
     setDraftWindowMode(windowMode);
-    void storage.listCasinoTables().then((items) => {
+    void refreshCasinoTables().then((items) => {
       setDraftCasinoTables(items);
       setDraftSelectedCasinoId("");
       setDraftSelectedTableId("");
@@ -2559,7 +2605,7 @@ export function App() {
         const defaultTableId = `t_unknown_${casinoId}`;
         await storage.saveCasinoTable({ id: casinoId, name, parentId: "0" });
         await storage.saveCasinoTable({ id: defaultTableId, name: "未知", parentId: casinoId });
-        const items = await storage.listCasinoTables();
+        const items = await refreshCasinoTables();
         setDraftCasinoTables(items);
         setDraftSelectedCasinoId(casinoId);
         setDraftSelectedTableId("");
@@ -2578,7 +2624,7 @@ export function App() {
         const name = value.trim();
         if (!name) { setNoticeDialog({ title: "重命名失败", message: "名称不能为空。" }); return; }
         await storage.saveCasinoTable({ ...casino, name });
-        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftCasinoTables(await refreshCasinoTables());
         setNoticeDialog({ title: "重命名成功", message: `已更名为"${name}"。` });
       },
     });
@@ -2593,7 +2639,7 @@ export function App() {
       confirmText: "删除",
       onConfirm: async () => {
         await storage.deleteCasinoTable(casino.id);
-        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftCasinoTables(await refreshCasinoTables());
         setDraftSelectedCasinoId("");
         setDraftSelectedTableId("");
         setNoticeDialog({ title: "删除成功", message: `赌场"${casino.name}"已删除。` });
@@ -2617,7 +2663,7 @@ export function App() {
         if (!name) { setNoticeDialog({ title: "添加失败", message: "名称不能为空。" }); return; }
         const tableId = `t_${generateLocationId()}`;
         await storage.saveCasinoTable({ id: tableId, name, parentId: draftSelectedCasinoId });
-        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftCasinoTables(await refreshCasinoTables());
         setDraftSelectedTableId(tableId);
       },
     });
@@ -2634,7 +2680,7 @@ export function App() {
         const name = value.trim();
         if (!name) { setNoticeDialog({ title: "重命名失败", message: "名称不能为空。" }); return; }
         await storage.saveCasinoTable({ ...table, name });
-        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftCasinoTables(await refreshCasinoTables());
         setNoticeDialog({ title: "重命名成功", message: `已更名为"${name}"。` });
       },
     });
@@ -2647,7 +2693,7 @@ export function App() {
       confirmText: "删除",
       onConfirm: async () => {
         await storage.deleteCasinoTable(table.id);
-        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftCasinoTables(await refreshCasinoTables());
         setDraftSelectedTableId("");
         setNoticeDialog({ title: "删除成功", message: `赌桌"${table.name}"已删除。` });
       },
@@ -3213,7 +3259,7 @@ export function App() {
           <section className="repeat-signal-area" aria-label="单号信号">
             {filteredHotNumber.map((item) => (
               <div
-                className="repeat-signal-item repeat-hot"
+                className={`repeat-signal-item repeat-hot ${hotTableSignalClass(hotTableSupport)}`}
                 key={`hot-${item.number}`}
                 onClick={() => { setPredictionTab("hotNumber"); setPredictionWindowOpen(true); }}
                 role="button"
@@ -3221,6 +3267,9 @@ export function App() {
               >
                 <span className="repeat-tier-badge hot-badge">{item.mode === "short" ? "热门S" : "热门"}</span>
                 <strong className="repeat-number">{item.number}</strong>
+                <span className={`repeat-tier-badge hot-table-badge ${hotTableBadgeClass(hotTableSupport)}`}>
+                  {formatHotTableBadge(hotTableSupport)}
+                </span>
               </div>
             ))}
             {filteredPreferredNumber.map((item, index) => (
@@ -3363,6 +3412,9 @@ export function App() {
                   <th onClick={() => sortDataView("sharedUploader")}>
                     ID <SortMark active={sessionSortField === "sharedUploader"} direction={sessionSortDirection} />
                   </th>
+                  <th onClick={() => sortDataView("table")}>
+                    桌 <SortMark active={sessionSortField === "table"} direction={sessionSortDirection} />
+                  </th>
                   <th onClick={() => sortDataView("time")}>
                     时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
                   </th>
@@ -3371,7 +3423,7 @@ export function App() {
               <tbody>
                 {sortedSessions.length === 0 ? (
                   <tr>
-                    <td className="data-empty" colSpan={4}>暂无保存的数据</td>
+                    <td className="data-empty" colSpan={5}>暂无保存的数据</td>
                   </tr>
                 ) : null}
                 {sortedSessions.map((session) => (
@@ -3383,6 +3435,7 @@ export function App() {
                     <td>{session.name}</td>
                     <td>{session.numbers.length}</td>
                     <td>{session.sharedUploader ?? ""}</td>
+                    <td>{formatTableShortName(tableLabelById.get(session.tableId ?? ""))}</td>
                     <td>{formatSessionTime(session.updatedAt)}</td>
                   </tr>
                 ))}
@@ -4481,6 +4534,9 @@ export function App() {
                           <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
                         </div>
                       ) : null}
+                      <div className="prediction-roi-row">
+                        <span className="prediction-roi-subheader">桌台</span><span>{formatHotTableBadge(hotTableSupport)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span>
+                      </div>
                     </div>
                   </div>
                   {canUsePreferredNumber ? (
@@ -4630,6 +4686,9 @@ export function App() {
                       <>
                         <div className="prediction-roi-row">
                           <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><strong>{hotNumberSignal.number}</strong><span>148={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
+                        </div>
+                        <div className="prediction-roi-row">
+                          <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
                         </div>
                       </>
                     ) : (
@@ -5453,6 +5512,15 @@ export function App() {
             保存时间
             <input type="datetime-local" value={editTime} onChange={(event) => setEditTime(event.target.value)} />
           </label>
+          <label className="field-label">
+            赌桌
+            <select value={editTableId} onChange={(event) => setEditTableId(event.target.value)}>
+              <option value="">未归属</option>
+              {tableSelectOptions.map((option) => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+          </label>
         </MessageDialog>
       ) : null}
       <div className="key-pop-overlay" aria-hidden="true">
@@ -5642,6 +5710,43 @@ function areSameNumbers(left: RouletteNumber[], right: RouletteNumber[]): boolea
   return left.every((value, index) => value === right[index]);
 }
 
+function formatTableShortName(label: string | undefined): string {
+  if (!label) return "";
+  const parts = label.split(" / ");
+  return parts[parts.length - 1] || label;
+}
+
+function formatHotTableBadge(support: HotTableSupport): string {
+  const prefix = support.match.level === "probable" ? "疑似" : "本桌";
+  if (support.level === "strong") return `${prefix}强`;
+  if (support.level === "support") return `${prefix}支`;
+  if (support.level === "watch") return `${prefix}观`;
+  if (support.level === "conflict") return "空间冲突";
+  if (support.level === "unknown") return support.profile ? "疑似弱" : "未知桌";
+  return "无桌台";
+}
+
+function formatHotTableName(support: HotTableSupport): string {
+  return support.profile?.tableName ?? "未识别";
+}
+
+function formatHotTableMetric(support: HotTableSupport): string {
+  if (support.rank !== null) return `R${support.rank} / z${support.z.toFixed(1)}`;
+  if (support.match.profile) return `sim ${support.match.similarity.toFixed(2)}`;
+  return "-";
+}
+
+function hotTableSignalClass(support: HotTableSupport): string {
+  if (support.level === "strong") return "repeat-hot-table-strong";
+  if (support.level === "support") return "repeat-hot-table-support";
+  if (support.level === "conflict") return "repeat-hot-table-conflict";
+  return "";
+}
+
+function hotTableBadgeClass(support: HotTableSupport): string {
+  return `hot-table-badge-${support.level}`;
+}
+
 function sortSessions(sessions: SavedSession[], field: DataSortField, direction: SortDirection): SavedSession[] {
   const multiplier = direction === "asc" ? 1 : -1;
   return [...sessions].sort((left, right) => {
@@ -5652,6 +5757,8 @@ function sortSessions(sessions: SavedSession[], field: DataSortField, direction:
       result = new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime();
     } else if (field === "sharedUploader") {
       result = (left.sharedUploader ?? "").localeCompare(right.sharedUploader ?? "");
+    } else if (field === "table") {
+      result = (left.tableId ?? "").localeCompare(right.tableId ?? "");
     } else {
       result = left.name.localeCompare(right.name, "zh-Hans-CN");
     }
@@ -5789,6 +5896,11 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
       : typeof (item as { SharedId?: string }).SharedId === "string"
       ? (item as { SharedId?: string }).SharedId
       : "";
+    const rawTableId = (item as { TableId?: unknown; tableId?: unknown }).TableId
+      ?? (item as { TableId?: unknown; tableId?: unknown }).tableId;
+    const tableId = typeof rawTableId === "string"
+      ? rawTableId
+      : "";
     imported.push({
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
@@ -5796,6 +5908,7 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
       updatedAt: new Date(time).toISOString(),
       importIndex: importIdx,
       sharedUploader,
+      tableId: tableId || undefined,
     });
   }
 

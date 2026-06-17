@@ -1483,17 +1483,27 @@ button:disabled {
 
 .data-table th:nth-child(1),
 .data-table td:nth-child(1) {
-  width: 50%;
+  width: 40%;
 }
 
 .data-table th:nth-child(2),
 .data-table td:nth-child(2) {
-  width: 13%;
+  width: 10%;
 }
 
 .data-table th:nth-child(3),
 .data-table td:nth-child(3) {
-  width: 37%;
+  width: 16%;
+}
+
+.data-table th:nth-child(4),
+.data-table td:nth-child(4) {
+  width: 14%;
+}
+
+.data-table th:nth-child(5),
+.data-table td:nth-child(5) {
+  width: 20%;
 }
 
 .game-table {
@@ -3049,6 +3059,7 @@ button:disabled {
 }
 
 .field-label input,
+.field-label select,
 .data-textarea {
   background: #ffffff;
   border: 1px solid #d8d0c0;
@@ -3066,6 +3077,7 @@ button:disabled {
 }
 
 .field-label input:focus,
+.field-label select:focus,
 .data-textarea:focus {
   border-color: #b9a27b;
   box-shadow: 0 0 0 2px rgb(185 162 123 / 22%);
@@ -4544,6 +4556,44 @@ button:disabled {
 
 .repeat-signal-item.repeat-hot .repeat-tier-badge.hot-badge {
   color: #d4855a;
+}
+
+.repeat-signal-item.repeat-hot-table-strong {
+  background: #f7e4d2;
+  border-color: #d89b6b;
+}
+
+.repeat-signal-item.repeat-hot-table-support {
+  background: #f3e8d8;
+  border-color: #d8b58c;
+}
+
+.repeat-signal-item.repeat-hot-table-conflict {
+  background: #e9ece4;
+  border-color: #b8c2b0;
+  color: #556250;
+}
+
+.hot-table-badge {
+  color: #9c6a42;
+  font-size: 11px;
+}
+
+.hot-table-badge-strong {
+  color: #b85a30;
+}
+
+.hot-table-badge-watch {
+  color: #8f765c;
+}
+
+.hot-table-badge-conflict {
+  color: #5f7a58;
+}
+
+.hot-table-badge-unknown,
+.hot-table-badge-none {
+  color: #8f8a84;
 }
 
 /* Overview card: 热门 */
