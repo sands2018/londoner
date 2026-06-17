@@ -172,7 +172,7 @@ Bottom action buttons layout:
 - **Performance**: Several engines paused for benchmarking. Search `[PERF]` in App.tsx.
 - **Number merge**: GPT rewrote as `numberMergeV2.ts` (timeline-alignment, safe, no silent data discard). DS V1 (`numberMerge.ts`) is deprecated. V2 used for: (a) local-data "合并" button, (b) home "接上" button.
 - **Prediction engine**: New124, cold reversal, chase6 are enabled. Hot numbers optimized + re-enabled by GPT 2026-06-07.
-- **TableProfile for prediction**: First implementation should compute table profiles from local saved sessions in memory on app startup / local data changes. Do not persist a complex `tableProfiles` cache yet. Future optimization may add a persisted cache keyed by session/table version if profile rebuilds become expensive.
+- **TableProfile for prediction**: Compute table profiles from local saved sessions in memory on app startup / local data changes. Do not persist a complex `tableProfiles` cache yet. Manual `tableId` is the authoritative assignment; unassigned sessions may receive an in-memory automatic space-profile ID, and prediction should use `effectiveTableId = manual tableId ?? autoTableId`.
 - **Number zone page**: 37-number popup with distance/circle modes, hot/cold highlighting, trend arrows.
 - **Research**: Gear rotation for 124 entry timing.
 

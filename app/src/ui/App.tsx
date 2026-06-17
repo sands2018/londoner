@@ -101,6 +101,11 @@ import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
 import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
 import {
+  buildAutoTableProfileState,
+  type TableAssignment,
+  type TableAssignmentSource,
+} from "../core/autoTableProfile";
+import {
   buildTableProfiles,
   evaluateHotNumberTableSupport,
   type HotTableSupport,
@@ -427,14 +432,30 @@ export function App() {
   });
   const [saveName, setSaveName] = useState("");
   const [sessions, setSessions] = useState<SavedSession[]>([]);
+  const autoTableState = useMemo(
+    () => buildAutoTableProfileState(allSavedSessions, casinoTables),
+    [allSavedSessions, casinoTables],
+  );
+  const tableNameById = useMemo(
+    () => new Map(autoTableState.tables.map((table) => [table.id, table.name])),
+    [autoTableState.tables],
+  );
   const tableProfiles = useMemo(
-    () => buildTableProfiles(allSavedSessions.filter((session) => session.id !== currentSessionId), casinoTables),
-    [allSavedSessions, casinoTables, currentSessionId],
+    () => buildTableProfiles(
+      autoTableState.profileSessions.filter((session) => session.id !== currentSessionId),
+      autoTableState.tables,
+    ),
+    [autoTableState.profileSessions, autoTableState.tables, currentSessionId],
+  );
+  const currentSessionAssignment = useMemo(
+    () => (currentSessionId ? autoTableState.assignmentsById.get(currentSessionId) : undefined),
+    [autoTableState.assignmentsById, currentSessionId],
   );
   const currentSessionTableId = useMemo(
-    () => allSavedSessions.find((session) => session.id === currentSessionId)?.tableId,
-    [allSavedSessions, currentSessionId],
+    () => currentSessionAssignment?.effectiveTableId,
+    [currentSessionAssignment],
   );
+  const currentSessionTableSource = currentSessionAssignment?.source ?? "none";
   const [allGameBets, setAllGameBets] = useState<number[][]>([]);
   const [selectedBetKeys, setSelectedBetKeys] = useState<string[]>([]);
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
@@ -2343,8 +2364,8 @@ export function App() {
   const groupStats = orderedColRows.slice(0, 3);
   const rowStats = orderedColRows.slice(3, 6);
   const sortedSessions = useMemo(
-    () => sortSessions(sessions, sessionSortField, sessionSortDirection),
-    [sessionSortDirection, sessionSortField, sessions],
+    () => sortSessions(sessions, sessionSortField, sessionSortDirection, autoTableState.assignmentsById),
+    [autoTableState.assignmentsById, sessionSortDirection, sessionSortField, sessions],
   );
   const gameStats = useMemo(
     () => calculateGameStats(numbers, effectiveStatsScope, gameSortField, gameSortDirection),
@@ -3268,7 +3289,7 @@ export function App() {
                 <span className="repeat-tier-badge hot-badge">{item.mode === "short" ? "热门S" : "热门"}</span>
                 <strong className="repeat-number">{item.number}</strong>
                 <span className={`repeat-tier-badge hot-table-badge ${hotTableBadgeClass(hotTableSupport)}`}>
-                  {formatHotTableBadge(hotTableSupport)}
+                  {formatHotTableBadge(hotTableSupport, currentSessionTableSource)}
                 </span>
               </div>
             ))}
@@ -3435,7 +3456,7 @@ export function App() {
                     <td>{session.name}</td>
                     <td>{session.numbers.length}</td>
                     <td>{session.sharedUploader ?? ""}</td>
-                    <td>{formatTableShortName(tableLabelById.get(session.tableId ?? ""))}</td>
+                    <td>{formatSessionTableLabel(session, autoTableState.assignmentsById.get(session.id), tableLabelById, tableNameById)}</td>
                     <td>{formatSessionTime(session.updatedAt)}</td>
                   </tr>
                 ))}
@@ -4535,7 +4556,7 @@ export function App() {
                         </div>
                       ) : null}
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">桌台</span><span>{formatHotTableBadge(hotTableSupport)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span>
+                        <span className="prediction-roi-subheader">桌台</span><span>{formatHotTableBadge(hotTableSupport, currentSessionTableSource)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span>
                       </div>
                     </div>
                   </div>
@@ -4688,7 +4709,7 @@ export function App() {
                           <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><strong>{hotNumberSignal.number}</strong><span>148={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
                         </div>
                         <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
+                          <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport, currentSessionTableSource)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
                         </div>
                       </>
                     ) : (
@@ -5716,8 +5737,23 @@ function formatTableShortName(label: string | undefined): string {
   return parts[parts.length - 1] || label;
 }
 
-function formatHotTableBadge(support: HotTableSupport): string {
-  const prefix = support.match.level === "probable" ? "疑似" : "本桌";
+function formatSessionTableLabel(
+  session: SavedSession,
+  assignment: TableAssignment | undefined,
+  manualLabelById: ReadonlyMap<string, string>,
+  tableNameById: ReadonlyMap<string, string>,
+): string {
+  if (session.tableId) {
+    return `人:${formatTableShortName(manualLabelById.get(session.tableId)) || tableNameById.get(session.tableId) || "已归桌"}`;
+  }
+  if (assignment?.source === "auto" && assignment.effectiveTableId) {
+    return `自:${formatTableShortName(tableNameById.get(assignment.effectiveTableId)) || assignment.effectiveTableId}`;
+  }
+  return "";
+}
+
+function formatHotTableBadge(support: HotTableSupport, source: TableAssignmentSource = "none"): string {
+  const prefix = source === "auto" ? "自动" : support.match.level === "probable" ? "疑似" : "本桌";
   if (support.level === "strong") return `${prefix}强`;
   if (support.level === "support") return `${prefix}支`;
   if (support.level === "watch") return `${prefix}观`;
@@ -5747,7 +5783,18 @@ function hotTableBadgeClass(support: HotTableSupport): string {
   return `hot-table-badge-${support.level}`;
 }
 
-function sortSessions(sessions: SavedSession[], field: DataSortField, direction: SortDirection): SavedSession[] {
+function sessionTableSortKey(session: SavedSession, assignments: ReadonlyMap<string, TableAssignment>): string {
+  const assignment = assignments.get(session.id);
+  const sourcePrefix = assignment?.source === "manual" ? "0" : assignment?.source === "auto" ? "1" : "2";
+  return `${sourcePrefix}:${assignment?.effectiveTableId ?? session.tableId ?? ""}`;
+}
+
+function sortSessions(
+  sessions: SavedSession[],
+  field: DataSortField,
+  direction: SortDirection,
+  assignments: ReadonlyMap<string, TableAssignment> = new Map<string, TableAssignment>(),
+): SavedSession[] {
   const multiplier = direction === "asc" ? 1 : -1;
   return [...sessions].sort((left, right) => {
     let result = 0;
@@ -5758,7 +5805,7 @@ function sortSessions(sessions: SavedSession[], field: DataSortField, direction:
     } else if (field === "sharedUploader") {
       result = (left.sharedUploader ?? "").localeCompare(right.sharedUploader ?? "");
     } else if (field === "table") {
-      result = (left.tableId ?? "").localeCompare(right.tableId ?? "");
+      result = sessionTableSortKey(left, assignments).localeCompare(sessionTableSortKey(right, assignments));
     } else {
       result = left.name.localeCompare(right.name, "zh-Hans-CN");
     }
