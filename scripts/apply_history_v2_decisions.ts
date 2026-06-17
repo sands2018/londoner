@@ -1,7 +1,7 @@
 /**
  * Apply Wayne's confirmed V2 history cleanup decisions to a new file.
  *
- * Source is read-only. This script never overwrites history_data.json.
+ * Source is read-only. This script never overwrites HistoryData/history_data.json.
  */
 
 import crypto from "node:crypto";
@@ -19,8 +19,8 @@ interface Session {
   [key: string]: unknown;
 }
 
-const SOURCE_PATH = "E:/_TRANSFER_/history_data.json";
-const OUTPUT_PATH = "E:/_TRANSFER_/history_data_cleaned_v2.json";
+const SOURCE_PATH = "HistoryData/history_data.json";
+const OUTPUT_PATH = "HistoryData/history_data_cleaned_v2.json";
 
 const DELETE_NAMES = [
   "20231025-下午-伦敦人",
@@ -200,7 +200,7 @@ const output = JSON.parse(fs.readFileSync(OUTPUT_PATH, "utf8")) as Session[];
 const outputScan = summarizeRelationships(output);
 const sourceHashAfter = hash(fs.readFileSync(SOURCE_PATH));
 if (sourceHashAfter !== sourceHashBefore) {
-  throw new Error("Source history_data.json changed during execution");
+  throw new Error("Source HistoryData/history_data.json changed during execution");
 }
 
 console.log(JSON.stringify({

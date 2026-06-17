@@ -1,5 +1,5 @@
 /**
- * Read-only detailed report for history_data.json using numberMergeV2.
+ * Read-only detailed report for HistoryData/history_data.json using numberMergeV2.
  *
  * This script never writes to the source history file.
  */
@@ -25,7 +25,7 @@ function parseNumbers(raw: string): number[] {
 }
 
 const sessions = JSON.parse(
-  fs.readFileSync("E:/_TRANSFER_/history_data.json", "utf8"),
+  fs.readFileSync("HistoryData/history_data.json", "utf8"),
 ) as Session[];
 
 const parsed = sessions.map((session, index) => ({
@@ -85,7 +85,7 @@ for (let leftIndex = 0; leftIndex < parsed.length; leftIndex++) {
 }
 
 console.log(JSON.stringify({
-  source: "E:/_TRANSFER_/history_data.json",
+  source: "HistoryData/history_data.json",
   sessionCount: parsed.length,
   countFieldMismatches: parsed
     .filter((item) => item.session.Count !== item.numbers.length)

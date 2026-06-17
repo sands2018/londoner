@@ -1,5 +1,5 @@
 /**
- * Scan history_data.json with numberMergeV2 to find all relationships.
+ * Scan HistoryData/history_data.json with numberMergeV2 to find all relationships.
  * Usage: npx tsx scripts/scan_history_v2.ts
  */
 
@@ -21,7 +21,7 @@ function parseNumbers(raw: string): number[] {
 }
 
 const data: Session[] = JSON.parse(
-  fs.readFileSync("E:/_TRANSFER_/history_data.json", "utf8"),
+  fs.readFileSync("HistoryData/history_data.json", "utf8"),
 );
 
 console.log(`Total sessions: ${data.length}\n`);
