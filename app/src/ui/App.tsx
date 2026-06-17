@@ -2761,7 +2761,7 @@ export function App() {
           </>
         ) : (
           <>
-            <div className="data-screen-actions frequency-detail-actions" style={{borderTop:0,padding:0}}>
+            <div className="tabs tabs-grid tabs-grid-6" style={{padding:0}}>
               {frequencyDetailKeys.map((key) => (
                 <button className={key === frequencyDetailKey ? "selected" : ""} key={key} onClick={() => setFrequencyDetailKey(key)} type="button">{frequencyBandLabels[key]}</button>
               ))}
@@ -2795,7 +2795,7 @@ export function App() {
     const items = [0,1,2,4,5,6].map((key) => colRowStats.rows.find((item) => item.key === key)).filter((item): item is ColRowWave => Boolean(item));
     return (
       <div className="colrow-body">
-        <div className="stats-tabs">
+        <div className="tabs tabs-top">
           <button className={colRowTab === "detail" ? "selected" : ""} onClick={() => setColRowTab("detail")} type="button">明细</button>
           <button className={colRowTab === "chart" ? "selected" : ""} onClick={() => setColRowTab("chart")} type="button">统计图</button>
           <button className={colRowTab === "summary" ? "selected" : ""} onClick={() => setColRowTab("summary")} type="button">统计数据</button>
@@ -2841,7 +2841,7 @@ export function App() {
     const slotW = chartW / maxSlots;
     return (
       <div className="prediction-body" style={{padding:0}}>
-        <div className="stats-tabs">
+        <div className="tabs tabs-top">
           <button className={waveTab === "rhythm" ? "selected" : ""} onClick={() => setWaveTab("rhythm")} type="button">节奏</button>
           <button className={waveTab === "trend" ? "selected" : ""} onClick={() => setWaveTab("trend")} type="button">趋势</button>
         </div>
@@ -2948,7 +2948,7 @@ export function App() {
   function StatsOtherTab() {
     return (
       <div className="other-body">
-        <div className="stats-tabs other-tabs">
+        <div className="tabs tabs-top">
           <button className={otherTab==="longs"?"selected":""} onClick={()=>setOtherTab("longs")} type="button">追打</button>
           <button className={otherTab==="numbers"?"selected":""} onClick={()=>setOtherTab("numbers")} type="button">号码</button>
           <button className={otherTab==="rounds"?"selected":""} onClick={()=>setOtherTab("rounds")} type="button">轮次</button>
@@ -2964,7 +2964,7 @@ export function App() {
         {otherTab === "numbers" ? <div className="other-numbers"><table className="other-table other-numbers-table"><thead><tr><th onClick={()=>sortOtherNumbers("number")}>号码 <SortMark active={otherNumberSortField==="number"} direction={otherNumberSortDirection}/></th><th onClick={()=>sortOtherNumbers("distance")}>距离 <SortMark active={otherNumberSortField==="distance"} direction={otherNumberSortDirection}/></th><th onClick={()=>sortOtherNumbers("frequency")}>次数 <SortMark active={otherNumberSortField==="frequency"} direction={otherNumberSortDirection}/></th><th onClick={()=>sortOtherNumbers("number")}>号码</th><th onClick={()=>sortOtherNumbers("distance")}>距离</th><th onClick={()=>sortOtherNumbers("frequency")}>次数</th></tr></thead><tbody>{otherNumberStats.rows.map((row,index)=>(<tr key={index}><OtherNumberCells item={row.left}/><OtherNumberCells item={row.right}/></tr>))}</tbody></table><div className="other-max-distance"><strong>最大距离前五名：</strong>{otherNumberStats.maxDistances.map((item,index)=>(<span key={`${item.number}-${item.distance}-${index}`}>{item.number}：{item.distance}</span>))}</div></div> : null}
         {otherTab === "rounds" ? (
           <div className="other-rounds">
-            <div className="stats-tabs other-round-tabs"><button className={otherRoundTab==="bet"?"selected":""} onClick={()=>setOtherRoundTab("bet")} type="button">轮次参考数据</button><button className={otherRoundTab==="summary"?"selected":""} onClick={()=>setOtherRoundTab("summary")} type="button">轮次统计数据</button></div>
+            <div className="tabs tabs-top"><button className={otherRoundTab==="bet"?"selected":""} onClick={()=>setOtherRoundTab("bet")} type="button">轮次参考数据</button><button className={otherRoundTab==="summary"?"selected":""} onClick={()=>setOtherRoundTab("summary")} type="button">轮次统计数据</button></div>
             {otherRoundTab === "bet" ? <table className="other-table other-round-bet-table"><thead><tr><th>轮次</th><th>不出</th><th>概率</th>{otherRoundFailedRounds.map((round)=>(<th key={`f-${round}`}>F{round}</th>))}{otherRoundFailedRounds.map((round)=>(<th key={`fp-${round}`}>概率</th>))}</tr></thead><tbody>{otherRoundBetStats.map((item)=>(<tr key={item.round}><th>{item.round}</th><td>{item.notYet}</td><td>{formatPercent(item.notYetPercentage)}</td>{item.failed.map((count,index)=>(<td key={`f-${index}`}>{count}</td>))}{item.failedPercentages.map((percent,index)=>(<td key={`fp-${index}`}>{formatPercent(percent)}</td>))}</tr>))}</tbody></table> : <table className="other-table other-round-summary-table"><thead><tr><th rowSpan={2}>轮次</th><th colSpan={3}>组</th><th colSpan={3}>行</th><th colSpan={3}>全部</th></tr><tr><th>前</th><th>本轮</th><th>后</th><th>前</th><th>本轮</th><th>后</th><th>前</th><th>本轮</th><th>后</th></tr></thead><tbody>{otherRoundSummaryStats.map((item)=>(<tr key={item.round}><th>{item.round}</th><td>{item.group.before}</td><td>{item.group.current}</td><td>{item.group.after}</td><td>{item.row.before}</td><td>{item.row.current}</td><td>{item.row.after}</td><td>{item.all.before}</td><td>{item.all.current}</td><td>{item.all.after}</td></tr>))}</tbody></table>}
           </div>
         ) : null}
@@ -3343,7 +3343,7 @@ export function App() {
               <strong>保存的数据</strong>
             <button className="close-button title-close-button" onClick={() => setDataViewOpen(false)} type="button">x</button>
             </header>
-          <div className="stats-tabs data-tabs" aria-label="数据来源">
+          <div className="tabs tabs-top tabs-data" aria-label="数据来源">
             <button className={dataTab === "local" ? "selected" : ""} onClick={() => setDataTab("local")} type="button">本地数据</button>
             <button className={dataTab === "shared" ? "selected" : ""} onClick={() => setDataTab("shared")} type="button">共享数据</button>
             <button className={dataTab === "transfer" ? "selected" : ""} onClick={() => { setDataTab("transfer"); if (sharedConnected) void reloadTransferData(); }} type="button">临时数据</button>
@@ -3788,10 +3788,10 @@ export function App() {
               ))}
             </div>
           </div>
-          <div className="number-zone-tabs">
+          <div className="tabs tabs-grid tabs-grid-6" style={{flexShrink:0, padding:"8px 10px 20px"}}>
             {["distance", "1", "2", "3", "5", "all"].map((mode) => (
               <button
-                className={`number-zone-tab${numberZoneMode === mode ? " selected" : ""}`}
+                className={numberZoneMode === mode ? "selected" : ""}
                 key={mode}
                 onClick={() => {
                   setNumberZoneMode(mode);
@@ -3813,7 +3813,7 @@ export function App() {
             <button className="close-button title-close-button" onClick={() => setColRowViewOpen(false)} type="button">x</button>
           </header>
           <div className="colrow-body">
-            <div className="stats-tabs">
+            <div className="tabs tabs-top">
               <button className={colRowTab === "detail" ? "selected" : ""} onClick={() => setColRowTab("detail")} type="button">
                 明细
               </button>
@@ -3853,7 +3853,7 @@ export function App() {
               ))}
             </div>
           )}
-            <div className="data-screen-actions stats-nav-actions" aria-label="统计页面">
+            <div className="tabs tabs-bottom" aria-label="统计页面">
               <button
                 onClick={openGameView}
                 type="button"
@@ -3891,7 +3891,7 @@ export function App() {
               />
             ) : (
               <>
-                <div className="data-screen-actions frequency-detail-actions" aria-label="频率明细行组">
+                <div className="tabs tabs-grid tabs-grid-6" style={{padding:0}} aria-label="频率明细行组">
                   {frequencyDetailKeys.map((key) => (
                     <button
                       className={key === frequencyDetailKey ? "selected" : ""}
@@ -3927,7 +3927,7 @@ export function App() {
                 ))}
               </div>
             ) : null}
-            <div className="data-screen-actions stats-nav-actions" aria-label="统计页面">
+            <div className="tabs tabs-bottom" aria-label="统计页面">
               <button
                 onClick={openGameView}
                 type="button"
@@ -3960,7 +3960,7 @@ export function App() {
             <DistanceOverviewChart distances={distanceStats} onSelect={(key) => setDistanceDetailKey(key)} />
           </div>
           <footer className="stats-bottom-actions">
-            <div className="data-screen-actions stats-nav-actions" aria-label="统计页面">
+            <div className="tabs tabs-bottom" aria-label="统计页面">
               <button onClick={openGameView} type="button">打法</button>
               <button onClick={openColRowView} type="button">行组</button>
               <button onClick={openFrequencyView} type="button">频率</button>
@@ -3984,7 +3984,7 @@ export function App() {
             <button className="close-button title-close-button" onClick={() => setRefineViewOpen(false)} type="button">x</button>
           </header>
           <div className="refine-body">
-            <div className="stats-tabs refine-tabs">
+            <div className="tabs tabs-top">
               <button className={refineTab === "compare" ? "selected" : ""} onClick={() => setRefineTab("compare")} type="button">
                 各行各组比较
               </button>
@@ -4076,7 +4076,7 @@ export function App() {
                 </button>
               ))}
             </div>
-            <div className="data-screen-actions stats-nav-actions" aria-label="统计页面">
+            <div className="tabs tabs-bottom" aria-label="统计页面">
               <button onClick={openGameView} type="button">打法</button>
               <button onClick={openColRowView} type="button">行组</button>
               <button onClick={openFrequencyView} type="button">频率</button>
@@ -4095,7 +4095,7 @@ export function App() {
             <button className="close-button title-close-button" onClick={() => setOtherViewOpen(false)} type="button">x</button>
           </header>
           <div className="other-body">
-            <div className="stats-tabs other-tabs">
+            <div className="tabs tabs-top">
               <button className={otherTab === "longs" ? "selected" : ""} onClick={() => setOtherTab("longs")} type="button">
                 追打
               </button>
@@ -4216,7 +4216,7 @@ export function App() {
 
             {otherTab === "rounds" ? (
               <div className="other-rounds">
-                <div className="stats-tabs other-round-tabs">
+                <div className="tabs tabs-top">
                   <button className={otherRoundTab === "bet" ? "selected" : ""} onClick={() => setOtherRoundTab("bet")} type="button">
                     轮次参考数据
                   </button>
@@ -4316,7 +4316,7 @@ export function App() {
                 ))}
               </div>
             )}
-            <div className="data-screen-actions stats-nav-actions" aria-label="统计页面">
+            <div className="tabs tabs-bottom" aria-label="统计页面">
               <button onClick={openGameView} type="button">打法</button>
               <button onClick={openColRowView} type="button">行组</button>
               <button onClick={openFrequencyView} type="button">频率</button>
@@ -4334,7 +4334,7 @@ export function App() {
               <strong>预测明细</strong>
               <button className="close-button" onClick={() => setPredictionWindowOpen(false)} type="button">x</button>
             </div>
-            <div className="prediction-tabs">
+            <div className="tabs tabs-top tabs-solid">
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
               {canUseQuality124 ? (
                 <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">节奏</button>
@@ -4349,7 +4349,7 @@ export function App() {
             <div className="prediction-body">
               {predictionTab === "overview" ? (
                 <div className={`overview-pane overview-pane-${predictionOverviewTab}`}>
-                  <div className="overview-subtabs" aria-label="总览分类" role="tablist">
+                  <div className="tabs tabs-top tabs-solid tabs-full" aria-label="总览分类" role="tablist">
                     {[
                       ["repeat", "单号"],
                       ["other", "行组"],
@@ -4691,7 +4691,7 @@ export function App() {
               {colRowScopes.map((value) => (<button className={value===otherScope?"selected":""} key={value} onClick={()=>setOtherScope(value)} type="button">{value<0?"全部":value}</button>))}
             </div>
           ) : null}
-          <footer className="data-screen-actions stats-nav-actions" aria-label="统计标签">
+          <footer className="tabs tabs-bottom" aria-label="统计标签">
             <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
             <button className={statsTab==="colrow"?"selected":""} onClick={()=>{ setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab","colrow"); }} type="button">行组</button>
             <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
@@ -4710,7 +4710,7 @@ export function App() {
               <button className="close-button" onClick={() => setConfigViewOpen(false)} type="button">x</button>
             </header>
             <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
-              <div className="stats-tabs">
+              <div className="tabs tabs-top">
                 <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
                 <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
                 <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">赌桌</button>
