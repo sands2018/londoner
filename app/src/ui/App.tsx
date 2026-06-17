@@ -75,7 +75,7 @@ import {
   uploadTransferSession,
   upsertSharedSession,
 } from "../storage/sharedStorage";
-import type { SavedSession } from "../storage/storage";
+import type { CasinoTable, SavedSession } from "../storage/storage";
 import {
   CHASE_LENGTH,
   ColdReversalEngine,
@@ -332,12 +332,15 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
-  const [configTab, setConfigTab] = useState<"game" | "other">("game");
+  const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
   const [coldAdaptiveMode, setColdAdaptiveMode] = useState<string>(() => localStorage.getItem("londoner.coldAdaptiveMode") || "adaptiveRow");
   const coldModeLabel = coldAdaptiveMode === "off" ? "不切换" : coldAdaptiveMode === "adaptive" ? "自适应" : "自适应+默认行";
   const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
+  const [draftCasinoTables, setDraftCasinoTables] = useState<CasinoTable[]>([]);
+  const [draftSelectedCasinoId, setDraftSelectedCasinoId] = useState("");
+  const [draftSelectedTableId, setDraftSelectedTableId] = useState("");
   const [allSavedSessions, setAllSavedSessions] = useState<SavedSession[]>([]);
   const [betsManageOpen, setBetsManageOpen] = useState(false);
   const [dataText, setDataText] = useState("");
@@ -2410,6 +2413,11 @@ export function App() {
   function openConfigView() {
     reloadGameConfigState();
     setDraftWindowMode(windowMode);
+    void storage.listCasinoTables().then((items) => {
+      setDraftCasinoTables(items);
+      setDraftSelectedCasinoId("");
+      setDraftSelectedTableId("");
+    });
     setConfigViewOpen(true);
   }
 
@@ -2521,10 +2529,139 @@ export function App() {
     });
   }
 
+  // ── Casino / table helpers ──
+
+  function userCasinos(): CasinoTable[] {
+    return draftCasinoTables.filter((item) => item.parentId === "0" && item.id !== "c_unknown");
+  }
+
+  function userTables(casinoId: string): CasinoTable[] {
+    return draftCasinoTables.filter(
+      (item) => item.parentId === casinoId && !item.id.startsWith("t_unknown_"),
+    );
+  }
+
+  function generateLocationId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  async function addCasino() {
+    setPromptValue("");
+    setPromptDialog({
+      title: "添加赌场",
+      message: "请输入赌场名称：",
+      defaultValue: "",
+      confirmText: "添加",
+      onConfirm: async (value) => {
+        const name = value.trim();
+        if (!name) { setNoticeDialog({ title: "添加失败", message: "名称不能为空。" }); return; }
+        const casinoId = `c_${generateLocationId()}`;
+        const defaultTableId = `t_unknown_${casinoId}`;
+        await storage.saveCasinoTable({ id: casinoId, name, parentId: "0" });
+        await storage.saveCasinoTable({ id: defaultTableId, name: "未知", parentId: casinoId });
+        const items = await storage.listCasinoTables();
+        setDraftCasinoTables(items);
+        setDraftSelectedCasinoId(casinoId);
+        setDraftSelectedTableId("");
+      },
+    });
+  }
+
+  async function renameCasino(casino: CasinoTable) {
+    setPromptValue(casino.name);
+    setPromptDialog({
+      title: "重命名赌场",
+      message: "请输入新名称：",
+      defaultValue: casino.name,
+      confirmText: "确定",
+      onConfirm: async (value) => {
+        const name = value.trim();
+        if (!name) { setNoticeDialog({ title: "重命名失败", message: "名称不能为空。" }); return; }
+        await storage.saveCasinoTable({ ...casino, name });
+        setDraftCasinoTables(await storage.listCasinoTables());
+        setNoticeDialog({ title: "重命名成功", message: `已更名为"${name}"。` });
+      },
+    });
+  }
+
+  async function deleteCasino(casino: CasinoTable) {
+    const tableCount = userTables(casino.id).length;
+    const extraMsg = tableCount > 0 ? `其下 ${tableCount} 个赌桌也将被删除。` : "";
+    setConfirmDialog({
+      title: "请确认",
+      message: `确定要删除赌场"${casino.name}"吗？${extraMsg}`,
+      confirmText: "删除",
+      onConfirm: async () => {
+        await storage.deleteCasinoTable(casino.id);
+        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftSelectedCasinoId("");
+        setDraftSelectedTableId("");
+        setNoticeDialog({ title: "删除成功", message: `赌场"${casino.name}"已删除。` });
+      },
+    });
+  }
+
+  async function addTable() {
+    if (!draftSelectedCasinoId) {
+      setNoticeDialog({ title: "提示", message: "请先选择一个赌场。" });
+      return;
+    }
+    setPromptValue("");
+    setPromptDialog({
+      title: "添加赌桌",
+      message: "请输入赌桌名称：",
+      defaultValue: "",
+      confirmText: "添加",
+      onConfirm: async (value) => {
+        const name = value.trim();
+        if (!name) { setNoticeDialog({ title: "添加失败", message: "名称不能为空。" }); return; }
+        const tableId = `t_${generateLocationId()}`;
+        await storage.saveCasinoTable({ id: tableId, name, parentId: draftSelectedCasinoId });
+        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftSelectedTableId(tableId);
+      },
+    });
+  }
+
+  async function renameTable(table: CasinoTable) {
+    setPromptValue(table.name);
+    setPromptDialog({
+      title: "重命名赌桌",
+      message: "请输入新名称：",
+      defaultValue: table.name,
+      confirmText: "确定",
+      onConfirm: async (value) => {
+        const name = value.trim();
+        if (!name) { setNoticeDialog({ title: "重命名失败", message: "名称不能为空。" }); return; }
+        await storage.saveCasinoTable({ ...table, name });
+        setDraftCasinoTables(await storage.listCasinoTables());
+        setNoticeDialog({ title: "重命名成功", message: `已更名为"${name}"。` });
+      },
+    });
+  }
+
+  async function deleteTable(table: CasinoTable) {
+    setConfirmDialog({
+      title: "请确认",
+      message: `确定要删除赌桌"${table.name}"吗？`,
+      confirmText: "删除",
+      onConfirm: async () => {
+        await storage.deleteCasinoTable(table.id);
+        setDraftCasinoTables(await storage.listCasinoTables());
+        setDraftSelectedTableId("");
+        setNoticeDialog({ title: "删除成功", message: `赌桌"${table.name}"已删除。` });
+      },
+    });
+  }
+
   function saveConfigView() {
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
+      setConfigViewOpen(false);
+      return;
+    }
+    if (configTab === "table") {
       setConfigViewOpen(false);
       return;
     }
@@ -4572,11 +4709,13 @@ export function App() {
               <strong>配置</strong>
               <button className="close-button" onClick={() => setConfigViewOpen(false)} type="button">x</button>
             </header>
-            <div className="stats-tabs">
-              <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
-              <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
-            </div>
-            {configTab === "other" ? (
+            <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+              <div className="stats-tabs">
+                <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
+                <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
+                <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">赌桌</button>
+              </div>
+              {configTab === "other" ? (
               <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
                 <section className="config-card config-bets">
                   <h2><span>统计窗口</span></h2>
@@ -4602,6 +4741,64 @@ export function App() {
                   </div>
                 </section>
               </div>
+            ) : configTab === "table" ? (
+            <>
+              <div className="config-body" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", flex: 1, overflow: "hidden" }}>
+                <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <h2><span>赌场</span></h2>
+                  <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                    <div className="location-list">
+                      {userCasinos().length === 0 ? (
+                        <div style={{ padding: "18px 12px", color: "#999", fontSize: "14px" }}>暂无赌场</div>
+                      ) : (
+                        userCasinos().map((casino) => (
+                          <button
+                            key={casino.id}
+                            className={draftSelectedCasinoId === casino.id ? "selected" : ""}
+                            onClick={() => { setDraftSelectedCasinoId(casino.id); setDraftSelectedTableId(""); }}
+                            type="button"
+                          >
+                            <span>{casino.name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </section>
+                <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <h2><span>赌桌</span></h2>
+                  <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                    <div className="location-list">
+                      {!draftSelectedCasinoId ? (
+                        <div style={{ padding: "18px 12px", color: "#999", fontSize: "14px" }}>请先选择赌场</div>
+                      ) : userTables(draftSelectedCasinoId).length === 0 ? (
+                        <div style={{ padding: "18px 12px", color: "#999", fontSize: "14px" }}>暂无赌桌</div>
+                      ) : (
+                        userTables(draftSelectedCasinoId).map((table) => (
+                          <button
+                            key={table.id}
+                            className={draftSelectedTableId === table.id ? "selected" : ""}
+                            onClick={() => setDraftSelectedTableId(table.id)}
+                            type="button"
+                          >
+                            <span>{table.name}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div style={{ display: "flex", gap: 6, justifyContent: "center", padding: "6px 0 12px" }}>
+                <button onClick={addCasino} type="button" className="table-action">添加</button>
+                <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) renameCasino(c); }} type="button" className="table-action">更名</button>
+                <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) deleteCasino(c); }} type="button" className="table-action">删除</button>
+                <span style={{ width: 14 }} />
+                <button disabled={!draftSelectedCasinoId} onClick={addTable} type="button" className="table-action">添加</button>
+                <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) renameTable(t); }} type="button" className="table-action">更名</button>
+                <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) deleteTable(t); }} type="button" className="table-action">删除</button>
+              </div>
+            </>
             ) : (
             <div className="config-body">
               <section className="config-card config-bets">
@@ -4688,11 +4885,14 @@ export function App() {
               </section>
             </div>
             )}
-            <footer className="config-actions">
-              <button onClick={saveConfigView} type="button">确定</button>
-              <button onClick={() => setConfigViewOpen(false)} type="button">取消</button>
-              {configTab === "game" ? <button onClick={openBetsManage} type="button">管理</button> : null}
-            </footer>
+            </div>
+            {configTab !== "table" ? (
+              <footer className="config-actions">
+                <button onClick={saveConfigView} type="button">确定</button>
+                <button onClick={() => setConfigViewOpen(false)} type="button">取消</button>
+                {configTab === "game" ? <button onClick={openBetsManage} type="button">管理</button> : null}
+              </footer>
+            ) : null}
           </section>
         </div>
       ) : null}

@@ -11,6 +11,13 @@ export interface SavedSession {
   sharedUploader?: string;
 }
 
+/** Single flat table entry: casino has parentId="0", table has parentId=casino ID. */
+export interface CasinoTable {
+  id: string;
+  name: string;
+  parentId: string;
+}
+
 export interface StorageAdapter {
   loadCurrent(): Promise<RouletteNumber[]>;
   saveCurrent(numbers: readonly RouletteNumber[]): Promise<void>;
@@ -18,4 +25,8 @@ export interface StorageAdapter {
   saveSession(session: SavedSession): Promise<void>;
   renameSession(id: string, name: string): Promise<void>;
   deleteSession(id: string): Promise<void>;
+  /** Casino / table location management. */
+  listCasinoTables(): Promise<CasinoTable[]>;
+  saveCasinoTable(item: CasinoTable): Promise<void>;
+  deleteCasinoTable(id: string): Promise<void>;
 }

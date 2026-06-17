@@ -2412,6 +2412,7 @@ button:disabled {
   color: #20241f;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  height: min(72dvh, 620px);
   max-height: min(86dvh, 780px);
   max-width: min(920px, calc(100dvw - 24px));
   width: min(94dvw, 920px);
@@ -2512,6 +2513,36 @@ button:disabled {
 
 .config-acr {
   grid-column: 1 / -1;
+}
+
+.location-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.location-list button {
+  align-items: center;
+  background: #ffffff;
+  border: 0;
+  border-bottom: 1px solid #eee9df;
+  border-radius: 0;
+  color: #5f5548;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: var(--dialog-row-font-size);
+  font-weight: var(--weight-list);
+  justify-content: flex-start;
+  min-height: var(--dialog-row-height);
+  min-width: 0;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.location-list button.selected {
+  background: #e8e3d5;
+  color: #20241f;
 }
 
 .config-check-list {
@@ -2651,6 +2682,24 @@ button:disabled {
 }
 
 .manage-side-actions button:disabled {
+  color: #c8c3b9;
+  opacity: 0.72;
+}
+
+.table-action {
+  background: #fbfaf6;
+  border: 1px solid #cfc5b3;
+  border-radius: 5px;
+  color: #8a6b2e;
+  font-size: var(--dialog-action-font-size);
+  font-weight: var(--weight-ui);
+  min-height: var(--action-button-min-height);
+  min-width: 54px;
+  padding: 0 7px;
+  padding: 0 8px;
+}
+
+.table-action:disabled {
   color: #c8c3b9;
   opacity: 0.72;
 }
@@ -3116,6 +3165,7 @@ button:disabled {
   }
 
   .config-dialog {
+    height: min(72dvh, 540px);
     max-height: min(86dvh, 700px);
     width: calc(100dvw - 20px);
   }

@@ -1,9 +1,32 @@
 import type { RouletteNumber } from "../core/roulette";
-import type { SavedSession, StorageAdapter } from "./storage";
+import type { CasinoTable, SavedSession, StorageAdapter } from "./storage";
 
 const currentNumbersKey = "londoner.currentNumbers";
 const sessionsKey = "londoner.sessions";
+const casinoTablesKey = "londoner.casinoTables";
 const legacyFileIndexKey = "FILE_INDEX_DATA";
+
+const DEFAULT_UNKNOWN_CASINO_ID = "c_unknown";
+const DEFAULT_UNKNOWN_TABLE_PREFIX = "t_unknown_";
+
+function ensureDefaultCasinoTables(items: CasinoTable[]): CasinoTable[] {
+  const result = [...items];
+  const hasUnknownCasino = result.some((item) => item.id === DEFAULT_UNKNOWN_CASINO_ID);
+  if (!hasUnknownCasino) {
+    result.unshift({ id: DEFAULT_UNKNOWN_CASINO_ID, name: "未知", parentId: "0" });
+  }
+  const casinoIds = result.filter((item) => item.parentId === "0").map((item) => item.id);
+  for (const casinoId of casinoIds) {
+    const defaultTableId = `${DEFAULT_UNKNOWN_TABLE_PREFIX}${casinoId}`;
+    const hasDefaultTable = result.some((item) => item.id === defaultTableId);
+    if (!hasDefaultTable) {
+      // Insert right after the casino entry or at the end
+      const casinoIndex = result.findIndex((item) => item.id === casinoId);
+      result.splice(casinoIndex + 1, 0, { id: defaultTableId, name: "未知", parentId: casinoId });
+    }
+  }
+  return result;
+}
 
 function parseJson<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
@@ -126,6 +149,45 @@ export class LocalStorageAdapter implements StorageAdapter {
     localStorage.setItem(
       sessionsKey,
       JSON.stringify(sessions.filter((item) => item.id !== id && !isLegacyId(item.id))),
+    );
+  }
+
+  // ── Casino / table location ──
+
+  async listCasinoTables(): Promise<CasinoTable[]> {
+    const raw = parseJson<CasinoTable[]>(localStorage.getItem(casinoTablesKey), []);
+    const ensured = ensureDefaultCasinoTables(raw);
+    if (ensured.length !== raw.length) {
+      localStorage.setItem(casinoTablesKey, JSON.stringify(ensured));
+    }
+    return ensured;
+  }
+
+  async saveCasinoTable(item: CasinoTable): Promise<void> {
+    const items = await this.listCasinoTables();
+    const idx = items.findIndex((x) => x.id === item.id);
+    if (idx >= 0) {
+      items[idx] = item;
+    } else {
+      items.push(item);
+    }
+    localStorage.setItem(casinoTablesKey, JSON.stringify(items));
+  }
+
+  async deleteCasinoTable(id: string): Promise<void> {
+    const items = await this.listCasinoTables();
+    const idsToDelete = new Set<string>();
+    idsToDelete.add(id);
+    // Cascade: if deleting a casino, also delete all its tables
+    const isCasino = items.some((item) => item.id === id && item.parentId === "0");
+    if (isCasino) {
+      for (const item of items) {
+        if (item.parentId === id) idsToDelete.add(item.id);
+      }
+    }
+    localStorage.setItem(
+      casinoTablesKey,
+      JSON.stringify(items.filter((item) => !idsToDelete.has(item.id))),
     );
   }
 }
