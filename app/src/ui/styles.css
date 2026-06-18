@@ -467,7 +467,7 @@ button:disabled {
 }
 
 .app-shell.theme-dark .collapsed-combo-bar .combo-left {
-  border-right-color: #3a3a3a;
+  border-right-color: #343434;
 }
 
 /* Hide individual collapsed sections when both are collapsed (combined bar replaces them) */
@@ -662,6 +662,10 @@ button:disabled {
   color: #d8e0e6;
 }
 
+body:has(.app-shell.theme-dark) {
+  background: #121212;
+}
+
 /* --- Panels & cards --- */
 .app-shell.theme-dark .top-stats-strip,
 .app-shell.theme-dark .signal-cell,
@@ -770,14 +774,38 @@ button:disabled {
 .app-shell.theme-dark .empty-state { color: #5a636a; }
 
 /* --- Scope row / dock buttons --- */
-.app-shell.theme-dark .scope-row button,
+.app-shell.theme-dark .scope-row button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  color: #e8e8e8;
+  min-height: 29px;
+}
+
 .app-shell.theme-dark .dock-actions button,
 .app-shell.theme-dark .keyboard-reopen {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
   color: #e8e8e8;
-  min-height: 29px;
+}
+
+/* --- Bottom tabs (stats page footer navigation) --- */
+.app-shell.theme-dark .tabs-bottom {
+  background: #1a1a1a;
+}
+
+.app-shell.theme-dark .tabs-bottom button {
+  background: #1e1e1e;
+  border-color: #38342e;
+  color: #8a8a8a;
+}
+
+.app-shell.theme-dark .tabs-bottom button.selected {
+  background: #343434;
+  border-top-color: #343434;
+  color: #e0b870;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.30);
 }
 
 /* Control buttons in keyboard: match number-key height */
@@ -812,6 +840,116 @@ button:disabled {
 .app-shell.theme-dark .scope-row,
 .app-shell.theme-dark .dock-actions { background: transparent; }
 .app-shell.theme-dark button:disabled { opacity: 0.4; }
+
+/* --- Data screens (game stats, col-row, etc.) --- */
+.app-shell.theme-dark .data-screen,
+.app-shell.theme-dark .game-screen,
+.app-shell.theme-dark .stats-screen {
+  background: #121212;
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .data-screen-head {
+  background: linear-gradient(
+    to bottom,
+    #121212 0,
+    #121212 env(safe-area-inset-top),
+    #343434 env(safe-area-inset-top),
+    #343434 100%
+  );
+  border-top-color: #5a5028;
+  border-bottom-color: #5a5028;
+  color: #d4c8a8;
+}
+
+.app-shell.theme-dark .data-screen-head strong {
+  color: #e0b870;
+}
+
+.app-shell.theme-dark .data-screen-head button {
+  background: #242424;
+  border-left-color: #38342e;
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .data-screen-head .close-button,
+.app-shell.theme-dark .modal-head .close-button,
+.app-shell.theme-dark .config-dialog-head .close-button {
+  background: #424242;
+  border-color: #5a5028;
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .data-table-wrap {
+  background: #1b1b1b;
+}
+
+.app-shell.theme-dark .data-table {
+  border-bottom-color: #38342e;
+}
+
+.app-shell.theme-dark .data-table th {
+  background: #202020;
+  border-bottom-color: #423d32;
+  color: #a8b5bd;
+}
+
+.app-shell.theme-dark .data-table td {
+  border-bottom-color: #2a2a2a;
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .data-table th,
+.app-shell.theme-dark .data-table td {
+  border-right-color: #2a2a2a;
+}
+
+.app-shell.theme-dark .data-table tbody tr:hover td {
+  background: #222222;
+}
+
+.app-shell.theme-dark .data-summary-row {
+  background: #202020;
+  border-top-color: #38342e;
+  color: #a8b5bd;
+}
+
+.app-shell.theme-dark .data-summary-row strong {
+  color: #d4c8a8;
+}
+
+.app-shell.theme-dark .data-empty {
+  color: #5a636a;
+}
+
+.app-shell.theme-dark .td-won { color: #a0c8a0; }
+.app-shell.theme-dark .td-drew { color: #c8b888; }
+.app-shell.theme-dark .td-lost { color: #c89088; }
+
+.app-shell.theme-dark .config-dialog {
+  background: #1b1b1b;
+  border-color: #423d32;
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .config-dialog-head {
+  background: #1b1b1b;
+  border-bottom-color: #423d32;
+}
+
+.app-shell.theme-dark .config-dialog-head strong {
+  color: #d4c8a8;
+}
+
+.app-shell.theme-dark .config-card {
+  background: #202020;
+  border-color: #38342e;
+}
+
+.app-shell.theme-dark .config-card h2 {
+  color: #a8b5bd;
+  border-bottom-color: #38342e;
+}
 
 .group-counts {
   border-radius: 5px;
@@ -1126,9 +1264,10 @@ button:disabled {
   border-bottom: 1px solid #cfc5b3;
   color: var(--window-title-color);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: 1fr;
   min-height: max(40px, calc(40px + env(safe-area-inset-top)));
   padding-top: env(safe-area-inset-top);
+  position: relative;
 }
 
 .data-screen-head strong {
@@ -1138,13 +1277,17 @@ button:disabled {
 }
 
 .data-screen-head button {
-  align-self: stretch;
   background: var(--window-title-background);
   border-left: 1px solid #cfc5b3;
   color: #20241f;
   font-family: var(--ui-font-family);
   font-size: var(--dialog-title-font-size);
   font-weight: var(--weight-ui);
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
 .close-button {
@@ -1451,7 +1594,7 @@ button:disabled {
 .number-zone-cell .number-zone-value {
   font-size: 24px;
   font-weight: 800;
-  color: #3a3a3a;
+  color: #343434;
   line-height: 1.1;
   text-align: center;
 }
