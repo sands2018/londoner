@@ -805,7 +805,11 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .manage-side-actions button,
 .app-shell.theme-dark .table-action,
 .app-shell.theme-dark .hot-table-filter-toggles button,
-.app-shell.theme-dark .signal-tier-btn {
+.app-shell.theme-dark .signal-tier-btn,
+.app-shell.theme-dark .shared-data-empty button,
+.app-shell.theme-dark .data-actions-shared-row button,
+.app-shell.theme-dark .data-actions-full button,
+.app-shell.theme-dark .data-actions-centered button {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
@@ -1029,6 +1033,16 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .td-won { color: #a0c8a0; }
 .app-shell.theme-dark .td-drew { color: #c8b888; }
 .app-shell.theme-dark .td-lost { color: #c89088; }
+
+/* --- Shared / Transfer data --- */
+.app-shell.theme-dark .shared-data-empty { background: #1b1b1b; border-color: #38342e; color: #8a8a8a; }
+.app-shell.theme-dark .shared-data-empty strong { color: #b3b3b3; }
+.app-shell.theme-dark .shared-data-empty button { background: #1e1e1e; border-color: #38342e; color: #e8e8e8; }
+.app-shell.theme-dark .transfer-data-table th { color: #b3b3b3; }
+.app-shell.theme-dark .transfer-data-table td { color: #666666; }
+.app-shell.theme-dark .data-actions-shared-row button { background: #1e1e1e; border-color: #38342e; color: #e8e8e8; }
+.app-shell.theme-dark .data-actions-full button,
+.app-shell.theme-dark .data-actions-centered button { background: #1e1e1e; border-color: #38342e; color: #e8e8e8; }
 
 /* --- Col-row stats --- */
 .app-shell.theme-dark .colrow-screen { background: #121212; }

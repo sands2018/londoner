@@ -3755,7 +3755,7 @@ export function App() {
                   </div>
                 ) : (
                   <div className="shared-data-empty">
-                    <strong>传输数据尚未连接</strong>
+                    <strong>临时数据尚未连接</strong>
                     <span>连接后可以查看最近 10 条传输数据。</span>
                     <button onClick={() => setSharedLoginOpen(true)} type="button">连接共享库</button>
                   </div>
