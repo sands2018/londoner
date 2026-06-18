@@ -4497,12 +4497,12 @@ export function App() {
             </div>
             <div className="tabs tabs-top tabs-solid">
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
+              <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUseQuality124 ? (
                 <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">节奏</button>
               ) : null}
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
-              <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUsePreferredNumber ? (
                 <button className={predictionTab === "preferredNumber" ? "selected" : ""} onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} type="button">优选号</button>
               ) : null}
@@ -4675,7 +4675,7 @@ export function App() {
                   ) : null}
                   </div>
                 </div>
-              ) : predictionTab === "quality124" && canUseQuality124 ? (
+              ) : predictionTab === "hotNumber" ? (
                 <>
                   <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
@@ -4782,7 +4782,7 @@ export function App() {
                     </div>
                   </div>
                 </>
-              ) : predictionTab === "hotNumber" ? (
+              ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
                   <p className="prediction-desc">自适应双模：默认长热148加速（S1-S2-S3递增+burst&lt;4）；短热DS三窗（37/74/111共识+趋势+burst&lt;4）。111口纸面复盘：短热信号&gt;=5且ROI&gt;=0且比长热高20%则优先短热。信号不减，优先档无信号回落另一档。</p>
                   <div className="prediction-roi-table">
@@ -5190,7 +5190,11 @@ export function App() {
                   onChange={(event) => setDataText(event.target.value)}
                   value={dataText}
                 />
-                <div className={activeDialog === "connect" ? "modal-actions single-action" : "modal-actions"}>
+                <div className={
+                  activeDialog === "connect" || (activeDialog === "import" && importMode !== "files")
+                    ? "modal-actions single-action"
+                    : "modal-actions import-actions"
+                }>
                   <button
                     className="primary-action"
                     onClick={activeDialog === "connect" ? connectInputData : importMode === "files" ? importFilesFromText : importData}
