@@ -154,6 +154,13 @@ button:active:not(:disabled) {
   transform: scale(0.985);
 }
 
+.data-screen-head button:active:not(:disabled),
+.modal-head button:active:not(:disabled),
+.config-dialog-head button:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.985);
+  background: #e0d8c8;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.36;
@@ -694,15 +701,28 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .columns-panel.collapsed,
-.app-shell.theme-dark .summary-grid.collapsed,
-.app-shell.theme-dark .collapsed-combo-bar,
+.app-shell.theme-dark .summary-grid.collapsed {
+  border-color: #423d32;
+}
+
+.app-shell.theme-dark .collapsed-combo-bar {
+  background: #202020;
+  border: 1px solid #343434;
+  overflow: hidden;
+}
+
 .app-shell.theme-dark .combo-left,
 .app-shell.theme-dark .combo-right {
-  border-color: #423d32;
+  background: #202020;
 }
 
 .app-shell.theme-dark .section-toggle {
   background: #202020;
+  border-bottom-color: #343434;
+}
+
+.app-shell.theme-dark .collapsed-combo-bar .section-toggle {
+  border-bottom-color: #343434;
 }
 
 /* When expanded, no borders but keep border-radius */
@@ -780,12 +800,21 @@ body:has(.app-shell.theme-dark) {
 
 /* --- Scope row / dock buttons --- */
 .app-shell.theme-dark .scope-row button,
-.app-shell.theme-dark .data-screen-actions button {
+.app-shell.theme-dark .data-screen-actions button,
+.app-shell.theme-dark .tabs-grid button {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
   color: #e8e8e8;
-  min-height: 29px;
+  min-height: 32px;
+}
+
+.app-shell.theme-dark .scope-row button.selected,
+.app-shell.theme-dark .data-screen-actions button.selected,
+.app-shell.theme-dark .tabs-grid button.selected {
+  background: rgba(215, 175, 85, 0.14);
+  border-color: rgba(215, 175, 85, 0.35);
+  color: #ffffff;
 }
 
 .app-shell.theme-dark .dock-actions button,
@@ -955,6 +984,30 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .refine-table tbody tr:last-child th,
 .app-shell.theme-dark .refine-table tbody tr:last-child td { border-bottom-color: #38342e; }
 
+/* --- Number Zone --- */
+.app-shell.theme-dark .number-zone-screen { background: #121212; }
+.app-shell.theme-dark .number-zone-cell { background: #222222; border-color: #38342e; }
+.app-shell.theme-dark .number-zone-cell .number-zone-value { color: #d0d0d0; }
+.app-shell.theme-dark .number-zone-cell .number-zone-distance { color: #8a8a8a; }
+
+.app-shell.theme-dark .number-zone-cell.current { background: #2c241a; border-color: #5a4a30; }
+.app-shell.theme-dark .number-zone-cell.current .number-zone-value,
+.app-shell.theme-dark .number-zone-cell.current .number-zone-distance { color: #e0b870; }
+
+.app-shell.theme-dark .number-zone-cell.hot { background: #2a1a1a; border-color: #4a3030; }
+.app-shell.theme-dark .number-zone-cell.hot .number-zone-value { color: #d08078; }
+.app-shell.theme-dark .number-zone-cell.hot .number-zone-distance { color: #a06860; }
+
+.app-shell.theme-dark .number-zone-cell.cold { background: #1a2224; border-color: #2a3a3a; }
+.app-shell.theme-dark .number-zone-cell.cold .number-zone-value { color: #88b8c0; }
+.app-shell.theme-dark .number-zone-cell.cold .number-zone-distance { color: #609098; }
+
+.app-shell.theme-dark .number-zone-cell.hot.current { background: #2a1e18; border-color: #6a4030; }
+.app-shell.theme-dark .number-zone-cell.cold.current { background: #221e24; border-color: #5a4a58; }
+
+.app-shell.theme-dark .number-zone-trend.up { color: #d08070; }
+.app-shell.theme-dark .number-zone-trend.down { color: #70a088; }
+
 /* --- Other --- */
 .app-shell.theme-dark .other-screen { background: #121212; }
 .app-shell.theme-dark .other-table { background: #1b1b1b; border-color: #38342e; color: #cbd6dc; }
@@ -1035,6 +1088,11 @@ body:has(.app-shell.theme-dark) {
   background: #242424;
   border-left-color: #38342e;
   color: #cbd6dc;
+}
+
+.app-shell.theme-dark .data-screen-head button:active {
+  background: #505050;
+  color: #ffffff;
 }
 
 .app-shell.theme-dark .data-screen-head .close-button,
