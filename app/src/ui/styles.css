@@ -5757,25 +5757,17 @@ body:has(.app-shell.theme-dark) {
 }
 
 .hot-table-badge {
-  color: #9c6a42;
-  font-size: 11px;
+  color: #8a7a6a;
+  font-size: 10px;
+  font-weight: var(--weight-ui);
+  line-height: 1;
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
 }
 
-.hot-table-badge-strong {
-  color: #b85a30;
-}
-
-.hot-table-badge-watch {
-  color: #8f765c;
-}
-
-.hot-table-badge-conflict {
-  color: #5f7a58;
-}
-
-.hot-table-badge-unknown,
-.hot-table-badge-none {
-  color: #8f8a84;
+.app-shell.theme-dark .hot-table-badge {
+  color: #8a8a8a;
 }
 
 /* Overview card: 热门 */

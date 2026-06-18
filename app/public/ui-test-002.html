@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>信号卡片 - UI 调色 v002（含深色主题）</title>
+<style>
+  :root {
+    --dot-size: 12px;
+    --weight-regular: 400;
+    --weight-ui: 400;
+    --weight-emphasis: 400;
+    --weight-strong: 400;
+    --theme-dark-gold: #9b7b55;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #fffdf9;
+    color: #20241f;
+    font-family: Roboto, "Noto Sans SC", Arial, sans-serif;
+    padding: 16px 12px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  h2 {
+    font-size: 13px;
+    color: #8a6b5b;
+    margin: 20px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e8e0d6;
+  }
+  h2:first-child { margin-top: 0; }
+
+  .theme-toggle-row { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
+  .theme-toggle-row button {
+    background: rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.10);
+    border-radius: 18px; color: #555; cursor: pointer;
+    font-size: 13px; font-weight: 500; padding: 5px 14px;
+  }
+  .theme-toggle-row button.active { background: rgba(0,0,0,0.15); color: #222; }
+
+  /* ===== DARK THEME ===== */
+  body.dark {
+    background: #121212; color: #e0e0e0;
+  }
+  body.dark h2 { color: var(--theme-dark-gold); border-bottom-color: #38342e; }
+
+  /* ===== 124 节奏 + 长套 冷 ===== */
+  .ps-area { display:flex; flex-wrap:wrap; gap:4px; }
+  .ps-item {
+    align-items:stretch; border:1px solid #c8d8e0; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 8px) / 3);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .ps-label {
+    align-items:center; background:#c8d8e0; color:#486068;
+    display:flex; flex:0 0 40px; font-size:15px; font-weight:500;
+    justify-content:center; min-height:34px; white-space:nowrap;
+  }
+  .ps-chase {
+    align-items:center; background:#e8eef2; display:flex; flex:1;
+    gap:6px; justify-content:space-around; min-height:34px;
+    min-width:0; padding:0 6px;
+  }
+  .ps-dots { display:flex; gap:3px; }
+  .ps-dot {
+    border:1.5px solid #aebfc8; border-radius:50%; display:inline-block;
+    height:var(--dot-size); width:var(--dot-size);
+  }
+  .ps-dot.filled { background:#8aa8b8; border-color:#8aa8b8; }
+  .ps-bet { color:#486068; font-size:14px; font-weight:500; }
+
+  .ps-item.rhythm { border-color:#e0e8dc; }
+  .ps-item.rhythm .ps-label { background:#e0e8dc; color:#4a6040; }
+  .ps-item.rhythm .ps-chase { background:#eef4ea; }
+  .ps-item.rhythm .ps-bet { color:#4a6040; }
+  .ps-item.rhythm .ps-dot { border-color:#a0b8a0; }
+  .ps-item.rhythm .ps-dot.filled { background:#8aaa8a; border-color:#8aaa8a; }
+
+  .ps-item.active .ps-chase { background:#d8e2ea; }
+  .ps-item.active .ps-label { background:#b4c8d4; }
+  .ps-item.rhythm.active .ps-chase { background:#e0e8dc; }
+  .ps-item.rhythm.active .ps-label { background:#ccd8c8; }
+
+  /* dark */
+  body.dark .ps-item { border-color:#38342e; }
+  body.dark .ps-label { background:#252a2e; color:#88a8b8; }
+  body.dark .ps-chase { background:#1e2224; }
+  body.dark .ps-bet { color:#88a8b8; }
+  body.dark .ps-item.rhythm { border-color:#2a382a; }
+  body.dark .ps-item.rhythm .ps-label { background:#2a382a; color:#8aaa8a; }
+  body.dark .ps-item.rhythm .ps-chase { background:#1e221e; }
+  body.dark .ps-item.rhythm .ps-bet { color:#8aaa8a; }
+  body.dark .ps-item.rhythm .ps-dot { border-color:#6a8a6a; }
+  body.dark .ps-item.rhythm .ps-dot.filled { background:#6aaa6a; border-color:#6aaa6a; }
+  body.dark .ps-item.active .ps-chase { background:#252a2e; }
+  body.dark .ps-item.active .ps-label { background:#2a3238; }
+  body.dark .ps-item.rhythm.active .ps-chase { background:#2a302a; }
+  body.dark .ps-item.rhythm.active .ps-label { background:#344034; }
+
+  /* ===== 追6 ===== */
+  .c6-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .c6-item {
+    align-items:stretch; border:1px solid #f2e8da; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .c6-label {
+    align-items:center; background:#f2e8da; color:#6b5a38;
+    display:flex; flex:0 0 44px; font-size:14px; font-weight:500;
+    justify-content:center; min-height:36px; white-space:nowrap;
+  }
+  .c6-chase {
+    align-items:center; background:#f8f4ea; display:flex; flex:1;
+    gap:8px; justify-content:space-around; min-height:36px;
+    min-width:0; padding:0 8px;
+  }
+  .c6-dots { display:flex; gap:3px; }
+  .c6-dot {
+    border:1.5px solid #c8b690; border-radius:50%;
+    height:var(--dot-size); width:var(--dot-size);
+  }
+  .c6-dot.filled { background:#bc9c68; border-color:#bc9c68; }
+  .c6-bet { color:#6b5a38; font-size:14px; font-weight:500; }
+  .c6-stars { font-size:15px; letter-spacing:-2px; margin-left:10px; opacity:0.85; color:#b89440; }
+
+  .c6-item.hq { border-color:#eee0bf; }
+  .c6-item.hq .c6-label { background:#eee0bf; color:#553820; }
+  .c6-item.hq .c6-chase { background:#f4eede; }
+  .c6-item.hq .c6-bet { color:#553820; }
+  .c6-item.hq .c6-dot { border-color:#c4a868; }
+  .c6-item.hq .c6-dot.filled { background:#b49850; border-color:#b49850; }
+  .c6-item.hq .c6-stars { color:#b89440; }
+
+  .c6-item.wave { border-color:#ead8b6; }
+  .c6-item.wave .c6-label { background:#ead8b6; color:#4a3018; }
+  .c6-item.wave .c6-chase { background:#f2e8d0; }
+  .c6-item.wave .c6-bet { color:#4a3018; }
+  .c6-item.wave .c6-dot { border-color:#cab478; }
+  .c6-item.wave .c6-dot.filled { background:#a88040; border-color:#a88040; }
+  .c6-item.wave .c6-stars { color:#b08830; }
+
+  .c6-item.active .c6-chase { background:#eee8d8; }
+  .c6-item.active .c6-label { background:#e8d8c4; }
+  .c6-item.hq.active .c6-chase { background:#e8e0ca; }
+  .c6-item.hq.active .c6-label { background:#e4d4a8; }
+  .c6-item.wave.active .c6-chase { background:#e8dcc0; }
+  .c6-item.wave.active .c6-label { background:#dcc898; }
+
+  /* dark */
+  body.dark .c6-item { border-color:#38342e; }
+  body.dark .c6-label { background:#2e2822; color:#b8a060; }
+  body.dark .c6-chase { background:#1e1c18; }
+  body.dark .c6-bet { color:#b8a060; }
+  body.dark .c6-item.hq .c6-label { background:#302820; color:#d4b870; }
+  body.dark .c6-item.hq .c6-chase { background:#221e18; }
+  body.dark .c6-item.wave .c6-label { background:#2a2418; color:#e0c080; }
+  body.dark .c6-item.wave .c6-chase { background:#201c14; }
+  body.dark .c6-item.active .c6-chase { background:#2a2820; }
+  body.dark .c6-item.active .c6-label { background:#3a3228; }
+
+  /* ===== 新124 ===== */
+  .q124-area { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0; }
+  .q124-item {
+    align-items:stretch; border:1px solid #dbccd0; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .q124-label {
+    align-items:center; background:#edd0d6; color:#65414a;
+    display:flex; flex:0 0 40px; font-size:15px; font-weight:500;
+    justify-content:center; min-height:34px; white-space:nowrap;
+  }
+  .q124-chase {
+    align-items:center; background:#f2ecee; display:flex; flex:1;
+    gap:5px; justify-content:space-between; min-height:34px;
+    min-width:0; padding:0 7px;
+  }
+  .q124-stars { color:#8a5a66; font-size:11px; font-weight:500; white-space:nowrap; }
+  .q124-dots { display:flex; gap:2px; }
+  .q124-dot {
+    background:rgba(255,255,255,0.55); border:1px solid #c498a4;
+    border-radius:999px; height:var(--dot-size); width:var(--dot-size);
+  }
+  .q124-dot.filled { background:#a06878; border-color:#a06878; }
+  .q124-bet { font-size:14px; font-weight:500; color:#744a55; }
+
+  /* dark */
+  body.dark .q124-item { border-color:#3a2a30; }
+  body.dark .q124-label { background:#3a2a30; color:#b88a98; }
+  body.dark .q124-chase { background:#221a1e; }
+
+  /* ===== 热门 ===== */
+  .hot-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .hot-item {
+    align-items:center; background:#f4ece0; border:1px solid #e0c8b0;
+    border-radius:5px; color:#c07040; cursor:pointer; display:flex;
+    flex:0 0 calc((100% - 8px) / 3); gap:12px;
+    justify-content:center; min-height:38px; touch-action:manipulation;
+  }
+  .hot-number { font-size:24px; font-weight:500; line-height:1; }
+  .hot-badge {
+    color:#9c6a42; font-size:11px; font-weight:500; line-height:1;
+    position:absolute; right:5px; top:2px;
+  }
+  .hot-table-badge {
+    color:#8a7a6a; font-size:10px; font-weight:500; line-height:1;
+    position:absolute; bottom:3px; right:4px;
+  }
+  body.dark .hot-item { background:#22201c; border-color:#38342e; position:relative; }
+  body.dark .hot-number { color:#e8b048; }
+  body.dark .hot-badge { color:#8a8a8a; }
+  body.dark .hot-table-badge { color:#8a8a8a; }
+
+  /* ===== 优选号 ===== */
+  .pref-item {
+    align-items:center; background:#ede0d2; border:1px solid #e3d4c2;
+    border-radius:5px; color:#5c3a28; cursor:pointer; display:flex;
+    flex:0 0 calc((100% - 8px) / 3); gap:20px;
+    justify-content:center; min-height:38px; position:relative;
+  }
+  .pref-item .pref-badge { color:#b07040; font-size:11px; font-weight:500; position:absolute; right:5px; top:2px; opacity:0.75; }
+  .pref-picks { align-items:center; display:flex; gap:10px; }
+  body.dark .pref-item { background:#2a241c; border-color:#5a4a30; }
+  body.dark .pref-item .pref-badge { color:var(--theme-dark-gold); }
+
+  /* ===== 重号 ===== */
+  .rpt-item {
+    align-items:center; background:#e5dcec; border:1px solid #d6cee0;
+    border-radius:5px; color:#51406a; cursor:pointer; display:flex;
+    flex:0 0 calc((100% - 8px) / 3); gap:20px;
+    justify-content:center; min-height:38px; position:relative;
+  }
+  .rpt-item.premium { background:#dbd0e6; border-color:#cec2d9; color:#443460; }
+  .rpt-badge { color:#8a6aa8; font-size:11px; font-weight:500; position:absolute; right:5px; top:2px; opacity:0.75; }
+  body.dark .rpt-item { background:#241e2a; border-color:#38342e; }
+  body.dark .rpt-item.premium { background:#2a2230; }
+
+  /* ===== 短重号 ===== */
+  .sr-item {
+    align-items:center; background:#eddce2; border:1px solid #e4d3d9;
+    border-radius:5px; color:#64425a; cursor:pointer; display:flex;
+    flex:0 0 calc((100% - 8px) / 3); gap:10px;
+    justify-content:center; min-height:38px; position:relative;
+    touch-action:manipulation;
+  }
+  .sr-chase { align-items:center; display:flex; gap:5px; }
+  .sr-dots { align-items:center; display:flex; gap:3px; }
+  .sr-dot {
+    background:transparent; border:1.5px solid #a08195; border-radius:50%;
+    display:inline-block; height:var(--dot-size); width:var(--dot-size);
+  }
+  .sr-dot.filled { background:#835876; border-color:#835876; }
+  .sr-bet { color:#64425a; font-size:17px; font-weight:500; line-height:1; }
+  body.dark .sr-item { background:#221a20; border-color:#38342e; }
+
+  /* ===== 追3 ===== */
+  .c3-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .c3-item {
+    align-items:stretch; border:1px solid #ece4e4; border-radius:5px;
+    cursor:pointer; display:flex; flex:0 0 calc((100% - 4px) / 2);
+    overflow:hidden; touch-action:manipulation;
+  }
+  .c3-label {
+    align-items:center; background:#ece4e4; color:#7a4a48;
+    display:flex; flex:0 0 44px; font-size:14px; font-weight:500;
+    justify-content:center; min-height:36px; white-space:nowrap;
+  }
+  .c3-chase {
+    align-items:center; background:#f4f2f2; display:flex; flex:1;
+    gap:8px; justify-content:space-around; min-height:36px;
+    min-width:0; padding:0 8px;
+  }
+  .c3-gap { color:#8a5a58; font-size:14px; font-weight:500; }
+  .c3-bet { color:#7a4a48; font-size:14px; font-weight:500; }
+  .c3-stars { font-size:15px; letter-spacing:-2px; opacity:0.85; }
+
+  /* ===== 统一样式按钮（showcase） ===== */
+  .btn-row { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+  .glass-btn {
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.06);
+    border-radius:18px; color:#e8e8e8; cursor:pointer;
+    font-size:13px; font-weight:500; min-height:32px; padding:4px 14px;
+  }
+  .glass-btn.sel { background:rgba(215,175,85,0.14); border-color:rgba(215,175,85,0.35); color:#fff; }
+
+  /* ===== 标签参考 ===== */
+  .label-row { font-size:11px; color:#8a6b5b; margin-top:2px; }
+  body.dark .label-row { color:#8a8a8a; }
+</style>
+<script>
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  document.querySelectorAll('.theme-toggle-row button').forEach(b => b.classList.toggle('active'));
+}
+</script>
+</head>
+<body>
+
+<div class="theme-toggle-row">
+  <button class="active" onclick="toggleTheme()">浅色</button>
+  <button onclick="toggleTheme()">深色</button>
+  <span style="font-size:12px;color:#888;margin-left:8px">当前版本 UI 调色预览</span>
+</div>
+
+<!-- ============ 124 节奏 + 长套 冷 ============ -->
+<h2>124 节奏 / 长套（冷）</h2>
+<div class="ps-area">
+  <div class="ps-item active"><strong class="ps-label">R1</strong><span class="ps-chase"><span class="ps-dots"><span class="ps-dot filled"></span><span class="ps-dot"></span><span class="ps-dot"></span><span class="ps-dot"></span></span><span class="ps-bet">2</span></span></div>
+  <div class="ps-item"><strong class="ps-label">C2</strong><span class="ps-chase"><span class="ps-dots"><span class="ps-dot"></span><span class="ps-dot"></span><span class="ps-dot"></span><span class="ps-dot"></span></span><span class="ps-bet">1</span></span></div>
+  <div class="ps-item active"><strong class="ps-label">R3</strong><span class="ps-chase"><span class="ps-dots"><span class="ps-dot filled"></span><span class="ps-dot filled"></span><span class="ps-dot"></span><span class="ps-dot"></span></span><span class="ps-bet">4</span></span></div>
+</div>
+<div class="ps-area" style="margin-top:6px">
+  <div class="ps-item rhythm"><strong class="ps-label">R1</strong><span class="ps-chase"><span class="ps-dots"><span class="ps-dot"></span><span class="ps-dot"></span><span class="ps-dot"></span></span><span class="ps-bet">1</span></span></div>
+  <div class="ps-item rhythm active"><strong class="ps-label">C3</strong><span class="ps-chase"><span class="ps-dots"><span class="ps-dot filled"></span><span class="ps-dot"></span><span class="ps-dot"></span></span><span class="ps-bet">2</span></span></div>
+</div>
+
+<!-- ============ 追6 ============ -->
+<h2>追6 — 普通 / HQ ★ / 波浪 ★★</h2>
+<div class="c6-area">
+  <div class="c6-item"><strong class="c6-label">01-06</strong><span class="c6-chase"><span class="c6-dots"><span class="c6-dot"></span><span class="c6-dot"></span><span class="c6-dot"></span></span><span class="c6-bet">1</span><span class="c6-stars" style="visibility:hidden">★</span></span></div>
+  <div class="c6-item hq active"><strong class="c6-label">04-09</strong><span class="c6-chase"><span class="c6-dots"><span class="c6-dot filled"></span><span class="c6-dot"></span><span class="c6-dot"></span></span><span class="c6-bet">2</span><span class="c6-stars">★</span></span></div>
+</div>
+<div class="c6-area">
+  <div class="c6-item wave"><strong class="c6-label">07-12</strong><span class="c6-chase"><span class="c6-dots"><span class="c6-dot"></span><span class="c6-dot"></span><span class="c6-dot"></span></span><span class="c6-bet">1</span><span class="c6-stars">★★</span></span></div>
+  <div class="c6-item hq wave active"><strong class="c6-label">10-15</strong><span class="c6-chase"><span class="c6-dots"><span class="c6-dot filled"></span><span class="c6-dot filled"></span><span class="c6-dot"></span></span><span class="c6-bet">4</span><span class="c6-stars">★★</span></span></div>
+</div>
+
+<!-- ============ 新124 ============ -->
+<h2>新124 — 四档</h2>
+<div class="q124-area">
+  <div class="q124-item"><span class="q124-label">二组</span><span class="q124-chase"><span class="q124-stars">★★★</span><span class="q124-dots"><span class="q124-dot filled"></span><span class="q124-dot"></span><span class="q124-dot"></span></span><span class="q124-bet">1</span></span></div>
+  <div class="q124-item"><span class="q124-label">二组</span><span class="q124-chase"><span class="q124-stars">★★★</span><span class="q124-dots"><span class="q124-dot filled"></span><span class="q124-dot filled"></span><span class="q124-dot"></span></span><span class="q124-bet">2</span></span></div>
+  <div class="q124-item"><span class="q124-label">三组</span><span class="q124-chase"><span class="q124-stars">★★</span><span class="q124-dots"><span class="q124-dot filled"></span><span class="q124-dot"></span><span class="q124-dot"></span></span><span class="q124-bet">1</span></span></div>
+  <div class="q124-item"><span class="q124-label">三组</span><span class="q124-chase"><span class="q124-stars">★</span><span class="q124-dots"><span class="q124-dot filled"></span><span class="q124-dot"></span><span class="q124-dot"></span></span><span class="q124-bet">1</span></span></div>
+</div>
+
+<!-- ============ 热门 ============ -->
+<h2>热门（含桌台增强角标）</h2>
+<div class="hot-area">
+  <div class="hot-item" style="position:relative">
+    <span class="hot-badge">热门</span>
+    <strong class="hot-number">14</strong>
+    <span class="hot-table-badge">强</span>
+  </div>
+  <div class="hot-item" style="position:relative">
+    <span class="hot-badge">热门</span>
+    <strong class="hot-number">23</strong>
+    <span class="hot-table-badge">中</span>
+  </div>
+  <div class="hot-item" style="position:relative">
+    <span class="hot-badge">热门S</span>
+    <strong class="hot-number">7</strong>
+    <span class="hot-table-badge">弱</span>
+  </div>
+</div>
+<div class="hot-area">
+  <div class="hot-item" style="position:relative">
+    <span class="hot-badge">热门</span>
+    <strong class="hot-number">32</strong>
+    <span class="hot-table-badge">冲突</span>
+  </div>
+  <div class="hot-item" style="position:relative">
+    <span class="hot-badge">热门</span>
+    <strong class="hot-number">5</strong>
+    <span class="hot-table-badge">未知</span>
+  </div>
+</div>
+
+<!-- ============ 优选号 ============ -->
+<h2>优选号</h2>
+<div class="ps-area">
+  <div class="pref-item"><span class="pref-badge">优选</span><span class="pref-picks"><strong class="hot-number">12</strong><strong class="hot-number">28</strong></span></div>
+  <div class="pref-item"><span class="pref-badge">优选</span><span class="pref-picks"><strong class="hot-number">5</strong><strong class="hot-number">0</strong></span></div>
+</div>
+
+<!-- ============ 重号 / 短重号 ============ -->
+<h2>重号 / 短重号 — 冷紫 / 暖粉紫</h2>
+<div class="ps-area">
+  <div class="rpt-item"><span class="rpt-badge">进取</span><strong class="hot-number">18</strong></div>
+  <div class="rpt-item premium"><span class="rpt-badge">核心</span><strong class="hot-number">23</strong></div>
+</div>
+<div class="ps-area">
+  <div class="sr-item"><strong class="hot-number">7</strong><span class="sr-chase"><span class="sr-dots"><span class="sr-dot filled"></span><span class="sr-dot"></span></span><span class="sr-bet">1</span></span></div>
+  <div class="sr-item"><strong class="hot-number">32</strong><span class="sr-chase"><span class="sr-dots"><span class="sr-dot filled"></span><span class="sr-dot filled"></span></span><span class="sr-bet">1</span></span></div>
+</div>
+
+<!-- ============ 追3 ============ -->
+<h2>追3 — 普通 / 波浪强 ★ / 波浪精选 ★★</h2>
+<div class="c3-area">
+  <div class="c3-item"><strong class="c3-label">01-03</strong><span class="c3-chase"><span class="c3-gap">冷48</span><span class="c3-bet">1</span><span class="c3-stars" style="visibility:hidden">★</span></span></div>
+  <div class="c3-item"><strong class="c3-label">04-06</strong><span class="c3-chase"><span class="c3-gap">冷50</span><span class="c3-bet">1</span><span class="c3-stars">★</span></span></div>
+</div>
+
+<!-- ============ 按钮风格展示 ============ -->
+<h2>统一玻璃按钮风格</h2>
+<div class="btn-row">
+  <button class="glass-btn">普通</button>
+  <button class="glass-btn sel">选中</button>
+  <button class="glass-btn" disabled>禁用</button>
+</div>
+
+<!-- ============ label-row ============ -->
+<h2>统计明细表（4列）</h2>
+<div style="display:grid;gap:2px;border:1px solid #d8d2c6;border-radius:6px;overflow:hidden">
+  <div style="display:grid;gap:4px;grid-template-columns:2.2fr 1fr 1fr 1fr;min-height:32px;padding:3px 12px;align-items:center;border-bottom:1px solid #d8d2c6;color:#8a6b5b;font-size:14px;font-weight:500;text-align:center"><span>档位</span><span>信号</span><span>命中</span><span>ROI</span></div>
+  <div style="display:grid;gap:4px;grid-template-columns:2.2fr 1fr 1fr 1fr;min-height:32px;padding:3px 12px;align-items:center;border-bottom:1px solid #f0e8e8;font-size:14px;text-align:center"><strong class="hot-number" style="font-size:14px">一组★★★</strong><span>12</span><span>8</span><span style="color:#b85a3a">+18.5%</span></div>
+  <div style="display:grid;gap:4px;grid-template-columns:2.2fr 1fr 1fr 1fr;min-height:32px;padding:3px 12px;align-items:center;font-size:14px;text-align:center"><strong class="hot-number" style="font-size:14px">二组★★</strong><span>8</span><span>5</span><span style="color:#5f9a70">-3.2%</span></div>
+</div>
+
+<p class="label-row" style="margin-top:8px">predict-roi cols: 21% 20% 20% 13% 26% (detail) / overview: varies per card</p>
+<p class="label-row">detail-stats cols-4: 2.2fr 1fr 1fr 1fr</p>
+<p class="label-row">gold: #9b7b55 (--theme-dark-gold) / heading: #e8b048 / border: #38342e / text: #8a8a8a</p>
+
+</body>
+</html>

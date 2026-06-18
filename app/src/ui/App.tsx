@@ -5887,14 +5887,13 @@ function formatSessionTableLabel(
   return "";
 }
 
-function formatHotTableBadge(support: HotTableSupport, source: TableAssignmentSource = "none"): string {
-  const prefix = source === "auto" ? "自动" : support.match.level === "probable" ? "疑似" : "本桌";
-  if (support.level === "strong") return `${prefix}强`;
-  if (support.level === "support") return `${prefix}支持`;
-  if (support.level === "watch") return `${prefix}观察`;
+function formatHotTableBadge(support: HotTableSupport, _source: TableAssignmentSource = "none"): string {
+  if (support.level === "strong") return "强";
+  if (support.level === "support") return "中";
+  if (support.level === "watch") return "弱";
   if (support.level === "conflict") return "冲突";
-  if (support.level === "unknown") return support.profile ? "疑似弱" : "未知桌";
-  return "无桌台";
+  if (support.level === "unknown") return "未知";
+  return "";
 }
 
 function formatHotTableName(support: HotTableSupport): string {
