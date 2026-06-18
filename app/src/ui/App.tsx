@@ -270,7 +270,10 @@ export function App() {
   const [keyboardMode, setKeyboardMode] = useState<"keypad" | "board">(() => {
     return localStorage.getItem(keyboardModeKey) === "keypad" ? "keypad" : "board";
   });
-  const [themeMode] = useState<"soft" | "color">("soft");
+  const [themeMode, setThemeMode] = useState<"soft" | "color" | "dark">(() => {
+    const stored = localStorage.getItem("londoner.themeMode");
+    return stored === "soft" || stored === "color" ? stored : "dark";
+  });
   const [keyboardVisible, setKeyboardVisible] = useState(true);
   const [separateColRows, setSeparateColRows] = useState(() => localStorage.getItem("londoner.separateColRows") !== "0");
   const [queueExpanded, setQueueExpanded] = useState(false);
@@ -348,7 +351,6 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
-  const [previewHomeOpen, setPreviewHomeOpen] = useState(false);
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
@@ -2506,8 +2508,14 @@ export function App() {
   }
 
   function openConfigView() {
-    setPreviewHomeOpen((value) => !value);
-    setConfigViewOpen(false);
+    reloadGameConfigState();
+    setDraftWindowMode(windowMode);
+    void refreshCasinoTables().then((items) => {
+      setDraftCasinoTables(items);
+      setDraftSelectedCasinoId("");
+      setDraftSelectedTableId("");
+    });
+    setConfigViewOpen(true);
   }
 
   function openGameView() {
@@ -3062,7 +3070,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell theme-${themeMode} ${previewHomeOpen ? "dark-home" : ""} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
+    <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
@@ -4881,6 +4889,31 @@ export function App() {
               </div>
               {configTab === "other" ? (
               <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
+                <section className="config-card config-bets">
+                  <h2><span>外观</span></h2>
+                  <div style={{ padding: "10px 0" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                      <input
+                        type="radio"
+                        name="themeMode"
+                        checked={themeMode === "dark"}
+                        onChange={() => { setThemeMode("dark"); localStorage.setItem("londoner.themeMode", "dark"); }}
+                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
+                      />
+                      <span>深色</span>
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                      <input
+                        type="radio"
+                        name="themeMode"
+                        checked={themeMode === "soft"}
+                        onChange={() => { setThemeMode("soft"); localStorage.setItem("londoner.themeMode", "soft"); }}
+                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
+                      />
+                      <span>浅色</span>
+                    </label>
+                  </div>
+                </section>
                 <section className="config-card config-bets">
                   <h2><span>统计窗口</span></h2>
                   <div style={{ padding: "10px 0" }}>
