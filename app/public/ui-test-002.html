@@ -158,6 +158,12 @@
   body.dark .c6-item.wave .c6-chase { background:#201c14; }
   body.dark .c6-item.active .c6-chase { background:#2a2820; }
   body.dark .c6-item.active .c6-label { background:#3a3228; }
+  body.dark .c6-dot,
+  body.dark .c6-item.hq .c6-dot,
+  body.dark .c6-item.wave .c6-dot { border-color:#6a5a40; }
+  body.dark .c6-dot.filled { background:#9a8a50; border-color:#9a8a50; }
+  body.dark .c6-item.hq .c6-dot.filled { background:#b89850; border-color:#b89850; }
+  body.dark .c6-item.wave .c6-dot.filled { background:#a88030; border-color:#a88030; }
 
   /* ===== 新124 ===== */
   .q124-area { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 0; }
@@ -185,10 +191,11 @@
   .q124-dot.filled { background:#a06878; border-color:#a06878; }
   .q124-bet { font-size:14px; font-weight:500; color:#744a55; }
 
-  /* dark */
   body.dark .q124-item { border-color:#3a2a30; }
   body.dark .q124-label { background:#3a2a30; color:#b88a98; }
   body.dark .q124-chase { background:#221a1e; }
+  body.dark .q124-dot { background:transparent; border-color:#6a4a56; }
+  body.dark .q124-dot.filled { background:#a06878; border-color:#a06878; }
 
   /* ===== 热门 ===== */
   .hot-area { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
@@ -209,8 +216,8 @@
   }
   body.dark .hot-item { background:#22201c; border-color:#38342e; position:relative; }
   body.dark .hot-number { color:#e8b048; }
-  body.dark .hot-badge { color:#8a8a8a; }
-  body.dark .hot-table-badge { color:#8a8a8a; }
+  body.dark .hot-badge { color:#b89060; }
+  body.dark .hot-table-badge { color:#b89060; }
 
   /* ===== 优选号 ===== */
   .pref-item {
@@ -275,6 +282,13 @@
   .c3-bet { color:#7a4a48; font-size:14px; font-weight:500; }
   .c3-stars { font-size:15px; letter-spacing:-2px; opacity:0.85; }
 
+  body.dark .c3-item { border-color:#38342e; }
+  body.dark .c3-label { background:#2a1e1e; color:#b88078; }
+  body.dark .c3-chase { background:#1e1818; }
+  body.dark .c3-gap { color:#a07068; }
+  body.dark .c3-bet { color:#b88078; }
+  body.dark .c3-stars { color:#b08070; }
+
   /* ===== 统一样式按钮（showcase） ===== */
   .btn-row { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
   .glass-btn {
@@ -289,17 +303,24 @@
   body.dark .label-row { color:#8a8a8a; }
 </style>
 <script>
-function toggleTheme() {
-  document.body.classList.toggle('dark');
-  document.querySelectorAll('.theme-toggle-row button').forEach(b => b.classList.toggle('active'));
+function setTheme(mode) {
+  if (mode === 'dark') {
+    document.body.classList.add('dark');
+    document.querySelectorAll('.theme-toggle-row button')[0].classList.remove('active');
+    document.querySelectorAll('.theme-toggle-row button')[1].classList.add('active');
+  } else {
+    document.body.classList.remove('dark');
+    document.querySelectorAll('.theme-toggle-row button')[0].classList.add('active');
+    document.querySelectorAll('.theme-toggle-row button')[1].classList.remove('active');
+  }
 }
 </script>
 </head>
-<body>
+<body class="dark">
 
 <div class="theme-toggle-row">
-  <button class="active" onclick="toggleTheme()">浅色</button>
-  <button onclick="toggleTheme()">深色</button>
+  <button onclick="setTheme('light')">浅色</button>
+  <button class="active" onclick="setTheme('dark')">深色</button>
   <span style="font-size:12px;color:#888;margin-left:8px">当前版本 UI 调色预览</span>
 </div>
 
@@ -326,8 +347,8 @@ function toggleTheme() {
   <div class="c6-item hq wave active"><strong class="c6-label">10-15</strong><span class="c6-chase"><span class="c6-dots"><span class="c6-dot filled"></span><span class="c6-dot filled"></span><span class="c6-dot"></span></span><span class="c6-bet">4</span><span class="c6-stars">★★</span></span></div>
 </div>
 
-<!-- ============ 新124 ============ -->
-<h2>新124 — 四档</h2>
+<!-- ============ 行组节奏（新124） ============ -->
+<h2>行组节奏 — 四档</h2>
 <div class="q124-area">
   <div class="q124-item"><span class="q124-label">二组</span><span class="q124-chase"><span class="q124-stars">★★★</span><span class="q124-dots"><span class="q124-dot filled"></span><span class="q124-dot"></span><span class="q124-dot"></span></span><span class="q124-bet">1</span></span></div>
   <div class="q124-item"><span class="q124-label">二组</span><span class="q124-chase"><span class="q124-stars">★★★</span><span class="q124-dots"><span class="q124-dot filled"></span><span class="q124-dot filled"></span><span class="q124-dot"></span></span><span class="q124-bet">2</span></span></div>

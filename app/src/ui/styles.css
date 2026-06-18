@@ -1226,7 +1226,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .quality124-signal-chase { background: #221a1e; }
 .app-shell.theme-dark .quality124-signal-item:active .quality124-signal-chase { background: #2a2026; }
 .app-shell.theme-dark .quality124-stars { color: #a07080; }
-.app-shell.theme-dark .quality124-dot { background: rgba(0,0,0,0.3); border-color: #6a4a56; }
+.app-shell.theme-dark .quality124-dot { background: transparent; border-color: #6a4a56; }
 .app-shell.theme-dark .quality124-dot.filled { background: #a06878; border-color: #a06878; }
 .app-shell.theme-dark .quality124-bet { color: #b88a98; }
 
@@ -1251,6 +1251,23 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .rhythm-detail .cold-strategy-bar { background: #2a2a2a; }
 .app-shell.theme-dark .rhythm-detail .prediction-dot { border-color: #4a4a4a; }
 .app-shell.theme-dark .rhythm-detail .prediction-dot.filled { background: #8aaa8a; border-color: #8aaa8a; }
+
+/* chase3 */
+.app-shell.theme-dark .chase3-signal-item { border-color: #38342e; }
+.app-shell.theme-dark .chase3-label { background: #2a1e1e; color: #b88078; }
+.app-shell.theme-dark .chase3-chase { background: #1e1818; }
+.app-shell.theme-dark .chase3-gap { color: #a07068; }
+.app-shell.theme-dark .chase3-bet { color: #b88078; }
+.app-shell.theme-dark .chase3-stars { color: #b08070; }
+.app-shell.theme-dark .chase3-signal-item.chase3-active .chase3-chase { background: #282020; }
+.app-shell.theme-dark .chase3-signal-item.chase3-active .chase3-label { background: #342828; }
+
+.app-shell.theme-dark .chase6-dot,
+.app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-dot,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave .chase6-dot { border-color: #6a5a40; }
+.app-shell.theme-dark .chase6-dot.filled { background: #9a8a50; border-color: #9a8a50; }
+.app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-dot.filled { background: #b89850; border-color: #b89850; }
+.app-shell.theme-dark .chase6-signal-item.chase6-wave .chase6-dot.filled { background: #a88030; border-color: #a88030; }
 
 .app-shell.theme-dark .prediction-stats-header { background: #1b1b1b; border-color: #38342e; color: #d4d4d4; }
 
@@ -5767,7 +5784,11 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .hot-table-badge {
-  color: #8a8a8a;
+  color: #b89060;
+}
+
+.app-shell.theme-dark .repeat-signal-item.repeat-hot .repeat-tier-badge.hot-badge {
+  color: #b89060;
 }
 
 /* Overview card: 热门 */
