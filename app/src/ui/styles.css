@@ -969,6 +969,16 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .frequency-line { opacity: 0.65; }
 .app-shell.theme-dark .frequency-band-label { fill: var(--theme-dark-gold); }
 
+/* --- Distance --- */
+.app-shell.theme-dark .distance-screen { background: #121212; }
+.app-shell.theme-dark .distance-svg { background: transparent; }
+.app-shell.theme-dark .distance-grid line { stroke: #3a3a3a; }
+.app-shell.theme-dark .distance-grid line.major { stroke: #5a5a5a; }
+.app-shell.theme-dark .distance-series { opacity: 0.5; }
+.app-shell.theme-dark .distance-marker line { opacity: 0.5; }
+.app-shell.theme-dark .distance-band-label,
+.app-shell.theme-dark .distance-axis-label { fill: var(--theme-dark-gold); }
+
 /* --- Data screens (game stats, col-row, etc.) --- */
 .app-shell.theme-dark .data-screen,
 .app-shell.theme-dark .game-screen,
