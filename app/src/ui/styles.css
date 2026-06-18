@@ -155,7 +155,6 @@ button:active:not(:disabled) {
 }
 
 .data-screen-head button:active:not(:disabled),
-.modal-head button:active:not(:disabled),
 .config-dialog-head button:active:not(:disabled) {
   transform: translateY(-50%) scale(0.985);
   background: #e0d8c8;
@@ -951,9 +950,34 @@ body:has(.app-shell.theme-dark) {
   color: #e0b870;
 }
 
+.app-shell.theme-dark .modal-head .close-button {
+  background: #424242;
+  border-color: #5a5028;
+  color: #d4d4d4;
+}
+
+.app-shell.theme-dark .table-calibration-summary {
+  background: #1e1e1e;
+  border-color: #38342e;
+}
+
+.app-shell.theme-dark .table-calibration-summary span,
+.app-shell.theme-dark .table-calibration-summary em,
+.app-shell.theme-dark .table-calibration-note {
+  color: #8a8a8a;
+}
+
+.app-shell.theme-dark .table-calibration-summary strong {
+  color: #d4d4d4;
+}
+
 .app-shell.theme-dark .message-body,
 .app-shell.theme-dark .modal-message {
   color: #d4d4d4;
+}
+
+.app-shell.theme-dark .field-label {
+  color: var(--theme-dark-gold);
 }
 
 .app-shell.theme-dark .message-actions button,
