@@ -666,6 +666,10 @@ body:has(.app-shell.theme-dark) {
   background: #121212;
 }
 
+body:has(.app-shell.theme-dark) {
+  background: #121212;
+}
+
 /* --- Panels & cards --- */
 .app-shell.theme-dark .top-stats-strip,
 .app-shell.theme-dark .signal-cell,
@@ -774,7 +778,8 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .empty-state { color: #5a636a; }
 
 /* --- Scope row / dock buttons --- */
-.app-shell.theme-dark .scope-row button {
+.app-shell.theme-dark .scope-row button,
+.app-shell.theme-dark .data-screen-actions button {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
@@ -802,8 +807,8 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .tabs-bottom button.selected {
-  background: #343434;
-  border-top-color: #343434;
+  background: #3e3c34;
+  border-top-color: #3e3c34;
   color: #e0b870;
   box-shadow: 0 1px 3px rgba(0,0,0,0.30);
 }
@@ -818,11 +823,40 @@ body:has(.app-shell.theme-dark) {
   height: var(--key-height);
   min-height: unset;
 }
-.app-shell.theme-dark .scope-row button.selected {
-  background: rgba(200, 150, 60, 0.12);
-  border-color: rgba(200, 150, 60, 0.20);
+.app-shell.theme-dark .scope-row button.selected,
+.app-shell.theme-dark .data-screen-actions button.selected {
+  background: rgba(215, 175, 85, 0.14);
+  border-color: rgba(215, 175, 85, 0.35);
   border-radius: 18px;
   color: #ffffff;
+}
+
+/* --- Top tabs (stats page sub-navigation) --- */
+.app-shell.theme-dark .tabs-top {
+  background: transparent;
+  border-bottom-color: #38342e;
+}
+
+.app-shell.theme-dark .tabs-top button {
+  background: #1e1e1e;
+  border-color: #38342e;
+  color: #8a8a8a;
+}
+
+.app-shell.theme-dark .tabs-top button.selected {
+  background: #3e3c34;
+  border-color: #444238;
+  border-bottom-color: #3e3c34;
+  color: #e0b870;
+}
+
+.app-shell.theme-dark .tabs-solid {
+  background: #1a1a1a;
+  border-bottom: 0;
+}
+
+.app-shell.theme-dark .tabs-solid button {
+  border-color: #38342e;
 }
 
 /* --- Input dock --- */
@@ -840,6 +874,92 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .scope-row,
 .app-shell.theme-dark .dock-actions { background: transparent; }
 .app-shell.theme-dark button:disabled { opacity: 0.4; }
+.app-shell.theme-dark .stats-bottom-actions { background: transparent; border-top-color: transparent; }
+.app-shell.theme-dark .data-screen-actions { background: transparent; border-top-color: transparent; }
+
+/* --- Data screens --- */
+.app-shell.theme-dark .data-screen,
+.app-shell.theme-dark .game-screen,
+.app-shell.theme-dark .stats-screen { background: #121212; color: #cbd6dc; }
+
+.app-shell.theme-dark .data-screen-head {
+  background: linear-gradient(to bottom, #121212 0, #121212 env(safe-area-inset-top), #343434 env(safe-area-inset-top), #343434 100%);
+  border-top-color: #5a5028;
+  border-bottom-color: #5a5028;
+  color: #d4c8a8;
+}
+
+.app-shell.theme-dark .data-screen-head strong { color: #e0b870; }
+.app-shell.theme-dark .data-screen-head button { background: #242424; border-left-color: #38342e; color: #cbd6dc; }
+
+.app-shell.theme-dark .data-screen-head .close-button,
+.app-shell.theme-dark .modal-head .close-button,
+.app-shell.theme-dark .config-dialog-head .close-button { background: #424242; border-color: #5a5028; color: #cbd6dc; }
+
+.app-shell.theme-dark .data-table-wrap { background: #1b1b1b; }
+.app-shell.theme-dark .data-table { border-bottom-color: #38342e; }
+.app-shell.theme-dark .data-table th { background: #202020; border-bottom-color: #423d32; color: #a8b5bd; }
+.app-shell.theme-dark .data-table td { border-bottom-color: #2a2a2a; color: #cbd6dc; }
+.app-shell.theme-dark .data-table th,
+.app-shell.theme-dark .data-table td { border-right-color: #2a2a2a; }
+.app-shell.theme-dark .data-table tbody tr:hover td { background: #222222; }
+.app-shell.theme-dark .data-summary-row { background: #202020; border-top-color: #38342e; color: #a8b5bd; }
+.app-shell.theme-dark .data-summary-row strong { color: #d4c8a8; }
+.app-shell.theme-dark .data-empty { color: #5a636a; }
+.app-shell.theme-dark .td-won { color: #a0c8a0; }
+.app-shell.theme-dark .td-drew { color: #c8b888; }
+.app-shell.theme-dark .td-lost { color: #c89088; }
+
+/* --- Col-row stats --- */
+.app-shell.theme-dark .colrow-screen { background: #121212; }
+.app-shell.theme-dark .colrow-detail-row { border-top-color: #38342e; }
+.app-shell.theme-dark .colrow-detail-row strong { color: #9c7a54; }
+.app-shell.theme-dark .colrow-detail-row p { color: #cbd6dc; }
+.app-shell.theme-dark .colrow-current { color: #5aacd8; }
+.app-shell.theme-dark .colrow-current.zero { color: #d4a050; }
+.app-shell.theme-dark .muted-text { color: #6e6e6e; }
+
+.app-shell.theme-dark .colrow-chart-cell strong { color: #9c7a54; }
+.app-shell.theme-dark .colrow-chart-svg { background: #1b1b1b; border-radius: 6px; }
+.app-shell.theme-dark .colrow-chart-svg rect[fill="#fff"] { fill: #1b1b1b; }
+.app-shell.theme-dark .colrow-chart-svg rect[fill="#fafaf7"] { fill: #222222; }
+.app-shell.theme-dark .colrow-chart-svg rect[rx] { opacity: 0.65; }
+.app-shell.theme-dark .colrow-chart-svg text { fill: #a8b5bd; }
+.app-shell.theme-dark .colrow-chart-svg line { stroke-opacity: 0.3; }
+
+.app-shell.theme-dark .colrow-summary-table { border-color: #38342e; color: #969ea2; }
+.app-shell.theme-dark .colrow-summary-table th,
+.app-shell.theme-dark .colrow-summary-table td { background: #1b1b1b; border-bottom-color: #2a2a2a; border-right-color: #2a2a2a; }
+.app-shell.theme-dark .colrow-summary-table thead th,
+.app-shell.theme-dark .colrow-summary-table tbody th { color: #9c7a54; }
+
+.app-shell.theme-dark .colrow-explore { background: #1b1b1b; border-color: #38342e; }
+.app-shell.theme-dark .colrow-explore-panel { border-right-color: #38342e; }
+.app-shell.theme-dark .colrow-explore-panel header { background: #1b1b1b; border-bottom-color: #38342e; color: #9c7a54; }
+.app-shell.theme-dark .colrow-explore-panel button { background: #1e1e1e; border-color: #38342e; color: #8a8a8a; }
+.app-shell.theme-dark .colrow-explore-panel button.selected { background: #2a2a2a; border-color: #5a4e2c; color: #9c7a54; }
+.app-shell.theme-dark .colrow-explore-panel .checkmark { border-color: #5a4a30; }
+.app-shell.theme-dark .colrow-explore-panel button.selected .checkmark { background: #625840; border-color: #625840; }
+.app-shell.theme-dark .colrow-explore-results span { color: #a8b5bd; }
+
+/* --- Refine / Compare --- */
+.app-shell.theme-dark .refine-screen { background: #121212; }
+.app-shell.theme-dark .refine-rounds { border-top-color: #38342e; }
+.app-shell.theme-dark .refine-round-row + .refine-round-row { border-top-color: #38342e; }
+.app-shell.theme-dark .refine-round-row > span { color: #a8b5bd; }
+.app-shell.theme-dark .refine-table { color: #969ea2; border-top-color: #38342e; border-bottom-color: #38342e; }
+.app-shell.theme-dark .refine-table thead th { color: #9c7a54; border-bottom-color: #38342e; }
+.app-shell.theme-dark .refine-table th:first-child,
+.app-shell.theme-dark .refine-table td:first-child { color: #9c7a54; }
+.app-shell.theme-dark .refine-table tbody tr:last-child th,
+.app-shell.theme-dark .refine-table tbody tr:last-child td { border-bottom-color: #38342e; }
+
+/* --- Config --- */
+.app-shell.theme-dark .config-dialog { background: #1b1b1b; border-color: #423d32; color: #cbd6dc; }
+.app-shell.theme-dark .config-dialog-head { background: #1b1b1b; border-bottom-color: #423d32; }
+.app-shell.theme-dark .config-dialog-head strong { color: #d4c8a8; }
+.app-shell.theme-dark .config-card { background: #202020; border-color: #38342e; }
+.app-shell.theme-dark .config-card h2 { color: #a8b5bd; border-bottom-color: #38342e; }
 
 /* --- Data screens (game stats, col-row, etc.) --- */
 .app-shell.theme-dark .data-screen,
