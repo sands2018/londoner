@@ -172,7 +172,7 @@ Bottom action buttons layout:
 - **Performance**: Several engines paused for benchmarking. Search `[PERF]` in App.tsx.
 - **Number merge**: GPT rewrote as `numberMergeV2.ts` (timeline-alignment, safe, no silent data discard). DS V1 (`numberMerge.ts`) is deprecated. V2 used for: (a) local-data "合并" button, (b) home "接上" button.
 - **Prediction engine**: New124, cold reversal, chase6 are enabled. Hot numbers optimized + re-enabled by GPT 2026-06-07.
-- **TableProfile for prediction**: Compute table profiles from local saved sessions in memory on app startup / local data changes. Do not persist a complex `tableProfiles` cache yet. Manual `tableId` is the authoritative assignment; unassigned sessions may receive an in-memory automatic space-profile ID, and prediction should use `effectiveTableId = manual tableId ?? autoTableId`.
+- **TableProfile / 热门 resumed**: Resumed as the primary next direction on 2026-06-18. Treat table/profile data first as a hot-number spatial/regime filter, not as proven physical table identity. First-version product direction: unknown profile keeps the original 热门 signal; strong/support can enhance or emphasize it; watch/conflict should downgrade or warn rather than strengthen. 行组节奏 remains unchanged for now because table filters showed little reliable ROI gain there. Manual `tableId` remains authoritative; automatic space-profile IDs are in-memory fallback only until reviewed further.
 - **Number zone page**: 37-number popup with distance/circle modes, hot/cold highlighting, trend arrows.
 - **Research**: Gear rotation for 124 entry timing.
 

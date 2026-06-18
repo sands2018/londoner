@@ -109,6 +109,7 @@ import {
   buildTableProfiles,
   evaluateHotNumberTableSupport,
   type HotTableSupport,
+  type HotTableSupportLevel,
 } from "../core/tableHotProfile";
 import {
   analyzeNumberMergeV2,
@@ -304,6 +305,9 @@ export function App() {
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
+  const [showHotTableSupport, setShowHotTableSupport] = useState(() => localStorage.getItem("londoner.showHotTableSupport") !== "0");
+  const [showHotTableWatch, setShowHotTableWatch] = useState(() => localStorage.getItem("londoner.showHotTableWatch") === "1");
+  const [showHotTableConflict, setShowHotTableConflict] = useState(() => localStorage.getItem("londoner.showHotTableConflict") === "1");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
@@ -426,6 +430,9 @@ export function App() {
   const [editUploader, setEditUploader] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editTableId, setEditTableId] = useState("");
+  const [currentTableOverrideId, setCurrentTableOverrideId] = useState("");
+  const [tableCalibrationOpen, setTableCalibrationOpen] = useState(false);
+  const [tableCalibrationValue, setTableCalibrationValue] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
     return localStorage.getItem(currentSessionIdKey);
@@ -451,11 +458,7 @@ export function App() {
     () => (currentSessionId ? autoTableState.assignmentsById.get(currentSessionId) : undefined),
     [autoTableState.assignmentsById, currentSessionId],
   );
-  const currentSessionTableId = useMemo(
-    () => currentSessionAssignment?.effectiveTableId,
-    [currentSessionAssignment],
-  );
-  const currentSessionTableSource = currentSessionAssignment?.source ?? "none";
+  const currentManualTableId = currentSessionAssignment?.manualTableId ?? (!currentSessionId ? currentTableOverrideId || undefined : undefined);
   const [allGameBets, setAllGameBets] = useState<number[][]>([]);
   const [selectedBetKeys, setSelectedBetKeys] = useState<string[]>([]);
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
@@ -506,9 +509,35 @@ export function App() {
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
   const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
+  const autoHotTableSupport = useMemo(
+    () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles),
+    [hotNumberSignal?.number, numbers, tableProfiles],
+  );
   const hotTableSupport = useMemo(
-    () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles, currentSessionTableId),
-    [currentSessionTableId, hotNumberSignal?.number, numbers, tableProfiles],
+    () => currentManualTableId
+      ? evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles, currentManualTableId)
+      : autoHotTableSupport,
+    [autoHotTableSupport, currentManualTableId, hotNumberSignal?.number, numbers, tableProfiles],
+  );
+  const hotTableSource: TableAssignmentSource = currentManualTableId
+    ? "manual"
+    : hotTableSupport.match.profile ? "auto" : "none";
+  const currentManualTableLabel = currentManualTableId
+    ? tableLabelById.get(currentManualTableId) ?? tableNameById.get(currentManualTableId) ?? currentManualTableId
+    : "";
+  const currentTableUsageLabel = currentManualTableId
+    ? `${currentManualTableLabel} · 人工指定`
+    : hotTableSupport.match.profile
+      ? `${hotTableSupport.match.profile.tableName} · 自动匹配`
+      : "未识别 · 自动匹配";
+  const autoTableSuggestionLabel = autoHotTableSupport.match.profile
+    ? `${autoHotTableSupport.match.profile.tableName} · ${formatTableMatchLevel(autoHotTableSupport.match.level)}`
+    : "未识别";
+  const hotNumberSignalVisible = shouldShowHotTableSignal(
+    hotTableSupport.level,
+    showHotTableSupport,
+    showHotTableWatch,
+    showHotTableConflict,
   );
   const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
 
@@ -1113,11 +1142,6 @@ export function App() {
     ) : (
       <span className="group-block-distance">{item.distance}</span>
     );
-  const hasUnsavedChanges = useMemo(
-    () => numbers.length > 0 && !areSameNumbers(numbers, lastSavedNumbers),
-    [lastSavedNumbers, numbers],
-  );
-
   useEffect(() => {
     storage.loadCurrent().then(async (storedNumbers) => {
       const loadedNumbers = storedNumbers.filter(isRouletteNumber);
@@ -1308,6 +1332,7 @@ export function App() {
 
   function clearCurrentSession() {
     setCurrentSessionId(null);
+    setCurrentTableOverrideId("");
   }
 
   function defaultSessionName() {
@@ -1324,64 +1349,26 @@ export function App() {
       return;
     }
 
-    if (currentSessionId) {
-      void saveCurrentSession();
-      return;
-    }
-
-    setSaveName(defaultSessionName());
+    setSaveName(currentSessionName || defaultSessionName());
     setDialogMessage("");
     setActiveDialog("save");
-  }
-
-  function openSaveAsDialog() {
-    if (numbers.length === 0) {
-      setNoticeDialog({ title: "另存", message: "当前没有可保存的数据。" });
-      return;
-    }
-
-    setSaveName(defaultSessionName());
-    setDialogMessage("");
-    setActiveDialog("save");
-  }
-
-  async function saveCurrentSession() {
-    const currentSessions = await storage.listSessions();
-    const currentSession = currentSessions.find((session) => session.id === currentSessionId);
-
-    if (!currentSession) {
-      clearCurrentSession();
-      setSaveName(defaultSessionName());
-      setDialogMessage("当前打开的数据不存在，请输入名称另存。");
-      setActiveDialog("save");
-      return;
-    }
-
-    await storage.saveSession({
-      ...currentSession,
-      numbers,
-      updatedAt: new Date().toISOString(),
-      importIndex: currentSession.importIndex,
-      tableId: currentSession.tableId,
-    });
-    await refreshSessions();
-    setLastSavedNumbers(numbers);
-    setNoticeDialog({ title: "保存成功", message: `保存"${currentSession.name}"成功。` });
   }
 
   async function persistSession(name: string, existingId?: string) {
     const id = existingId ?? crypto.randomUUID?.() ?? `${Date.now()}`;
     const existing = existingId ? (await storage.listSessions()).find((s) => s.id === existingId) : undefined;
+    const tableIdToPersist = currentManualTableId ?? existing?.tableId;
     await storage.saveSession({
       id,
       name,
       numbers,
       updatedAt: new Date().toISOString(),
       importIndex: existing?.importIndex,
-      tableId: existing?.tableId,
+      tableId: tableIdToPersist,
     });
     await refreshSessions();
     setCurrentSessionId(id);
+    setCurrentTableOverrideId("");
     setLastSavedNumbers(numbers);
     setActiveDialog(null);
     setNoticeDialog({ title: "保存成功", message: `保存"${name}"成功。` });
@@ -2032,6 +2019,7 @@ export function App() {
         setRedoNumbers([]);
         setLastSavedNumbers(openedNumbers);
         setCurrentSessionId(session.id);
+        setCurrentTableOverrideId("");
         setDataViewOpen(false);
         setNoticeDialog({ title: "打开数据", message: `已打开：${session.name}` });
       },
@@ -2208,6 +2196,43 @@ export function App() {
     setSelectedSessionIds([session.id]);
     setEditDialogOpen(false);
     setNoticeDialog({ title: "编辑成功", message: `数据"${name}"已更新。` });
+  }
+
+  function openTableCalibrationDialog() {
+    setTableCalibrationValue(currentManualTableId ?? "");
+    setTableCalibrationOpen(true);
+  }
+
+  async function applyTableCalibration() {
+    const tableId = tableCalibrationValue || undefined;
+    const tableLabel = tableId ? tableLabelById.get(tableId) ?? tableNameById.get(tableId) ?? tableId : "未归属";
+
+    if (currentSessionId) {
+      const currentSessions = await storage.listSessions();
+      const currentSession = currentSessions.find((session) => session.id === currentSessionId);
+      if (!currentSession) {
+        clearCurrentSession();
+        setTableCalibrationOpen(false);
+        setNoticeDialog({ title: "校准桌号", message: "当前打开的数据不存在，已改为未保存当前局。" });
+        return;
+      }
+
+      await storage.saveSession({
+        ...currentSession,
+        tableId,
+      });
+      await refreshSessions();
+      setTableCalibrationOpen(false);
+      setNoticeDialog({ title: "校准桌号", message: `已保存为：${tableLabel}。` });
+      return;
+    }
+
+    setCurrentTableOverrideId(tableId ?? "");
+    setTableCalibrationOpen(false);
+    setNoticeDialog({
+      title: "校准桌号",
+      message: tableId ? `当前局临时指定为：${tableLabel}。保存当前局时会写入该桌号。` : "已清除当前局临时桌号。",
+    });
   }
 
   async function exportSessions(items: SavedSession[]) {
@@ -3275,7 +3300,7 @@ export function App() {
 
       {(() => {
         const filteredPreferredNumber = canUsePreferredNumber && showPreferredNumber ? preferredNumberSignals : [];
-        const filteredHotNumber = showHotNumber && hotNumberSignal ? [hotNumberSignal] : [];
+        const filteredHotNumber = showHotNumber && hotNumberSignal && hotNumberSignalVisible ? [hotNumberSignal] : [];
         return filteredPreferredNumber.length > 0 || filteredHotNumber.length > 0 ? (
           <section className="repeat-signal-area" aria-label="单号信号">
             {filteredHotNumber.map((item) => (
@@ -3289,7 +3314,7 @@ export function App() {
                 <span className="repeat-tier-badge hot-badge">{item.mode === "short" ? "热门S" : "热门"}</span>
                 <strong className="repeat-number">{item.number}</strong>
                 <span className={`repeat-tier-badge hot-table-badge ${hotTableBadgeClass(hotTableSupport)}`}>
-                  {formatHotTableBadge(hotTableSupport, currentSessionTableSource)}
+                  {formatHotTableBadge(hotTableSupport, hotTableSource)}
                 </span>
               </div>
             ))}
@@ -3319,8 +3344,8 @@ export function App() {
           <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
           <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
           <button onClick={openImportDialog} type="button">导入</button>
-          <button disabled={!hasUnsavedChanges} onClick={openSaveDialog} type="button">保存</button>
-          <button disabled={numbers.length === 0} onClick={openSaveAsDialog} type="button">另存</button>
+          <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
+          <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
           <button onClick={openDataDialog} type="button">数据</button>
         </div>
@@ -4538,6 +4563,11 @@ export function App() {
                       <span>热门</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
+                        <span className="hot-table-filter-toggles">
+                          <button className={showHotTableSupport ? "on" : ""} onClick={() => { const v = !showHotTableSupport; setShowHotTableSupport(v); localStorage.setItem("londoner.showHotTableSupport", v ? "1" : "0"); }} type="button">支持</button>
+                          <button className={showHotTableWatch ? "on" : ""} onClick={() => { const v = !showHotTableWatch; setShowHotTableWatch(v); localStorage.setItem("londoner.showHotTableWatch", v ? "1" : "0"); }} type="button">观察</button>
+                          <button className={showHotTableConflict ? "on" : ""} onClick={() => { const v = !showHotTableConflict; setShowHotTableConflict(v); localStorage.setItem("londoner.showHotTableConflict", v ? "1" : "0"); }} type="button">冲突</button>
+                        </span>
                       </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
@@ -4556,7 +4586,7 @@ export function App() {
                         </div>
                       ) : null}
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">桌台</span><span>{formatHotTableBadge(hotTableSupport, currentSessionTableSource)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span>
+                        <span className="prediction-roi-subheader">桌台</span><span>{formatHotTableBadge(hotTableSupport, hotTableSource)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span>
                       </div>
                     </div>
                   </div>
@@ -4709,7 +4739,7 @@ export function App() {
                           <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><strong>{hotNumberSignal.number}</strong><span>148={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
                         </div>
                         <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport, currentSessionTableSource)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
+                          <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport, hotTableSource)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
                         </div>
                       </>
                     ) : (
@@ -5544,6 +5574,43 @@ export function App() {
           </label>
         </MessageDialog>
       ) : null}
+      {tableCalibrationOpen ? (
+        <MessageDialog
+          title="校准当前桌号"
+          onClose={() => setTableCalibrationOpen(false)}
+          actions={
+            <>
+              <button
+                className="primary-action"
+                onClick={() => void applyTableCalibration()}
+                type="button"
+              >
+                应用
+              </button>
+              <button onClick={() => setTableCalibrationOpen(false)} type="button">取消</button>
+            </>
+          }
+        >
+          <div className="modal-stack">
+            <div className="table-calibration-summary">
+              <div><span>当前采用</span><strong>{currentTableUsageLabel}</strong><em>{formatHotTableMetric(hotTableSupport)}</em></div>
+              <div><span>自动建议</span><strong>{autoTableSuggestionLabel}</strong><em>{formatHotTableMetric(autoHotTableSupport)}</em></div>
+            </div>
+            <label className="field-label">
+              手工指定桌号
+              <select value={tableCalibrationValue} onChange={(event) => setTableCalibrationValue(event.target.value)}>
+                <option value="">未归属</option>
+                {tableSelectOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <p className="table-calibration-note">
+              手工指定会覆盖自动建议。未保存当前局会先临时指定，保存时写入桌号；已保存数据会立即更新本地桌号。
+            </p>
+          </div>
+        </MessageDialog>
+      ) : null}
       <div className="key-pop-overlay" aria-hidden="true">
         {keyPops.map((pop, i) => (
           <span
@@ -5726,11 +5793,6 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return rows;
 }
 
-function areSameNumbers(left: RouletteNumber[], right: RouletteNumber[]): boolean {
-  if (left.length !== right.length) return false;
-  return left.every((value, index) => value === right[index]);
-}
-
 function formatTableShortName(label: string | undefined): string {
   if (!label) return "";
   const parts = label.split(" / ");
@@ -5755,9 +5817,9 @@ function formatSessionTableLabel(
 function formatHotTableBadge(support: HotTableSupport, source: TableAssignmentSource = "none"): string {
   const prefix = source === "auto" ? "自动" : support.match.level === "probable" ? "疑似" : "本桌";
   if (support.level === "strong") return `${prefix}强`;
-  if (support.level === "support") return `${prefix}支`;
-  if (support.level === "watch") return `${prefix}观`;
-  if (support.level === "conflict") return "空间冲突";
+  if (support.level === "support") return `${prefix}支持`;
+  if (support.level === "watch") return `${prefix}观察`;
+  if (support.level === "conflict") return "冲突";
   if (support.level === "unknown") return support.profile ? "疑似弱" : "未知桌";
   return "无桌台";
 }
@@ -5768,8 +5830,15 @@ function formatHotTableName(support: HotTableSupport): string {
 
 function formatHotTableMetric(support: HotTableSupport): string {
   if (support.rank !== null) return `R${support.rank} / z${support.z.toFixed(1)}`;
-  if (support.match.profile) return `sim ${support.match.similarity.toFixed(2)}`;
+  if (support.match.profile) return `相似度 ${support.match.similarity.toFixed(2)}`;
   return "-";
+}
+
+function formatTableMatchLevel(level: HotTableSupport["match"]["level"]): string {
+  if (level === "confirmed") return "强";
+  if (level === "probable") return "中";
+  if (level === "weak") return "弱";
+  return "无";
 }
 
 function hotTableSignalClass(support: HotTableSupport): string {
@@ -5781,6 +5850,18 @@ function hotTableSignalClass(support: HotTableSupport): string {
 
 function hotTableBadgeClass(support: HotTableSupport): string {
   return `hot-table-badge-${support.level}`;
+}
+
+function shouldShowHotTableSignal(
+  level: HotTableSupportLevel,
+  showSupport: boolean,
+  showWatch: boolean,
+  showConflict: boolean,
+): boolean {
+  if (level === "support") return showSupport;
+  if (level === "watch") return showWatch;
+  if (level === "conflict") return showConflict;
+  return true;
 }
 
 function sessionTableSortKey(session: SavedSession, assignments: ReadonlyMap<string, TableAssignment>): string {
