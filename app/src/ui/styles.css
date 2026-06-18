@@ -962,6 +962,13 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .config-card { background: #202020; border-color: #38342e; }
 .app-shell.theme-dark .config-card h2 { color: #a8b5bd; border-bottom-color: #38342e; }
 
+/* --- Frequency --- */
+.app-shell.theme-dark .frequency-screen { background: #121212; }
+.app-shell.theme-dark .frequency-svg { background: transparent; }
+.app-shell.theme-dark .frequency-grid line { stroke: #3a3a3a; }
+.app-shell.theme-dark .frequency-line { opacity: 0.65; }
+.app-shell.theme-dark .frequency-band-label { fill: var(--theme-dark-gold); }
+
 /* --- Data screens (game stats, col-row, etc.) --- */
 .app-shell.theme-dark .data-screen,
 .app-shell.theme-dark .game-screen,
