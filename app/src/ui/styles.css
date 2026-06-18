@@ -184,7 +184,7 @@ button:disabled {
   color: #7a662e;
   display: flex;
   flex-wrap: nowrap;
-  font-size: clamp(13px, 3.2vw, 16px);
+  font-size: clamp(14px, 3.45vw, 17px);
   font-weight: var(--weight-ui);
   gap: 12px;
   justify-content: space-between;
@@ -309,7 +309,7 @@ button:disabled {
 .columns-panel,
 .queue-panel,
 .summary-panel {
-  padding: var(--queue-padding-block) 5px;
+  padding: 0;
 }
 
 .columns-grid {
@@ -405,6 +405,113 @@ button:disabled {
   overflow: hidden;
 }
 
+/* Section toggle header */
+.section-toggle {
+  align-items: center;
+  background: #f5f2ea;
+  border-bottom: 1px solid #e2dbcf;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 5px 8px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.section-toggle-label {
+  color: #5a4a3a;
+  font-size: 15px;
+  font-weight: var(--weight-ui);
+}
+
+.section-toggle-arrow {
+  display: inline-block;
+  height: 0;
+  width: 0;
+}
+
+.section-toggle-arrow.arrow-down {
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #9a8b7a;
+}
+
+.section-toggle-arrow.arrow-right {
+  border-bottom: 5px solid transparent;
+  border-top: 5px solid transparent;
+  border-left: 6px solid #9a8b7a;
+}
+
+/* Combined collapsed bar — both sections collapsed, shown side by side */
+.collapsed-combo-bar {
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  display: flex;
+  gap: 1px;
+}
+
+.collapsed-combo-bar .section-toggle {
+  border-radius: 6px;
+  flex: 1 1 0;
+}
+
+.collapsed-combo-bar .combo-left {
+  border-radius: 6px 0 0 6px;
+}
+
+.collapsed-combo-bar .combo-right {
+  border-radius: 0 6px 6px 0;
+}
+
+/* Hide individual collapsed sections when both are collapsed (combined bar replaces them) */
+.both-collapsed > .columns-panel,
+.both-collapsed > .summary-grid {
+  display: none;
+}
+
+/* Section body — clickable area when expanded, hidden when collapsed */
+.section-body {
+  cursor: pointer;
+}
+
+/* Columns panel: hide toggle when expanded, show when collapsed */
+.columns-panel:not(.collapsed) > .section-toggle {
+  display: none;
+}
+
+.columns-panel.collapsed > .section-body {
+  display: none;
+}
+
+.columns-panel.collapsed {
+  cursor: pointer;
+}
+
+.columns-panel > .section-body {
+  padding: var(--queue-padding-block) 5px;
+}
+
+/* Summary grid: hide toggle when expanded, show when collapsed */
+.summary-grid:not(.collapsed) > .section-toggle {
+  display: none;
+}
+
+.summary-grid.collapsed > .section-body {
+  display: none;
+}
+
+.summary-grid.collapsed {
+  cursor: pointer;
+}
+
+.summary-grid > .section-body {
+  padding: 5px 5px var(--queue-padding-block);
+}
+
 .queue-row {
   display: grid;
   gap: 3px;
@@ -470,8 +577,11 @@ button:disabled {
 }
 
 .summary-grid {
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 6px;
   display: grid;
-  gap: 6px;
+  gap: 0;
   grid-template-columns: minmax(0, 1fr);
 }
 

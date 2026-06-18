@@ -272,7 +272,7 @@ export function App() {
   });
   const [themeMode] = useState<"soft" | "color">("soft");
   const [keyboardVisible, setKeyboardVisible] = useState(true);
-  const [separateColRows, setSeparateColRows] = useState(false);
+  const [separateColRows, setSeparateColRows] = useState(() => localStorage.getItem("londoner.separateColRows") !== "0");
   const [queueExpanded, setQueueExpanded] = useState(false);
   const [windowMode, setWindowMode] = useState<WindowMode>(() =>
     localStorage.getItem(windowModeKey) === "fibonacci" ? "fibonacci" : "classic",
@@ -297,6 +297,8 @@ export function App() {
   const [sixNumberViewOpen, setSixNumberViewOpen] = useState(false);
   const [numberZoneOpen, setNumberZoneOpen] = useState(false);
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
+  const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
+  const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [statsTab, setStatsTab] = useState("game");
   const [statsGroupTab, setStatsGroupTab] = useState(() => localStorage.getItem("londoner.statsGroupTab") || "colrow");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
@@ -3084,7 +3086,7 @@ export function App() {
           ) : null}
         </span>
       </section>
-      <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => !value)}>
+      <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => { const nv = !value; localStorage.setItem("londoner.separateColRows", nv ? "1" : "0"); return nv; })}>
         {topColRows.map((item) => (
           <div
             className={`signal-cell ${
@@ -3100,56 +3102,65 @@ export function App() {
         ))}
       </section>
 
+      <div className={columnsPanelCollapsed && summaryGridCollapsed ? "both-collapsed" : ""}>
       {columnStats.length > 0 ? (
-        <section className="columns-panel">
-          <div className="columns-grid">
-            {columnStats.map((item) => (
-              <div className={`column-chip ${item.active ? "active" : "inactive"}`} key={item.index}>
-                <span>{item.label}</span>
-                <strong>{item.distance}</strong>
-              </div>
-            ))}
+        <section className={`columns-panel${columnsPanelCollapsed ? " collapsed" : ""}`}>
+          <div
+            className="section-toggle"
+            onClick={() => { setColumnsPanelCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.columnsPanelCollapsed", nv ? "1" : "0"); return nv; }); }}
+            role="button"
+            tabIndex={0}
+          >
+            <span className="section-toggle-label">6号码统计</span>
+            <span className={`section-toggle-arrow${columnsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
           </div>
-          <div className="scope-row">
-            {columnMinimums.map((value) => (
-              <button
-                className={value === columnMinimum ? "selected" : ""}
-                key={value}
-                onClick={() => setColumnMinimum(value)}
-                type="button"
-              >
-                {value}
-              </button>
-            ))}
-            <button type="button">...</button>
+          <div
+            className="section-body"
+            onClick={() => { setColumnsPanelCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.columnsPanelCollapsed", nv ? "1" : "0"); return nv; }); }}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="columns-grid">
+              {columnStats.map((item) => (
+                <div className={`column-chip ${item.active ? "active" : "inactive"}`} key={item.index}>
+                  <span>{item.label}</span>
+                  <strong>{item.distance}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="scope-row" onClick={(e) => e.stopPropagation()}>
+              {columnMinimums.map((value) => (
+                <button
+                  className={value === columnMinimum ? "selected" : ""}
+                  key={value}
+                  onClick={() => setColumnMinimum(value)}
+                  type="button"
+                >
+                  {value}
+                </button>
+              ))}
+              <button type="button">...</button>
+            </div>
           </div>
         </section>
       ) : null}
 
-      {finishedLongs.length > 0 ? (
-        <section className="finished-line">
-          <span>刚结束</span>
-          {finishedLongs.map((item) => (
-            <strong key={item.index}>
-              {item.label} {item.closedDistance}/{item.afterDistance}
-            </strong>
-          ))}
-        </section>
-      ) : null}
-
-      <section
-        className={`queue-panel ${queueExpanded ? "expanded" : "collapsed"}`}
-        onClick={() => setQueueExpanded((value) => !value)}
-      >
-        {queueItems.length === 0 ? <span className="empty-state">等待输入</span> : null}
-        <div className="queue-row">
-          {(queueExpanded ? [...numbers].reverse() : queueItems).map((value, index) => (
-            <span className={`queue-chip number-${getNumberColor(value)}`} key={`q-${index}-${numbers.length}`}>{value}</span>
-          ))}
+      <section className={`summary-grid${summaryGridCollapsed ? " collapsed" : ""}`}>
+        <div
+          className="section-toggle"
+          onClick={() => { setSummaryGridCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.summaryGridCollapsed", nv ? "1" : "0"); return nv; }); }}
+          role="button"
+          tabIndex={0}
+        >
+          <span className="section-toggle-label">统计区</span>
+          <span className={`section-toggle-arrow${summaryGridCollapsed ? " arrow-right" : " arrow-down"}`} />
         </div>
-      </section>
-
-      <section className="summary-grid">
+        <div
+          className="section-body"
+          onClick={() => { setSummaryGridCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.summaryGridCollapsed", nv ? "1" : "0"); return nv; }); }}
+          role="button"
+          tabIndex={0}
+        >
         <div className="summary-panel ratio-panel">
           <div className="panel-head">
             <span>最近 {statsScope < 0 ? "全部" : statsScope} 个</span>
@@ -3188,7 +3199,7 @@ export function App() {
               max={maxBisectionCount}
             />
           </div>
-          <div className="scope-row">
+          <div className="scope-row" onClick={(e) => e.stopPropagation()}>
             {statScopes.map((value) => (
               <button
                 className={value === statsScope ? "selected" : ""}
@@ -3200,6 +3211,54 @@ export function App() {
               </button>
             ))}
           </div>
+        </div>
+        </div>
+      </section>
+
+      {columnsPanelCollapsed && summaryGridCollapsed ? (
+        <section className="collapsed-combo-bar">
+          <div
+            className="section-toggle combo-left"
+            onClick={() => { setColumnsPanelCollapsed(false); localStorage.setItem("londoner.columnsPanelCollapsed", "0"); }}
+            role="button"
+            tabIndex={0}
+          >
+            <span className="section-toggle-label">6号码统计</span>
+            <span className="section-toggle-arrow arrow-right" />
+          </div>
+          <div
+            className="section-toggle combo-right"
+            onClick={() => { setSummaryGridCollapsed(false); localStorage.setItem("londoner.summaryGridCollapsed", "0"); }}
+            role="button"
+            tabIndex={0}
+          >
+            <span className="section-toggle-label">统计区</span>
+            <span className="section-toggle-arrow arrow-right" />
+          </div>
+        </section>
+      ) : null}
+      </div>
+
+      {finishedLongs.length > 0 ? (
+        <section className="finished-line">
+          <span>刚结束</span>
+          {finishedLongs.map((item) => (
+            <strong key={item.index}>
+              {item.label} {item.closedDistance}/{item.afterDistance}
+            </strong>
+          ))}
+        </section>
+      ) : null}
+
+      <section
+        className={`queue-panel ${queueExpanded ? "expanded" : "collapsed"}`}
+        onClick={() => setQueueExpanded((value) => !value)}
+      >
+        {queueItems.length === 0 ? <span className="empty-state">等待输入</span> : null}
+        <div className="queue-row">
+          {(queueExpanded ? [...numbers].reverse() : queueItems).map((value, index) => (
+            <span className={`queue-chip number-${getNumberColor(value)}`} key={`q-${index}-${numbers.length}`}>{value}</span>
+          ))}
         </div>
       </section>
 
