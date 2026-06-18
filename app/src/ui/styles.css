@@ -955,6 +955,19 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .refine-table tbody tr:last-child th,
 .app-shell.theme-dark .refine-table tbody tr:last-child td { border-bottom-color: #38342e; }
 
+/* --- Other --- */
+.app-shell.theme-dark .other-screen { background: #121212; }
+.app-shell.theme-dark .other-table { background: #1b1b1b; border-color: #38342e; color: #cbd6dc; }
+.app-shell.theme-dark .other-table th,
+.app-shell.theme-dark .other-table td { border-color: #2a2a2a; }
+.app-shell.theme-dark .other-table thead th { background: #202020; }
+.app-shell.theme-dark .other-table thead th,
+.app-shell.theme-dark .other-table tbody th { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .other-number-cell { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .other-number-cell.zero { color: #5aac8a; }
+.app-shell.theme-dark .other-number-cell.average { color: #b8a060; }
+.app-shell.theme-dark .other-max-distance { color: #cbd6dc; border-top-color: #38342e; border-bottom-color: #38342e; }
+
 /* --- Config --- */
 .app-shell.theme-dark .config-dialog { background: #1b1b1b; border-color: #423d32; color: #cbd6dc; }
 .app-shell.theme-dark .config-dialog-head { background: #1b1b1b; border-bottom-color: #423d32; }
