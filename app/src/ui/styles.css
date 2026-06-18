@@ -984,6 +984,36 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .refine-table tbody tr:last-child th,
 .app-shell.theme-dark .refine-table tbody tr:last-child td { border-bottom-color: #38342e; }
 
+/* --- Snapshot --- */
+.app-shell.theme-dark .six-number-screen { background: #121212; }
+.app-shell.theme-dark .group-block-head { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .group-block-row { background: #222222; border-color: #38342e; border-radius: 10px; }
+.app-shell.theme-dark .group-block-row span { color: #c0c0c0; }
+.app-shell.theme-dark .group-block-row span.current { background: #2c241a; color: #e0b870; box-shadow: inset 0 0 0 1px rgba(180, 130, 70, 0.34); }
+.app-shell.theme-dark .group-block-row.highlighted { border-color: rgba(180, 130, 70, 0.44); }
+.app-shell.theme-dark .group-block-row-stat { background: #26302b; border-color: #405146; color: #c8c8c8; }
+.app-shell.theme-dark .group-block-row-stat.highlighted { border-color: #75603d; }
+.app-shell.theme-dark .group-block-row-stat.highlighted .group-block-row-label,
+.app-shell.theme-dark .group-block-row-stat.highlighted strong { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .group-block-cell { color: #c0c0c0; }
+.app-shell.theme-dark .group-block-x { background: #2d382d; border-color: #465846; }
+.app-shell.theme-dark .group-block-y {
+  background: rgb(78 101 110 / 0.48);
+  border-color: rgb(134 166 174 / 0.32);
+  box-shadow: inset 0 0 0 1px rgb(185 220 230 / 0.07);
+  mix-blend-mode: screen;
+}
+.app-shell.theme-dark .group-block-z { background: #3f3037; border-color: #6a4f5b; }
+.app-shell.theme-dark .group-block-cell.highlighted,
+.app-shell.theme-dark .group-block-x.highlighted,
+.app-shell.theme-dark .group-block-y.highlighted,
+.app-shell.theme-dark .group-block-z.highlighted {
+  background: #3a3224;
+  border-color: rgba(180, 130, 70, 0.44);
+  box-shadow: inset 0 0 0 1px rgb(220 170 100 / 0.08);
+  mix-blend-mode: normal;
+}
+
 /* --- Number Zone --- */
 .app-shell.theme-dark .number-zone-screen { background: #121212; }
 .app-shell.theme-dark .number-zone-cell { background: #222222; border-color: #38342e; }
@@ -1567,7 +1597,7 @@ body:has(.app-shell.theme-dark) {
   align-items: center;
   color: #6e604f;
   display: grid;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: var(--weight-ui);
   gap: 4px;
   grid-template-columns: minmax(48px, 0.42fr) minmax(52px, 0.46fr) minmax(54px, 0.48fr) minmax(156px, 1.36fr);
@@ -1658,7 +1688,7 @@ body:has(.app-shell.theme-dark) {
 
 .group-block-row-label {
   color: #6e604f;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: var(--weight-ui);
 }
 
