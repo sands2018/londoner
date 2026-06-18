@@ -3114,7 +3114,7 @@ export function App() {
             role="button"
             tabIndex={0}
           >
-            <span className="section-toggle-label">6号码统计</span>
+            <span className="section-toggle-label">6号码</span>
             <span className={`section-toggle-arrow${columnsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
           </div>
           <div
@@ -3155,7 +3155,7 @@ export function App() {
           role="button"
           tabIndex={0}
         >
-          <span className="section-toggle-label">统计区</span>
+          <span className="section-toggle-label">基础统计</span>
           <span className={`section-toggle-arrow${summaryGridCollapsed ? " arrow-right" : " arrow-down"}`} />
         </div>
         <div
@@ -3226,7 +3226,7 @@ export function App() {
             role="button"
             tabIndex={0}
           >
-            <span className="section-toggle-label">6号码统计</span>
+            <span className="section-toggle-label">6号码</span>
             <span className="section-toggle-arrow arrow-right" />
           </div>
           <div
@@ -3235,7 +3235,7 @@ export function App() {
             role="button"
             tabIndex={0}
           >
-            <span className="section-toggle-label">统计区</span>
+            <span className="section-toggle-label">基础统计</span>
             <span className="section-toggle-arrow arrow-right" />
           </div>
         </section>
@@ -4550,17 +4550,6 @@ export function App() {
                         <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
                         <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
                       </div>
-                      {QUALITY_124_TIER_ORDER.map((tier) => {
-                        const meta = QUALITY_124_TIER_META[tier];
-                        const roi = quality124.tierRois[tier];
-                        const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
-                        return (
-                          <div className="prediction-roi-row" key={tier}>
-                            <span className="prediction-roi-subheader">{meta.label}{stars}</span><span>{roi.bet}</span><span>{roi.win}</span>
-                            <strong className="roi-value" style={{ color: roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{roi.roi >= 0 ? "+" : ""}{roi.roi.toFixed(1)}%</strong>
-                          </div>
-                        );
-                      })}
                     </div>
                   </div>
                   ) : null}
@@ -4675,7 +4664,7 @@ export function App() {
                   ) : null}
                   </div>
                 </div>
-              ) : predictionTab === "hotNumber" ? (
+              ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
                   <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
@@ -4689,16 +4678,16 @@ export function App() {
                       <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
-                  <div className="detail-stats-table">
-                    <div className="detail-stats-header"><span>档位</span><span>信号</span><span>命中</span><span>未中</span><span>ROI</span></div>
+                  <div className="detail-stats-table cols-4">
+                    <div className="detail-stats-header"><span>档位</span><span>信号</span><span>命中</span><span>ROI</span></div>
                     {QUALITY_124_TIER_ORDER.map((tier) => {
                       const meta = QUALITY_124_TIER_META[tier];
                       const item = quality124.tierRois[tier];
                       const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
                       return (
                         <div className="detail-stats-row" key={tier}>
-                          <strong className="detail-stats-label">{meta.label}{stars}</strong>
-                          <span>{item.signals}</span><span>{item.hits}</span><span>{item.signals - item.hits}</span>
+                          <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
+                          <span>{item.signals}</span><span>{item.hits}</span>
                           <span className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{item.roi >= 0 ? "+" : ""}{item.roi.toFixed(1)}%</span>
                         </div>
                       );
@@ -4782,7 +4771,7 @@ export function App() {
                     </div>
                   </div>
                 </>
-              ) : predictionTab === "quality124" && canUseQuality124 ? (
+              ) : predictionTab === "hotNumber" ? (
                 <>
                   <p className="prediction-desc">自适应双模：默认长热148加速（S1-S2-S3递增+burst&lt;4）；短热DS三窗（37/74/111共识+趋势+burst&lt;4）。111口纸面复盘：短热信号&gt;=5且ROI&gt;=0且比长热高20%则优先短热。信号不减，优先档无信号回落另一档。</p>
                   <div className="prediction-roi-table">

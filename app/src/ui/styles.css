@@ -769,7 +769,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .summary-grid > .section-body { background: #1b1b1b; }
 .app-shell.theme-dark .segmented-stat-item { min-height: 30px; }
 .app-shell.theme-dark .segmented-stat-item strong,
-.app-shell.theme-dark .ratio-grid .segmented-stat-item strong { color: #f5f5f5; }
+.app-shell.theme-dark .ratio-grid .segmented-stat-item strong { color: #e8b048; }
 .app-shell.theme-dark .segmented-stat-item b { color: #b3b3b3; }
 .app-shell.theme-dark .segmented-bars { display: none; }
 .app-shell.theme-dark .panel-head strong { color: #f5f5f5; }
@@ -1167,7 +1167,7 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .prediction-desc { color: #8a8a8a; }
 .app-shell.theme-dark .prediction-body,
-.app-shell.theme-dark .overview-pane { background: #121212; }
+.app-shell.theme-dark .overview-pane { background: #121212; align-content: start; }
 .app-shell.theme-dark .prediction-empty { color: #5a5a5a; }
 
 .app-shell.theme-dark .prediction-roi-table { background: #1b1b1b; border-color: #38342e; }
@@ -1259,7 +1259,9 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .detail-stats-row { border-bottom-color: #2a2a2a; }
 .app-shell.theme-dark .detail-stats-header { border-bottom-color: #38342e; }
 .app-shell.theme-dark .detail-stats-header span { color: var(--theme-dark-gold); }
-.app-shell.theme-dark .detail-stats-label { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .detail-stats-label,
+.app-shell.theme-dark .detail-stats-label .label-text,
+.app-shell.theme-dark .detail-stats-label .label-stars { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .detail-stats-row span { color: #b3b3b3; }
 
 .app-shell.theme-dark .repeat-filter-panel {
@@ -4441,13 +4443,22 @@ body:has(.app-shell.theme-dark) {
   border-bottom: 1px solid #e8ece4;
   display: grid;
   gap: 4px;
-  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  grid-template-columns: 21% 20% 20% 13% 26%;
+  min-height: 36px;
   padding: 2px 10px;
   text-align: center;
 }
 
 .prediction-roi-row:last-child {
   border-bottom: 0;
+}
+
+.overview-card .prediction-roi-row {
+  grid-template-columns: 24% 22% 22% 32%;
+}
+
+.overview-card.overview-chase6 .prediction-roi-row {
+  grid-template-columns: 32% 22% 22% 24%;
 }
 
 .prediction-roi-row span {
@@ -5930,10 +5941,15 @@ body:has(.app-shell.theme-dark) {
   border-bottom: 1px solid #f0e8e8;
   display: grid;
   gap: 4px;
-  grid-template-columns: 48px 1fr 1fr 1fr 40px;
+  grid-template-columns: repeat(5, 20%);
   min-height: 32px;
   padding: 3px 12px;
   text-align: center;
+}
+
+.detail-stats-table.cols-4 .detail-stats-header,
+.detail-stats-table.cols-4 .detail-stats-row {
+  grid-template-columns: 1.8fr 1fr 1fr 1.3fr;
 }
 
 .detail-stats-header {
@@ -5955,7 +5971,14 @@ body:has(.app-shell.theme-dark) {
   font-size: 14px;
   font-weight: var(--weight-ui);
   text-align: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
 }
+.detail-stats-label .label-text,
+.detail-stats-label .label-stars { color: inherit; }
+.detail-stats-label .label-text { text-align: right; padding-right: 3px; }
+.detail-stats-label .label-stars { text-align: left; padding-left: 3px; }
 
 .detail-stats-row span {
   color: #20241f;
