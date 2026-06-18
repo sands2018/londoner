@@ -979,6 +979,20 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .distance-band-label,
 .app-shell.theme-dark .distance-axis-label { fill: var(--theme-dark-gold); }
 
+/* --- Wave --- */
+.app-shell.theme-dark .wave-card { background: transparent; }
+.app-shell.theme-dark .wave-card-head { border-bottom-color: #38342e; }
+.app-shell.theme-dark .wave-card-label { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .wave-card-label-text { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .wave-card-info { color: #8a8a8a; }
+.app-shell.theme-dark .wave-sparkline rect[fill="#fafaf7"] { fill: transparent; }
+.app-shell.theme-dark .wave-sparkline path[fill="#c8b898aa"] { opacity: 0.5; }
+.app-shell.theme-dark .wave-sparkline line[stroke="#e8e4e0"] { stroke: #4a4a44; }
+.app-shell.theme-dark .wave-sparkline polyline[stroke="#c0a860"] { stroke: #9a8a55; }
+.app-shell.theme-dark .wave-sparkline line[stroke="#9a7a5a"] { stroke: #8a8a7a; }
+.app-shell.theme-dark .wave-sparkline line[stroke="#c0ae98"] { stroke: #4a4a44; }
+.app-shell.theme-dark .wave-sparkline line[stroke="#e0d8cc"] { stroke: #3a3a36; }
+
 /* --- Data screens (game stats, col-row, etc.) --- */
 .app-shell.theme-dark .data-screen,
 .app-shell.theme-dark .game-screen,
@@ -1844,6 +1858,7 @@ body:has(.app-shell.theme-dark) {
 .tabs-top {
   background: transparent;
   border-bottom: 1px solid #cfc5b3;
+  margin-top: 6px;
 }
 .tabs-top button {
   background: #e8e2d6;
@@ -5451,7 +5466,7 @@ strong.roi-value {
 
 .wave-card {
   background: #ffffff;
-  border: 1px solid #d8d2c6;
+  border: 0;
   border-radius: 6px;
   overflow: hidden;
 }
@@ -5468,6 +5483,21 @@ strong.roi-value {
   color: #995539;
   font-size: 13px;
   font-weight: var(--weight-emphasis);
+}
+
+.wave-card-label-sidebar {
+  align-items: center;
+  align-self: center;
+  display: flex;
+  min-width: 22px;
+  padding: 2px 4px 2px 0;
+}
+
+.wave-card-label-text {
+  color: #6b5a38;
+  font-size: 12px;
+  font-weight: 500;
+  writing-mode: vertical-rl;
 }
 
 .wave-card-info {

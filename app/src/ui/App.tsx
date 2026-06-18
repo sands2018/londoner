@@ -2956,8 +2956,8 @@ export function App() {
                 const lineEnd = overflow ? padX + (wd.pts.length - 1) * slotW : w - padR;
                 return (
                   <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
-                    <div style={{display:"flex", alignItems:"center", padding:"2px 4px 2px 0", minWidth:22, borderRight:"1px solid #e8e4e0"}}>
-                      <span style={{writingMode:"vertical-rl", fontSize:12, fontWeight:500, color:"#6b5a38"}}>{wd.label}</span>
+                    <div className="wave-card-label-sidebar">
+                      <span className="wave-card-label-text">{wd.label}</span>
                     </div>
                     <div className="wave-scroll" style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
                     <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
