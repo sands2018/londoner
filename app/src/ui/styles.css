@@ -667,7 +667,7 @@ button:disabled {
   --weight-emphasis: 400;
   --weight-strong: 400;
   background: #121212;
-  color: #d8e0e6;
+  color: #e0e0e0;
 }
 
 body:has(.app-shell.theme-dark) {
@@ -685,19 +685,19 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .finished-line {
   background: #1b1b1b;
   border-color: #423d32;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .summary-panel {
   background: #1b1b1b;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 /* columns-panel & summary-grid: border only when collapsed */
 .app-shell.theme-dark .columns-panel,
 .app-shell.theme-dark .summary-grid {
   background: #1b1b1b;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .columns-panel.collapsed,
@@ -744,20 +744,20 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .column-chip span { border-color: #423d32; }
 
-.app-shell.theme-dark .section-toggle-arrow.arrow-down { border-top-color: #7f8d96; }
-.app-shell.theme-dark .section-toggle-arrow.arrow-right { border-left-color: #7f8d96; }
+.app-shell.theme-dark .section-toggle-arrow.arrow-down { border-top-color: #8a8a8a; }
+.app-shell.theme-dark .section-toggle-arrow.arrow-right { border-left-color: #8a8a8a; }
 
 /* --- Top stats strip --- */
 .app-shell.theme-dark .top-stats-strip strong,
-.app-shell.theme-dark .top-stats-count { color: #f2f6f8; }
-.app-shell.theme-dark .top-stats-sep { color: #64727c; }
+.app-shell.theme-dark .top-stats-count { color: #f5f5f5; }
+.app-shell.theme-dark .top-stats-sep { color: #818181; }
 .app-shell.theme-dark .top-stats-net.net-positive strong { color: #f2a84a; }
 .app-shell.theme-dark .top-stats-net.net-negative strong { color: #d99a66; }
 
 /* --- Signal cells --- */
 .app-shell.theme-dark .signal-watch { background: #22201d; border-color: #725c3f; }
 .app-shell.theme-dark .signal-strong { background: #24201e; border-color: #5a4030; }
-.app-shell.theme-dark .signal-label span { color: #a8b5bd; }
+.app-shell.theme-dark .signal-label span { color: #b3b3b3; }
 .app-shell.theme-dark .signal-label strong { color: #f2a84a; }
 
 /* --- Columns panel --- */
@@ -770,18 +770,18 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .summary-grid > .section-body { background: #1b1b1b; }
 .app-shell.theme-dark .segmented-stat-item { min-height: 30px; }
 .app-shell.theme-dark .segmented-stat-item strong,
-.app-shell.theme-dark .ratio-grid .segmented-stat-item strong { color: #f2f6f8; }
-.app-shell.theme-dark .segmented-stat-item b { color: #a8b5bd; }
+.app-shell.theme-dark .ratio-grid .segmented-stat-item strong { color: #f5f5f5; }
+.app-shell.theme-dark .segmented-stat-item b { color: #b3b3b3; }
 .app-shell.theme-dark .segmented-bars { display: none; }
-.app-shell.theme-dark .panel-head strong { color: #f2f6f8; }
-.app-shell.theme-dark .panel-head span { color: #a8b5bd; }
+.app-shell.theme-dark .panel-head strong { color: #f5f5f5; }
+.app-shell.theme-dark .panel-head span { color: #b3b3b3; }
 
 /* --- Finished line --- */
-.app-shell.theme-dark .finished-line { color: #a8b5bd; }
+.app-shell.theme-dark .finished-line { color: #b3b3b3; }
 .app-shell.theme-dark .finished-line strong { color: #f2a84a; }
 
 /* --- Section toggle labels --- */
-.app-shell.theme-dark .section-toggle-label { color: #a8b5bd; }
+.app-shell.theme-dark .section-toggle-label { color: #b3b3b3; }
 
 /* --- Queue / number chips — uniform, only 0 is green --- */
 .app-shell.theme-dark .queue-chip,
@@ -914,7 +914,7 @@ body:has(.app-shell.theme-dark) {
 /* --- Data screens --- */
 .app-shell.theme-dark .data-screen,
 .app-shell.theme-dark .game-screen,
-.app-shell.theme-dark .stats-screen { background: #121212; color: #cbd6dc; }
+.app-shell.theme-dark .stats-screen { background: #121212; color: #d4d4d4; }
 
 .app-shell.theme-dark .data-screen-head {
   background: linear-gradient(to bottom, #121212 0, #121212 env(safe-area-inset-top), #343434 env(safe-area-inset-top), #343434 100%);
@@ -924,11 +924,11 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .data-screen-head strong { color: #e0b870; }
-.app-shell.theme-dark .data-screen-head button { background: #242424; border-left-color: #38342e; color: #cbd6dc; }
+.app-shell.theme-dark .data-screen-head button { background: #242424; border-left-color: #38342e; color: #d4d4d4; }
 
 .app-shell.theme-dark .data-screen-head .close-button,
 .app-shell.theme-dark .modal-head .close-button,
-.app-shell.theme-dark .config-dialog-head .close-button { background: #424242; border-color: #5a5028; color: #cbd6dc; }
+.app-shell.theme-dark .config-dialog-head .close-button { background: #424242; border-color: #5a5028; color: #d4d4d4; }
 
 .app-shell.theme-dark .modal-backdrop {
   background: rgb(0 0 0 / 0.48);
@@ -939,7 +939,7 @@ body:has(.app-shell.theme-dark) {
   background: #151515;
   border-color: #3e372d;
   box-shadow: 0 18px 48px rgb(0 0 0 / 0.42);
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .modal-head {
@@ -953,7 +953,7 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .message-body,
 .app-shell.theme-dark .modal-message {
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .message-actions button,
@@ -974,12 +974,23 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .data-table-wrap { background: #1b1b1b; }
 .app-shell.theme-dark .data-table { border-bottom-color: #38342e; }
-.app-shell.theme-dark .data-table th { background: #202020; border-bottom-color: #423d32; color: #a8b5bd; }
-.app-shell.theme-dark .data-table td { border-bottom-color: #2a2a2a; color: #cbd6dc; }
+.app-shell.theme-dark .data-table th { background: #202020; border-bottom-color: #423d32; color: #b3b3b3; }
+.app-shell.theme-dark .data-table td { border-bottom-color: #2a2a2a; color: #666666; }
 .app-shell.theme-dark .data-table th,
 .app-shell.theme-dark .data-table td { border-right-color: #2a2a2a; }
-.app-shell.theme-dark .data-table tbody tr:hover td { background: #222222; }
-.app-shell.theme-dark .data-summary-row { background: #202020; border-top-color: #38342e; color: #a8b5bd; }
+.app-shell.theme-dark .data-table tbody tr:hover td { background: transparent; }
+.app-shell.theme-dark .data-table tbody tr.selected,
+.app-shell.theme-dark .data-table tbody tr.selected th,
+.app-shell.theme-dark .data-table tbody tr.selected td {
+  background: #34312b;
+}
+.app-shell.theme-dark .data-table tbody tr.selected td {
+  border-bottom-color: #5a5244;
+  color: #9a9a9a;
+}
+.app-shell.theme-dark .data-table tbody tr.selected:hover th,
+.app-shell.theme-dark .data-table tbody tr.selected:hover td { background: #34312b; }
+.app-shell.theme-dark .data-summary-row { background: #202020; border-top-color: #38342e; color: #b3b3b3; }
 .app-shell.theme-dark .data-summary-row strong { color: #d4c8a8; }
 .app-shell.theme-dark .data-empty { color: #5a636a; }
 .app-shell.theme-dark .td-won { color: #a0c8a0; }
@@ -990,7 +1001,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .colrow-screen { background: #121212; }
 .app-shell.theme-dark .colrow-detail-row { border-top-color: #38342e; }
 .app-shell.theme-dark .colrow-detail-row strong { color: var(--theme-dark-gold); }
-.app-shell.theme-dark .colrow-detail-row p { color: #cbd6dc; }
+.app-shell.theme-dark .colrow-detail-row p { color: #d4d4d4; }
 .app-shell.theme-dark .colrow-current { color: #5aacd8; }
 .app-shell.theme-dark .colrow-current.zero { color: #d4a050; }
 .app-shell.theme-dark .muted-text { color: #6e6e6e; }
@@ -1016,13 +1027,13 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .colrow-explore-panel button.selected { background: #2a2a2a; border-color: #5a4e2c; color: var(--theme-dark-gold); }
 .app-shell.theme-dark .colrow-explore-panel .checkmark { border-color: #5a4a30; }
 .app-shell.theme-dark .colrow-explore-panel button.selected .checkmark { background: #625840; border-color: #625840; }
-.app-shell.theme-dark .colrow-explore-results span { color: #a8b5bd; }
+.app-shell.theme-dark .colrow-explore-results span { color: #b3b3b3; }
 
 /* --- Refine / Compare --- */
 .app-shell.theme-dark .refine-screen { background: #121212; }
 .app-shell.theme-dark .refine-rounds { border-top-color: #38342e; }
 .app-shell.theme-dark .refine-round-row + .refine-round-row { border-top-color: #38342e; }
-.app-shell.theme-dark .refine-round-row > span { color: #a8b5bd; }
+.app-shell.theme-dark .refine-round-row > span { color: #b3b3b3; }
 .app-shell.theme-dark .refine-table { color: #969ea2; border-top-color: #38342e; border-bottom-color: #38342e; }
 .app-shell.theme-dark .refine-table thead th { color: var(--theme-dark-gold); border-bottom-color: #38342e; }
 .app-shell.theme-dark .refine-table th:first-child,
@@ -1086,7 +1097,7 @@ body:has(.app-shell.theme-dark) {
 
 /* --- Other --- */
 .app-shell.theme-dark .other-screen { background: #121212; }
-.app-shell.theme-dark .other-table { background: #1b1b1b; border-color: #38342e; color: #cbd6dc; }
+.app-shell.theme-dark .other-table { background: #1b1b1b; border-color: #38342e; color: #d4d4d4; }
 .app-shell.theme-dark .other-table th,
 .app-shell.theme-dark .other-table td { border-color: #2a2a2a; }
 .app-shell.theme-dark .other-table thead th { background: #202020; }
@@ -1095,7 +1106,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .other-number-cell { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .other-number-cell.zero { color: #5aac8a; }
 .app-shell.theme-dark .other-number-cell.average { color: #b8a060; }
-.app-shell.theme-dark .other-max-distance { color: #cbd6dc; border-top-color: #38342e; border-bottom-color: #38342e; }
+.app-shell.theme-dark .other-max-distance { color: #d4d4d4; border-top-color: #38342e; border-bottom-color: #38342e; }
 
 /* --- Config --- */
 .app-shell.theme-dark .config-backdrop {
@@ -1106,7 +1117,7 @@ body:has(.app-shell.theme-dark) {
   background: #151515;
   border-color: #3e372d;
   box-shadow: 0 18px 48px rgb(0 0 0 / 0.42);
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .config-dialog-head {
@@ -1142,11 +1153,11 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .config-bets,
 .app-shell.theme-dark .config-rounds,
 .app-shell.theme-dark .config-acr {
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .config-option-row {
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .config-option-row input {
@@ -1168,7 +1179,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .manage-list button {
   background: #1e1e1e;
   border-bottom-color: transparent;
-  color: #a8b5bd;
+  color: #b3b3b3;
 }
 
 .app-shell.theme-dark .config-check-list button.selected,
@@ -1216,7 +1227,7 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .manage-dialog {
   background: #151515;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 /* --- Frequency --- */
@@ -1255,7 +1266,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .game-screen,
 .app-shell.theme-dark .stats-screen {
   background: #121212;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .data-screen-head {
@@ -1278,7 +1289,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .data-screen-head button {
   background: #242424;
   border-left-color: #38342e;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .data-screen-head button:active {
@@ -1291,7 +1302,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .config-dialog-head .close-button {
   background: #424242;
   border-color: #5a5028;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .data-table-wrap {
@@ -1305,12 +1316,12 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .data-table th {
   background: #202020;
   border-bottom-color: #423d32;
-  color: #a8b5bd;
+  color: #b3b3b3;
 }
 
 .app-shell.theme-dark .data-table td {
   border-bottom-color: #2a2a2a;
-  color: #cbd6dc;
+  color: #d4d4d4;
 }
 
 .app-shell.theme-dark .data-table th,
@@ -1319,13 +1330,18 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .data-table tbody tr:hover td {
-  background: #222222;
+  background: transparent;
+}
+
+.app-shell.theme-dark .data-table tbody tr.selected:hover th,
+.app-shell.theme-dark .data-table tbody tr.selected:hover td {
+  background: #34312b;
 }
 
 .app-shell.theme-dark .data-summary-row {
   background: #202020;
   border-top-color: #38342e;
-  color: #a8b5bd;
+  color: #b3b3b3;
 }
 
 .app-shell.theme-dark .data-summary-row strong {
@@ -3958,8 +3974,18 @@ body:has(.app-shell.theme-dark) {
 }
 
 .modal-actions.single-action button {
-  min-width: 138px;
-  padding: 0 24px;
+  min-width: 116px;
+  padding: 0 18px;
+}
+
+.modal-actions.import-actions {
+  grid-template-columns: repeat(2, max-content);
+  justify-content: center;
+}
+
+.modal-actions.import-actions button {
+  min-width: 116px;
+  padding: 0 18px;
 }
 
 .field-label {
