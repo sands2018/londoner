@@ -4875,78 +4875,73 @@ export function App() {
       ) : null}
 
       {configViewOpen ? (
-        <div className="config-backdrop" role="dialog" aria-modal="true" aria-label="配置">
-          <section className="config-dialog">
-            <header className="config-dialog-head">
+          <section className="data-screen config-screen" aria-label="配置">
+            <header className="data-screen-head">
               <strong>配置</strong>
               <button className="close-button" onClick={() => setConfigViewOpen(false)} type="button">x</button>
             </header>
-            <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+            <div className="config-screen-main">
               <div className="tabs tabs-top">
                 <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
-                <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
                 <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">赌桌</button>
+                <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
               </div>
               {configTab === "other" ? (
-              <div className="config-body" style={{ gridTemplateColumns: "1fr" }}>
+              <div className="config-body config-body-natural" style={{ gridTemplateColumns: "1fr" }}>
+                <section className="config-card config-bets">
+                  <h2><span>统计窗口</span></h2>
+                  <div className="config-option-list">
+                    <label className="config-option-row">
+                      <input
+                        type="checkbox"
+                        checked={draftWindowMode === "classic"}
+                        onChange={() => setDraftWindowMode("classic")}
+                      />
+                      <span>传统数字序列</span>
+                    </label>
+                    <label className="config-option-row">
+                      <input
+                        type="checkbox"
+                        checked={draftWindowMode === "fibonacci"}
+                        onChange={() => setDraftWindowMode("fibonacci")}
+                      />
+                      <span>斐波那契数字序列</span>
+                    </label>
+                  </div>
+                </section>
                 <section className="config-card config-bets">
                   <h2><span>外观</span></h2>
-                  <div style={{ padding: "10px 0" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                  <div className="config-option-list">
+                    <label className="config-option-row">
                       <input
                         type="radio"
                         name="themeMode"
                         checked={themeMode === "dark"}
                         onChange={() => { setThemeMode("dark"); localStorage.setItem("londoner.themeMode", "dark"); }}
-                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
                       />
                       <span>深色</span>
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
+                    <label className="config-option-row">
                       <input
                         type="radio"
                         name="themeMode"
                         checked={themeMode === "soft"}
                         onChange={() => { setThemeMode("soft"); localStorage.setItem("londoner.themeMode", "soft"); }}
-                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
                       />
                       <span>浅色</span>
-                    </label>
-                  </div>
-                </section>
-                <section className="config-card config-bets">
-                  <h2><span>统计窗口</span></h2>
-                  <div style={{ padding: "10px 0" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={draftWindowMode === "classic"}
-                        onChange={() => setDraftWindowMode("classic")}
-                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
-                      />
-                      <span>传统数字序列</span>
-                    </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: "8px", padding: "3px 0 3px 12px", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={draftWindowMode === "fibonacci"}
-                        onChange={() => setDraftWindowMode("fibonacci")}
-                        style={{ width: "18px", height: "18px", accentColor: "#8a6b2e" }}
-                      />
-                      <span>斐波那契数字序列</span>
                     </label>
                   </div>
                 </section>
               </div>
             ) : configTab === "table" ? (
             <>
-              <div className="config-body" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", flex: 1, overflow: "hidden" }}>
+              <div className="config-body config-body-table" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", flex: 1, overflow: "hidden" }}>
                 <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
                   <h2><span>赌场</span></h2>
                   <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
                     <div className="location-list">
                       {userCasinos().length === 0 ? (
-                        <div style={{ padding: "18px 12px", color: "#999", fontSize: "14px" }}>暂无赌场</div>
+                        <div className="config-empty">暂无赌场</div>
                       ) : (
                         userCasinos().map((casino) => (
                           <button
@@ -4967,9 +4962,9 @@ export function App() {
                   <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
                     <div className="location-list">
                       {!draftSelectedCasinoId ? (
-                        <div style={{ padding: "18px 12px", color: "#999", fontSize: "14px" }}>请先选择赌场</div>
+                        <div className="config-empty">请先选择赌场</div>
                       ) : userTables(draftSelectedCasinoId).length === 0 ? (
-                        <div style={{ padding: "18px 12px", color: "#999", fontSize: "14px" }}>暂无赌桌</div>
+                        <div className="config-empty">暂无赌桌</div>
                       ) : (
                         userTables(draftSelectedCasinoId).map((table) => (
                           <button
@@ -4986,11 +4981,10 @@ export function App() {
                   </div>
                 </section>
               </div>
-              <div style={{ display: "flex", gap: 6, justifyContent: "center", padding: "6px 0 12px" }}>
+              <div className="config-table-actions">
                 <button onClick={addCasino} type="button" className="table-action">添加</button>
                 <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) renameCasino(c); }} type="button" className="table-action">更名</button>
                 <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) deleteCasino(c); }} type="button" className="table-action">删除</button>
-                <span style={{ width: 14 }} />
                 <button disabled={!draftSelectedCasinoId} onClick={addTable} type="button" className="table-action">添加</button>
                 <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) renameTable(t); }} type="button" className="table-action">更名</button>
                 <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) deleteTable(t); }} type="button" className="table-action">删除</button>
@@ -5091,7 +5085,6 @@ export function App() {
               </footer>
             ) : null}
           </section>
-        </div>
       ) : null}
 
       {betsManageOpen ? (

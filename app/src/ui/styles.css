@@ -801,13 +801,17 @@ body:has(.app-shell.theme-dark) {
 /* --- Scope row / dock buttons --- */
 .app-shell.theme-dark .scope-row button,
 .app-shell.theme-dark .data-screen-actions button,
-.app-shell.theme-dark .tabs-grid button {
+.app-shell.theme-dark .tabs-grid button,
+.app-shell.theme-dark .config-actions button,
+.app-shell.theme-dark .manage-side-actions button,
+.app-shell.theme-dark .table-action {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
   color: #e8e8e8;
   min-height: 32px;
 }
+.app-shell.theme-dark .table-action:disabled { opacity: 0.35; }
 
 .app-shell.theme-dark .scope-row button.selected,
 .app-shell.theme-dark .data-screen-actions button.selected,
@@ -925,6 +929,48 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .data-screen-head .close-button,
 .app-shell.theme-dark .modal-head .close-button,
 .app-shell.theme-dark .config-dialog-head .close-button { background: #424242; border-color: #5a5028; color: #cbd6dc; }
+
+.app-shell.theme-dark .modal-backdrop {
+  background: rgb(0 0 0 / 0.48);
+}
+
+.app-shell.theme-dark .message-panel,
+.app-shell.theme-dark .modal-panel {
+  background: #151515;
+  border-color: #3e372d;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.42);
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .modal-head {
+  background: #343434;
+  border-bottom-color: #5a5028;
+}
+
+.app-shell.theme-dark .modal-head strong {
+  color: #e0b870;
+}
+
+.app-shell.theme-dark .message-body,
+.app-shell.theme-dark .modal-message {
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .message-actions button,
+.app-shell.theme-dark .modal-actions button,
+.app-shell.theme-dark .primary-action {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  color: #e8e8e8;
+}
+
+.app-shell.theme-dark .message-actions button:active,
+.app-shell.theme-dark .modal-actions button:active,
+.app-shell.theme-dark .primary-action:active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
 
 .app-shell.theme-dark .data-table-wrap { background: #1b1b1b; }
 .app-shell.theme-dark .data-table { border-bottom-color: #38342e; }
@@ -1052,11 +1098,126 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .other-max-distance { color: #cbd6dc; border-top-color: #38342e; border-bottom-color: #38342e; }
 
 /* --- Config --- */
-.app-shell.theme-dark .config-dialog { background: #1b1b1b; border-color: #423d32; color: #cbd6dc; }
-.app-shell.theme-dark .config-dialog-head { background: #1b1b1b; border-bottom-color: #423d32; }
-.app-shell.theme-dark .config-dialog-head strong { color: #d4c8a8; }
-.app-shell.theme-dark .config-card { background: #202020; border-color: #38342e; }
-.app-shell.theme-dark .config-card h2 { color: #a8b5bd; border-bottom-color: #38342e; }
+.app-shell.theme-dark .config-backdrop {
+  background: rgb(0 0 0 / 0.48);
+}
+
+.app-shell.theme-dark .config-dialog {
+  background: #151515;
+  border-color: #3e372d;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.42);
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .config-dialog-head {
+  background: #343434;
+  border-bottom-color: #5a5028;
+  color: #d4c8a8;
+}
+
+.app-shell.theme-dark .config-dialog-head strong {
+  color: #e0b870;
+}
+
+.app-shell.theme-dark .config-body {
+  background: #151515;
+}
+
+.app-shell.theme-dark .config-card,
+.app-shell.theme-dark .manage-list-panel {
+  background: #1b1b1b;
+  border-color: #38342e;
+}
+
+.app-shell.theme-dark .config-card h2 {
+  background: #2c2c2c;
+  border-bottom-color: #38342e;
+  color: var(--theme-dark-gold);
+}
+
+.app-shell.theme-dark .config-card h2 span {
+  color: inherit;
+}
+
+.app-shell.theme-dark .config-bets,
+.app-shell.theme-dark .config-rounds,
+.app-shell.theme-dark .config-acr {
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .config-option-row {
+  color: #cbd6dc;
+}
+
+.app-shell.theme-dark .config-option-row input {
+  accent-color: var(--theme-dark-gold);
+}
+
+.app-shell.theme-dark .config-option-row:has(input:checked)::before {
+  background: #7a663e;
+  border-color: #9b7b45;
+  color: #f4ead5;
+}
+
+.app-shell.theme-dark .config-empty {
+  color: #6e757b;
+}
+
+.app-shell.theme-dark .config-check-list button,
+.app-shell.theme-dark .location-list button,
+.app-shell.theme-dark .manage-list button {
+  background: #1e1e1e;
+  border-bottom-color: transparent;
+  color: #a8b5bd;
+}
+
+.app-shell.theme-dark .config-check-list button.selected,
+.app-shell.theme-dark .location-list button.selected,
+.app-shell.theme-dark .manage-list button.selected {
+  background: #25231f;
+  color: var(--theme-dark-gold);
+}
+
+.app-shell.theme-dark .config-check-list button.default-item,
+.app-shell.theme-dark .manage-list button.default-item {
+  background: #222222;
+  color: #b2b2b2;
+}
+
+.app-shell.theme-dark .config-check-list button.default-item.selected,
+.app-shell.theme-dark .manage-list button.default-item.selected {
+  background: #2a2822;
+  color: var(--theme-dark-gold);
+}
+
+.app-shell.theme-dark .config-check-list button::before,
+.app-shell.theme-dark .config-select-all {
+  background: #202020;
+  border-color: #5a4d36;
+  color: #151515;
+}
+
+.app-shell.theme-dark .config-check-list button.selected::before,
+.app-shell.theme-dark .config-select-all.selected {
+  background: #65573d;
+  border-color: #65573d;
+  color: #f2f0ea;
+}
+
+.app-shell.theme-dark .location-list button span,
+.app-shell.theme-dark .manage-list button span {
+  color: inherit;
+}
+
+.app-shell.theme-dark .config-actions {
+  background: #151515;
+  border-top: 0;
+}
+
+.app-shell.theme-dark .manage-dialog {
+  background: #151515;
+  color: #cbd6dc;
+}
 
 /* --- Frequency --- */
 .app-shell.theme-dark .frequency-screen { background: #121212; }
@@ -1178,31 +1339,6 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .td-won { color: #a0c8a0; }
 .app-shell.theme-dark .td-drew { color: #c8b888; }
 .app-shell.theme-dark .td-lost { color: #c89088; }
-
-.app-shell.theme-dark .config-dialog {
-  background: #1b1b1b;
-  border-color: #423d32;
-  color: #cbd6dc;
-}
-
-.app-shell.theme-dark .config-dialog-head {
-  background: #1b1b1b;
-  border-bottom-color: #423d32;
-}
-
-.app-shell.theme-dark .config-dialog-head strong {
-  color: #d4c8a8;
-}
-
-.app-shell.theme-dark .config-card {
-  background: #202020;
-  border-color: #38342e;
-}
-
-.app-shell.theme-dark .config-card h2 {
-  color: #a8b5bd;
-  border-bottom-color: #38342e;
-}
 
 .group-counts {
   border-radius: 5px;
@@ -3141,6 +3277,35 @@ body:has(.app-shell.theme-dark) {
   justify-self: center;
 }
 
+.config-screen {
+  background: #fffdf9;
+}
+
+.config-screen-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.config-screen .tabs-top {
+  flex: 0 0 auto;
+  margin-top: 8px;
+}
+
+.config-screen .config-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.config-screen .config-body-natural {
+  align-content: start;
+}
+
+.config-screen .config-card {
+  border-radius: 10px;
+}
+
 .config-body {
   display: grid;
   gap: 14px;
@@ -3174,6 +3339,59 @@ body:has(.app-shell.theme-dark) {
 
 .config-card h2 span {
   grid-column: 2;
+}
+
+.config-option-list {
+  display: grid;
+  gap: 0;
+  padding: 10px 0;
+}
+
+.config-option-row {
+  align-items: center;
+  color: #5f5548;
+  cursor: pointer;
+  display: flex;
+  font-size: var(--dialog-row-font-size);
+  gap: 8px;
+  min-height: var(--dialog-row-height);
+  padding: 3px 16px;
+}
+
+.config-option-row::before {
+  align-items: center;
+  border: 1px solid #bab4a8;
+  border-radius: 4px;
+  content: "";
+  display: flex;
+  flex: 0 0 var(--dialog-check-size);
+  font-family: var(--ui-font-family);
+  font-size: calc(var(--dialog-check-size) - 5px);
+  height: var(--dialog-check-size);
+  justify-content: center;
+  width: var(--dialog-check-size);
+}
+
+.config-option-row:has(input:checked)::before {
+  background: var(--dialog-check-color);
+  border-color: var(--dialog-check-color);
+  color: #ffffff;
+  content: "\2713";
+}
+
+.config-option-row input {
+  appearance: none;
+  height: 0;
+  margin: 0;
+  opacity: 0;
+  position: absolute;
+  width: 0;
+}
+
+.config-empty {
+  color: #999999;
+  font-size: var(--dialog-row-font-size);
+  padding: 18px 12px;
 }
 
 .config-select-all {
@@ -3314,6 +3532,7 @@ body:has(.app-shell.theme-dark) {
 .manage-list-panel {
   background: #ffffff;
   border: 1px solid #d8d2c6;
+  border-radius: 10px;
   min-height: min(44dvh, 420px);
   overflow: auto;
 }
@@ -3396,12 +3615,21 @@ body:has(.app-shell.theme-dark) {
   opacity: 0.72;
 }
 
+.config-table-actions {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 6px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 6px max(7px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+}
+
 .config-actions {
   background: #fffdf9;
-  display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  padding: 20px 104px 22px;
+  border-top: 0;
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  padding: 5px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
 }
 
 .config-actions button {
@@ -3412,7 +3640,7 @@ body:has(.app-shell.theme-dark) {
   font-size: var(--dialog-action-font-size);
   font-weight: var(--weight-ui);
   min-height: var(--action-button-min-height);
-  min-width: 0;
+  min-width: 104px;
   padding: 0 8px;
 }
 
@@ -3887,12 +4115,13 @@ body:has(.app-shell.theme-dark) {
   }
 
   .config-actions {
-    gap: 12px;
-    padding: 18px 42px 20px;
+    gap: 5px;
+    padding: 5px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
   }
 
   .config-actions button {
     min-height: var(--action-button-min-height);
+    min-width: 94px;
   }
 
   .manage-dialog {
