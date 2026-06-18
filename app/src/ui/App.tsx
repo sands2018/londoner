@@ -348,6 +348,7 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
+  const [previewHomeOpen, setPreviewHomeOpen] = useState(false);
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
@@ -2505,14 +2506,8 @@ export function App() {
   }
 
   function openConfigView() {
-    reloadGameConfigState();
-    setDraftWindowMode(windowMode);
-    void refreshCasinoTables().then((items) => {
-      setDraftCasinoTables(items);
-      setDraftSelectedCasinoId("");
-      setDraftSelectedTableId("");
-    });
-    setConfigViewOpen(true);
+    setPreviewHomeOpen((value) => !value);
+    setConfigViewOpen(false);
   }
 
   function openGameView() {
@@ -3067,7 +3062,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
+    <main className={`app-shell theme-${themeMode} ${previewHomeOpen ? "dark-home" : ""} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">

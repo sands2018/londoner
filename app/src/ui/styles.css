@@ -409,7 +409,6 @@ button:disabled {
 .section-toggle {
   align-items: center;
   background: #f5f2ea;
-  border-bottom: 1px solid #e2dbcf;
   border-radius: 6px;
   cursor: pointer;
   display: flex;
@@ -451,7 +450,6 @@ button:disabled {
   border: 1px solid transparent;
   border-radius: 6px;
   display: flex;
-  gap: 1px;
 }
 
 .collapsed-combo-bar .section-toggle {
@@ -461,10 +459,15 @@ button:disabled {
 
 .collapsed-combo-bar .combo-left {
   border-radius: 6px 0 0 6px;
+  border-right: 1px solid #e2dbcf;
 }
 
 .collapsed-combo-bar .combo-right {
   border-radius: 0 6px 6px 0;
+}
+
+.app-shell.dark-home .collapsed-combo-bar .combo-left {
+  border-right-color: #3a3a3a;
 }
 
 /* Hide individual collapsed sections when both are collapsed (combined bar replaces them) */
@@ -483,6 +486,10 @@ button:disabled {
   display: none;
 }
 
+.columns-panel:not(.collapsed) {
+  border-color: transparent;
+}
+
 .columns-panel.collapsed > .section-body {
   display: none;
 }
@@ -498,6 +505,10 @@ button:disabled {
 /* Summary grid: hide toggle when expanded, show when collapsed */
 .summary-grid:not(.collapsed) > .section-toggle {
   display: none;
+}
+
+.summary-grid:not(.collapsed) {
+  border-color: transparent;
 }
 
 .summary-grid.collapsed > .section-body {
@@ -639,6 +650,168 @@ button:disabled {
   background: #f0f0f0;
   border-color: #d4d4d4;
 }
+
+/* ===== Experimental dark homepage ===== */
+.app-shell.dark-home {
+  --dock-background: #151515;
+  --dock-border-top: 1px solid #303030;
+  --weight-ui: 400;
+  --weight-emphasis: 400;
+  --weight-strong: 400;
+  background: #121212;
+  color: #d8e0e6;
+}
+
+/* --- Panels & cards --- */
+.app-shell.dark-home .top-stats-strip,
+.app-shell.dark-home .signal-cell,
+.app-shell.dark-home .queue-panel,
+.app-shell.dark-home .finished-line {
+  background: #1b1b1b;
+  border-color: #423d32;
+  color: #cbd6dc;
+}
+
+.app-shell.dark-home .summary-panel {
+  background: #1b1b1b;
+  color: #cbd6dc;
+}
+
+/* columns-panel & summary-grid: border only when collapsed */
+.app-shell.dark-home .columns-panel,
+.app-shell.dark-home .summary-grid {
+  background: #1b1b1b;
+  color: #cbd6dc;
+}
+
+.app-shell.dark-home .columns-panel.collapsed,
+.app-shell.dark-home .summary-grid.collapsed,
+.app-shell.dark-home .collapsed-combo-bar,
+.app-shell.dark-home .combo-left,
+.app-shell.dark-home .combo-right {
+  border-color: #423d32;
+}
+
+.app-shell.dark-home .section-toggle {
+  background: #202020;
+}
+
+/* When expanded, no borders but keep border-radius */
+.app-shell.dark-home .columns-panel:not(.collapsed),
+.app-shell.dark-home .summary-grid:not(.collapsed) {
+  border: none;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.app-shell.dark-home .summary-grid {
+  margin-top: 2px;
+}
+
+.app-shell.dark-home .segmented-stat,
+.app-shell.dark-home .segmented-stat-item,
+.app-shell.dark-home .segmented-bars { background: #181818; border-color: #423d32; }
+.app-shell.dark-home .group-strip { background: #181818; border-color: #423d32; }
+
+.app-shell.dark-home .column-chip span { border-color: #423d32; }
+
+.app-shell.dark-home .section-toggle-arrow.arrow-down { border-top-color: #7f8d96; }
+.app-shell.dark-home .section-toggle-arrow.arrow-right { border-left-color: #7f8d96; }
+
+/* --- Top stats strip --- */
+.app-shell.dark-home .top-stats-strip strong,
+.app-shell.dark-home .top-stats-count { color: #f2f6f8; }
+.app-shell.dark-home .top-stats-sep { color: #64727c; }
+.app-shell.dark-home .top-stats-net.net-positive strong { color: #f2a84a; }
+.app-shell.dark-home .top-stats-net.net-negative strong { color: #d99a66; }
+
+/* --- Signal cells --- */
+.app-shell.dark-home .signal-watch { background: #22201d; border-color: #725c3f; }
+.app-shell.dark-home .signal-strong { background: #24201e; border-color: #5a4030; }
+.app-shell.dark-home .signal-label span { color: #a8b5bd; }
+.app-shell.dark-home .signal-label strong { color: #f2a84a; }
+
+/* --- Columns panel --- */
+.app-shell.dark-home .column-chip span { background: #242424; color: #d0c8b8; }
+.app-shell.dark-home .column-chip strong { background: #2a2a2a; color: #e8b048; }
+.app-shell.dark-home .column-chip.inactive span { background: #181818; color: #6e757b; }
+.app-shell.dark-home .column-chip.inactive strong { background: #1e1e1e; color: #8a7860; }
+
+/* --- Summary grid --- */
+.app-shell.dark-home .summary-grid > .section-body { background: #1b1b1b; }
+.app-shell.dark-home .segmented-stat-item { min-height: 30px; }
+.app-shell.dark-home .segmented-stat-item strong,
+.app-shell.dark-home .ratio-grid .segmented-stat-item strong { color: #f2f6f8; }
+.app-shell.dark-home .segmented-stat-item b { color: #a8b5bd; }
+.app-shell.dark-home .segmented-bars { display: none; }
+.app-shell.dark-home .panel-head strong { color: #f2f6f8; }
+.app-shell.dark-home .panel-head span { color: #a8b5bd; }
+
+/* --- Finished line --- */
+.app-shell.dark-home .finished-line { color: #a8b5bd; }
+.app-shell.dark-home .finished-line strong { color: #f2a84a; }
+
+/* --- Section toggle labels --- */
+.app-shell.dark-home .section-toggle-label { color: #a8b5bd; }
+
+/* --- Queue / number chips — uniform, only 0 is green --- */
+.app-shell.dark-home .queue-chip,
+.app-shell.dark-home .number-chip { background: transparent; color: #d0d0d0; border-color: rgba(160, 160, 160, 0.22); }
+.app-shell.dark-home .queue-chip.number-green { color: #90b89a; border-color: rgba(130, 170, 140, 0.30); }
+.app-shell.dark-home .queue-chip.number-red,
+.app-shell.dark-home .queue-chip.number-black { color: #d0d0d0; border-color: rgba(160, 160, 160, 0.22); }
+.app-shell.dark-home .number-key {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  color: #a0a0a0;
+}
+.app-shell.dark-home .number-key:active { background: rgba(255, 255, 255, 0.12); }
+.app-shell.dark-home .empty-state { color: #5a636a; }
+
+/* --- Scope row / dock buttons --- */
+.app-shell.dark-home .scope-row button,
+.app-shell.dark-home .dock-actions button,
+.app-shell.dark-home .keyboard-reopen {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  color: #e8e8e8;
+  min-height: 32px;
+}
+
+/* Control buttons in keyboard: match number-key height */
+.app-shell.dark-home .board-grid .control-button,
+.app-shell.dark-home .keypad-grid .control-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  color: #e8e8e8;
+  height: var(--key-height);
+  min-height: unset;
+}
+.app-shell.dark-home .scope-row button.selected {
+  background: rgba(200, 150, 60, 0.12);
+  border-color: rgba(200, 150, 60, 0.20);
+  border-radius: 18px;
+  color: #ffffff;
+}
+
+/* --- Input dock --- */
+.app-shell.dark-home .input-dock { box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.24); }
+
+/* --- Input / select / textarea --- */
+.app-shell.dark-home input,
+.app-shell.dark-home select,
+.app-shell.dark-home textarea { background: #1d1d1d; border-color: #5a4d36; color: #e8e8e8; }
+.app-shell.dark-home input:focus,
+.app-shell.dark-home select:focus,
+.app-shell.dark-home textarea:focus { border-color: #c8943c; outline: none; }
+
+/* --- Misc --- */
+.app-shell.dark-home .scope-row,
+.app-shell.dark-home .dock-actions { background: transparent; }
+.app-shell.dark-home button:disabled { opacity: 0.4; }
 
 .group-counts {
   border-radius: 5px;
