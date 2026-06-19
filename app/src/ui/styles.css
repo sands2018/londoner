@@ -954,7 +954,7 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .data-screen-head .close-button,
 .app-shell.theme-dark .modal-head .close-button,
-.app-shell.theme-dark .config-dialog-head .close-button { background: #424242; border-color: #5a5028; color: #d4d4d4; }
+.app-shell.theme-dark .config-dialog-head .close-button { background: #484848; border-color: #5a5028; color: #9e7652; }
 
 .app-shell.theme-dark .modal-backdrop {
   background: rgb(0 0 0 / 0.48);
@@ -1493,15 +1493,20 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .data-screen-head button:active {
   background: #505050;
-  color: #ffffff;
+  color: #9e7652;
 }
 
 .app-shell.theme-dark .data-screen-head .close-button,
 .app-shell.theme-dark .modal-head .close-button,
 .app-shell.theme-dark .config-dialog-head .close-button {
-  background: #424242;
+  align-items: center;
+  background: #484848;
   border-color: #5a5028;
-  color: #d4d4d4;
+  color: #9e7652;
+  display: flex;
+  font-size: calc(var(--dialog-action-font-size) + 8px);
+  justify-content: center;
+  line-height: 1;
 }
 
 .app-shell.theme-dark .data-table-wrap {
@@ -4112,6 +4117,46 @@ body:has(.app-shell.theme-dark) {
   min-width: 30px;
   padding: 0;
   width: 30px;
+}
+
+.app-shell.theme-dark .data-screen-head .close-button,
+.app-shell.theme-dark .modal-head .close-button,
+.app-shell.theme-dark .config-dialog-head .close-button {
+  align-items: center;
+  background: #484848;
+  border-color: #5a5028;
+  color: transparent;
+  display: flex;
+  font-size: 0;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.app-shell.theme-dark .data-screen-head .close-button {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.app-shell.theme-dark .modal-head .close-button,
+.app-shell.theme-dark .config-dialog-head .close-button {
+  position: relative;
+}
+
+.app-shell.theme-dark .data-screen-head .close-button::before,
+.app-shell.theme-dark .modal-head .close-button::before,
+.app-shell.theme-dark .config-dialog-head .close-button::before {
+  color: #8e7448;
+  content: "X";
+  font-size: calc(var(--dialog-action-font-size) + 5px);
+  font-weight: var(--weight-regular);
+  left: 50%;
+  line-height: 1;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .modal-message {
