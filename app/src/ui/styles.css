@@ -1176,7 +1176,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .prediction-screen { background: #121212; color: #d4d4d4; }
 
 .app-shell.theme-dark .prediction-screen .modal-head {
-  background: #343434;
+  background: linear-gradient(to bottom, #121212 0, #121212 env(safe-area-inset-top), #343434 env(safe-area-inset-top), #343434 100%);
   border-top-color: #5a5028;
   border-bottom-color: #5a5028;
   color: #e0b870;
