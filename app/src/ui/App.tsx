@@ -77,25 +77,16 @@ import {
 } from "../storage/sharedStorage";
 import type { CasinoTable, SavedSession } from "../storage/storage";
 import {
-  CHASE_LENGTH,
   ColdReversalEngine,
   computeColdDetailStats,
   computeRoi,
-  computeRhythmDetailStats,
-  computeRhythmRoi,
-  EXTREME_PCT,
-  GAP_WINDOW,
+  EXTREME_BUFFER,
   MIN_GAP,
   PredictionTracker,
-  PROGRESSION,
-  RHYTHM_MIN_PCT,
-  RHYTHM_PROG,
   type ColdSignal,
-  type RhythmDetailRow,
-  type RhythmSignal,
 } from "../core/prediction";
 import { analyzePreferredNumber } from "../core/preferredNumber";
-import { checkWaveRecovery, computePeakSma, computePeakStats, createRecoveryState, extractGaps, type WaveRecoveryState } from "../core/wave";
+import { computePeakSma, computePeakStats, extractGaps } from "../core/wave";
 import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
@@ -151,7 +142,7 @@ const boardRows: RouletteNumber[][] = [
   [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
   [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
 ];
-const digitKeyboardKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+const digitKeyboardKeys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0] as const;
 const keypadRows: RouletteNumber[][] = [
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
@@ -168,6 +159,18 @@ type ColRowTab = "detail" | "chart" | "summary" | "compare";
 type RefineTab = "compare" | "detail";
 type OtherTab = "longs" | "numbers" | "rounds";
 type OtherRoundTab = "bet" | "summary";
+
+const disabledRoi = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+const emptyColRowStats = {
+  rawDistances: Array.from({ length: 8 }, () => [] as number[]),
+  rows: [] as ColRowWave[],
+};
+const emptyFrequencyStats: FrequencyStats = { frequencies: [], nonZeroCount: 0 };
+const emptyOtherNumberStats: ReturnType<typeof calculateOtherNumberStats> = { maxDistances: [], rows: [] };
+const emptyOtherLongStats: ReturnType<typeof calculateOtherLongStats> = { misses: 0, percentages: [], rounds: [], total: 0, wins: [] };
+const emptyNumberZoneData: Record<number, { value: number; isLatest: boolean; prevDistance: number | null }> = {};
+const emptyNumberZoneTrends: Record<number, "up" | "down" | null> = {};
+const emptyNumberZoneHotCold = { hot: new Set<number>(), cold: new Set<number>() };
 
 function normalizeRepeatTier(value: string | null): RepeatTier {
   if (value === REPEAT_TIER_CORE || value === "精选信号") return REPEAT_TIER_CORE;
@@ -504,12 +507,7 @@ export function App() {
   const predictionAccuracy = predictionTracker.getFormattedAccuracy();
   const predictionRecordCount = predictionTracker.count;
 
-  const sessionRoi = useMemo(() => computeRoi(numbers), [numbers]);
   // [PERF] 124 (rhythm) temporarily disabled — see AGENTS.md "Hot path perf budget"
-  const rhythmRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  const rhythmRowsOnlyRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rhythmDetailStats: any[] = [];
   const quality124 = useMemo(() => analyzeQuality124(numbers), [numbers]);
   const quality124Signals = quality124.activeSignals;
   const quality124Roi = quality124.totalRoi;
@@ -549,7 +547,12 @@ export function App() {
     showHotTableWatch,
     showHotTableConflict,
   );
-  const coldDetailStats = useMemo(() => computeColdDetailStats(numbers), [numbers]);
+  const shouldComputeColdDetailStats = predictionWindowOpen && predictionTab === "cold";
+  const shouldComputeColdSplitRoi = predictionWindowOpen && (predictionTab === "overview" || predictionTab === "cold");
+  const coldDetailStats = useMemo(
+    () => shouldComputeColdDetailStats ? computeColdDetailStats(numbers) : [],
+    [numbers, shouldComputeColdDetailStats],
+  );
 
   // 长套自适应: 从历史session计算行/组累计ROI
   const currentSessionName = useMemo(() => {
@@ -618,11 +621,19 @@ export function App() {
     // tie: rowRoi == grpRoi
     return (coldAdaptiveMode === "adaptiveRow" ? [3, 4, 5] : [0, 1, 2, 3, 4, 5]) as readonly number[];
   }, [coldAdaptiveMode, allSavedSessions, currentSessionName, currentSessionId]);
-  const coldRowsOnlyRoi = useMemo(() => computeRoi(numbers, [3, 4, 5]), [numbers]);
-  const coldGroupsOnlyRoi = useMemo(() => computeRoi(numbers, [0, 1, 2]), [numbers]);
+  const coldRowsOnlyRoi = useMemo(
+    () => shouldComputeColdSplitRoi ? computeRoi(numbers, [3, 4, 5]) : disabledRoi,
+    [numbers, shouldComputeColdSplitRoi],
+  );
+  const coldGroupsOnlyRoi = useMemo(
+    () => shouldComputeColdSplitRoi ? computeRoi(numbers, [0, 1, 2]) : disabledRoi,
+    [numbers, shouldComputeColdSplitRoi],
+  );
   const coldActiveRoi = useMemo(() => computeRoi(numbers, coldAdaptiveCis), [numbers, coldAdaptiveCis]);
 
+  const shouldComputeWaveStats = statsViewOpen && statsTab === "wave";
   const waveRhythmData = useMemo(() => {
+    if (!shouldComputeWaveStats) return [];
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
     return labels.map((label, ci) => {
       const rawGaps = extractGaps(numbers.slice(-144), ci);
@@ -646,9 +657,10 @@ export function App() {
       }
       return { label, pts, hasData: pts.length >= 1 };
     });
-  }, [numbers, waveWindow]);
+  }, [numbers, shouldComputeWaveStats, waveWindow]);
 
   const waveHistory = useMemo(() => {
+    if (!shouldComputeWaveStats) return [];
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
     return labels.map((label, ci) => {
       const gaps = extractGaps(numbers, ci);
@@ -659,9 +671,10 @@ export function App() {
       }
       return { label, points: points.slice(-60), hasData: points.length >= 3 };
     });
-  }, [numbers]);
+  }, [numbers, shouldComputeWaveStats]);
 
   const waveSnapshot = useMemo(() => {
+    if (!shouldComputeWaveStats) return [];
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
     return labels.map((label, ci) => {
       const gaps = extractGaps(numbers, ci);
@@ -673,100 +686,30 @@ export function App() {
       const trend = stats.sma > prevSma + 0.1 ? "up" : stats.sma < prevSma - 0.1 ? "down" : "flat";
       return { label, peak: stats.peak, conc: stats.conc, sma: stats.sma, trend, hasData: true };
     });
-  }, [numbers]);
+  }, [numbers, shouldComputeWaveStats]);
 
   // 波浪恢复: 每个行组独立追踪波浪状态
   // 直接从号码推算追号状态 — 不存独立state, 永远同步
   const signalDisplay = useMemo(() => {
-    const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number; peak: number; chaseLen: number; kind: "cold" | "rhythm" }> = [];
+    const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number; peak: number; chaseLen: number; kind: "cold" }> = [];
 
     // 长套信号
     for (const s of predictions) {
       if (!coldAdaptiveCis.includes(s.index)) continue;
-      let firstTriggerRound = numbers.length;
-      for (let r = numbers.length - 1; r >= 10; r--) {
-        const engine = new ColdReversalEngine();
-        const sigs = engine.analyze(numbers.slice(0, r));
-        if (!sigs.some((ss) => ss.index === s.index)) { firstTriggerRound = r + 1; break; }
-      }
       const chaseLen = s.chaseLength;
-      const startedAt = firstTriggerRound + 1;
-      const done = numbers.length - startedAt + 1;
+      const triggerGap = Math.max(MIN_GAP, s.threshold + EXTREME_BUFFER);
+      const round = s.currentGap - triggerGap + 1;
+      const betAmtForRound = (roundIndex: number) => s.progression[roundIndex] ?? s.progression[s.progression.length - 1] ?? 1;
 
-      if (done <= 0) {
-        items.push({ ci: s.index, label: s.label, round: 1, betAmt: 1, isNew: true, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen: 4, kind: "cold" });
-      } else if (done < chaseLen) {
-        const nr = done + 1;
-        items.push({ ci: s.index, label: s.label, round: nr, betAmt: [1,2,4,8][nr-1]??8, isNew: false, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen: 4, kind: "cold" });
-      }
-    }
-
-    // 124信号: 完整回放 active chase 状态
-    {
-      const labels124 = ["一组","二组","三组","1行","2行","3行"];
-      const ls = [-1,-1,-1,-1,-1,-1];
-      const ac: { ci: number; sr: number; cl: number; peak: number }[] = [];
-      const rec: WaveRecoveryState[] = Array.from({ length: 6 }, () => createRecoveryState());
-      const latestSignal: { ci: number; peak: number; cl: number }[] = Array.from({ length: 6 }, () => ({ ci: 0, peak: 0, cl: 0 }));
-
-      for (let r = 0; r < numbers.length; r++) {
-        const v = numbers[r];
-        const hc = v !== 0 ? getNumberColRows(v) : [];
-        const rm: typeof ac = [];
-        for (const c of ac) {
-          const bi = r - c.sr; if (bi >= c.cl) continue;
-          if (hc.includes(c.ci as ColRowIndex)) { /* hit, chase done */ }
-          else if (bi + 1 < c.cl) rm.push(c);
-          else {
-            const gaps = extractGaps(numbers.slice(0, r), c.ci);
-            rec[c.ci] = createRecoveryState();
-            rec[c.ci].paused = true;
-            rec[c.ci].failSma = computePeakSma(gaps);
-            rec[c.ci].failRound = r;
-            rec[c.ci].phase = 0;
-          }
-        }
-        ac.length = 0; ac.push(...rm);
-        for (const ci of hc) ls[ci] = r;
-        if (r < 15) continue;
-        for (let ci = 0; ci < 6; ci++) {
-          if (rec[ci].paused) {
-            const gaps = extractGaps(numbers.slice(0, r), ci);
-            if (checkWaveRecovery(rec[ci], gaps, r)) rec[ci].paused = false;
-          }
-        }
-        for (let ci = 0; ci < 6; ci++) {
-          if (rec[ci].paused) continue;
-          const cg = ls[ci] >= 0 ? r - ls[ci] - 1 : r;
-          if (cg < 1 || cg > 6) continue;
-          if (ac.some((c) => c.ci === ci)) continue;
-          const gaps = extractGaps(numbers.slice(0, r), ci);
-          const stats = computePeakStats(gaps);
-          if (!stats || stats.conc < RHYTHM_MIN_PCT) continue;
-          if (cg !== stats.peak) continue;
-          ac.push({ ci, sr: r + 1, cl: stats.zoneLen, peak: stats.peak });
-          latestSignal[ci] = { ci, peak: stats.peak, cl: stats.zoneLen };
-        }
-      }
-
-      // Current active chases → signal display
-      for (const c of ac) {
-        if (rhythmRowsOnly && c.ci < 3) continue;
-        const roundsPlayed = Math.max(0, numbers.length - c.sr);
-        const nr = roundsPlayed + 1;
-        if (nr > c.cl) continue;
-        const label = labels124[c.ci];
-        const prog = RHYTHM_PROG;
-        const sig = latestSignal[c.ci];
-        items.push({
-          ci: c.ci as ColRowIndex, label, round: nr, betAmt: prog[nr - 1] ?? prog[prog.length - 1],
-          isNew: nr === 1, currentGap: 0, threshold: 0, peak: sig.peak, chaseLen: c.cl, kind: "rhythm",
-        });
+      if (round <= 1) {
+        items.push({ ci: s.index, label: s.label, round: 1, betAmt: betAmtForRound(0), isNew: true, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen, kind: "cold" });
+      } else if (round <= chaseLen) {
+        items.push({ ci: s.index, label: s.label, round, betAmt: betAmtForRound(round - 1), isNew: false, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen, kind: "cold" });
       }
     }
 
     return items;
-  }, [predictions, numbers, rhythmRowsOnly, coldAdaptiveCis]);
+  }, [predictions, numbers, coldAdaptiveCis]);
 
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
   const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
@@ -779,7 +722,7 @@ export function App() {
   // [PERF] 追3 temporarily disabled — see AGENTS.md "Hot path perf budget"
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chaseThreeSignals: any[] = [];
-  const chaseThreeRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
+  const chaseThreeRoi = disabledRoi;
   const chaseThreeG1Roi = chaseThreeRoi;
   const chaseThreeG2Roi = chaseThreeRoi;
   const chaseThreeG3Roi = chaseThreeRoi;
@@ -792,18 +735,10 @@ export function App() {
   const preferredNumberRoiFrom201 = preferredNumberFrom201.totalRoi;
 
   // [PERF] 长重号/短重号 temporarily disabled — see AGENTS.md "Hot path perf budget"
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const repeatSignals: any[] = [];
-  const repeatAggressiveRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  const repeatCoreRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  const repeatFilteredRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  const repeatFilteredRoiFrom201 = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const shortRepeatSignals: any[] = [];
-  const shortRepeatRoi = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  const shortRepeatRoiFrom201 = { signals:0, bet:0, win:0, hits:0, roi:0 };
-  const repeatEnvironmentFilter = { g2Count:0, g3Count:0, passes:false };
-  const shortRepeatEnvironmentFilter = { g2Count:0, g3Count:0, passes:false };
+  const repeatFilteredRoi = disabledRoi;
+  const repeatFilteredRoiFrom201 = disabledRoi;
+  const shortRepeatRoi = disabledRoi;
+  const shortRepeatRoiFrom201 = disabledRoi;
 
   // 综合ROI: 按总览配置汇总所有已启用策略
   const combinedRoi = useMemo(() => {
@@ -835,7 +770,7 @@ export function App() {
       bet += hotNumberRoi.bet; win += hotNumberRoi.win;
     }
     return { bet, win, net: win - bet };
-  }, [show124, rhythmMode, rhythmRowsOnlyRoi, rhythmRoi, canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
+  }, [canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
 
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
@@ -858,7 +793,7 @@ export function App() {
     if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
     if (showHotNumber) { bet += hotNumberRoiFrom201.bet; win += hotNumberRoiFrom201.win; }
     return { bet, win, net: win - bet };
-  }, [numbers, show124, rhythmMode, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
+  }, [numbers, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -974,6 +909,7 @@ export function App() {
     });
   }, [latestNumber, numbers]);
   const numberZoneData = useMemo(() => {
+    if (!numberZoneOpen) return emptyNumberZoneData;
     const ONE_CIRCLE = 37;
     const circles: Record<string, number> = {
       "1": ONE_CIRCLE,
@@ -1021,10 +957,11 @@ export function App() {
       data[n] = { value, isLatest: latestNumber === n, prevDistance };
     }
     return data;
-  }, [numbers, latestNumber, numberZoneMode]);
+  }, [numbers, latestNumber, numberZoneMode, numberZoneOpen]);
 
   // Compute trends FIRST (before hot/cold, used for tie-breaking)
   const numberZoneTrends = useMemo(() => {
+    if (!numberZoneOpen) return emptyNumberZoneTrends;
     const ONE_CIRCLE = 37;
     const trends: Record<number, "up" | "down" | null> = {};
 
@@ -1087,9 +1024,10 @@ export function App() {
       }
     }
     return trends;
-  }, [numbers, numberZoneMode]);
+  }, [numbers, numberZoneMode, numberZoneOpen]);
 
   const numberZoneHotCold = useMemo(() => {
+    if (!numberZoneOpen) return emptyNumberZoneHotCold;
     const entries = Object.entries(numberZoneData)
       .map(([num, d]) => ({ num: Number(num), value: d.value }))
       .filter((e) => e.num !== 0);
@@ -1148,7 +1086,7 @@ export function App() {
     for (const p of coldPicked) coldNums.add(p.num);
 
     return { hot: hotNums, cold: coldNums };
-  }, [numberZoneData, numberZoneMode, numberZoneTrends]);
+  }, [numberZoneData, numberZoneMode, numberZoneOpen, numberZoneTrends]);
 
   const renderGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
     item.highlighted && item.previousDistance !== null ? (
@@ -1282,7 +1220,7 @@ export function App() {
         window.setTimeout(() => {
           addNumber(parsed);
           setDigitInput("");
-        }, 1);
+        }, 100);
       }
       return next;
     });
@@ -1297,7 +1235,6 @@ export function App() {
   function submitDigitInput() {
     const value = Number(digitInput);
     if (!/^\d{1,2}$/.test(digitInput) || !isRouletteNumber(value)) {
-      setNoticeDialog({ title: "号码输入", message: "请输入 0-36 的数字。" });
       return;
     }
     addNumber(value);
@@ -2441,17 +2378,29 @@ export function App() {
     () => sortSessions(sessions, sessionSortField, sessionSortDirection, autoTableState.assignmentsById),
     [autoTableState.assignmentsById, sessionSortDirection, sessionSortField, sessions],
   );
+  const shouldComputeGameStats = gameViewOpen || (statsViewOpen && statsTab === "game");
+  const shouldComputeColRowStats =
+    colRowViewOpen ||
+    distanceViewOpen ||
+    refineViewOpen ||
+    (statsViewOpen && (statsTab === "colrow" || statsTab === "dist" || statsTab === "refine"));
+  const shouldComputeFrequencyStats = frequencyViewOpen || (statsViewOpen && statsTab === "freq");
+  const shouldComputeOtherStats = otherViewOpen || (statsViewOpen && statsTab === "other");
   const gameStats = useMemo(
-    () => calculateGameStats(numbers, effectiveStatsScope, gameSortField, gameSortDirection),
-    [effectiveStatsScope, gameSettingsRevision, gameSortDirection, gameSortField, numbers],
+    () => shouldComputeGameStats ? calculateGameStats(numbers, effectiveStatsScope, gameSortField, gameSortDirection) : [],
+    [effectiveStatsScope, gameSettingsRevision, gameSortDirection, gameSortField, numbers, shouldComputeGameStats],
   );
   const colRowStats = useMemo(
-    () => calculateColRowStats(numbers, effectiveColRowScope),
-    [effectiveColRowScope, numbers],
+    () => shouldComputeColRowStats ? calculateColRowStats(numbers, effectiveColRowScope) : emptyColRowStats,
+    [effectiveColRowScope, numbers, shouldComputeColRowStats],
   );
-  const frequencyStats = useMemo(() => calculateFrequencyStats(numbers, frequencyScopes), [frequencyScopes, numbers]);
+  const frequencyStats = useMemo(
+    () => shouldComputeFrequencyStats ? calculateFrequencyStats(numbers, frequencyScopes) : emptyFrequencyStats,
+    [frequencyScopes, numbers, shouldComputeFrequencyStats],
+  );
   const distanceStats = colRowStats.rawDistances;
   const colRowCompareRows = useMemo(() => {
+    if (!shouldComputeColRowStats) return [];
     return buildColRowCompareRows(
       colRowStats.rawDistances,
       colRowScope,
@@ -2460,8 +2409,9 @@ export function App() {
       refineSortField,
       refineSortDirection,
     );
-  }, [colRowScope, colRowStats.rawDistances, refineRoundBet, refineRoundStart, refineSortDirection, refineSortField]);
+  }, [colRowScope, colRowStats.rawDistances, refineRoundBet, refineRoundStart, refineSortDirection, refineSortField, shouldComputeColRowStats]);
   const refineCompareRows = useMemo(() => {
+    if (!refineViewOpen) return [];
     return buildColRowCompareRows(
       colRowStats.rawDistances,
       refineScope,
@@ -2470,22 +2420,30 @@ export function App() {
       refineSortField,
       refineSortDirection,
     );
-  }, [colRowStats.rawDistances, refineRoundBet, refineRoundStart, refineScope, refineSortDirection, refineSortField]);
+  }, [colRowStats.rawDistances, refineRoundBet, refineRoundStart, refineScope, refineSortDirection, refineSortField, refineViewOpen]);
   const otherNumberStats = useMemo(
-    () => calculateOtherNumberStats(numbers, effectiveOtherScope, otherNumberSortField, otherNumberSortDirection),
-    [effectiveOtherScope, numbers, otherNumberSortDirection, otherNumberSortField],
+    () => shouldComputeOtherStats && otherTab === "numbers"
+      ? calculateOtherNumberStats(numbers, effectiveOtherScope, otherNumberSortField, otherNumberSortDirection)
+      : emptyOtherNumberStats,
+    [effectiveOtherScope, numbers, otherNumberSortDirection, otherNumberSortField, otherTab, shouldComputeOtherStats],
   );
   const otherLongStats = useMemo(
-    () => calculateOtherLongStats(numbers, otherLongBetCount, otherLongRound),
-    [numbers, otherLongBetCount, otherLongRound],
+    () => shouldComputeOtherStats && otherTab === "longs"
+      ? calculateOtherLongStats(numbers, otherLongBetCount, otherLongRound)
+      : emptyOtherLongStats,
+    [numbers, otherLongBetCount, otherLongRound, otherTab, shouldComputeOtherStats],
   );
   const otherRoundBetStats = useMemo(
-    () => calculateOtherRoundBet(numbers, effectiveOtherScope),
-    [effectiveOtherScope, numbers],
+    () => shouldComputeOtherStats && otherTab === "rounds" && otherRoundTab === "bet"
+      ? calculateOtherRoundBet(numbers, effectiveOtherScope)
+      : [],
+    [effectiveOtherScope, numbers, otherRoundTab, otherTab, shouldComputeOtherStats],
   );
   const otherRoundSummaryStats = useMemo(
-    () => calculateOtherRoundSummary(numbers, effectiveOtherScope),
-    [effectiveOtherScope, numbers],
+    () => shouldComputeOtherStats && otherTab === "rounds" && otherRoundTab === "summary"
+      ? calculateOtherRoundSummary(numbers, effectiveOtherScope)
+      : [],
+    [effectiveOtherScope, numbers, otherRoundTab, otherTab, shouldComputeOtherStats],
   );
   const colRowDetailItems = useMemo(
     () =>
@@ -2495,8 +2453,8 @@ export function App() {
     [colRowStats.rows],
   );
   const colRowExploreResults = useMemo(
-    () => calculateColRowExplore(colRowStats.rows, colRowExploreRows, colRowExploreRounds),
-    [colRowExploreRows, colRowExploreRounds, colRowStats.rows],
+    () => shouldComputeColRowStats ? calculateColRowExplore(colRowStats.rows, colRowExploreRows, colRowExploreRounds) : [],
+    [colRowExploreRows, colRowExploreRounds, colRowStats.rows, shouldComputeColRowStats],
   );
   const selectedSessions = useMemo(
     () => sortedSessions.filter((session) => selectedSessionIds.includes(session.id)),
@@ -3387,9 +3345,9 @@ export function App() {
         <section className="prediction-signal-area" aria-label="预测信号">
           {filtered.map((item) => (
             <div
-              className={`prediction-signal-item ${item.isNew ? "" : "chase-active"} ${item.kind === "rhythm" ? "rhythm-signal" : ""}`}
+              className={`prediction-signal-item ${item.isNew ? "" : "chase-active"}`}
               key={`${item.kind}-${item.ci}`}
-              onClick={() => { setPredictionTab(item.kind === "rhythm" ? "rhythm" : "cold"); setPredictionWindowOpen(true); }}
+              onClick={() => { setPredictionTab("cold"); setPredictionWindowOpen(true); }}
               role="button"
               tabIndex={0}
             >

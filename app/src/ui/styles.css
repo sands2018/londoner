@@ -377,7 +377,8 @@ button:disabled {
   border-radius: 0;
   align-items: center;
   display: inline-flex;
-  height: 100%;
+  box-sizing: border-box;
+  min-height: 22px;
   justify-content: center;
   min-width: 0;
   padding: 3px 0;
