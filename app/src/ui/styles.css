@@ -32,11 +32,12 @@
   --dot-size: 12px;
   --signal-card-width: calc((100% - 8px) / 3);
   --number-font-size: calc(clamp(17px, 4.5vw, 19px) + var(--font-adjust));
-  --queue-font-size: calc(clamp(14px, 3.65vw, 16px) + var(--font-adjust));
-  --queue-chip-height: clamp(24px, 2.8dvh, 26px);
+  --queue-font-size: calc(clamp(18px, 4.6vw, 20px) + var(--font-adjust));
+  --queue-chip-height: clamp(36px, 4.4dvh, 40px);
   --queue-cell-size: clamp(22px, 5.55vw, var(--queue-chip-height));
+  --queue-collapsed-padding-block: clamp(6px, 1dvh, 8px);
   --queue-max-height: none;
-  --queue-padding-block: clamp(3px, 0.55dvh, 5px);
+  --queue-padding-block: clamp(10px, 1.5dvh, 12px);
   --reopen-button-size: 48px;
   --signal-gap: clamp(2px, 0.35dvh, 3px);
   --signal-stack-gap: 0;
@@ -403,7 +404,14 @@ button:disabled {
 
 .queue-panel.collapsed {
   align-content: start;
-  max-height: calc(var(--queue-cell-size) + (var(--queue-padding-block) * 2));
+  max-height: calc(var(--queue-cell-size) + (var(--queue-collapsed-padding-block) * 2));
+  padding-bottom: var(--queue-collapsed-padding-block);
+  padding-top: var(--queue-collapsed-padding-block);
+}
+
+.queue-panel.collapsed .queue-row {
+  height: var(--queue-cell-size);
+  overflow: hidden;
 }
 
 .queue-panel.collapsed .queue-row {
@@ -531,7 +539,7 @@ button:disabled {
 
 .queue-row {
   display: grid;
-  gap: 3px;
+  gap: 10px;
   grid-auto-rows: var(--queue-cell-size);
   grid-template-columns: repeat(auto-fill, minmax(var(--queue-cell-size), var(--queue-cell-size)));
   justify-content: start;
@@ -680,7 +688,12 @@ body:has(.app-shell.theme-dark) {
 /* --- Panels & cards --- */
 .app-shell.theme-dark .top-stats-strip,
 .app-shell.theme-dark .signal-cell,
-.app-shell.theme-dark .queue-panel,
+.app-shell.theme-dark .queue-panel {
+  background: #222222;
+  border-color: transparent;
+  color: #d4d4d4;
+}
+
 .app-shell.theme-dark .finished-line {
   background: #1b1b1b;
   border-color: #423d32;
@@ -4382,9 +4395,10 @@ body:has(.app-shell.theme-dark) {
     --menu-font-size: 13px;
     --menu-min-height: clamp(24px, 6.6dvh, 32px);
     --number-font-size: 15px;
-    --queue-chip-height: 30px;
+    --queue-chip-height: 40px;
+    --queue-collapsed-padding-block: 5px;
     --queue-max-height: calc(var(--queue-chip-height) + (var(--queue-padding-block) * 2));
-    --queue-padding-block: 2px;
+    --queue-padding-block: 4px;
     --reopen-button-size: 44px;
     --signal-gap: 4px;
     --signal-label-height: 23px;
