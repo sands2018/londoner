@@ -304,6 +304,7 @@ export function App() {
   const [sixNumberViewOpen, setSixNumberViewOpen] = useState(false);
   const [numberZoneOpen, setNumberZoneOpen] = useState(false);
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
+  const [sixStatsPanelCollapsed, setSixStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.sixStatsPanelCollapsed") === "1");
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [statsTab, setStatsTab] = useState("game");
@@ -893,12 +894,16 @@ export function App() {
       return distance;
     };
     return Array.from({ length: 11 }, (_, wi) => {
+      const start = chaseSixWindowStart(wi);
+      const end = chaseSixWindowEnd(wi);
       const highlighted = latestNumber !== null && isInChaseSixWindow(wi, latestNumber);
       return {
         distance: getMissDistanceBefore(wi, numbers.length - 1),
+        end,
         highlighted,
-        label: `${chaseSixWindowStart(wi)}-${chaseSixWindowEnd(wi)}`,
+        label: `${start}-${end}`,
         previousDistance: highlighted ? getMissDistanceBefore(wi, numbers.length - 2) : null,
+        start,
         wi,
       };
     });
@@ -3144,7 +3149,78 @@ export function App() {
         ))}
       </section>
 
-      <div className={columnsPanelCollapsed && summaryGridCollapsed ? "both-collapsed" : ""}>
+      <div className="home-panels">
+      {sixStatsPanelCollapsed || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed ? (
+        <section className="collapsed-combo-bar">
+          {sixStatsPanelCollapsed ? (
+            <div
+              className="section-toggle"
+              onClick={() => { setSixStatsPanelCollapsed(false); localStorage.setItem("londoner.sixStatsPanelCollapsed", "0"); }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="section-toggle-label">6号码统计</span>
+              <span className="section-toggle-arrow arrow-right" />
+            </div>
+          ) : null}
+          {columnStats.length > 0 && columnsPanelCollapsed ? (
+            <div
+              className="section-toggle"
+              onClick={() => { setColumnsPanelCollapsed(false); localStorage.setItem("londoner.columnsPanelCollapsed", "0"); }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="section-toggle-label">6号码长套</span>
+              <span className="section-toggle-arrow arrow-right" />
+            </div>
+          ) : null}
+          {summaryGridCollapsed ? (
+            <div
+              className="section-toggle"
+              onClick={() => { setSummaryGridCollapsed(false); localStorage.setItem("londoner.summaryGridCollapsed", "0"); }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="section-toggle-label">基础统计</span>
+              <span className="section-toggle-arrow arrow-right" />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className={`six-stats-panel${sixStatsPanelCollapsed ? " collapsed" : ""}`}>
+        <div
+          className="section-toggle"
+          onClick={() => { setSixStatsPanelCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.sixStatsPanelCollapsed", nv ? "1" : "0"); return nv; }); }}
+          role="button"
+          tabIndex={0}
+        >
+          <span className="section-toggle-label">6号码统计</span>
+          <span className={`section-toggle-arrow${sixStatsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
+        </div>
+        <div
+          className="section-body"
+          onClick={() => { setSixStatsPanelCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.sixStatsPanelCollapsed", nv ? "1" : "0"); return nv; }); }}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="six-stats-grid">
+            {sixNumberSnapshot.map((item) => (
+              <div className={`six-stat-chip${item.highlighted ? " highlighted" : ""}`} key={item.wi} title={item.label}>
+                <span className="six-stat-end">{item.end}</span>
+                <span className="six-stat-arrow" aria-hidden="true" />
+                <span className="six-stat-start">{item.start}</span>
+                <strong>
+                  <span className={item.highlighted && item.previousDistance !== null ? "previous-distance" : undefined}>
+                    {item.highlighted && item.previousDistance !== null ? `(${item.previousDistance})` : item.distance}
+                  </span>
+                </strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {columnStats.length > 0 ? (
         <section className={`columns-panel${columnsPanelCollapsed ? " collapsed" : ""}`}>
           <div
@@ -3153,7 +3229,7 @@ export function App() {
             role="button"
             tabIndex={0}
           >
-            <span className="section-toggle-label">6号码</span>
+            <span className="section-toggle-label">6号码长套</span>
             <span className={`section-toggle-arrow${columnsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
           </div>
           <div
@@ -3257,28 +3333,6 @@ export function App() {
         </div>
       </section>
 
-      {columnsPanelCollapsed && summaryGridCollapsed ? (
-        <section className="collapsed-combo-bar">
-          <div
-            className="section-toggle combo-left"
-            onClick={() => { setColumnsPanelCollapsed(false); localStorage.setItem("londoner.columnsPanelCollapsed", "0"); }}
-            role="button"
-            tabIndex={0}
-          >
-            <span className="section-toggle-label">6号码</span>
-            <span className="section-toggle-arrow arrow-right" />
-          </div>
-          <div
-            className="section-toggle combo-right"
-            onClick={() => { setSummaryGridCollapsed(false); localStorage.setItem("londoner.summaryGridCollapsed", "0"); }}
-            role="button"
-            tabIndex={0}
-          >
-            <span className="section-toggle-label">基础统计</span>
-            <span className="section-toggle-arrow arrow-right" />
-          </div>
-        </section>
-      ) : null}
       </div>
 
       {finishedLongs.length > 0 ? (

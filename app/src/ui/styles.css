@@ -245,6 +245,7 @@ button:disabled {
 }
 
 .signal-cell,
+.six-stats-panel,
 .columns-panel,
 .queue-panel,
 .finished-line,
@@ -313,10 +314,82 @@ button:disabled {
   font-weight: var(--weight-strong);
 }
 
+.six-stats-panel,
 .columns-panel,
 .queue-panel,
 .summary-panel {
   padding: 0;
+}
+
+.six-stats-grid {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+}
+
+.six-stat-chip {
+  align-items: center;
+  background: #f6f4ef;
+  border: 0;
+  border-radius: 6px;
+  color: #5f5548;
+  display: grid;
+  font-size: 15px;
+  font-weight: var(--weight-ui);
+  justify-items: center;
+  line-height: 1;
+  min-height: 72px;
+  overflow: hidden;
+  padding: 5px 1px 0;
+}
+
+.six-stat-chip.highlighted {
+  background: #efe9d2;
+}
+
+.six-stat-end,
+.six-stat-start,
+.six-stat-arrow {
+  display: block;
+}
+
+.six-stat-arrow {
+  background: #9a8b7a;
+  height: 5px;
+  margin: 4px 0;
+  width: 2px;
+}
+
+.six-stat-chip strong {
+  color: #8f453e;
+  font-size: 16px;
+  font-weight: var(--weight-emphasis);
+  margin-top: 4px;
+  align-self: stretch;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.six-stat-chip strong span {
+  background: #fffdf8;
+  border-radius: 0;
+  align-items: center;
+  display: inline-flex;
+  height: 100%;
+  justify-content: center;
+  min-width: 0;
+  padding: 3px 0;
+  width: 100%;
+}
+
+.six-stat-chip strong span.previous-distance {
+  font-size: 14px;
+}
+
+.six-stat-chip.highlighted strong span {
+  background: #faf4dc;
 }
 
 .columns-grid {
@@ -465,29 +538,39 @@ button:disabled {
   border: 1px solid transparent;
   border-radius: 6px;
   display: flex;
+  margin-bottom: 3px;
+  overflow: hidden;
 }
 
 .collapsed-combo-bar .section-toggle {
-  border-radius: 6px;
+  border-radius: 0;
   flex: 1 1 0;
 }
 
-.collapsed-combo-bar .combo-left {
+.collapsed-combo-bar .section-toggle:first-child {
   border-radius: 6px 0 0 6px;
-  border-right: 1px solid #e2dbcf;
 }
 
-.collapsed-combo-bar .combo-right {
+.collapsed-combo-bar .section-toggle:last-child {
   border-radius: 0 6px 6px 0;
 }
 
-.app-shell.theme-dark .collapsed-combo-bar .combo-left {
-  border-right-color: #343434;
+.collapsed-combo-bar .section-toggle:only-child {
+  border-radius: 6px;
+}
+
+.collapsed-combo-bar .section-toggle + .section-toggle {
+  border-left: 1px solid #e2dbcf;
+}
+
+.app-shell.theme-dark .collapsed-combo-bar .section-toggle + .section-toggle {
+  border-left-color: #343434;
 }
 
 /* Hide individual collapsed sections when both are collapsed (combined bar replaces them) */
-.both-collapsed > .columns-panel,
-.both-collapsed > .summary-grid {
+.home-panels > .six-stats-panel.collapsed,
+.home-panels > .columns-panel.collapsed,
+.home-panels > .summary-grid.collapsed {
   display: none;
 }
 
@@ -497,24 +580,37 @@ button:disabled {
 }
 
 /* Columns panel: hide toggle when expanded, show when collapsed */
+.six-stats-panel:not(.collapsed) > .section-toggle,
 .columns-panel:not(.collapsed) > .section-toggle {
   display: none;
 }
 
+.six-stats-panel:not(.collapsed),
 .columns-panel:not(.collapsed) {
   border-color: transparent;
 }
 
+.six-stats-panel.collapsed > .section-body,
 .columns-panel.collapsed > .section-body {
   display: none;
 }
 
+.six-stats-panel.collapsed,
 .columns-panel.collapsed {
   cursor: pointer;
 }
 
+.six-stats-panel > .section-body,
 .columns-panel > .section-body {
   padding: var(--queue-padding-block) 5px;
+}
+
+.six-stats-panel:not(.collapsed) {
+  margin-bottom: 3px;
+}
+
+.columns-panel:not(.collapsed) {
+  margin-bottom: 3px;
 }
 
 /* Summary grid: hide toggle when expanded, show when collapsed */
@@ -707,12 +803,14 @@ body:has(.app-shell.theme-dark) {
 }
 
 /* columns-panel & summary-grid: border only when collapsed */
+.app-shell.theme-dark .six-stats-panel,
 .app-shell.theme-dark .columns-panel,
 .app-shell.theme-dark .summary-grid {
   background: #1b1b1b;
   color: #d4d4d4;
 }
 
+.app-shell.theme-dark .six-stats-panel.collapsed,
 .app-shell.theme-dark .columns-panel.collapsed,
 .app-shell.theme-dark .summary-grid.collapsed {
   border-color: #423d32;
@@ -724,8 +822,7 @@ body:has(.app-shell.theme-dark) {
   overflow: hidden;
 }
 
-.app-shell.theme-dark .combo-left,
-.app-shell.theme-dark .combo-right {
+.app-shell.theme-dark .collapsed-combo-bar .section-toggle {
   background: #202020;
 }
 
@@ -734,11 +831,8 @@ body:has(.app-shell.theme-dark) {
   border-bottom-color: #343434;
 }
 
-.app-shell.theme-dark .collapsed-combo-bar .section-toggle {
-  border-bottom-color: #343434;
-}
-
 /* When expanded, no borders but keep border-radius */
+.app-shell.theme-dark .six-stats-panel:not(.collapsed),
 .app-shell.theme-dark .columns-panel:not(.collapsed),
 .app-shell.theme-dark .summary-grid:not(.collapsed) {
   border: none;
@@ -774,6 +868,25 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .signal-label strong { color: #f2a84a; }
 
 /* --- Columns panel --- */
+.app-shell.theme-dark .six-stat-chip {
+  background: #232323;
+  color: #b3b3b3;
+}
+.app-shell.theme-dark .six-stat-chip.highlighted {
+  background: #302d1d;
+}
+.app-shell.theme-dark .six-stat-arrow {
+  background: #7e7e7e;
+}
+.app-shell.theme-dark .six-stat-chip strong {
+  color: #e8b048;
+}
+.app-shell.theme-dark .six-stat-chip strong span {
+  background: #303030;
+}
+.app-shell.theme-dark .six-stat-chip.highlighted strong span {
+  background: #3b3520;
+}
 .app-shell.theme-dark .column-chip span { background: #242424; color: #d0c8b8; }
 .app-shell.theme-dark .column-chip strong { background: #2a2a2a; color: #e8b048; }
 .app-shell.theme-dark .column-chip.inactive span { background: #181818; color: #6e757b; }
@@ -1901,7 +2014,7 @@ body:has(.app-shell.theme-dark) {
   background: #fffdf9;
   border: 1px solid #cbc4b7;
   border-radius: 5px;
-  color: #20241f;
+  color: #2f6fa8;
   font-family: inherit;
   font-size: var(--number-font-size);
   font-weight: var(--weight-ui);
@@ -1965,7 +2078,7 @@ body:has(.app-shell.theme-dark) {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  color: #d4d4d4;
+  color: #6aa6d8;
 }
 
 .app-shell.theme-dark .digit-entry-grid .digit-send {
@@ -4600,6 +4713,7 @@ body:has(.app-shell.theme-dark) {
     --signal-stack-gap: 3px;
   }
 
+  .six-stats-panel,
   .columns-panel,
   .finished-line,
   .summary-grid {
