@@ -230,20 +230,59 @@ const ADAPTIVE_LOOKBACK = 90;
 const ADAPTIVE_MIN_SHORT_SIGNALS = 5;
 const ADAPTIVE_MIN_SHORT_ROI = -40;
 const ADAPTIVE_SHORT_EDGE = -60;
+// Continuous hot-environment gate: recent short-mode paper signals, x3 confirmation.
+const HOT_ENVIRONMENT_WINDOW = 90;
+const HOT_ENVIRONMENT_CONFIRM = 3;
 
 function netRoiPercent(nets: readonly number[]): number {
   return nets.length > 0 ? (nets.reduce((sum, net) => sum + net, 0) / nets.length) * 100 : 0;
 }
 
-function isHotEnvironmentAllowed(preNets: readonly number[]): boolean {
-  if (preNets.length === 0) return true;
+function isHotEnvironmentAllowed(nets: readonly number[]): boolean {
+  if (nets.length === 0) return true;
 
-  const overallRoi = netRoiPercent(preNets);
-  const splitIndex = Math.floor(preNets.length / 2);
-  const earlyRoi = netRoiPercent(preNets.slice(0, splitIndex));
-  const lateRoi = netRoiPercent(preNets.slice(splitIndex));
+  const overallRoi = netRoiPercent(nets);
+  const splitIndex = Math.floor(nets.length / 2);
+  const earlyRoi = netRoiPercent(nets.slice(0, splitIndex));
+  const lateRoi = netRoiPercent(nets.slice(splitIndex));
 
   return overallRoi < 0 && lateRoi >= earlyRoi;
+}
+
+function updateHotEnvironmentState(
+  recentShortNets: readonly number[],
+  allowsSignals: boolean,
+  allowConfirmCount: number,
+  blockConfirmCount: number,
+): {
+  allowsSignals: boolean;
+  allowConfirmCount: number;
+  blockConfirmCount: number;
+} {
+  const shouldAllow = isHotEnvironmentAllowed(recentShortNets);
+
+  if (allowsSignals) {
+    const nextBlockConfirmCount = shouldAllow ? 0 : blockConfirmCount + 1;
+    if (nextBlockConfirmCount >= HOT_ENVIRONMENT_CONFIRM) {
+      return { allowsSignals: false, allowConfirmCount: 0, blockConfirmCount: 0 };
+    }
+    return {
+      allowsSignals: true,
+      allowConfirmCount: 0,
+      blockConfirmCount: nextBlockConfirmCount,
+    };
+  }
+
+  const nextAllowConfirmCount = shouldAllow ? allowConfirmCount + 1 : 0;
+  if (nextAllowConfirmCount >= HOT_ENVIRONMENT_CONFIRM) {
+    return { allowsSignals: true, allowConfirmCount: 0, blockConfirmCount: 0 };
+  }
+
+  return {
+    allowsSignals: false,
+    allowConfirmCount: nextAllowConfirmCount,
+    blockConfirmCount: 0,
+  };
 }
 
 interface CachedPicks {
@@ -333,10 +372,10 @@ export function analyzeHotNumbers(
   let sigAll = 0, betAll = 0, winAll = 0, hitsAll = 0;
   let sig201 = 0, bet201 = 0, win201 = 0, hits201 = 0;
   const events: HotNumberSignalEvent[] = [];
-  const environmentIndex = roiStartIndex > 0 ? roiStartIndex : null;
-  const preEnvironmentNets: number[] = [];
-  let environmentEvaluated = environmentIndex === null;
+  const recentShortEnvironmentNets: number[] = [];
   let environmentAllowsSignals = true;
+  let allowConfirmCount = 0;
+  let blockConfirmCount = 0;
 
   // Running paper P&L (sliding ADAPTIVE_LOOKBACK window, pointer-based for O(1) trim)
   let longCnt = 0, longNet = 0;
@@ -374,19 +413,29 @@ export function analyzeHotNumbers(
     }
   }
 
+  function pushShortEnvironmentNet(shortN: number | null, outcomeIdx: number) {
+    if (shortN === null) return;
+    recentShortEnvironmentNets.push(numbers[outcomeIdx] === shortN ? 35 : -1);
+    if (recentShortEnvironmentNets.length > HOT_ENVIRONMENT_WINDOW) {
+      recentShortEnvironmentNets.shift();
+    }
+  }
+
   for (let i = LONG_WARMUP; i < n; i++) {
     if (i > LONG_WARMUP) {
       pushPaper(longPicks[i - 1], shortPicks[i - 1], i - 1);
     }
     trimPaper(Math.max(LONG_WARMUP, i - ADAPTIVE_LOOKBACK));
 
-    if (environmentIndex !== null && i < environmentIndex && shortPicks[i] !== null) {
-      preEnvironmentNets.push(numbers[i] === shortPicks[i] ? 35 : -1);
-    }
-    if (!environmentEvaluated && environmentIndex !== null && i >= environmentIndex) {
-      environmentAllowsSignals = isHotEnvironmentAllowed(preEnvironmentNets);
-      environmentEvaluated = true;
-    }
+    const environmentState = updateHotEnvironmentState(
+      recentShortEnvironmentNets,
+      environmentAllowsSignals,
+      allowConfirmCount,
+      blockConfirmCount,
+    );
+    environmentAllowsSignals = environmentState.allowsSignals;
+    allowConfirmCount = environmentState.allowConfirmCount;
+    blockConfirmCount = environmentState.blockConfirmCount;
 
     const pick = adaptivePick(
       numbers, longPicks[i], shortPicks[i],
@@ -394,7 +443,8 @@ export function analyzeHotNumbers(
     );
     if (pick !== null) {
       const hit = numbers[i] === pick.number;
-      if (environmentIndex !== null && i >= environmentIndex && !environmentAllowsSignals) {
+      if (!environmentAllowsSignals) {
+        pushShortEnvironmentNet(shortPicks[i], i);
         continue;
       }
 
@@ -409,22 +459,26 @@ export function analyzeHotNumbers(
       // Record event for downstream tier analysis
       events.push({ position: i, signal: pick, hit });
     }
+    pushShortEnvironmentNet(shortPicks[i], i);
   }
 
   // Step 3: Current adaptive pick (at position n, using full paper P&L window)
-  if (!environmentEvaluated && environmentIndex !== null && n >= environmentIndex) {
-    environmentAllowsSignals = isHotEnvironmentAllowed(preEnvironmentNets);
-    environmentEvaluated = true;
-  }
   pushPaper(longPicks[n - 1], shortPicks[n - 1], n - 1);
   trimPaper(Math.max(LONG_WARMUP, n - ADAPTIVE_LOOKBACK));
+  const environmentState = updateHotEnvironmentState(
+    recentShortEnvironmentNets,
+    environmentAllowsSignals,
+    allowConfirmCount,
+    blockConfirmCount,
+  );
+  environmentAllowsSignals = environmentState.allowsSignals;
+  allowConfirmCount = environmentState.allowConfirmCount;
+  blockConfirmCount = environmentState.blockConfirmCount;
   const rawCurrentPick = adaptivePick(
     numbers, longPicks[n], shortPicks[n],
     longCnt, longNet, shortCnt, shortNet,
   );
-  const currentPick = environmentIndex !== null && n >= environmentIndex && !environmentAllowsSignals
-    ? null
-    : rawCurrentPick;
+  const currentPick = environmentAllowsSignals ? rawCurrentPick : null;
 
   return {
     activeNumber: currentPick,

@@ -47,23 +47,33 @@ describe("analyzeHotNumbers", () => {
     expect(from201.hits).toBeLessThanOrEqual(total.hits);
   });
 
-  it("suppresses betting-area signals when the first-200 hot environment fails", () => {
+  it("allows betting-area signals after a weak early environment recovers", () => {
     const numbers = makeNumbers(520, 1);
 
     expect(analyzeHotNumbers(numbers).activeNumber).not.toBeNull();
-    const gated = analyzeHotNumbers(numbers, 200);
+    const analysis = analyzeHotNumbers(numbers, 200);
 
-    expect(gated.activeNumber).toBeNull();
-    expect(gated.totalRoiFrom201.signals).toBe(0);
-    expect(gated.totalRoiFrom201.bet).toBe(0);
+    expect(analysis.activeNumber).not.toBeNull();
+    expect(analysis.totalRoiFrom201).toMatchObject({
+      signals: 61,
+      bet: 61,
+      win: 72,
+      hits: 2,
+    });
+    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(18.0328, 4);
   });
 
-  it("keeps betting-area signals when the first-200 hot environment passes", () => {
+  it("can close the current signal after earlier betting-area signals", () => {
     const numbers = makeNumbers(520, 2);
-    const gated = analyzeHotNumbers(numbers, 200);
+    const analysis = analyzeHotNumbers(numbers, 200);
 
-    expect(gated.activeNumber).not.toBeNull();
-    expect(gated.totalRoiFrom201.signals).toBeGreaterThan(0);
-    expect(gated.totalRoiFrom201.bet).toBe(gated.totalRoiFrom201.signals);
+    expect(analysis.activeNumber).toBeNull();
+    expect(analysis.totalRoiFrom201).toMatchObject({
+      signals: 229,
+      bet: 229,
+      win: 252,
+      hits: 7,
+    });
+    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(10.0437, 4);
   });
 });
