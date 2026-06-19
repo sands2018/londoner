@@ -98,7 +98,9 @@ import {
 } from "../core/autoTableProfile";
 import {
   buildTableProfiles,
+  computeHotNumberTableTierRoi,
   evaluateHotNumberTableSupport,
+  type HotNumberTableTierStats,
   type HotTableSupport,
   type HotTableSupportLevel,
 } from "../core/tableHotProfile";
@@ -318,9 +320,11 @@ export function App() {
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
+  const [showHotTableStrong, setShowHotTableStrong] = useState(() => localStorage.getItem("londoner.showHotTableStrong") !== "0");
   const [showHotTableSupport, setShowHotTableSupport] = useState(() => localStorage.getItem("londoner.showHotTableSupport") !== "0");
   const [showHotTableWatch, setShowHotTableWatch] = useState(() => localStorage.getItem("londoner.showHotTableWatch") === "1");
   const [showHotTableConflict, setShowHotTableConflict] = useState(() => localStorage.getItem("londoner.showHotTableConflict") === "1");
+  const [showHotTableUnknown, setShowHotTableUnknown] = useState(() => localStorage.getItem("londoner.showHotTableUnknown") !== "0");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
@@ -530,6 +534,10 @@ export function App() {
   const hotTableSource: TableAssignmentSource = currentManualTableId
     ? "manual"
     : hotTableSupport.match.profile ? "auto" : "none";
+  const hotNumberTableTierRoi = useMemo(
+    () => computeHotNumberTableTierRoi(numbers, hotNumber.events, tableProfiles, currentManualTableId || undefined),
+    [hotNumber.events, numbers, tableProfiles, currentManualTableId],
+  );
   const currentManualTableLabel = currentManualTableId
     ? tableLabelById.get(currentManualTableId) ?? tableNameById.get(currentManualTableId) ?? currentManualTableId
     : "";
@@ -543,9 +551,11 @@ export function App() {
     : "未识别";
   const hotNumberSignalVisible = shouldShowHotTableSignal(
     hotTableSupport.level,
+    showHotTableStrong,
     showHotTableSupport,
     showHotTableWatch,
     showHotTableConflict,
+    showHotTableUnknown,
   );
   const shouldComputeColdDetailStats = predictionWindowOpen && predictionTab === "cold";
   const shouldComputeColdSplitRoi = predictionWindowOpen && (predictionTab === "overview" || predictionTab === "cold");
@@ -3317,7 +3327,7 @@ export function App() {
       </section>
 
       {canUseQuality124 && showQuality124 && quality124Signals.length > 0 ? (
-        <section className="quality124-signal-area" aria-label="行组节奏信号">
+        <section className="quality124-signal-area" aria-label="124Ext信号">
           {quality124Signals.map((item) => (
             <div
               className={`quality124-signal-item quality124-tier-${item.tier}`}
@@ -4604,7 +4614,7 @@ export function App() {
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
               <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUseQuality124 ? (
-                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">节奏</button>
+                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">124Ext</button>
               ) : null}
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
@@ -4640,7 +4650,7 @@ export function App() {
                   {canUseQuality124 ? (
                   <div className="overview-card overview-quality124 overview-other-card" onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>行组节奏</span>
+                      <span>124Ext</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
                       </span>
@@ -4720,9 +4730,11 @@ export function App() {
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
                         <span className="hot-table-filter-toggles">
-                          <button className={showHotTableSupport ? "on" : ""} onClick={() => { const v = !showHotTableSupport; setShowHotTableSupport(v); localStorage.setItem("londoner.showHotTableSupport", v ? "1" : "0"); }} type="button">支持</button>
-                          <button className={showHotTableWatch ? "on" : ""} onClick={() => { const v = !showHotTableWatch; setShowHotTableWatch(v); localStorage.setItem("londoner.showHotTableWatch", v ? "1" : "0"); }} type="button">观察</button>
+                          <button className="hot-table-filter-strong on" onClick={() => { if (!showHotTableStrong) { setShowHotTableStrong(true); localStorage.setItem("londoner.showHotTableStrong", "1"); } }} type="button">强</button>
+                          <button className={showHotTableSupport ? "on" : ""} onClick={() => { const v = !showHotTableSupport; setShowHotTableSupport(v); localStorage.setItem("londoner.showHotTableSupport", v ? "1" : "0"); }} type="button">中</button>
+                          <button className={showHotTableWatch ? "on" : ""} onClick={() => { const v = !showHotTableWatch; setShowHotTableWatch(v); localStorage.setItem("londoner.showHotTableWatch", v ? "1" : "0"); }} type="button">弱</button>
                           <button className={showHotTableConflict ? "on" : ""} onClick={() => { const v = !showHotTableConflict; setShowHotTableConflict(v); localStorage.setItem("londoner.showHotTableConflict", v ? "1" : "0"); }} type="button">冲突</button>
+                          <button className={showHotTableUnknown ? "on" : ""} onClick={() => { const v = !showHotTableUnknown; setShowHotTableUnknown(v); localStorage.setItem("londoner.showHotTableUnknown", v ? "1" : "0"); }} type="button">未知</button>
                         </span>
                       </span>
                     </div>
@@ -4771,7 +4783,7 @@ export function App() {
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
-                  <p className="prediction-desc">行组节奏：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
+                  <p className="prediction-desc">124Ext：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -4898,11 +4910,19 @@ export function App() {
                           <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport, hotTableSource)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
                         </div>
                       </>
-                    ) : (
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">当前</span><span>暂无信号</span>
-                      </div>
-                    )}
+                    ) : null}
+                    {hotNumberTableTierRoi.length > 0 ? (
+                      <>
+                        <div className="prediction-roi-row prediction-roi-header"><span>桌台档位</span><span>信号</span><span>投入</span><span>命中</span><span>ROI</span></div>
+                        {hotNumberTableTierRoi.map((tier) => (
+                          <div className="prediction-roi-row" key={tier.tier}>
+                            <span className="prediction-roi-subheader">{tier.label}</span>
+                            <span>{tier.signals}</span><span>{tier.bet}</span><span>{tier.hits}</span>
+                            <strong className="roi-value" style={{ color: tier.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{tier.roi >= 0 ? "+" : ""}{tier.roi.toFixed(1)}%</strong>
+                          </div>
+                        ))}
+                      </>
+                    ) : null}
                   </div>
                 </>
               ) : (
@@ -6031,13 +6051,17 @@ function hotTableBadgeClass(support: HotTableSupport): string {
 
 function shouldShowHotTableSignal(
   level: HotTableSupportLevel,
+  _showStrong: boolean,
   showSupport: boolean,
   showWatch: boolean,
   showConflict: boolean,
+  showUnknown: boolean,
 ): boolean {
+  if (level === "strong") return true;
   if (level === "support") return showSupport;
   if (level === "watch") return showWatch;
   if (level === "conflict") return showConflict;
+  if (level === "unknown") return showUnknown;
   return true;
 }
 

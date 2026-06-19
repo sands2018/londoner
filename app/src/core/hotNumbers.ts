@@ -37,10 +37,18 @@ export interface HotNumberRoi {
   roi: number;
 }
 
+export interface HotNumberSignalEvent {
+  position: number;
+  signal: HotNumberSignal;
+  hit: boolean;
+}
+
 export interface HotNumberAnalysis {
   activeNumber: HotNumberSignal | null;
   totalRoi: HotNumberRoi;
   totalRoiFrom201: HotNumberRoi;
+  /** Per-signal event log for downstream tier/detail breakdown. */
+  events: HotNumberSignalEvent[];
 }
 
 // ---- Shared helpers ----
@@ -314,6 +322,7 @@ export function analyzeHotNumbers(
       activeNumber: null,
       totalRoi: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
       totalRoiFrom201: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
+      events: [],
     };
   }
 
@@ -323,6 +332,7 @@ export function analyzeHotNumbers(
   // Step 2: Compute both ROIs in a single pass with incremental paper P&L
   let sigAll = 0, betAll = 0, winAll = 0, hitsAll = 0;
   let sig201 = 0, bet201 = 0, win201 = 0, hits201 = 0;
+  const events: HotNumberSignalEvent[] = [];
   const environmentIndex = roiStartIndex > 0 ? roiStartIndex : null;
   const preEnvironmentNets: number[] = [];
   let environmentEvaluated = environmentIndex === null;
@@ -396,6 +406,8 @@ export function analyzeHotNumbers(
         sig201++; bet201++;
         if (hit) { win201 += 36; hits201++; }
       }
+      // Record event for downstream tier analysis
+      events.push({ position: i, signal: pick, hit });
     }
   }
 
@@ -424,5 +436,6 @@ export function analyzeHotNumbers(
       signals: sig201, bet: bet201, win: win201, hits: hits201,
       roi: bet201 > 0 ? ((win201 - bet201) / bet201) * 100 : 0,
     },
+    events,
   };
 }

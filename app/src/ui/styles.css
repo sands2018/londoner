@@ -4913,7 +4913,9 @@ body:has(.app-shell.theme-dark) {
   font-weight: var(--weight-ui);
   line-height: 1;
   min-height: 20px;
+  min-width: 34px;
   padding: 0 5px;
+  text-align: center;
   touch-action: manipulation;
 }
 

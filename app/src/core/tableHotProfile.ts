@@ -1,4 +1,5 @@
 import type { RouletteNumber } from "./roulette";
+import type { HotNumberSignalEvent } from "./hotNumbers";
 
 export interface TableProfileSession {
   id: string;
@@ -295,4 +296,75 @@ export function evaluateHotNumberTableSupport(
     z: sector.z,
     reason,
   };
+}
+
+// ---- Per-tier ROI for hot number table support ----
+
+export interface HotNumberTableTierStats {
+  tier: HotTableSupportLevel;
+  label: string;
+  signals: number;
+  bet: number;
+  win: number;
+  hits: number;
+  roi: number;
+}
+
+const TIER_LABELS: Record<HotTableSupportLevel, string> = {
+  strong: "强",
+  support: "中",
+  watch: "弱",
+  conflict: "冲突",
+  unknown: "未知",
+  none: "无",
+};
+
+const TIER_ORDER: HotTableSupportLevel[] = ["strong", "support", "watch", "conflict", "unknown", "none"];
+
+function emptyTierStats(): HotNumberTableTierStats {
+  return { tier: "none", label: "", signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+}
+
+/**
+ * Compute per-tier ROI breakdown for hot number signals.
+ * Replays each signal event with the table profile state at that point
+ * and aggregates bet/win/hits by support level.
+ */
+export function computeHotNumberTableTierRoi(
+  numbers: readonly RouletteNumber[],
+  events: readonly HotNumberSignalEvent[],
+  profiles: readonly TableProfile[],
+  forcedTableId?: string,
+): HotNumberTableTierStats[] {
+  const tiers = new Map<HotTableSupportLevel, HotNumberTableTierStats>();
+
+  for (const evt of events) {
+    const prefix = numbers.slice(0, evt.position);
+    const support = evaluateHotNumberTableSupport(prefix, evt.signal.number, profiles, forcedTableId);
+    const tier = support.level;
+
+    let stats = tiers.get(tier);
+    if (!stats) {
+      stats = { ...emptyTierStats(), tier, label: TIER_LABELS[tier] };
+      tiers.set(tier, stats);
+    }
+
+    stats.signals += 1;
+    stats.bet += 1;
+    if (evt.hit) {
+      stats.win += 36;
+      stats.hits += 1;
+    }
+  }
+
+  return TIER_ORDER
+    .filter((tier) => tier !== "none") // "none" only appears when there is no signal at all
+    .map((tier) => {
+      const stats = tiers.get(tier);
+      if (stats) {
+        stats.roi = stats.bet > 0 ? ((stats.win - stats.bet) / stats.bet) * 100 : 0;
+        return stats;
+      }
+      return { tier, label: TIER_LABELS[tier], signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+    });
 }
