@@ -16,7 +16,7 @@
   --dock-actions-display: grid;
   --dock-action-margin: 0 0 clamp(3px, 0.55dvh, 5px);
   --dock-background: #ffffff;
-  --dock-border-top: 1px solid #d2ccc1;
+  --dock-border-top: 0;
   --dock-bottom: 0;
   --dock-left: 0;
   --dock-margin: 0 auto;
@@ -669,7 +669,7 @@ button:disabled {
 /* ===== Experimental dark homepage ===== */
 .app-shell.theme-dark {
   --dock-background: #151515;
-  --dock-border-top: 1px solid #303030;
+  --dock-border-top: 0;
   --theme-dark-gold: #9b7b55;
   --weight-ui: 400;
   --weight-emphasis: 400;
@@ -920,7 +920,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 /* --- Input dock --- */
-.app-shell.theme-dark .input-dock { box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.24); }
+.app-shell.theme-dark .input-dock { box-shadow: none; }
 
 /* --- Input / select / textarea --- */
 .app-shell.theme-dark input,
@@ -1839,6 +1839,151 @@ body:has(.app-shell.theme-dark) {
 
 .board-wide-4 {
   grid-column: span 4;
+}
+
+/* ---- Digit entry keyboard ---- */
+.digit-entry-grid {
+  display: grid;
+  gap: var(--key-gap);
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.digit-entry-main {
+  display: grid;
+  gap: var(--key-gap);
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 5fr) minmax(76px, 2fr);
+}
+
+.digit-keypad {
+  display: grid;
+  gap: var(--key-gap);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.digit-submit-panel {
+  display: grid;
+  gap: var(--key-gap);
+  grid-template-columns: minmax(0, 1fr) var(--key-height);
+}
+
+.digit-submit-panel .digit-send {
+  grid-column: 1 / -1;
+}
+
+.digit-submit-panel .digit-clear {
+  border-radius: 50%;
+  justify-self: end;
+  width: var(--key-height);
+  min-width: unset;
+  padding: 0;
+  font-size: 20px;
+}
+
+.digit-entry-grid .digit-key,
+.digit-entry-input,
+.digit-entry-grid .digit-send {
+  height: var(--key-height);
+}
+
+.digit-entry-grid .digit-key {
+  font-size: calc(var(--number-font-size) + 2px);
+}
+
+.digit-entry-grid .digit-send {
+  background: #2f6fa8;
+  border-color: #3d82bd;
+  color: #ffffff;
+  border-radius: 999px;
+}
+
+.digit-entry-input {
+  background: #fffdf9;
+  border: 1px solid #cbc4b7;
+  border-radius: 5px;
+  color: #20241f;
+  font-family: inherit;
+  font-size: var(--number-font-size);
+  font-weight: var(--weight-ui);
+  min-width: 0;
+  padding: 0 10px;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.digit-controls-bar {
+  display: grid;
+  gap: var(--key-gap);
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.digit-controls-actions {
+  display: grid;
+  gap: var(--key-gap);
+  grid-column: span 4;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.digit-controls-side {
+  display: grid;
+  gap: var(--key-gap);
+  grid-column: span 3;
+  grid-template-columns: minmax(0, 1fr) var(--key-height);
+}
+
+.digit-input-error {
+  background: #fce8e8 !important;
+  border-color: #b05050 !important;
+  color: #702020 !important;
+}
+
+.digit-entry-grid .digit-switch {
+  grid-column: auto;
+}
+
+.digit-entry-grid .digit-close {
+  border-radius: 50%;
+  grid-column: auto;
+  justify-self: end;
+  min-width: unset;
+  padding: 0;
+  width: var(--key-height);
+}
+
+/* Dark */
+.app-shell.theme-dark .digit-entry-grid .control-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  color: #e8e8e8;
+  height: var(--key-height);
+  min-height: unset;
+}
+
+.app-shell.theme-dark .digit-entry-input {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #d4d4d4;
+}
+
+.app-shell.theme-dark .digit-entry-grid .digit-send {
+  background: #2b5f8f;
+  border-color: #3a78ad;
+  color: #ffffff;
+}
+
+.app-shell.theme-dark .digit-entry-grid .digit-clear {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #a0a0a0;
+}
+
+.app-shell.theme-dark .digit-input-error {
+  background: rgba(140, 30, 30, 0.25) !important;
+  border-color: rgba(150, 40, 40, 0.45) !important;
+  color: #c07070 !important;
 }
 
 .modal-backdrop {

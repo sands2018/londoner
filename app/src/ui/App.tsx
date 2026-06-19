@@ -151,6 +151,7 @@ const boardRows: RouletteNumber[][] = [
   [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
   [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
 ];
+const digitKeyboardKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const keypadRows: RouletteNumber[][] = [
   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
@@ -159,6 +160,7 @@ const keypadRows: RouletteNumber[][] = [
 ];
 
 type DialogName = "connect" | "import" | "save" | null;
+type KeyboardMode = "keypad" | "board" | "digits";
 type DataTab = "local" | "shared" | "transfer";
 type DataSortField = "name" | "count" | "time" | "sharedUploader" | "table";
 type SortDirection = "asc" | "desc";
@@ -267,9 +269,11 @@ export function App() {
   const [numbers, setNumbers] = useState<RouletteNumber[]>([]);
   const [redoNumbers, setRedoNumbers] = useState<RouletteNumber[]>([]);
   const [lastSavedNumbers, setLastSavedNumbers] = useState<RouletteNumber[]>([]);
-  const [keyboardMode, setKeyboardMode] = useState<"keypad" | "board">(() => {
-    return localStorage.getItem(keyboardModeKey) === "keypad" ? "keypad" : "board";
+  const [keyboardMode, setKeyboardMode] = useState<KeyboardMode>(() => {
+    const stored = localStorage.getItem(keyboardModeKey);
+    return stored === "keypad" || stored === "digits" ? stored : "board";
   });
+  const [digitInput, setDigitInput] = useState("");
   const [themeMode, setThemeMode] = useState<"soft" | "color" | "dark">(() => {
     const stored = localStorage.getItem("londoner.themeMode");
     return stored === "soft" || stored === "color" ? stored : "dark";
@@ -1262,6 +1266,41 @@ export function App() {
     }
     setNumbers(next);
     setRedoNumbers([]);
+  }
+
+  function appendDigitInput(value: number) {
+    setDigitInput((current) => {
+      if (current.length >= 2) return current;
+      const next = `${current}${value}`;
+      const parsed = Number(next);
+      if ((next.length === 1 && (parsed === 0 || parsed >= 4)) || (next.length === 2 && isRouletteNumber(parsed))) {
+        window.setTimeout(() => {
+          addNumber(parsed);
+          setDigitInput("");
+        }, 1);
+      }
+      return next;
+    });
+  }
+
+  const digitInputInvalid = useMemo(() => {
+    if (digitInput.length === 0) return false;
+    const n = Number(digitInput);
+    return !Number.isNaN(n) && (n < 0 || n > 36);
+  }, [digitInput]);
+
+  function submitDigitInput() {
+    const value = Number(digitInput);
+    if (!/^\d{1,2}$/.test(digitInput) || !isRouletteNumber(value)) {
+      setNoticeDialog({ title: "号码输入", message: "请输入 0-36 的数字。" });
+      return;
+    }
+    addNumber(value);
+    setDigitInput("");
+  }
+
+  function switchKeyboardMode() {
+    setKeyboardMode((mode) => (mode === "board" ? "keypad" : mode === "keypad" ? "digits" : "board"));
   }
 
   function undo() {
@@ -3441,7 +3480,7 @@ export function App() {
             </button>
             <button
               className="control-button wide-control"
-              onClick={() => setKeyboardMode("board")}
+              onClick={switchKeyboardMode}
             >
               切换键盘
             </button>
@@ -3449,7 +3488,7 @@ export function App() {
               X
             </button>
           </div>
-        ) : (
+        ) : keyboardMode === "board" ? (
           <div className="board-grid">
             {boardRows.flat().map((value) => (
               <NumberButton key={value} value={value} onClick={addNumber} />
@@ -3473,13 +3512,67 @@ export function App() {
             </button>
             <button
               className="control-button board-wide-2"
-              onClick={() => setKeyboardMode("keypad")}
+              onClick={switchKeyboardMode}
             >
               切换键盘
             </button>
             <button className="control-button" onClick={() => setKeyboardVisible(false)}>
               X
             </button>
+          </div>
+        ) : (
+          <div className="digit-entry-grid">
+            <div className="digit-entry-main">
+              <div className="digit-keypad">
+                {digitKeyboardKeys.map((value) => (
+                  <button className="control-button digit-key" key={value} onClick={() => appendDigitInput(value)} type="button">
+                    {value}
+                  </button>
+                ))}
+              </div>
+              <div className="digit-submit-panel">
+                <input
+                  aria-label="输入 0-36 号码"
+                  className={`digit-entry-input${digitInputInvalid ? " digit-input-error" : ""}`}
+                  inputMode="none"
+                  maxLength={2}
+                  readOnly
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") submitDigitInput();
+                  }}
+                  onFocus={(e) => { e.target.blur(); }}
+                  placeholder=""
+                  tabIndex={-1}
+                  value={digitInput}
+                />
+                <button className="control-button digit-clear" onClick={() => setDigitInput("")} type="button">×</button>
+                <button className="control-button digit-send" onClick={submitDigitInput} type="button">Enter</button>
+              </div>
+            </div>
+            <div className="digit-controls-bar">
+              <div className="digit-controls-actions">
+                <button className="control-button" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+                  <SkipBack size={16} />
+                </button>
+                <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+                  <SkipForward size={16} />
+                </button>
+                <button className="control-button" onClick={undo} disabled={numbers.length === 0}>
+                  ←
+                </button>
+                <button className="control-button" onClick={redo} disabled={redoNumbers.length === 0}>
+                  →
+                </button>
+              </div>
+              <div className="digit-controls-side">
+                <button className="control-button digit-switch" onClick={switchKeyboardMode} type="button">
+                  切换键盘
+                </button>
+                <button className="control-button digit-close" onClick={() => setKeyboardVisible(false)} type="button">
+                  ×
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </section>
