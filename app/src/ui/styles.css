@@ -978,9 +978,9 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .modal-head .close-button {
-  background: #424242;
+  background: #2e2e2e;
   border-color: #5a5028;
-  color: #d4d4d4;
+  color: #9e7652;
 }
 
 .app-shell.theme-dark .table-calibration-summary {
@@ -1500,7 +1500,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .modal-head .close-button,
 .app-shell.theme-dark .config-dialog-head .close-button {
   align-items: center;
-  background: #484848;
+  background: #2e2e2e;
   border-color: #5a5028;
   color: #9e7652;
   display: flex;
@@ -4123,7 +4123,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .modal-head .close-button,
 .app-shell.theme-dark .config-dialog-head .close-button {
   align-items: center;
-  background: #484848;
+  background: #2e2e2e;
   border-color: #5a5028;
   color: transparent;
   display: flex;
