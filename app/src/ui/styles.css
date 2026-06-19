@@ -391,7 +391,7 @@ button:disabled {
   gap: 4px;
   max-height: var(--queue-max-height);
   overflow: hidden;
-  padding-left: clamp(4px, 1.05vw, 6px);
+  padding-left: clamp(8px, 1.85vw, 10px);
   padding-right: clamp(4px, 1.05vw, 6px);
 }
 
@@ -400,6 +400,7 @@ button:disabled {
   max-height: 280px;
   overflow-x: hidden;
   overflow-y: auto;
+  padding-top: clamp(6px, 1dvh, 8px);
 }
 
 .queue-panel.collapsed {
@@ -552,7 +553,7 @@ button:disabled {
   color: #ffffff;
   display: flex;
   font-size: var(--queue-font-size);
-  font-weight: var(--weight-emphasis);
+  font-weight: var(--weight-regular);
   height: var(--queue-cell-size);
   justify-content: center;
   min-width: 0;
@@ -2170,7 +2171,7 @@ body:has(.app-shell.theme-dark) {
 .number-zone-zero-row .number-zone-cell .number-zone-distance {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
   font-size: 24px;
-  font-weight: 200;
+  font-weight: 300;
 }
 
 .number-zone-row {
@@ -2203,7 +2204,7 @@ body:has(.app-shell.theme-dark) {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
   font-size: 22px;
   color: #5c5449;
-  font-weight: 200;
+  font-weight: 300;
   line-height: 1;
   text-align: center;
 }
