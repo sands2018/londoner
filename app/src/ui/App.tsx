@@ -312,6 +312,7 @@ export function App() {
   const [sixStatsPanelCollapsed, setSixStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.sixStatsPanelCollapsed") === "1");
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
+  const [hotStatusCollapsed, setHotStatusCollapsed] = useState(() => localStorage.getItem("londoner.hotStatusCollapsed") === "1");
   const [statsTab, setStatsTab] = useState("game");
   const [statsGroupTab, setStatsGroupTab] = useState(() => localStorage.getItem("londoner.statsGroupTab") || "colrow");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
@@ -521,6 +522,7 @@ export function App() {
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
   const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
+  const hotEnvironmentHistory = [...hotNumber.environmentHistory].reverse();
   const autoHotTableSupport = useMemo(
     () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles),
     [hotNumberSignal?.number, numbers, tableProfiles],
@@ -3086,6 +3088,7 @@ export function App() {
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
+          <i className={`top-stats-hot-dot ${!showHotNumber ? "off" : hotNumber.environmentOpen ? "open" : "closed"}`} aria-label={!showHotNumber ? "热门关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
           <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
           <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
             净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
@@ -3118,7 +3121,7 @@ export function App() {
       </section>
 
       <div className="home-panels">
-      {sixStatsPanelCollapsed || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed ? (
+      {sixStatsPanelCollapsed || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || hotStatusCollapsed ? (
         <section className="collapsed-combo-bar">
           {sixStatsPanelCollapsed ? (
             <div
@@ -3127,7 +3130,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <span className="section-toggle-label">6号码统计</span>
+              <span className="section-toggle-label">6号码全</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -3138,7 +3141,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <span className="section-toggle-label">6号码长套</span>
+              <span className="section-toggle-label">6号码</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -3153,6 +3156,17 @@ export function App() {
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
+          {hotStatusCollapsed ? (
+            <div
+              className="section-toggle"
+              onClick={() => { setHotStatusCollapsed(false); localStorage.setItem("londoner.hotStatusCollapsed", "0"); }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="section-toggle-label">热门</span>
+              <span className="section-toggle-arrow arrow-right" />
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -3163,7 +3177,7 @@ export function App() {
           role="button"
           tabIndex={0}
         >
-          <span className="section-toggle-label">6号码统计</span>
+          <span className="section-toggle-label">6号码全</span>
           <span className={`section-toggle-arrow${sixStatsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
         </div>
         <div
@@ -3197,7 +3211,7 @@ export function App() {
             role="button"
             tabIndex={0}
           >
-            <span className="section-toggle-label">6号码长套</span>
+            <span className="section-toggle-label">6号码</span>
             <span className={`section-toggle-arrow${columnsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
           </div>
           <div
@@ -3302,6 +3316,62 @@ export function App() {
       </section>
 
       </div>
+
+      {!hotStatusCollapsed ? (
+        <section className={`hot-status-panel ${!showHotNumber ? "manual-off" : hotNumber.environmentOpen ? "open" : "closed"}`}>
+          <div
+            className="hot-status-main"
+            onClick={() => {
+              if (showHotNumber) { setPredictionTab("hotNumber"); }
+              else { setPredictionTab("overview"); }
+              setPredictionWindowOpen(true);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <span>热门</span>
+            <i className="hot-status-dot" aria-label={!showHotNumber ? "手工关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
+            <em>
+              {!showHotNumber
+                ? ""
+                : hotNumberSignal
+                  ? `当前 ${hotNumberSignal.number}`
+                  : hotNumber.environmentOpen ? "暂无号码" : ""}
+            </em>
+          </div>
+          {showHotNumber ? (
+            <div
+              className="hot-status-history"
+              aria-label="热门开关历史"
+              onClick={() => { setHotStatusCollapsed(true); localStorage.setItem("londoner.hotStatusCollapsed", "1"); }}
+              role="button"
+              tabIndex={0}
+            >
+              {hotEnvironmentHistory.length > 0 ? hotEnvironmentHistory.map((event) => (
+                <span
+                  className={`hot-history-node ${event.open ? "open" : "closed"}`}
+                  key={`${event.position}-${event.open ? "open" : "closed"}`}
+                  title={`${event.open ? "开启" : "关闭"} ${event.position}`}
+                >
+                  <i aria-hidden="true" />
+                  <small>{event.position}</small>
+                </span>
+              )) : (
+                <span className="hot-history-empty">暂无切换</span>
+              )}
+            </div>
+          ) : (
+            <div
+              className="hot-manual-note"
+              onClick={() => { setHotStatusCollapsed(true); localStorage.setItem("londoner.hotStatusCollapsed", "1"); }}
+              role="button"
+              tabIndex={0}
+            >
+              热门功能关闭
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {finishedLongs.length > 0 ? (
         <section className="finished-line">

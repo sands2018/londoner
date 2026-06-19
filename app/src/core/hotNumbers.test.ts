@@ -54,6 +54,8 @@ describe("analyzeHotNumbers", () => {
     const analysis = analyzeHotNumbers(numbers, 200);
 
     expect(analysis.activeNumber).not.toBeNull();
+    expect(analysis.environmentOpen).toBe(true);
+    expect(analysis.environmentHistory.some((event) => event.open)).toBe(true);
     expect(analysis.totalRoiFrom201).toMatchObject({
       signals: 61,
       bet: 61,
@@ -68,6 +70,8 @@ describe("analyzeHotNumbers", () => {
     const analysis = analyzeHotNumbers(numbers, 200);
 
     expect(analysis.activeNumber).toBeNull();
+    expect(analysis.environmentOpen).toBe(false);
+    expect(analysis.environmentHistory.at(-1)?.open).toBe(false);
     expect(analysis.totalRoiFrom201).toMatchObject({
       signals: 229,
       bet: 229,

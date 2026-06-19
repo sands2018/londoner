@@ -43,8 +43,15 @@ export interface HotNumberSignalEvent {
   hit: boolean;
 }
 
+export interface HotNumberEnvironmentEvent {
+  position: number;
+  open: boolean;
+}
+
 export interface HotNumberAnalysis {
   activeNumber: HotNumberSignal | null;
+  environmentOpen: boolean;
+  environmentHistory: HotNumberEnvironmentEvent[];
   totalRoi: HotNumberRoi;
   totalRoiFrom201: HotNumberRoi;
   /** Per-signal event log for downstream tier/detail breakdown. */
@@ -359,6 +366,8 @@ export function analyzeHotNumbers(
   if (n < LONG_WARMUP) {
     return {
       activeNumber: null,
+      environmentOpen: true,
+      environmentHistory: [],
       totalRoi: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
       totalRoiFrom201: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
       events: [],
@@ -372,6 +381,7 @@ export function analyzeHotNumbers(
   let sigAll = 0, betAll = 0, winAll = 0, hitsAll = 0;
   let sig201 = 0, bet201 = 0, win201 = 0, hits201 = 0;
   const events: HotNumberSignalEvent[] = [];
+  const environmentHistory: HotNumberEnvironmentEvent[] = [];
   const recentShortEnvironmentNets: number[] = [];
   let environmentAllowsSignals = true;
   let allowConfirmCount = 0;
@@ -433,6 +443,9 @@ export function analyzeHotNumbers(
       allowConfirmCount,
       blockConfirmCount,
     );
+    if (environmentState.allowsSignals !== environmentAllowsSignals) {
+      environmentHistory.push({ position: i, open: environmentState.allowsSignals });
+    }
     environmentAllowsSignals = environmentState.allowsSignals;
     allowConfirmCount = environmentState.allowConfirmCount;
     blockConfirmCount = environmentState.blockConfirmCount;
@@ -471,6 +484,9 @@ export function analyzeHotNumbers(
     allowConfirmCount,
     blockConfirmCount,
   );
+  if (environmentState.allowsSignals !== environmentAllowsSignals) {
+    environmentHistory.push({ position: n, open: environmentState.allowsSignals });
+  }
   environmentAllowsSignals = environmentState.allowsSignals;
   allowConfirmCount = environmentState.allowConfirmCount;
   blockConfirmCount = environmentState.blockConfirmCount;
@@ -482,6 +498,8 @@ export function analyzeHotNumbers(
 
   return {
     activeNumber: currentPick,
+    environmentOpen: environmentAllowsSignals,
+    environmentHistory,
     totalRoi: {
       signals: sigAll, bet: betAll, win: winAll, hits: hitsAll,
       roi: betAll > 0 ? ((winAll - betAll) / betAll) * 100 : 0,

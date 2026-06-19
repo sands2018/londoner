@@ -218,6 +218,40 @@ button:disabled {
   gap: 4px;
 }
 
+.top-stats-hot-dot {
+  border-radius: 50%;
+  display: block;
+  flex: 0 0 auto;
+  height: 13px;
+  margin-right: 9px;
+  width: 13px;
+}
+
+.top-stats-hot-dot.open {
+  background: #b79763;
+}
+
+.top-stats-hot-dot.closed {
+  background: #5e5850;
+}
+
+.top-stats-hot-dot.off {
+  background: #5e5850;
+  position: relative;
+}
+
+.top-stats-hot-dot.off::after {
+  background: #8a847d;
+  border-radius: 1px;
+  content: "";
+  height: 1.5px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  width: 11px;
+}
+
 .top-stats-item {
   display: inline-flex;
   align-items: center;
@@ -247,6 +281,7 @@ button:disabled {
 .signal-cell,
 .six-stats-panel,
 .columns-panel,
+.hot-status-panel,
 .queue-panel,
 .finished-line,
 .summary-panel {
@@ -454,6 +489,157 @@ button:disabled {
 .finished-line strong {
   color: #8f453e;
   font-weight: var(--weight-emphasis);
+}
+
+.hot-status-panel {
+  align-items: stretch;
+  border: 0;
+  cursor: pointer;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(66px, 0.36fr) minmax(0, 1.9fr);
+  margin-bottom: 3px;
+  margin-top: -2px;
+  min-height: 38px;
+  padding: 0 0 0 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hot-status-main {
+  align-items: center;
+  background: #f7f4ed;
+  border-radius: 5px 0 0 5px;
+  display: grid;
+  gap: 1px 5px;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr auto 1fr;
+  min-width: 0;
+  padding: 5px 6px;
+}
+
+.hot-status-main span {
+  color: #6a5d4c;
+  font-size: 14px;
+  font-weight: var(--weight-ui);
+  grid-row: 2;
+  white-space: nowrap;
+}
+
+.hot-status-dot {
+  background: #b79763;
+  border-radius: 50%;
+  display: block;
+  grid-row: 2;
+  height: 12px;
+  justify-self: end;
+  width: 12px;
+}
+
+.hot-status-main em {
+  color: #8a7c6a;
+  font-size: 11px;
+  font-style: normal;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hot-status-panel.open .hot-status-main {
+  background: #f2ead8;
+}
+
+.hot-status-panel.closed .hot-status-main,
+.hot-status-panel.manual-off .hot-status-main {
+  background: #eee9e2;
+}
+
+.hot-status-panel.closed .hot-status-dot,
+.hot-status-panel.manual-off .hot-status-dot {
+  background: #5e5850;
+}
+
+.hot-status-history {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+  justify-content: flex-start;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 10px 0 7px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hot-status-history::-webkit-scrollbar {
+  display: none;
+}
+
+.hot-history-node {
+  align-items: center;
+  background: transparent;
+  border-radius: 0;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 5px;
+  grid-template-columns: auto;
+  justify-content: center;
+  min-width: 24px;
+  padding: 4px 2px 3px;
+  position: relative;
+}
+
+.hot-history-node + .hot-history-node::before {
+  background: #d7cec0;
+  content: "";
+  height: 1px;
+  left: -4px;
+  position: absolute;
+  top: 50%;
+  width: 5px;
+}
+
+.hot-history-node i {
+  background: #b79763;
+  border-radius: 50%;
+  display: block;
+  height: 9px;
+  justify-self: center;
+  width: 9px;
+}
+
+.hot-history-node.closed i {
+  background: #5e5850;
+}
+
+.hot-history-node small {
+  color: #9a8d7a;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.hot-history-empty {
+  align-items: center;
+  background: #f7f5ef;
+  border-radius: 5px;
+  color: #8a7c6a;
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  min-width: 0;
+  padding: 4px 6px;
+}
+
+.hot-manual-note {
+  align-items: center;
+  color: #8a7c6a;
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  min-width: 0;
+  padding: 4px 6px;
 }
 
 .queue-panel {
@@ -786,6 +972,7 @@ body:has(.app-shell.theme-dark) {
 /* --- Panels & cards --- */
 .app-shell.theme-dark .top-stats-strip,
 .app-shell.theme-dark .signal-cell,
+.app-shell.theme-dark .hot-status-panel,
 .app-shell.theme-dark .queue-panel {
   background: #222222;
   border-color: transparent;
@@ -861,12 +1048,64 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .top-stats-sep { color: #818181; }
 .app-shell.theme-dark .top-stats-net.net-positive strong { color: #f2a84a; }
 .app-shell.theme-dark .top-stats-net.net-negative strong { color: #d99a66; }
+.app-shell.theme-dark .top-stats-hot-dot.open { background: #b69254; }
+.app-shell.theme-dark .top-stats-hot-dot.closed,
+.app-shell.theme-dark .top-stats-hot-dot.off { background: #3f3a36; }
+.app-shell.theme-dark .top-stats-hot-dot.off::after { background: #5a5652; }
 
 /* --- Signal cells --- */
 .app-shell.theme-dark .signal-watch { background: #22201d; border-color: #725c3f; }
 .app-shell.theme-dark .signal-strong { background: #24201e; border-color: #5a4030; }
 .app-shell.theme-dark .signal-label span { color: #b3b3b3; }
 .app-shell.theme-dark .signal-label strong { color: #f2a84a; }
+
+/* --- Hot status panel --- */
+.app-shell.theme-dark .hot-status-panel {
+  background: #1b1b1b;
+}
+.app-shell.theme-dark .hot-status-main {
+  background: #25231f;
+}
+.app-shell.theme-dark .hot-status-main span {
+  color: #b3b3b3;
+}
+.app-shell.theme-dark .hot-status-dot {
+  background: #b69254;
+}
+.app-shell.theme-dark .hot-status-main em {
+  color: #8a8a8a;
+}
+.app-shell.theme-dark .hot-status-panel.open .hot-status-main {
+  background: #2a261c;
+}
+.app-shell.theme-dark .hot-status-panel.closed .hot-status-main,
+.app-shell.theme-dark .hot-status-panel.manual-off .hot-status-main {
+  background: #242424;
+}
+.app-shell.theme-dark .hot-status-panel.closed .hot-status-dot,
+.app-shell.theme-dark .hot-status-panel.manual-off .hot-status-dot {
+  background: #3f3a36;
+}
+.app-shell.theme-dark .hot-history-empty {
+  background: #232323;
+  color: #8a8a8a;
+}
+
+.app-shell.theme-dark .hot-manual-note {
+  color: #8a8a8a;
+}
+.app-shell.theme-dark .hot-history-node + .hot-history-node::before {
+  background: #4a4338;
+}
+.app-shell.theme-dark .hot-history-node i {
+  background: #b69254;
+}
+.app-shell.theme-dark .hot-history-node.closed i {
+  background: #3f3a36;
+}
+.app-shell.theme-dark .hot-history-node small {
+  color: #7c7c7c;
+}
 
 /* --- Columns panel --- */
 .app-shell.theme-dark .six-stat-chip {
