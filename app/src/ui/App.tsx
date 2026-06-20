@@ -3543,7 +3543,7 @@ export function App() {
           <button onClick={openDataDialog} type="button">数据</button>
         </div>
         <div className="dock-actions dock-actions-primary">
-          <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
+          <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
           <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
           <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
@@ -4215,7 +4215,7 @@ export function App() {
               </button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
-              <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
+              <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -4289,7 +4289,7 @@ export function App() {
               <button className="selected" type="button">频率</button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
-              <button onClick={() => setPredictionWindowOpen(true)} type="button">预测</button>
+              <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -4675,9 +4675,9 @@ export function App() {
       ) : null}
 
       {predictionWindowOpen ? (
-          <section className="prediction-screen" aria-label="预测明细">
+          <section className="prediction-screen" aria-label="智能明细">
             <div className="modal-head">
-              <strong>预测明细</strong>
+              <strong>智能明细</strong>
               <button className="close-button" onClick={() => setPredictionWindowOpen(false)} type="button">x</button>
             </div>
             <div className="tabs tabs-top tabs-solid">
