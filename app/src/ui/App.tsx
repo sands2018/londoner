@@ -151,6 +151,116 @@ const keypadRows: RouletteNumber[][] = [
   [21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
   [31, 32, 33, 34, 35, 36],
 ];
+const simulatorChips = [10, 20, 50, 100, 500, 1000] as const;
+type SimulatorBetKind =
+  | "straight"
+  | "split"
+  | "street"
+  | "corner"
+  | "six"
+  | "dozen"
+  | "row"
+  | "outside"
+  | "zero-trio"
+  | "first-four";
+
+interface SimulatorBet {
+  amount: number;
+  id: number;
+  key: string;
+  kind: SimulatorBetKind;
+  label: string;
+  numbers: RouletteNumber[];
+  payout: number;
+}
+
+interface SimulatorBetPlacement {
+  amount: number;
+  key: string;
+}
+
+interface SimulatorLog {
+  balanceBefore: number;
+  balanceAfter: number;
+  net: number;
+  result: RouletteNumber;
+  round: number;
+  stake: number;
+  winReturn: number;
+}
+
+const simulatorDozenBets = [
+  { label: "一组 1-12", numbers: rangeRouletteNumbers(1, 12), payout: 2 },
+  { label: "二组 13-24", numbers: rangeRouletteNumbers(13, 24), payout: 2 },
+  { label: "三组 25-36", numbers: rangeRouletteNumbers(25, 36), payout: 2 },
+];
+const simulatorRowBets = [
+  { label: "1行", numbers: rangeRouletteNumbers(3, 36, 3), payout: 2 },
+  { label: "2行", numbers: rangeRouletteNumbers(2, 35, 3), payout: 2 },
+  { label: "3行", numbers: rangeRouletteNumbers(1, 34, 3), payout: 2 },
+];
+const simulatorStreetBets = Array.from({ length: 12 }, (_, index) => {
+  const start = (index * 3 + 1) as RouletteNumber;
+  return { label: `${start}-${start + 2}`, numbers: rangeRouletteNumbers(start, start + 2), payout: 11 };
+});
+const simulatorSixBets = Array.from({ length: 11 }, (_, index) => {
+  const start = (index * 3 + 1) as RouletteNumber;
+  return { label: `${start}-${start + 5}`, numbers: rangeRouletteNumbers(start, start + 5), payout: 5 };
+});
+const simulatorOutsideBets = [
+  { label: "小 1-18", numbers: rangeRouletteNumbers(1, 18), payout: 1 },
+  { label: "大 19-36", numbers: rangeRouletteNumbers(19, 36), payout: 1 },
+  { label: "单", numbers: rangeRouletteNumbers(1, 36).filter((n) => n % 2 === 1), payout: 1 },
+  { label: "双", numbers: rangeRouletteNumbers(1, 36).filter((n) => n % 2 === 0), payout: 1 },
+  { label: "红", numbers: rangeRouletteNumbers(1, 36).filter((n) => getNumberColor(n) === "red"), payout: 1 },
+  { label: "黑", numbers: rangeRouletteNumbers(1, 36).filter((n) => getNumberColor(n) === "black"), payout: 1 },
+];
+const simulatorZeroTrioBets = [
+  { label: "0-1-2", numbers: [0, 1, 2] as RouletteNumber[], payout: 11 },
+  { label: "0-2-3", numbers: [0, 2, 3] as RouletteNumber[], payout: 11 },
+];
+const simulatorFirstFourBet = { label: "0-1-2-3", numbers: [0, 1, 2, 3] as RouletteNumber[], payout: 8 };
+const simulatorHorizontalSplitBets = boardRows.flatMap((row, rowIndex) =>
+  row.slice(0, -1).map((value, colIndex) => {
+    const next = row[colIndex + 1];
+    return {
+      label: `${value}/${next}`,
+      left: ((colIndex + 1) / 12) * 100,
+      numbers: [value, next] as RouletteNumber[],
+      payout: 17,
+      top: ((rowIndex + 0.5) / 3) * 100,
+    };
+  }),
+);
+const simulatorVerticalSplitBets = boardRows.slice(0, -1).flatMap((row, rowIndex) =>
+  row.map((value, colIndex) => {
+    const next = boardRows[rowIndex + 1][colIndex];
+    return {
+      label: `${value}/${next}`,
+      left: ((colIndex + 0.5) / 12) * 100,
+      numbers: [value, next] as RouletteNumber[],
+      payout: 17,
+      top: ((rowIndex + 1) / 3) * 100,
+    };
+  }),
+);
+const simulatorCornerBets = [0, 1].flatMap((rowIndex) =>
+  Array.from({ length: 11 }, (_, colIndex) => {
+    const numbers = [
+      boardRows[rowIndex][colIndex],
+      boardRows[rowIndex][colIndex + 1],
+      boardRows[rowIndex + 1][colIndex],
+      boardRows[rowIndex + 1][colIndex + 1],
+    ] as RouletteNumber[];
+    return {
+      label: simulatorNumbersLabel(numbers),
+      left: ((colIndex + 1) / 12) * 100,
+      numbers,
+      payout: 8,
+      top: ((rowIndex + 1) / 3) * 100,
+    };
+  }),
+);
 
 type DialogName = "connect" | "import" | "save" | null;
 type KeyboardMode = "keypad" | "board" | "digits";
@@ -173,6 +283,34 @@ const emptyOtherLongStats: ReturnType<typeof calculateOtherLongStats> = { misses
 const emptyNumberZoneData: Record<number, { value: number; isLatest: boolean; prevDistance: number | null }> = {};
 const emptyNumberZoneTrends: Record<number, "up" | "down" | null> = {};
 const emptyNumberZoneHotCold = { hot: new Set<number>(), cold: new Set<number>() };
+
+function rangeRouletteNumbers(start: number, end: number, step = 1): RouletteNumber[] {
+  const values: RouletteNumber[] = [];
+  for (let value = start; value <= end; value += step) {
+    if (isRouletteNumber(value)) values.push(value);
+  }
+  return values;
+}
+
+function simulatorBetKey(kind: SimulatorBetKind, numbers: readonly RouletteNumber[]): string {
+  return `${kind}:${[...numbers].sort((a, b) => a - b).join("-")}`;
+}
+
+function simulatorNumbersLabel(numbers: readonly RouletteNumber[]): string {
+  return [...numbers].sort((a, b) => a - b).join("/");
+}
+
+function simulatorEncodeNumbers(numbers: readonly RouletteNumber[]): string {
+  return numbers.join(",");
+}
+
+function simulatorDecodeNumbers(value: string | undefined): RouletteNumber[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((item) => Number.parseInt(item, 10))
+    .filter(isRouletteNumber);
+}
 
 function normalizeRepeatTier(value: string | null): RepeatTier {
   if (value === REPEAT_TIER_CORE || value === "精选信号") return REPEAT_TIER_CORE;
@@ -362,6 +500,16 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [simulatorBalance, setSimulatorBalance] = useState(0);
+  const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(100);
+  const [simulatorBets, setSimulatorBets] = useState<SimulatorBet[]>([]);
+  const [simulatorBetPlacements, setSimulatorBetPlacements] = useState<SimulatorBetPlacement[]>([]);
+  const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>([]);
+  const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; result: RouletteNumber } | null>(null);
+  const simulatorBetIdRef = useRef(0);
+  const simulatorProgressRef = useRef(0);
+  const simulatorRoundPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
@@ -393,6 +541,14 @@ export function App() {
   const canUseSmartSignals = sharedConnected;
   const canUseQuality124 = canUseSmartSignals && ["ww", "wzs"].includes(sharedUsernameNormalized);
   const canViewSixStatsPanel = sharedConnected;
+  const simulatorNumbers = useMemo(
+    () => [...numbers, ...redoNumbers.slice().reverse()],
+    [numbers, redoNumbers],
+  );
+  const simulatorIndex = numbers.length;
+  const simulatorNextNumber = redoNumbers.at(-1) ?? null;
+  const simulatorLastNumber = numbers.at(-1) ?? null;
+  const simulatorTotalStake = simulatorBets.reduce((sum, bet) => sum + bet.amount, 0);
   const tableSelectOptions = useMemo(() => {
     const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
     return casinoTables
@@ -1179,6 +1335,29 @@ export function App() {
   }, [currentSessionId]);
 
   useEffect(() => {
+    const previousIndex = simulatorProgressRef.current;
+    const nextIndex = numbers.length;
+    if (previousIndex === nextIndex) return;
+    simulatorProgressRef.current = nextIndex;
+
+    if (simulatorBets.length > 0) {
+      setSimulatorBalance((value) => value + simulatorTotalStake);
+      setSimulatorBets([]);
+      setSimulatorBetPlacements([]);
+    }
+
+    if (nextIndex < previousIndex) {
+      const kept = simulatorLog.filter((item) => item.round <= nextIndex);
+      const removed = simulatorLog.filter((item) => item.round > nextIndex);
+      if (removed.length > 0) {
+        const earliestRemoved = removed.reduce((earliest, item) => (item.round < earliest.round ? item : earliest), removed[0]);
+        setSimulatorBalance(earliestRemoved.balanceBefore);
+        setSimulatorLog(kept);
+      }
+    }
+  }, [numbers.length, simulatorBets.length, simulatorLog, simulatorTotalStake]);
+
+  useEffect(() => {
     if (!canUsePreferredNumber && predictionTab === "preferredNumber") {
       setPredictionTab("overview");
       localStorage.setItem("londoner.predictionTab", "overview");
@@ -1198,9 +1377,262 @@ export function App() {
     }
   }, [canUseSmartSignals, predictionWindowOpen]);
 
+  useEffect(() => () => {
+    if (simulatorRoundPopTimerRef.current) {
+      clearTimeout(simulatorRoundPopTimerRef.current);
+    }
+  }, []);
+
   function openPredictionWindow() {
     if (!canUseSmartSignals) return;
     setPredictionWindowOpen(true);
+  }
+
+  function getSimulatorBetAmount(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
+    const key = simulatorBetKey(kind, betNumbers);
+    return simulatorBets.find((item) => item.key === key)?.amount ?? 0;
+  }
+
+  function renderSimulatorChip(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
+    const amount = getSimulatorBetAmount(kind, betNumbers);
+    return amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : null;
+  }
+
+  function resetSimulator() {
+    setSimulatorBalance(0);
+    setSimulatorBets([]);
+    setSimulatorBetPlacements([]);
+    setSimulatorLog([]);
+    setSimulatorRoundPop(null);
+    if (numbers.length > 0) {
+      setRedoNumbers([...redoNumbers, ...numbers.slice().reverse()]);
+      setNumbers([]);
+    }
+  }
+
+  function placeSimulatorBet(kind: SimulatorBetKind, label: string, betNumbers: readonly RouletteNumber[], payout: number) {
+    if (betNumbers.length === 0) return;
+    const key = simulatorBetKey(kind, betNumbers);
+    const amount = simulatorSelectedChip;
+    setSimulatorBalance((value) => value - amount);
+    setSimulatorBetPlacements((items) => [...items, { amount, key }]);
+    setSimulatorBets((items) => {
+      const existingIndex = items.findIndex((item) => item.key === key);
+      if (existingIndex >= 0) {
+        return items.map((item, index) =>
+          index === existingIndex ? { ...item, amount: item.amount + amount } : item,
+        );
+      }
+      simulatorBetIdRef.current += 1;
+      return [
+        ...items,
+        {
+          amount,
+          id: simulatorBetIdRef.current,
+          key,
+          kind,
+          label,
+          numbers: [...betNumbers],
+          payout,
+        },
+      ];
+    });
+  }
+
+  function handleSimulatorNumberClick(value: RouletteNumber) {
+    placeSimulatorBet("straight", `单号 ${value}`, [value], 35);
+  }
+
+  function handleSimulatorTableClick(event: {
+    clientX: number;
+    clientY: number;
+    currentTarget: HTMLDivElement;
+    preventDefault: () => void;
+    stopPropagation: () => void;
+  }) {
+    const x = event.clientX;
+    const y = event.clientY;
+    type Candidate = {
+      kind: SimulatorBetKind;
+      label: string;
+      numbers: RouletteNumber[];
+      payout: number;
+      weight: number;
+      x: number;
+      y: number;
+    };
+    const attractionByKind: Record<SimulatorBetKind, number> = {
+      straight: 1,
+      split: 1.26,
+      corner: 1.42,
+      street: 1.5,
+      six: 1.5,
+      "first-four": 1.62,
+      "zero-trio": 1.45,
+      dozen: 1.12,
+      row: 1.12,
+      outside: 1.12,
+    };
+    const candidates = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("[data-sim-kind]")).flatMap<Candidate>((element) => {
+      const kind = element.dataset.simKind as SimulatorBetKind | undefined;
+      const label = element.dataset.simLabel;
+      const payout = Number.parseInt(element.dataset.simPayout ?? "", 10);
+      const numbers = simulatorDecodeNumbers(element.dataset.simNumbers);
+      const rect = element.getBoundingClientRect();
+      if (!kind || !label || !Number.isFinite(payout) || numbers.length === 0 || rect.width <= 0 || rect.height <= 0) {
+        return [];
+      }
+      return [{
+        kind,
+        label,
+        numbers,
+        payout,
+        weight: attractionByKind[kind] ?? 1,
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      }];
+    });
+
+    const streetLine = candidates.filter((item) => item.kind === "street");
+    if (streetLine.length >= 2) {
+      const firstStreet = streetLine[0];
+      const lastStreet = streetLine[streetLine.length - 1];
+      const axisX = lastStreet.x - firstStreet.x;
+      const axisY = lastStreet.y - firstStreet.y;
+      const axisLength = Math.hypot(axisX, axisY);
+      if (axisLength > 1) {
+        const unitX = axisX / axisLength;
+        const unitY = axisY / axisLength;
+        const projectedStreets = streetLine
+          .map((item) => ({ item, t: (item.x - firstStreet.x) * unitX + (item.y - firstStreet.y) * unitY }))
+          .sort((left, right) => left.t - right.t);
+        const projectedSixes = candidates
+          .filter((item) => item.kind === "six")
+          .map((item) => ({ item, t: (item.x - firstStreet.x) * unitX + (item.y - firstStreet.y) * unitY }))
+          .sort((left, right) => left.t - right.t);
+        const gaps = projectedStreets.slice(1).map((item, index) => item.t - projectedStreets[index].t).filter((gap) => gap > 1);
+        const spacing = gaps.sort((left, right) => left - right)[Math.floor(gaps.length / 2)] ?? 0;
+        if (spacing > 1) {
+          const baseT = projectedStreets[0].t;
+          const clickT = (x - firstStreet.x) * unitX + (y - firstStreet.y) * unitY;
+          const clickP = Math.abs((x - firstStreet.x) * -unitY + (y - firstStreet.y) * unitX);
+          const bottomBand = Math.max(18, Math.min(42, spacing * 0.32));
+          if (clickP <= bottomBand) {
+            const normalized = (clickT - baseT) / spacing;
+            const firstFourCandidate = candidates.find((item) => item.kind === "first-four");
+            let bottomChoice: Candidate | null = null;
+            if (normalized < -0.3 && normalized > -0.85 && firstFourCandidate) {
+              bottomChoice = firstFourCandidate;
+            } else {
+              const streetIndex = Math.round(normalized);
+              const streetDistance = Math.abs(normalized - streetIndex);
+              if (streetIndex >= 0 && streetIndex < projectedStreets.length && streetDistance <= 0.3) {
+                bottomChoice = projectedStreets[streetIndex].item;
+              } else {
+                const sixIndex = Math.round(normalized - 0.5);
+                if (sixIndex >= 0 && sixIndex < projectedSixes.length) {
+                  bottomChoice = projectedSixes[sixIndex].item;
+                }
+              }
+            }
+            if (bottomChoice) {
+              event.preventDefault();
+              event.stopPropagation();
+              placeSimulatorBet(bottomChoice.kind, bottomChoice.label, bottomChoice.numbers, bottomChoice.payout);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    const globalCandidates = candidates.filter((item) => item.kind !== "street" && item.kind !== "six" && item.kind !== "first-four");
+    const nearest = globalCandidates.reduce<{ item: Candidate | null; distance: number }>(
+      (best, item) => {
+        const distance = ((item.x - x) ** 2 + (item.y - y) ** 2) / (item.weight ** 2);
+        return distance < best.distance ? { item, distance } : best;
+      },
+      { item: null, distance: Number.POSITIVE_INFINITY },
+    ).item;
+
+    if (!nearest) return;
+    event.preventDefault();
+    event.stopPropagation();
+    placeSimulatorBet(nearest.kind, nearest.label, nearest.numbers, nearest.payout);
+  }
+
+  function clearSimulatorBets() {
+    if (simulatorBets.length === 0) return;
+    setSimulatorBalance((value) => value + simulatorTotalStake);
+    setSimulatorBets([]);
+    setSimulatorBetPlacements([]);
+  }
+
+  function undoSimulatorBet() {
+    const lastPlacement = simulatorBetPlacements.at(-1);
+    if (!lastPlacement) return;
+    setSimulatorBalance((value) => value + lastPlacement.amount);
+    setSimulatorBetPlacements((items) => items.slice(0, -1));
+    setSimulatorBets((items) =>
+      items.flatMap((item) => {
+        if (item.key !== lastPlacement.key) return [item];
+        const nextAmount = item.amount - lastPlacement.amount;
+        return nextAmount > 0 ? [{ ...item, amount: nextAmount }] : [];
+      }),
+    );
+  }
+
+  function jumpSimulatorTo200() {
+    if (simulatorNumbers.length < 200) return;
+    const targetIndex = 200;
+    setSimulatorBalance(0);
+    setSimulatorBets([]);
+    setSimulatorBetPlacements([]);
+    setSimulatorLog([]);
+    setSimulatorRoundPop(null);
+    setNumbers(simulatorNumbers.slice(0, targetIndex));
+    setRedoNumbers(simulatorNumbers.slice(targetIndex).reverse());
+  }
+
+  function settleSimulatorRound() {
+    if (simulatorNextNumber === null) {
+      setNoticeDialog({ title: "模拟", message: "当前数据已经回放结束。" });
+      return;
+    }
+    const winReturn = simulatorBets.reduce(
+      (sum, bet) => sum + (bet.numbers.includes(simulatorNextNumber) ? bet.amount * (bet.payout + 1) : 0),
+      0,
+    );
+    const stake = simulatorTotalStake;
+    const net = winReturn - stake;
+    const balanceBefore = simulatorBalance + stake;
+    const nextBalance = simulatorBalance + winReturn;
+    const popId = keyPopIdRef.current++;
+    setSimulatorRoundPop({ id: popId, net, result: simulatorNextNumber });
+    if (simulatorRoundPopTimerRef.current) {
+      clearTimeout(simulatorRoundPopTimerRef.current);
+    }
+    simulatorRoundPopTimerRef.current = setTimeout(() => {
+      setSimulatorRoundPop((current) => (current?.id === popId ? null : current));
+      simulatorRoundPopTimerRef.current = null;
+    }, 2000);
+    setSimulatorBalance(nextBalance);
+    setSimulatorLog((items) => [
+      {
+        balanceBefore,
+        balanceAfter: nextBalance,
+        net,
+        result: simulatorNextNumber,
+        round: numbers.length + 1,
+        stake,
+        winReturn,
+      },
+      ...items,
+    ].slice(0, 18));
+    setSimulatorBets([]);
+    setSimulatorBetPlacements([]);
+    setNumbers([...numbers, simulatorNextNumber]);
+    setRedoNumbers(redoNumbers.slice(0, -1));
   }
 
   function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
@@ -3787,7 +4219,7 @@ export function App() {
           <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
           <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
-          <button onClick={() => { setStatsTab("numberZone"); setNumberZoneSubTab("snapshot"); setStatsViewOpen(true); }} type="button">快照</button>
+          <button onClick={() => setSimulatorOpen(true)} type="button">快照</button>
         </div>
       </section>
       ) : (
@@ -5056,6 +5488,298 @@ export function App() {
         </section>
       ) : null}
 
+      {simulatorOpen ? (
+        <section className="simulator-screen" aria-label="轮盘模拟">
+          <div className="simulator-landscape">
+            {simulatorRoundPop ? (
+              <div className="simulator-round-pop-overlay" aria-hidden="true">
+                <div className={`simulator-round-pop ${simulatorRoundPop.net >= 0 ? "positive" : "negative"}`} key={simulatorRoundPop.id}>
+                  <span>开 {simulatorRoundPop.result}</span>
+                  <strong>{simulatorRoundPop.net >= 0 ? "+" : ""}{simulatorRoundPop.net}</strong>
+                </div>
+              </div>
+            ) : null}
+            <div className="simulator-main">
+              <section className="simulator-table-wrap">
+                <div className="sim-table-felt" onClickCapture={handleSimulatorTableClick}>
+                  <div className="simulator-table">
+                    <div className="sim-zero-zone">
+                      <button
+                        className="sim-number sim-zero"
+                        data-sim-kind="straight"
+                        data-sim-label="单号 0"
+                        data-sim-numbers={simulatorEncodeNumbers([0])}
+                        data-sim-payout={35}
+                        onClick={() => handleSimulatorNumberClick(0)}
+                        type="button"
+                      >
+                        <span>0</span>
+                        {renderSimulatorChip("straight", [0])}
+                      </button>
+                      <div className="sim-zero-hotspots" aria-label="0区三数下注位">
+                        {simulatorZeroTrioBets.map((bet, index) => {
+                          const amount = getSimulatorBetAmount("zero-trio", bet.numbers);
+                          return (
+                            <button
+                              aria-label={`下注3个数 ${bet.label}`}
+                              className={`sim-zero-trio-spot sim-zero-trio-spot-${index} ${amount > 0 ? "has-chip" : ""}`}
+                              data-sim-kind="zero-trio"
+                              data-sim-label={bet.label}
+                              data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                              data-sim-payout={bet.payout}
+                              key={bet.label}
+                              onClick={() => placeSimulatorBet("zero-trio", bet.label, bet.numbers, bet.payout)}
+                              type="button"
+                            >
+                              {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                            </button>
+                          );
+                        })}
+                        {(() => {
+                          const amount = getSimulatorBetAmount("first-four", simulatorFirstFourBet.numbers);
+                          return (
+                            <button
+                              aria-label="下注4个数 0-1-2-3"
+                              className={`sim-zero-first-four-spot ${amount > 0 ? "has-chip" : ""}`}
+                              data-sim-kind="first-four"
+                              data-sim-label={simulatorFirstFourBet.label}
+                              data-sim-numbers={simulatorEncodeNumbers(simulatorFirstFourBet.numbers)}
+                              data-sim-payout={simulatorFirstFourBet.payout}
+                              onClick={() => placeSimulatorBet("first-four", simulatorFirstFourBet.label, simulatorFirstFourBet.numbers, simulatorFirstFourBet.payout)}
+                              type="button"
+                            >
+                              {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="sim-number-area">
+                      <div className="sim-grid-layer">
+                        <div className="sim-number-grid">
+                          {boardRows.map((row) => row.map((value) => (
+                            <button
+                              className={`sim-number sim-${getNumberColor(value)}`}
+                              data-sim-kind="straight"
+                              data-sim-label={`单号 ${value}`}
+                              data-sim-numbers={simulatorEncodeNumbers([value])}
+                              data-sim-payout={35}
+                              key={value}
+                              onClick={() => handleSimulatorNumberClick(value)}
+                              type="button"
+                            >
+                              <span>{value}</span>
+                              {renderSimulatorChip("straight", [value])}
+                            </button>
+                          )))}
+                        </div>
+                        <div className="sim-hotspot-layer" aria-label="桌面下注位">
+                          {[...simulatorHorizontalSplitBets, ...simulatorVerticalSplitBets].map((bet) => {
+                            const amount = getSimulatorBetAmount("split", bet.numbers);
+                            return (
+                              <button
+                                aria-label={`下注2数 ${bet.label}`}
+                                className={`sim-hotspot sim-split-spot ${amount > 0 ? "has-chip" : ""}`}
+                                data-sim-kind="split"
+                                data-sim-label={`2数 ${bet.label}`}
+                                data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                                data-sim-payout={bet.payout}
+                                key={`split-${bet.label}`}
+                                onClick={() => placeSimulatorBet("split", `2数 ${bet.label}`, bet.numbers, bet.payout)}
+                                style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
+                                type="button"
+                              >
+                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                              </button>
+                            );
+                          })}
+                          {simulatorCornerBets.map((bet) => {
+                            const amount = getSimulatorBetAmount("corner", bet.numbers);
+                            return (
+                              <button
+                                aria-label={`下注4角 ${bet.label}`}
+                                className={`sim-hotspot sim-corner-spot ${amount > 0 ? "has-chip" : ""}`}
+                                data-sim-kind="corner"
+                                data-sim-label={`4角 ${bet.label}`}
+                                data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                                data-sim-payout={bet.payout}
+                                key={`corner-${bet.label}`}
+                                onClick={() => placeSimulatorBet("corner", `4角 ${bet.label}`, bet.numbers, bet.payout)}
+                                style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
+                                type="button"
+                              >
+                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                              </button>
+                            );
+                          })}
+                          {simulatorStreetBets.map((bet, index) => {
+                            const amount = getSimulatorBetAmount("street", bet.numbers);
+                            return (
+                              <button
+                                aria-label={`下注3个数 ${bet.label}`}
+                                className={`sim-hotspot sim-street-spot ${amount > 0 ? "has-chip" : ""}`}
+                                data-sim-kind="street"
+                                data-sim-label={`3数 ${bet.label}`}
+                                data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                                data-sim-payout={bet.payout}
+                                key={bet.label}
+                                onClick={() => placeSimulatorBet("street", `3数 ${bet.label}`, bet.numbers, bet.payout)}
+                                style={{ left: `${((index + 0.5) / 12) * 100}%`, top: "100%" }}
+                                type="button"
+                              >
+                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                              </button>
+                            );
+                          })}
+                          {simulatorSixBets.map((bet, index) => {
+                            const amount = getSimulatorBetAmount("six", bet.numbers);
+                            return (
+                              <button
+                                aria-label={`下注6个数 ${bet.label}`}
+                                className={`sim-hotspot sim-six-spot ${amount > 0 ? "has-chip" : ""}`}
+                                data-sim-kind="six"
+                                data-sim-label={`6数 ${bet.label}`}
+                                data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                                data-sim-payout={bet.payout}
+                                key={bet.label}
+                                onClick={() => placeSimulatorBet("six", `6数 ${bet.label}`, bet.numbers, bet.payout)}
+                                style={{ left: `${((index + 1) / 12) * 100}%`, top: "100%" }}
+                                type="button"
+                              >
+                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sim-row-bets">
+                      {simulatorRowBets.map((bet) => (
+                        <button
+                          data-sim-kind="row"
+                          data-sim-label={bet.label}
+                          data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                          data-sim-payout={bet.payout}
+                          key={bet.label}
+                          onClick={() => placeSimulatorBet("row", bet.label, bet.numbers, bet.payout)}
+                          type="button"
+                        >
+                          <span className="sim-row-label">2 to 1</span>
+                          {renderSimulatorChip("row", bet.numbers)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="sim-bet-band sim-dozens">
+                    {simulatorDozenBets.map((bet, index) => (
+                      <button
+                        data-sim-kind="dozen"
+                        data-sim-label={bet.label}
+                        data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                        data-sim-payout={bet.payout}
+                        key={bet.label}
+                        onClick={() => placeSimulatorBet("dozen", bet.label, bet.numbers, bet.payout)}
+                        type="button"
+                      >
+                        {["1st 12", "2nd 12", "3rd 12"][index]}
+                        {renderSimulatorChip("dozen", bet.numbers)}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="sim-bet-band sim-outside">
+                    {[
+                      simulatorOutsideBets[0],
+                      simulatorOutsideBets[3],
+                      simulatorOutsideBets[5],
+                      simulatorOutsideBets[4],
+                      simulatorOutsideBets[2],
+                      simulatorOutsideBets[1],
+                    ].map((bet) => (
+                      <button
+                        className={bet.label === "红" ? "sim-outside-red" : bet.label === "黑" ? "sim-outside-black" : ""}
+                        data-sim-kind="outside"
+                        data-sim-label={bet.label}
+                        data-sim-numbers={simulatorEncodeNumbers(bet.numbers)}
+                        data-sim-payout={bet.payout}
+                        key={bet.label}
+                        onClick={() => placeSimulatorBet("outside", bet.label, bet.numbers, bet.payout)}
+                        type="button"
+                      >
+                        {bet.label === "小 1-18" ? "1-18" : bet.label === "大 19-36" ? "19-36" : bet.label === "单" ? "ODD" : bet.label === "双" ? "EVEN" : ""}
+                        {renderSimulatorChip("outside", bet.numbers)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <aside className="simulator-side simulator-control">
+                <button className="simulator-return" onClick={() => setSimulatorOpen(false)} type="button">返回程序</button>
+                <div className="simulator-meter-row">
+                  <div className="simulator-meter">
+                    <span>胜负</span>
+                    <strong>{simulatorBalance}</strong>
+                  </div>
+                  <div className="simulator-meter">
+                    <span>下注</span>
+                    <strong>{simulatorTotalStake}</strong>
+                  </div>
+                  <div className="simulator-meter">
+                    <span>进度</span>
+                    <strong>{Math.min(simulatorIndex, simulatorNumbers.length)} / {simulatorNumbers.length}</strong>
+                  </div>
+                  <div className="simulator-last-result">
+                    <span>上口</span>
+                    {simulatorLastNumber !== null ? <strong className={`sim-result-${getNumberColor(simulatorLastNumber)}`}>{simulatorLastNumber}</strong> : <em>--</em>}
+                  </div>
+                </div>
+                <div className="simulator-actions">
+                  <button className="simulator-primary" onClick={resetSimulator} type="button">重置模拟</button>
+                </div>
+                <div className="simulator-ticket">
+                  <h3>下注单</h3>
+                  {simulatorBets.length === 0 ? <p>暂无下注</p> : simulatorBets.map((bet) => (
+                    <div className="simulator-ticket-row" key={bet.id}>
+                      <span>{bet.label}</span>
+                      <strong>{bet.amount}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="simulator-log">
+                  <h3>结算</h3>
+                  {simulatorLog.length === 0 ? <p>等待开球</p> : simulatorLog.map((item) => (
+                    <div className="simulator-log-row" key={`${item.round}-${item.result}-${item.balanceAfter}`}>
+                      <span>#{item.round}</span>
+                      <strong className={`sim-result-${getNumberColor(item.result)}`}>{item.result}</strong>
+                      <em className={item.net >= 0 ? "positive" : "negative"}>{item.net >= 0 ? "+" : ""}{item.net}</em>
+                    </div>
+                  ))}
+                </div>
+              </aside>
+              <footer className="simulator-chip-tray" aria-label="筹码">
+                <span>筹码</span>
+                {simulatorChips.map((chip) => (
+                  <button
+                    className={`simulator-chip simulator-chip-${chip} ${simulatorSelectedChip === chip ? "selected" : ""}`}
+                    key={chip}
+                    onClick={() => setSimulatorSelectedChip(chip)}
+                    type="button"
+                  >
+                    <span>{chip}</span>
+                  </button>
+                ))}
+                <div className="simulator-chip-actions">
+                  <button onClick={settleSimulatorRound} type="button">开下一口</button>
+                  <button disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
+                  <button disabled={simulatorBetPlacements.length === 0} onClick={undoSimulatorBet} type="button">undo</button>
+                  <button onClick={clearSimulatorBets} type="button">清空下注</button>
+                </div>
+              </footer>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {configViewOpen ? (
           <section className="data-screen config-screen" aria-label="配置">
             <header className="data-screen-head">
@@ -5089,6 +5813,18 @@ export function App() {
                       />
                       <span>斐波那契数字序列</span>
                     </label>
+                  </div>
+                </section>
+                <section className="config-card config-bets">
+                  <h2><span>工具</span></h2>
+                  <div className="config-option-list">
+                    <button
+                      className="config-tool-button"
+                      onClick={() => { setConfigViewOpen(false); setSimulatorOpen(true); }}
+                      type="button"
+                    >
+                      模拟
+                    </button>
                   </div>
                 </section>
               </div>
