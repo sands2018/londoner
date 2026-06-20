@@ -1388,6 +1388,16 @@ export function App() {
     setPredictionWindowOpen(true);
   }
 
+  function openSnapshotFromDock() {
+    if (sharedConnected && ["ww", "wzs"].includes(sharedUsernameNormalized)) {
+      setSimulatorOpen(true);
+      return;
+    }
+    setStatsTab("numberZone");
+    setNumberZoneSubTab("snapshot");
+    setStatsViewOpen(true);
+  }
+
   function getSimulatorBetAmount(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
     const key = simulatorBetKey(kind, betNumbers);
     return simulatorBets.find((item) => item.key === key)?.amount ?? 0;
@@ -4219,7 +4229,7 @@ export function App() {
           <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
           <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
-          <button onClick={() => setSimulatorOpen(true)} type="button">快照</button>
+          <button onClick={openSnapshotFromDock} type="button">快照</button>
         </div>
       </section>
       ) : (
@@ -5813,18 +5823,6 @@ export function App() {
                       />
                       <span>斐波那契数字序列</span>
                     </label>
-                  </div>
-                </section>
-                <section className="config-card config-bets">
-                  <h2><span>工具</span></h2>
-                  <div className="config-option-list">
-                    <button
-                      className="config-tool-button"
-                      onClick={() => { setConfigViewOpen(false); setSimulatorOpen(true); }}
-                      type="button"
-                    >
-                      模拟
-                    </button>
                   </div>
                 </section>
               </div>

@@ -1793,12 +1793,6 @@ body:has(.app-shell.theme-dark) {
   border-top: 0;
 }
 
-.app-shell.theme-dark .config-tool-button {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.06);
-  color: #d4d4d4;
-}
-
 .app-shell.theme-dark .manage-dialog {
   background: #151515;
   color: #d4d4d4;
@@ -4381,19 +4375,6 @@ body:has(.app-shell.theme-dark) {
   min-height: var(--action-button-min-height);
   min-width: 104px;
   padding: 0 8px;
-}
-
-.config-tool-button {
-  align-items: center;
-  background: #fbfaf6;
-  border: 1px solid #cfc5b3;
-  border-radius: 8px;
-  color: #8a6b2e;
-  display: flex;
-  font-size: var(--dialog-row-font-size);
-  justify-content: center;
-  min-height: 36px;
-  margin: 12px 16px;
 }
 
 .modal-panel {
