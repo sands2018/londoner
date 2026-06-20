@@ -1511,19 +1511,19 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .number-zone-cell.current .number-zone-value,
 .app-shell.theme-dark .number-zone-cell.current .number-zone-distance { color: #e0b870; }
 
-.app-shell.theme-dark .number-zone-cell.hot { background: #2a1a1a; border-color: #4a3030; }
-.app-shell.theme-dark .number-zone-cell.hot .number-zone-value { color: #d08078; }
-.app-shell.theme-dark .number-zone-cell.hot .number-zone-distance { color: #a06860; }
+.app-shell.theme-dark .number-zone-cell.hot { background: #352220; border-color: #4a3432; }
+.app-shell.theme-dark .number-zone-cell.hot .number-zone-value { color: #c08084; }
+.app-shell.theme-dark .number-zone-cell.hot .number-zone-distance { color: #a07478; }
 
-.app-shell.theme-dark .number-zone-cell.cold { background: #1a2224; border-color: #2a3a3a; }
-.app-shell.theme-dark .number-zone-cell.cold .number-zone-value { color: #88b8c0; }
-.app-shell.theme-dark .number-zone-cell.cold .number-zone-distance { color: #609098; }
+.app-shell.theme-dark .number-zone-cell.cold { background: #1a2e38; border-color: #243e4c; color: #b0ccd8; }
+.app-shell.theme-dark .number-zone-cell.cold .number-zone-value { color: inherit; }
+.app-shell.theme-dark .number-zone-cell.cold .number-zone-distance { color: #84a4b0; }
 
-.app-shell.theme-dark .number-zone-cell.hot.current { background: #2a1e18; border-color: #6a4030; }
-.app-shell.theme-dark .number-zone-cell.cold.current { background: #221e24; border-color: #5a4a58; }
+.app-shell.theme-dark .number-zone-cell.hot.current { background: #34241e; border-color: #6a4434; }
+.app-shell.theme-dark .number-zone-cell.cold.current { background: #203440; border-color: #2e4a5a; }
 
-.app-shell.theme-dark .number-zone-trend.up { color: #d08070; }
-.app-shell.theme-dark .number-zone-trend.down { color: #70a088; }
+.app-shell.theme-dark .number-zone-trend.up { color: #bc8080; }
+.app-shell.theme-dark .number-zone-trend.down { color: #6098b8; }
 
 /* --- Other --- */
 .app-shell.theme-dark .other-screen { background: #121212; }
@@ -2760,16 +2760,16 @@ body:has(.app-shell.theme-dark) {
 }
 
 .number-zone-cell.cold {
-  background: #d4e2e0;
-  border-color: #b0c4c0;
+  background: #dce8ec;
+  border-color: #b8ccd0;
 }
 
 .number-zone-cell.cold .number-zone-value {
-  color: #284044;
+  color: #185060;
 }
 
 .number-zone-cell.cold .number-zone-distance {
-  color: #608080;
+  color: #488898;
 }
 
 .number-zone-cell.hot.current {

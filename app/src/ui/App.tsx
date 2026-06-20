@@ -308,6 +308,7 @@ export function App() {
   const [statsViewOpen, setStatsViewOpen] = useState(false);
   const [sixNumberViewOpen, setSixNumberViewOpen] = useState(false);
   const [numberZoneOpen, setNumberZoneOpen] = useState(false);
+  const [numberZoneSubTab, setNumberZoneSubTab] = useState<"snapshot" | "zone">("zone");
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [sixStatsPanelCollapsed, setSixStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.sixStatsPanelCollapsed") === "1");
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
@@ -3060,64 +3061,111 @@ export function App() {
 
   function StatsNumberZoneTab() {
     return (
-      <div className="number-zone-body">
-        <div className="number-zone-grid">
-          <div className="number-zone-zero-row">
-            <div className={`number-zone-cell zero-cell${latestNumber === 0 ? " current" : ""}`} onClick={() => { setStatsViewOpen(false); setSixNumberViewOpen(true); }}>
-              <span className="number-zone-value">0</span>
-              <span className="number-zone-distance">
-                {numberZoneMode === "distance" && latestNumber === 0 && numberZoneData[0]?.prevDistance !== null
-                  ? `(${numberZoneData[0].prevDistance})`
-                  : numberZoneData[0]?.value ?? "-"}
-              </span>
+      <>
+        <div className="tabs tabs-top tabs-solid">
+          <button className={numberZoneSubTab === "snapshot" ? "selected" : ""} onClick={() => setNumberZoneSubTab("snapshot")} type="button">快照</button>
+          <button className={numberZoneSubTab === "zone" ? "selected" : ""} onClick={() => setNumberZoneSubTab("zone")} type="button">号码</button>
+        </div>
+        {numberZoneSubTab === "snapshot" ? (
+          <div className="group-block-body">
+            <div className="group-block-head" aria-hidden="true">
+              <span>组</span><span>6数字</span><span>3数字</span><span>号码</span>
+            </div>
+            <div className="group-block-grid">
+              {threeNumberSnapshot.map((item) => (
+                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                  {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
+                    <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
+                  ))}
+                </div>
+              ))}
+              <div className="group-block-row-stats" style={{ gridRow: "13" }}>
+                {rowBlockSnapshot.map((item) => (
+                  <div className={`group-block-row-stat${item.highlighted ? " highlighted" : ""}`} key={item.ri}>
+                    <span className="group-block-row-label">{item.label}</span>
+                    <strong>{renderGroupBlockDistance(item)}</strong>
+                  </div>
+                ))}
+              </div>
+              {threeNumberSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                  {renderGroupBlockDistance(item)}
+                </div>
+              ))}
+              {sixNumberSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`} key={`y-${item.wi}`} style={{ gridRow: `${item.wi + 1} / span 2` }}>
+                  {renderGroupBlockDistance(item)}
+                </div>
+              ))}
+              {groupBlockSnapshot.map((item) => (
+                <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${item.gi * 4 + 1} / span 4` }}>
+                  {renderGroupBlockDistance(item)}
+                </div>
+              ))}
+              <button className="number-zone-trigger" onClick={() => setNumberZoneSubTab("zone")} style={{ gridColumn: "4", gridRow: "1 / 14", opacity: 0, cursor: "pointer" }} title="打开号码区" type="button">号码区</button>
             </div>
           </div>
-          {Array.from({ length: 12 }, (_, wi) => (
-            <div className="number-zone-row" key={wi}>
-              {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
-                const nd = numberZoneData[value];
-                const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
-                const showHotCold = numberZoneMode !== "distance";
-                const isHot = showHotCold && numberZoneHotCold.hot.has(value);
-                const isCold = showHotCold && numberZoneHotCold.cold.has(value);
-                const trend = isHot ? numberZoneTrends[value] : null;
-                const cls = [
-                  "number-zone-cell",
-                  nd?.isLatest ? "current" : "",
-                  isHot ? "hot" : "",
-                  isCold ? "cold" : "",
-                  trend === "up" ? "trend-up" : "",
-                  trend === "down" ? "trend-down" : "",
-                ].filter(Boolean).join(" ");
-                return (
-                  <div className={cls} key={value} onClick={() => { setStatsViewOpen(false); setSixNumberViewOpen(true); }}>
-                    <span className="number-zone-value">{value}</span>
-                    <span className="number-zone-distance">
-                      {showPrev ? `(${nd!.prevDistance})` : nd?.value ?? "-"}
-                      {trend && <span className={`number-zone-trend ${trend}`}> {trend === "up" ? "▲" : "▼"}</span>}
-                    </span>
-                  </div>
-                );
-              })}
+        ) : (
+          <div className="number-zone-body">
+            <div className="number-zone-grid">
+              <div className="number-zone-zero-row">
+                <div className={`number-zone-cell zero-cell${latestNumber === 0 ? " current" : ""}`} onClick={() => setNumberZoneSubTab("snapshot")}>
+                  <span className="number-zone-value">0</span>
+                  <span className="number-zone-distance">
+                    {numberZoneMode === "distance" && latestNumber === 0 && numberZoneData[0]?.prevDistance !== null
+                      ? `(${numberZoneData[0].prevDistance})`
+                      : numberZoneData[0]?.value ?? "-"}
+                  </span>
+                </div>
+              </div>
+              {Array.from({ length: 12 }, (_, wi) => (
+                <div className="number-zone-row" key={wi}>
+                  {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
+                    const nd = numberZoneData[value];
+                    const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
+                    const showHotCold = numberZoneMode !== "distance";
+                    const isHot = showHotCold && numberZoneHotCold.hot.has(value);
+                    const isCold = showHotCold && numberZoneHotCold.cold.has(value);
+                    const trend = isHot ? numberZoneTrends[value] : null;
+                    const cls = [
+                      "number-zone-cell",
+                      nd?.isLatest ? "current" : "",
+                      isHot ? "hot" : "",
+                      isCold ? "cold" : "",
+                      trend === "up" ? "trend-up" : "",
+                      trend === "down" ? "trend-down" : "",
+                    ].filter(Boolean).join(" ");
+                    return (
+                      <div className={cls} key={value} onClick={() => setNumberZoneSubTab("snapshot")}>
+                        <span className="number-zone-value">{value}</span>
+                        <span className="number-zone-distance">
+                          {showPrev ? `(${nd!.prevDistance})` : nd?.value ?? "-"}
+                          {trend && <span className={`number-zone-trend ${trend}`}> {trend === "up" ? "▲" : "▼"}</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="tabs tabs-grid tabs-grid-6" style={{flexShrink:0, padding:"8px 10px 20px"}}>
-          {["distance", "1", "2", "3", "5", "all"].map((mode) => (
-            <button
-              className={numberZoneMode === mode ? "selected" : ""}
-              key={mode}
-              onClick={() => {
-                setNumberZoneMode(mode);
-                localStorage.setItem("londoner.numberZoneMode", mode);
-              }}
-              type="button"
-            >
-              {mode === "distance" ? "距离" : mode === "all" ? "全部" : `${mode}圈`}
-            </button>
-          ))}
-        </div>
-      </div>
+            <div className="tabs tabs-grid tabs-grid-6" style={{flexShrink:0, padding:"8px 10px 20px"}}>
+              {["distance", "1", "2", "3", "5", "all"].map((mode) => (
+                <button
+                  className={numberZoneMode === mode ? "selected" : ""}
+                  key={mode}
+                  onClick={() => {
+                    setNumberZoneMode(mode);
+                    localStorage.setItem("londoner.numberZoneMode", mode);
+                  }}
+                  type="button"
+                >
+                  {mode === "distance" ? "距离" : mode === "all" ? "全部" : `${mode}圈`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
@@ -3719,7 +3767,7 @@ export function App() {
           <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
           <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
-          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
+          <button onClick={() => { setStatsTab("numberZone"); setNumberZoneSubTab("snapshot"); setStatsViewOpen(true); }} type="button">快照</button>
         </div>
       </section>
       ) : (
@@ -4076,132 +4124,6 @@ export function App() {
                   : null}
               </tbody>
             </table>
-          </div>
-        </section>
-      ) : null}
-
-      {sixNumberViewOpen ? (
-        <section className="data-screen six-number-screen" aria-label="行组快照">
-          <header className="data-screen-head">
-            <strong>行组快照</strong>
-            <button className="close-button title-close-button" onClick={() => setSixNumberViewOpen(false)} type="button">x</button>
-          </header>
-          <div className="group-block-body">
-            <div className="group-block-head" aria-hidden="true">
-              <span>组</span><span>6数字</span><span>3数字</span><span>号码</span>
-            </div>
-            <div className="group-block-grid">
-              {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
-                  {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
-                    <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
-                  ))}
-                </div>
-              ))}
-              <div className="group-block-row-stats" style={{ gridRow: "13" }}>
-                {rowBlockSnapshot.map((item) => (
-                  <div className={`group-block-row-stat${item.highlighted ? " highlighted" : ""}`} key={item.ri}>
-                    <span className="group-block-row-label">{item.label}</span>
-                    <strong>{renderGroupBlockDistance(item)}</strong>
-                  </div>
-                ))}
-              </div>
-              {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
-                  {renderGroupBlockDistance(item)}
-                </div>
-              ))}
-              {sixNumberSnapshot.map((item) => (
-                <div
-                  className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`}
-                  key={`y-${item.wi}`}
-                  style={{ gridRow: `${item.wi + 1} / span 2` }}
-                >
-                  {renderGroupBlockDistance(item)}
-                </div>
-              ))}
-              {groupBlockSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${item.gi * 4 + 1} / span 4` }}>
-                  {renderGroupBlockDistance(item)}
-                </div>
-              ))}
-              <button
-                className="number-zone-trigger"
-                onClick={() => setNumberZoneOpen(true)}
-                style={{ gridColumn: "4", gridRow: "1 / 14", opacity: 0, cursor: "pointer" }}
-                title="打开号码区"
-                type="button"
-              >
-                号码区
-              </button>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {numberZoneOpen ? (
-        <section className="data-screen number-zone-screen" aria-label="号码区">
-          <header className="data-screen-head">
-            <strong>号码</strong>
-            <button className="close-button title-close-button" onClick={() => setNumberZoneOpen(false)} type="button">x</button>
-          </header>
-          <div className="number-zone-body" onClick={() => { setNumberZoneOpen(false); setSixNumberViewOpen(true); }}>
-            <div className="number-zone-grid">
-              <div className="number-zone-zero-row">
-                <div className={`number-zone-cell zero-cell${latestNumber === 0 ? " current" : ""}`}>
-                  <span className="number-zone-value">0</span>
-                  <span className="number-zone-distance">
-                    {numberZoneMode === "distance" && latestNumber === 0 && numberZoneData[0]?.prevDistance !== null
-                      ? `(${numberZoneData[0].prevDistance})`
-                      : numberZoneData[0]?.value ?? "-"}
-                  </span>
-                </div>
-              </div>
-              {Array.from({ length: 12 }, (_, wi) => (
-                <div className="number-zone-row" key={wi}>
-                  {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
-                    const nd = numberZoneData[value];
-                    const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
-                    const showHotCold = numberZoneMode !== "distance";
-                    const isHot = showHotCold && numberZoneHotCold.hot.has(value);
-                    const isCold = showHotCold && numberZoneHotCold.cold.has(value);
-                    const trend = isHot ? numberZoneTrends[value] : null;
-                    const cls = [
-                      "number-zone-cell",
-                      nd?.isLatest ? "current" : "",
-                      isHot ? "hot" : "",
-                      isCold ? "cold" : "",
-                      trend === "up" ? "trend-up" : "",
-                      trend === "down" ? "trend-down" : "",
-                    ].filter(Boolean).join(" ");
-                    return (
-                      <div className={cls} key={value}>
-                        <span className="number-zone-value">{value}</span>
-                        <span className="number-zone-distance">
-                          {showPrev ? `(${nd!.prevDistance})` : nd?.value ?? "-"}
-                          {trend && <span className={`number-zone-trend ${trend}`}> {trend === "up" ? "▲" : "▼"}</span>}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="tabs tabs-grid tabs-grid-6" style={{flexShrink:0, padding:"8px 10px 20px"}}>
-            {["distance", "1", "2", "3", "5", "all"].map((mode) => (
-              <button
-                className={numberZoneMode === mode ? "selected" : ""}
-                key={mode}
-                onClick={() => {
-                  setNumberZoneMode(mode);
-                  localStorage.setItem("londoner.numberZoneMode", mode);
-                }}
-                type="button"
-              >
-                {mode === "distance" ? "距离" : mode === "all" ? "全部" : `${mode}圈`}
-              </button>
-            ))}
           </div>
         </section>
       ) : null}
@@ -5059,7 +4981,7 @@ export function App() {
       {statsViewOpen ? (
         <section className="data-screen" aria-label="统计数据">
           <header className="data-screen-head">
-            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="numberZone"?"号码":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
+            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="numberZone"?"快照":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
             <button className="close-button title-close-button" onClick={() => setStatsViewOpen(false)} type="button">x</button>
           </header>
           <div className="stats-tab-body">
@@ -5108,7 +5030,7 @@ export function App() {
             <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
             <button className={statsTab==="dist"?"selected":""} onClick={()=>{ setStatsTab("dist"); setStatsGroupTab("dist"); localStorage.setItem("londoner.statsGroupTab","dist"); }} type="button">距离</button>
             <button className={statsTab==="wave"?"selected":""} onClick={()=>{ setStatsTab("wave"); setStatsGroupTab("wave"); localStorage.setItem("londoner.statsGroupTab","wave"); }} type="button">波浪</button>
-            <button className={statsTab==="numberZone"?"selected":""} onClick={()=>setStatsTab("numberZone")} type="button">号码</button>
+            <button className={statsTab==="numberZone"?"selected":""} onClick={()=>setStatsTab("numberZone")} type="button">快照</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
           </footer>
         </section>
