@@ -2266,12 +2266,6 @@ body:has(.app-shell.theme-dark) {
   font-size: calc(var(--number-font-size) + 2px);
 }
 
-.digit-entry-grid .digit-send {
-  background: #2f6fa8;
-  border-color: #3d82bd;
-  color: #ffffff;
-  border-radius: 999px;
-}
 
 .digit-entry-input {
   background: #fffdf9;
@@ -2348,11 +2342,6 @@ body:has(.app-shell.theme-dark) {
   color: #6aa6d8;
 }
 
-.app-shell.theme-dark .digit-entry-grid .digit-send {
-  background: #7b5310;
-  border-color: #8a6018;
-  color: #ffffff;
-}
 
 .app-shell.theme-dark .digit-input-error {
   background: rgba(140, 30, 30, 0.25) !important;
