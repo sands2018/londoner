@@ -3635,6 +3635,9 @@ export function App() {
             <button className="control-button digit-key" onClick={() => appendDigitInput(1)} type="button">1</button>
             <button className="control-button digit-key" onClick={() => appendDigitInput(2)} type="button">2</button>
             <button className="control-button digit-key" onClick={() => appendDigitInput(3)} type="button">3</button>
+            <button className="control-button" onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
+            <button className="control-button" onClick={openDataDialog} type="button">数据</button>
+            <button className="control-button" onClick={openConfigView} type="button">配置</button>
           </div>
         )}
         <div className="dock-actions">
@@ -3644,16 +3647,16 @@ export function App() {
           <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
           <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
-          <button onClick={openDataDialog} type="button">数据</button>
+          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
         </div>
         <div className="dock-actions dock-actions-primary">
-          <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
           <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
-          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
-          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
+          <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+          <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
+          <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
-          <button onClick={openConfigView} type="button">配置</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
         </div>
       </section>
       ) : (
@@ -4993,7 +4996,7 @@ export function App() {
       {statsViewOpen ? (
         <section className="data-screen" aria-label="统计数据">
           <header className="data-screen-head">
-            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
+            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
             <button className="close-button title-close-button" onClick={() => setStatsViewOpen(false)} type="button">x</button>
           </header>
           <div className="stats-tab-body">
