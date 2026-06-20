@@ -1223,19 +1223,21 @@ export function App() {
     setRedoNumbers([]);
   }
 
+  const digitInputRef = useRef(digitInput);
+  digitInputRef.current = digitInput;
+
   function appendDigitInput(value: number) {
-    setDigitInput((current) => {
-      if (current.length >= 2) return current;
-      const next = `${current}${value}`;
-      const parsed = Number(next);
-      if ((next.length === 1 && (parsed === 0 || parsed >= 4)) || (next.length === 2 && isRouletteNumber(parsed))) {
-        window.setTimeout(() => {
-          addNumber(parsed);
-          setDigitInput("");
-        }, 100);
-      }
-      return next;
-    });
+    const current = digitInputRef.current;
+    if (current.length >= 2) return;
+    const next = `${current}${value}`;
+    const parsed = Number(next);
+    if ((next.length === 1 && (parsed === 0 || parsed >= 4)) || (next.length === 2 && isRouletteNumber(parsed))) {
+      window.setTimeout(() => {
+        addNumber(parsed);
+        setDigitInput("");
+      }, 100);
+    }
+    setDigitInput(next);
   }
 
   const digitInputInvalid = useMemo(() => {
@@ -3597,11 +3599,24 @@ export function App() {
           <div className="digit-entry-grid">
             <div className="digit-entry-main">
               <div className="digit-keypad">
-                {digitKeyboardKeys.map((value) => (
-                  <button className="control-button digit-key" key={value} onClick={() => appendDigitInput(value)} type="button">
-                    {value}
-                  </button>
-                ))}
+                <button className="control-button" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+                  <SkipBack size={16} />
+                </button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(7)} type="button">7</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(8)} type="button">8</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(9)} type="button">9</button>
+                <button className="control-button" onClick={undo} disabled={numbers.length === 0}>
+                  ←
+                </button>
+                <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+                  <SkipForward size={16} />
+                </button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(4)} type="button">4</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(5)} type="button">5</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(6)} type="button">6</button>
+                <button className="control-button" onClick={redo} disabled={redoNumbers.length === 0}>
+                  →
+                </button>
               </div>
               <div className="digit-submit-panel">
                 <input
@@ -3624,18 +3639,10 @@ export function App() {
             </div>
             <div className="digit-controls-bar">
               <div className="digit-controls-actions">
-                <button className="control-button" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
-                  <SkipBack size={16} />
-                </button>
-                <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
-                  <SkipForward size={16} />
-                </button>
-                <button className="control-button" onClick={undo} disabled={numbers.length === 0}>
-                  ←
-                </button>
-                <button className="control-button" onClick={redo} disabled={redoNumbers.length === 0}>
-                  →
-                </button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(0)} type="button">0</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(1)} type="button">1</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(2)} type="button">2</button>
+                <button className="control-button digit-key" onClick={() => appendDigitInput(3)} type="button">3</button>
               </div>
               <div className="digit-controls-side">
                 <button className="control-button digit-switch" onClick={switchKeyboardMode} type="button">
