@@ -3214,7 +3214,9 @@ export function App() {
               </span>
             </>
           ) : null}
-          <CircleUser className={`top-stats-user${sharedConnected ? " logged-in" : ""}`} size={16} />
+          <span className="top-stats-user-area" onClick={() => { if (sharedConnected) { setConfirmDialog({ title: "退出登录", message: "确定要退出登录吗？", confirmText: "退出", onConfirm: () => { setSharedConnected(false); setSharedUsername(""); setSharedPassword(""); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); } }); } else { setSharedLoginOpen(true); } }} role="button" tabIndex={0}>
+            <CircleUser className={`top-stats-user${sharedConnected ? " logged-in" : ""}`} size={16} />
+          </span>
         </span>
       </section>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => { const nv = !value; localStorage.setItem("londoner.separateColRows", nv ? "1" : "0"); return nv; })}>
@@ -5686,7 +5688,7 @@ export function App() {
 
       {sharedLoginOpen ? (
         <MessageDialog
-          title="共享数据登录"
+          title="登录"
           onClose={() => { setSharedLoginOpen(false); postLoginAction.current = null; }}
           actions={
             <>
@@ -5696,7 +5698,7 @@ export function App() {
                 onClick={() => void connectSharedData()}
                 type="button"
               >
-                {sharedLoading ? "连接中" : "连接"}
+                {sharedLoading ? "登录中" : "登录"}
               </button>
               <button onClick={() => { setSharedLoginOpen(false); postLoginAction.current = null; }} type="button">取消</button>
             </>

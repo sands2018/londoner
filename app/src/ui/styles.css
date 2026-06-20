@@ -220,10 +220,17 @@ button:disabled {
   font-weight: var(--weight-strong);
 }
 
+.top-stats-user-area {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  flex: 0 0 auto;
+  margin-left: 10px;
+}
+
 .top-stats-user {
   color: #9a9a8a;
   flex: 0 0 auto;
-  margin-left: 6px;
 }
 
 .top-stats-user.logged-in {
