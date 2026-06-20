@@ -3597,62 +3597,44 @@ export function App() {
           </div>
         ) : (
           <div className="digit-entry-grid">
-            <div className="digit-entry-main">
-              <div className="digit-keypad">
-                <button className="control-button" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
-                  <SkipBack size={16} />
-                </button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(7)} type="button">7</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(8)} type="button">8</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(9)} type="button">9</button>
-                <button className="control-button" onClick={undo} disabled={numbers.length === 0}>
-                  ←
-                </button>
-                <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
-                  <SkipForward size={16} />
-                </button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(4)} type="button">4</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(5)} type="button">5</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(6)} type="button">6</button>
-                <button className="control-button" onClick={redo} disabled={redoNumbers.length === 0}>
-                  →
-                </button>
-              </div>
-              <div className="digit-submit-panel">
-                <input
-                  aria-label="输入 0-36 号码"
-                  className={`digit-entry-input${digitInputInvalid ? " digit-input-error" : ""}`}
-                  inputMode="none"
-                  maxLength={2}
-                  readOnly
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") submitDigitInput();
-                  }}
-                  onFocus={(e) => { e.target.blur(); }}
-                  placeholder=""
-                  tabIndex={-1}
-                  value={digitInput}
-                />
-                <button className="control-button digit-clear" onClick={() => setDigitInput("")} type="button">×</button>
-                <button className="control-button digit-send" onClick={submitDigitInput} type="button">Enter</button>
-              </div>
-            </div>
-            <div className="digit-controls-bar">
-              <div className="digit-controls-actions">
-                <button className="control-button digit-key" onClick={() => appendDigitInput(0)} type="button">0</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(1)} type="button">1</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(2)} type="button">2</button>
-                <button className="control-button digit-key" onClick={() => appendDigitInput(3)} type="button">3</button>
-              </div>
-              <div className="digit-controls-side">
-                <button className="control-button digit-switch" onClick={switchKeyboardMode} type="button">
-                  切换键盘
-                </button>
-                <button className="control-button digit-close" onClick={() => setKeyboardVisible(false)} type="button">
-                  ×
-                </button>
-              </div>
-            </div>
+            <button className="control-button" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+              <SkipBack size={16} />
+            </button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(7)} type="button">7</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(8)} type="button">8</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(9)} type="button">9</button>
+            <input
+              aria-label="输入 0-36 号码"
+              className={`digit-entry-input${digitInputInvalid ? " digit-input-error" : ""}`}
+              inputMode="none"
+              maxLength={2}
+              readOnly
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submitDigitInput();
+              }}
+              onFocus={(e) => { e.target.blur(); }}
+              placeholder=""
+              tabIndex={-1}
+              value={digitInput}
+            />
+            <button className="control-button digit-clear" onClick={() => setDigitInput("")} type="button">AC</button>
+            <button className="control-button" onClick={undo} disabled={numbers.length === 0}>
+              ←
+            </button>
+            <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+              <SkipForward size={16} />
+            </button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(4)} type="button">4</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(5)} type="button">5</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(6)} type="button">6</button>
+            <button className="control-button digit-send" onClick={submitDigitInput} type="button">Enter</button>
+            <button className="control-button" onClick={redo} disabled={redoNumbers.length === 0}>
+              →
+            </button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(0)} type="button">0</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(1)} type="button">1</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(2)} type="button">2</button>
+            <button className="control-button digit-key" onClick={() => appendDigitInput(3)} type="button">3</button>
           </div>
         )}
         <div className="dock-actions">

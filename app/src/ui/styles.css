@@ -2217,7 +2217,7 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid {
   display: grid;
   gap: var(--key-gap);
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
 .digit-entry-main {
@@ -2243,13 +2243,14 @@ body:has(.app-shell.theme-dark) {
   grid-column: 1 / -1;
 }
 
-.digit-submit-panel .digit-clear {
-  border-radius: 50%;
-  justify-self: end;
-  width: var(--key-height);
-  min-width: unset;
+.digit-entry-grid .digit-clear {
+  border-radius: 999px;
+  font-weight: 500;
+  justify-self: stretch;
+  width: auto;
+  min-width: 0;
   padding: 0;
-  font-size: 20px;
+  font-size: var(--control-font-size);
 }
 
 .digit-entry-grid .digit-key,
@@ -2311,7 +2312,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .digit-entry-grid .digit-switch {
-  grid-column: auto;
+  grid-column: span 2;
 }
 
 .digit-entry-grid .digit-close {
@@ -2321,6 +2322,10 @@ body:has(.app-shell.theme-dark) {
   min-width: unset;
   padding: 0;
   width: var(--key-height);
+}
+
+.digit-entry-grid .digit-send {
+  grid-column: span 2;
 }
 
 /* Dark */
@@ -2344,12 +2349,6 @@ body:has(.app-shell.theme-dark) {
   background: #2b5f8f;
   border-color: #3a78ad;
   color: #ffffff;
-}
-
-.app-shell.theme-dark .digit-entry-grid .digit-clear {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  color: #a0a0a0;
 }
 
 .app-shell.theme-dark .digit-input-error {
