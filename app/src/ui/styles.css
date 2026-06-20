@@ -205,7 +205,7 @@ button:disabled {
   justify-content: space-between;
   line-height: 1;
   overflow: hidden;
-  padding: 4px 8px;
+  padding: 8px 8px;
   white-space: nowrap;
 }
 
@@ -218,6 +218,16 @@ button:disabled {
   color: #4a3a12;
   font-size: 1.15em;
   font-weight: var(--weight-strong);
+}
+
+.top-stats-user {
+  color: #9a9a8a;
+  flex: 0 0 auto;
+  margin-left: 6px;
+}
+
+.top-stats-user.logged-in {
+  color: #8a6a20;
 }
 
 .top-stats-roi {
@@ -1078,12 +1088,14 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .top-stats-sep { color: #818181; }
 .app-shell.theme-dark .top-stats-net.net-positive strong { color: #f2a84a; }
 .app-shell.theme-dark .top-stats-net.net-negative strong { color: #d99a66; }
+.app-shell.theme-dark .top-stats-user { color: #555555; }
+.app-shell.theme-dark .top-stats-user.logged-in { color: #b88838; }
 
 /* --- Signal cells --- */
-.app-shell.theme-dark .signal-watch { background: #22201d; border-color: #725c3f; }
-.app-shell.theme-dark .signal-strong { background: #24201e; border-color: #5a4030; }
+.app-shell.theme-dark .signal-watch { background: #222222; border-color: transparent; }
+.app-shell.theme-dark .signal-strong { background: #222222; border-color: transparent; }
 .app-shell.theme-dark .signal-label span { color: #b3b3b3; }
-.app-shell.theme-dark .signal-label strong { color: #f2a84a; }
+.app-shell.theme-dark .signal-label strong { color: #c8a958; }
 
 /* --- Hot status panel --- */
 .app-shell.theme-dark .hot-status-panel {

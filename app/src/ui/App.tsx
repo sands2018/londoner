@@ -8,7 +8,7 @@ import {
   type ColRowIndex,
   type RouletteNumber,
 } from "../core/roulette";
-import { Keyboard, SkipBack, SkipForward } from "lucide-react";
+import { CircleUser, Keyboard, SkipBack, SkipForward } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -3214,6 +3214,7 @@ export function App() {
               </span>
             </>
           ) : null}
+          <CircleUser className={`top-stats-user${sharedConnected ? " logged-in" : ""}`} size={16} />
         </span>
       </section>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => { const nv = !value; localStorage.setItem("londoner.separateColRows", nv ? "1" : "0"); return nv; })}>
@@ -3445,13 +3446,6 @@ export function App() {
           >
             <span>热门</span>
             <i className="hot-status-dot" aria-label={!showHotNumber ? "手工关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
-            <em>
-              {!showHotNumber
-                ? ""
-                : hotNumberSignal
-                  ? `当前 ${hotNumberSignal.number}`
-                  : hotNumber.environmentOpen ? "暂无号码" : ""}
-            </em>
           </div>
           {showHotNumber ? (
             <div
