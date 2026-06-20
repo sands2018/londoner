@@ -1140,6 +1140,10 @@ export function App() {
   }, [keyboardMode]);
 
   useEffect(() => {
+    void tryAutoLogin().then((creds) => { if (creds) setSharedConnected(true); });
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(windowModeKey, windowMode);
     setStatsScope((current) => (statScopes.includes(current) ? current : statScopes[0]));
     setColRowScope((current) => (colRowScopes.includes(current) ? current : colRowScopes[0]));
