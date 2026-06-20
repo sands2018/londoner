@@ -1786,7 +1786,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .config-actions {
-  background: #151515;
+  background: transparent;
   border-top: 0;
 }
 
@@ -4024,6 +4024,10 @@ body:has(.app-shell.theme-dark) {
   overflow: hidden;
 }
 
+.config-screen-main-actions {
+  padding-bottom: 12px;
+}
+
 .config-screen .tabs-top {
   flex: 0 0 auto;
   margin-top: 8px;
@@ -4365,7 +4369,8 @@ body:has(.app-shell.theme-dark) {
   display: flex;
   gap: 5px;
   justify-content: center;
-  padding: 5px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  margin-bottom: 24px;
+  padding: 0 max(7px, env(safe-area-inset-right)) max(0, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
 }
 
 .config-actions button {
@@ -4902,7 +4907,8 @@ body:has(.app-shell.theme-dark) {
 
   .config-actions {
     gap: 5px;
-    padding: 5px max(7px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+    margin-bottom: 24px;
+    padding: 0 max(7px, env(safe-area-inset-right)) max(0, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
   }
 
   .config-actions button {

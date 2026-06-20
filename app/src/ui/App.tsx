@@ -279,10 +279,7 @@ export function App() {
     return stored === "keypad" || stored === "digits" ? stored : "board";
   });
   const [digitInput, setDigitInput] = useState("");
-  const [themeMode, setThemeMode] = useState<"soft" | "color" | "dark">(() => {
-    const stored = localStorage.getItem("londoner.themeMode");
-    return stored === "soft" || stored === "color" ? stored : "dark";
-  });
+  const [themeMode, setThemeMode] = useState<"soft" | "color" | "dark">("dark");
   const [keyboardVisible, setKeyboardVisible] = useState(true);
   const [separateColRows, setSeparateColRows] = useState(() => localStorage.getItem("londoner.separateColRows") !== "0");
   const [queueExpanded, setQueueExpanded] = useState(false);
@@ -3198,7 +3195,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell theme-${themeMode} ${keyboardVisible ? "" : "keyboard-hidden"}`}>
+    <main className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"}`}>
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
@@ -5043,7 +5040,7 @@ export function App() {
               <strong>配置</strong>
               <button className="close-button" onClick={() => setConfigViewOpen(false)} type="button">x</button>
             </header>
-            <div className="config-screen-main">
+            <div className={`config-screen-main ${configTab !== "table" ? "config-screen-main-actions" : ""}`}>
               <div className="tabs tabs-top">
                 <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
                 <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">赌桌</button>
@@ -5069,29 +5066,6 @@ export function App() {
                         onChange={() => setDraftWindowMode("fibonacci")}
                       />
                       <span>斐波那契数字序列</span>
-                    </label>
-                  </div>
-                </section>
-                <section className="config-card config-bets">
-                  <h2><span>外观</span></h2>
-                  <div className="config-option-list">
-                    <label className="config-option-row">
-                      <input
-                        type="radio"
-                        name="themeMode"
-                        checked={themeMode === "dark"}
-                        onChange={() => { setThemeMode("dark"); localStorage.setItem("londoner.themeMode", "dark"); }}
-                      />
-                      <span>深色</span>
-                    </label>
-                    <label className="config-option-row">
-                      <input
-                        type="radio"
-                        name="themeMode"
-                        checked={themeMode === "soft"}
-                        onChange={() => { setThemeMode("soft"); localStorage.setItem("londoner.themeMode", "soft"); }}
-                      />
-                      <span>浅色</span>
                     </label>
                   </div>
                 </section>
