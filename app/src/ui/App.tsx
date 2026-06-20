@@ -389,8 +389,10 @@ export function App() {
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
   // 优选号算法逻辑保留用于研究/回测，但当前 UI 暂时隐藏，不对任何用户开放。
   const canUsePreferredNumber = false;
-  const canUseQuality124 = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
-  const canViewSixStatsPanel = sharedConnected && ["ww", "wzs"].includes(sharedUsername.trim().toLowerCase());
+  const sharedUsernameNormalized = sharedUsername.trim().toLowerCase();
+  const canUseSmartSignals = sharedConnected;
+  const canUseQuality124 = canUseSmartSignals && ["ww", "wzs"].includes(sharedUsernameNormalized);
+  const canViewSixStatsPanel = sharedConnected;
   const tableSelectOptions = useMemo(() => {
     const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
     return casinoTables
@@ -753,6 +755,9 @@ export function App() {
 
   // 综合ROI: 按总览配置汇总所有已启用策略
   const combinedRoi = useMemo(() => {
+    if (!canUseSmartSignals) {
+      return { bet: 0, win: 0, net: 0 };
+    }
     let bet = 0, win = 0;
     // [PERF] show124 disabled — see AGENTS.md
     // if (show124) { const r = ...; bet += r.bet; win += r.win; }
@@ -781,10 +786,11 @@ export function App() {
       bet += hotNumberRoi.bet; win += hotNumberRoi.win;
     }
     return { bet, win, net: win - bet };
-  }, [canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
+  }, [canUseSmartSignals, canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
 
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
+    if (!canUseSmartSignals) return null;
     if (numbers.length <= 200) return null;
     // [PERF] const rhs = ... computeRhythmRoi ... — see AGENTS.md
     const cold = computeRoi(numbers, coldAdaptiveCis, 200);
@@ -804,7 +810,7 @@ export function App() {
     if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
     if (showHotNumber) { bet += hotNumberRoiFrom201.bet; win += hotNumberRoiFrom201.win; }
     return { bet, win, net: win - bet };
-  }, [numbers, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
+  }, [numbers, canUseSmartSignals, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -1185,6 +1191,17 @@ export function App() {
       localStorage.setItem("londoner.predictionTab", "overview");
     }
   }, [canUseQuality124, predictionTab]);
+
+  useEffect(() => {
+    if (!canUseSmartSignals && predictionWindowOpen) {
+      setPredictionWindowOpen(false);
+    }
+  }, [canUseSmartSignals, predictionWindowOpen]);
+
+  function openPredictionWindow() {
+    if (!canUseSmartSignals) return;
+    setPredictionWindowOpen(true);
+  }
 
   function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
     const sorted = [...predictions].sort((a, b) => b.excess - a.excess);
@@ -3204,7 +3221,9 @@ export function App() {
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
-          <i className={`top-stats-hot-dot ${!showHotNumber ? "off" : hotNumber.environmentOpen ? "open" : "closed"}`} aria-label={!showHotNumber ? "热门关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
+          {canUseSmartSignals ? (
+            <i className={`top-stats-hot-dot ${!showHotNumber ? "off" : hotNumber.environmentOpen ? "open" : "closed"}`} aria-label={!showHotNumber ? "热门关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
+          ) : null}
           <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
           <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
             净<strong>{combinedRoi.net >= 0 ? "+" : ""}{combinedRoi.net}</strong>
@@ -3240,7 +3259,7 @@ export function App() {
       </section>
 
       <div className="home-panels">
-      {(canViewSixStatsPanel && sixStatsPanelCollapsed) || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || hotStatusCollapsed ? (
+      {(canViewSixStatsPanel && sixStatsPanelCollapsed) || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || (canUseSmartSignals && hotStatusCollapsed) ? (
         <section className="collapsed-combo-bar">
           {canViewSixStatsPanel && sixStatsPanelCollapsed ? (
             <div
@@ -3275,7 +3294,7 @@ export function App() {
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
-          {hotStatusCollapsed ? (
+          {canUseSmartSignals && hotStatusCollapsed ? (
             <div
               className="section-toggle"
               onClick={() => { setHotStatusCollapsed(false); localStorage.setItem("londoner.hotStatusCollapsed", "0"); }}
@@ -3438,14 +3457,14 @@ export function App() {
 
       </div>
 
-      {!hotStatusCollapsed ? (
+      {canUseSmartSignals && !hotStatusCollapsed ? (
         <section className={`hot-status-panel ${!showHotNumber ? "manual-off" : hotNumber.environmentOpen ? "open" : "closed"}`}>
           <div
             className="hot-status-main"
             onClick={() => {
               if (showHotNumber) { setPredictionTab("hotNumber"); }
               else { setPredictionTab("overview"); }
-              setPredictionWindowOpen(true);
+              openPredictionWindow();
             }}
             role="button"
             tabIndex={0}
@@ -3511,12 +3530,12 @@ export function App() {
       </section>
 
       {canUseQuality124 && showQuality124 && quality124Signals.length > 0 ? (
-        <section className="quality124-signal-area" aria-label="124Ext信号">
+        <section className="quality124-signal-area" aria-label="124EXT信号">
           {quality124Signals.map((item) => (
             <div
               className={`quality124-signal-item quality124-tier-${item.tier}`}
               key={`quality124-${item.kind}-${item.ci}-${item.entryAfter}-${item.tier}`}
-              onClick={() => { setPredictionTab("quality124"); setPredictionWindowOpen(true); }}
+              onClick={() => { setPredictionTab("quality124"); openPredictionWindow(); }}
               role="button"
               tabIndex={0}
             >
@@ -3535,13 +3554,13 @@ export function App() {
         </section>
       ) : null}
 
-      {(() => { const filtered = signalDisplay.filter(item => item.kind === "cold" && showCold); return filtered.length > 0 ? (
+      {(() => { if (!canUseSmartSignals) return null; const filtered = signalDisplay.filter(item => item.kind === "cold" && showCold); return filtered.length > 0 ? (
         <section className="prediction-signal-area" aria-label="预测信号">
           {filtered.map((item) => (
             <div
               className={`prediction-signal-item ${item.isNew ? "" : "chase-active"}`}
               key={`${item.kind}-${item.ci}`}
-              onClick={() => { setPredictionTab("cold"); setPredictionWindowOpen(true); }}
+              onClick={() => { setPredictionTab("cold"); openPredictionWindow(); }}
               role="button"
               tabIndex={0}
             >
@@ -3559,13 +3578,13 @@ export function App() {
         </section>
       ) : null; })()}
 
-      {(() => { const c6f = chase6Filter; const filtered6 = c6f === "全关" ? [] : c6f === "TOP2" ? chaseSixSignals.filter(item => item.isStrong || item.isWaveStrong) : c6f === "TOP1" ? chaseSixSignals.filter(item => item.isWaveStrong) : chaseSixSignals; return filtered6.length > 0 ? (
+      {(() => { if (!canUseSmartSignals) return null; const c6f = chase6Filter; const filtered6 = c6f === "全关" ? [] : c6f === "TOP2" ? chaseSixSignals.filter(item => item.isStrong || item.isWaveStrong) : c6f === "TOP1" ? chaseSixSignals.filter(item => item.isWaveStrong) : chaseSixSignals; return filtered6.length > 0 ? (
         <section className="chase6-signal-area" aria-label="追6信号">
           {filtered6.map((item) => (
             <div
               className={`chase6-signal-item ${item.isStrong ? "chase6-hq" : ""} ${item.isWaveStrong ? "chase6-wave" : ""} ${item.isNew ? "" : "chase6-active"}`}
               key={`chase6-${item.wi}`}
-              onClick={() => { setPredictionTab("chase6"); setPredictionWindowOpen(true); }}
+              onClick={() => { setPredictionTab("chase6"); openPredictionWindow(); }}
               role="button"
               tabIndex={0}
             >
@@ -3584,13 +3603,13 @@ export function App() {
         </section>
       ) : null; })()}
 
-      {(() => { const c3f = chase3Filter; const filtered3 = c3f === "全关" ? [] : c3f === "TOP2" ? chaseThreeSignals.filter(item => item.isStar1 || item.isStar2) : c3f === "TOP1" ? chaseThreeSignals.filter(item => item.isStar2) : chaseThreeSignals; return filtered3.length > 0 ? (
+      {(() => { if (!canUseSmartSignals) return null; const c3f = chase3Filter; const filtered3 = c3f === "全关" ? [] : c3f === "TOP2" ? chaseThreeSignals.filter(item => item.isStar1 || item.isStar2) : c3f === "TOP1" ? chaseThreeSignals.filter(item => item.isStar2) : chaseThreeSignals; return filtered3.length > 0 ? (
         <section className="chase3-signal-area" aria-label="追3信号">
           {filtered3.map((item) => (
             <div
               className={`chase3-signal-item ${item.isStar1 ? "chase3-star1" : ""} ${item.isStar2 ? "chase3-star2" : ""} ${item.isNew ? "" : "chase3-active"}`}
               key={`chase3-${item.wi}`}
-              onClick={() => { setPredictionTab("chase3"); setPredictionWindowOpen(true); }}
+              onClick={() => { setPredictionTab("chase3"); openPredictionWindow(); }}
               role="button"
               tabIndex={0}
             >
@@ -3606,15 +3625,15 @@ export function App() {
       ) : null; })()}
 
       {(() => {
-        const filteredPreferredNumber = canUsePreferredNumber && showPreferredNumber ? preferredNumberSignals : [];
-        const filteredHotNumber = showHotNumber && hotNumberSignal && hotNumberSignalVisible ? [hotNumberSignal] : [];
+        const filteredPreferredNumber = canUseSmartSignals && canUsePreferredNumber && showPreferredNumber ? preferredNumberSignals : [];
+        const filteredHotNumber = canUseSmartSignals && showHotNumber && hotNumberSignal && hotNumberSignalVisible ? [hotNumberSignal] : [];
         return filteredPreferredNumber.length > 0 || filteredHotNumber.length > 0 ? (
           <section className="repeat-signal-area" aria-label="单号信号">
             {filteredHotNumber.map((item) => (
               <div
                 className={`repeat-signal-item repeat-hot ${hotTableSignalClass(hotTableSupport)}`}
                 key={`hot-${item.number}`}
-                onClick={() => { setPredictionTab("hotNumber"); setPredictionWindowOpen(true); }}
+                onClick={() => { setPredictionTab("hotNumber"); openPredictionWindow(); }}
                 role="button"
                 tabIndex={0}
               >
@@ -3629,7 +3648,7 @@ export function App() {
               <div
                 className="repeat-signal-item repeat-preferred"
                 key={`preferred-${index}-${item.numbers.join("-")}`}
-                onClick={() => { setPredictionTab("preferredNumber"); setPredictionWindowOpen(true); }}
+                onClick={() => { setPredictionTab("preferredNumber"); openPredictionWindow(); }}
                 role="button"
                 tabIndex={0}
               >
@@ -3747,7 +3766,7 @@ export function App() {
             <button className="control-button digit-key" onClick={() => appendDigitInput(1)} type="button">1</button>
             <button className="control-button digit-key" onClick={() => appendDigitInput(2)} type="button">2</button>
             <button className="control-button digit-key" onClick={() => appendDigitInput(3)} type="button">3</button>
-            <button className="control-button" onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
+            <button className="control-button" onClick={openPredictionWindow} type="button">智能</button>
             <button className="control-button" onClick={openDataDialog} type="button">数据</button>
             <button className="control-button" onClick={openConfigView} type="button">配置</button>
           </div>
@@ -4192,7 +4211,7 @@ export function App() {
               </button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
-              <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
+              <button onClick={openPredictionWindow} type="button">智能</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -4266,7 +4285,7 @@ export function App() {
               <button className="selected" type="button">频率</button>
               <button onClick={openDistanceView} type="button">距离</button>
               <button onClick={openRefineView} type="button">细化</button>
-              <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
+              <button onClick={openPredictionWindow} type="button">智能</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
           </footer>
@@ -4651,7 +4670,7 @@ export function App() {
         </section>
       ) : null}
 
-      {predictionWindowOpen ? (
+      {canUseSmartSignals && predictionWindowOpen ? (
           <section className="prediction-screen" aria-label="智能明细">
             <div className="modal-head">
               <strong>智能明细</strong>
@@ -4661,7 +4680,7 @@ export function App() {
               <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
               <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUseQuality124 ? (
-                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">124Ext</button>
+                <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">124EXT</button>
               ) : null}
               <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
@@ -4697,7 +4716,7 @@ export function App() {
                   {canUseQuality124 ? (
                   <div className="overview-card overview-quality124 overview-other-card" onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
-                      <span>124Ext</span>
+                      <span>124EXT</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
                       </span>
@@ -4830,7 +4849,7 @@ export function App() {
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
-                  <p className="prediction-desc">124Ext：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
+                  <p className="prediction-desc">124EXT：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
