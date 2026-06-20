@@ -3533,25 +3533,6 @@ export function App() {
 
       {keyboardVisible ? (
       <section className="input-dock" aria-label="号码输入">
-        <div className="dock-actions">
-          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
-          <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
-          <button onClick={openImportDialog} type="button">导入</button>
-          <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
-          <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
-          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
-          <button onClick={openDataDialog} type="button">数据</button>
-        </div>
-        <div className="dock-actions dock-actions-primary">
-          <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
-          <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
-          <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
-          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
-          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
-          <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
-          <button onClick={openConfigView} type="button">配置</button>
-        </div>
-
         {keyboardMode === "keypad" ? (
           <div className="keypad-grid portrait-keypad">
             {keypadRows.flat().map((value) => (
@@ -3667,6 +3648,24 @@ export function App() {
             </div>
           </div>
         )}
+        <div className="dock-actions">
+          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
+          <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
+          <button onClick={openImportDialog} type="button">导入</button>
+          <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
+          <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
+          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
+          <button onClick={openDataDialog} type="button">数据</button>
+        </div>
+        <div className="dock-actions dock-actions-primary">
+          <button onClick={() => setPredictionWindowOpen(true)} type="button">智能</button>
+          <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
+          <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
+          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
+          <button onClick={() => setSixNumberViewOpen(true)} type="button">快照</button>
+          <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
+          <button onClick={openConfigView} type="button">配置</button>
+        </div>
       </section>
       ) : (
         <button

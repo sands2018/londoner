@@ -2091,6 +2091,12 @@ body:has(.app-shell.theme-dark) {
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
+.keypad-grid + .dock-actions,
+.board-grid + .dock-actions,
+.digit-entry-grid + .dock-actions {
+  margin-top: 6px;
+}
+
 .dock-actions button,
 .control-button {
   align-items: center;
