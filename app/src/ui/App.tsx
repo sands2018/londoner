@@ -3122,14 +3122,15 @@ export function App() {
                 <div className="number-zone-row" key={wi}>
                   {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
                     const nd = numberZoneData[value];
-                    const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
                     const showHotCold = numberZoneMode !== "distance";
+                    const isLatest = nd?.isLatest;
                     const isHot = showHotCold && numberZoneHotCold.hot.has(value);
                     const isCold = showHotCold && numberZoneHotCold.cold.has(value);
+                    const showPrev = numberZoneMode === "distance" && isLatest && nd?.prevDistance !== null;
                     const trend = isHot ? numberZoneTrends[value] : null;
                     const cls = [
                       "number-zone-cell",
-                      nd?.isLatest ? "current" : "",
+                      isLatest ? "current" : "",
                       isHot ? "hot" : "",
                       isCold ? "cold" : "",
                       trend === "up" ? "trend-up" : "",

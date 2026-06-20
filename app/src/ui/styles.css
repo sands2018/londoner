@@ -1507,20 +1507,20 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .number-zone-cell .number-zone-value { color: #d0d0d0; }
 .app-shell.theme-dark .number-zone-cell .number-zone-distance { color: #8a8a8a; }
 
-.app-shell.theme-dark .number-zone-cell.current { background: #332d19; border-color: #665735; }
+.app-shell.theme-dark .number-zone-cell.current { background: #38301a; border-color: #5a4c2e; }
 .app-shell.theme-dark .number-zone-cell.current .number-zone-value,
 .app-shell.theme-dark .number-zone-cell.current .number-zone-distance { color: #e0b870; }
 
-.app-shell.theme-dark .number-zone-cell.hot { background: #352220; border-color: #4a3432; }
-.app-shell.theme-dark .number-zone-cell.hot .number-zone-value { color: #c08084; }
-.app-shell.theme-dark .number-zone-cell.hot .number-zone-distance { color: #a07478; }
+.app-shell.theme-dark .number-zone-cell.hot { background: #3b1917; border-color: #422220; }
+.app-shell.theme-dark .number-zone-cell.hot .number-zone-value { color: #e8c8c4; }
+.app-shell.theme-dark .number-zone-cell.hot .number-zone-distance { color: #dcb8b4; }
 
-.app-shell.theme-dark .number-zone-cell.cold { background: #1a2e38; border-color: #243e4c; color: #b0ccd8; }
+.app-shell.theme-dark .number-zone-cell.cold { background: #1a2e34; border-color: #243e44; color: #b0ccd8; }
 .app-shell.theme-dark .number-zone-cell.cold .number-zone-value { color: inherit; }
 .app-shell.theme-dark .number-zone-cell.cold .number-zone-distance { color: #84a4b0; }
 
-.app-shell.theme-dark .number-zone-cell.hot.current { background: #34241e; border-color: #6a4434; }
-.app-shell.theme-dark .number-zone-cell.cold.current { background: #203440; border-color: #2e4a5a; }
+.app-shell.theme-dark .number-zone-cell.hot.current { background: #3b2c16; border-color: #4a3822; }
+.app-shell.theme-dark .number-zone-cell.cold.current { background: #244230; border-color: #30503c; }
 
 .app-shell.theme-dark .number-zone-trend.up { color: #bc8080; }
 .app-shell.theme-dark .number-zone-trend.down { color: #6098b8; }
