@@ -921,7 +921,7 @@ export function App() {
     });
   }, [latestNumber, numbers]);
   const numberZoneData = useMemo(() => {
-    if (!numberZoneOpen) return emptyNumberZoneData;
+    if (!numberZoneOpen && !(statsViewOpen && statsTab === "numberZone")) return emptyNumberZoneData;
     const ONE_CIRCLE = 37;
     const circles: Record<string, number> = {
       "1": ONE_CIRCLE,
@@ -969,11 +969,11 @@ export function App() {
       data[n] = { value, isLatest: latestNumber === n, prevDistance };
     }
     return data;
-  }, [numbers, latestNumber, numberZoneMode, numberZoneOpen]);
+  }, [numbers, latestNumber, numberZoneMode, numberZoneOpen, statsViewOpen, statsTab]);
 
   // Compute trends FIRST (before hot/cold, used for tie-breaking)
   const numberZoneTrends = useMemo(() => {
-    if (!numberZoneOpen) return emptyNumberZoneTrends;
+    if (!numberZoneOpen && !(statsViewOpen && statsTab === "numberZone")) return emptyNumberZoneTrends;
     const ONE_CIRCLE = 37;
     const trends: Record<number, "up" | "down" | null> = {};
 
@@ -1036,10 +1036,10 @@ export function App() {
       }
     }
     return trends;
-  }, [numbers, numberZoneMode, numberZoneOpen]);
+  }, [numbers, numberZoneMode, numberZoneOpen, statsViewOpen, statsTab]);
 
   const numberZoneHotCold = useMemo(() => {
-    if (!numberZoneOpen) return emptyNumberZoneHotCold;
+    if (!numberZoneOpen && !(statsViewOpen && statsTab === "numberZone")) return emptyNumberZoneHotCold;
     const entries = Object.entries(numberZoneData)
       .map(([num, d]) => ({ num: Number(num), value: d.value }))
       .filter((e) => e.num !== 0);
@@ -1098,7 +1098,7 @@ export function App() {
     for (const p of coldPicked) coldNums.add(p.num);
 
     return { hot: hotNums, cold: coldNums };
-  }, [numberZoneData, numberZoneMode, numberZoneOpen, numberZoneTrends]);
+  }, [numberZoneData, numberZoneMode, numberZoneOpen, numberZoneTrends, statsViewOpen, statsTab]);
 
   const renderGroupBlockDistance = (item: { distance: number; highlighted: boolean; previousDistance: number | null }) =>
     item.highlighted && item.previousDistance !== null ? (
@@ -3058,6 +3058,69 @@ export function App() {
     );
   }
 
+  function StatsNumberZoneTab() {
+    return (
+      <div className="number-zone-body">
+        <div className="number-zone-grid">
+          <div className="number-zone-zero-row">
+            <div className={`number-zone-cell zero-cell${latestNumber === 0 ? " current" : ""}`} onClick={() => { setStatsViewOpen(false); setSixNumberViewOpen(true); }}>
+              <span className="number-zone-value">0</span>
+              <span className="number-zone-distance">
+                {numberZoneMode === "distance" && latestNumber === 0 && numberZoneData[0]?.prevDistance !== null
+                  ? `(${numberZoneData[0].prevDistance})`
+                  : numberZoneData[0]?.value ?? "-"}
+              </span>
+            </div>
+          </div>
+          {Array.from({ length: 12 }, (_, wi) => (
+            <div className="number-zone-row" key={wi}>
+              {[chaseThreeStreetStart(wi), chaseThreeStreetStart(wi) + 1, chaseThreeStreetEnd(wi)].map((value) => {
+                const nd = numberZoneData[value];
+                const showPrev = numberZoneMode === "distance" && nd?.isLatest && nd?.prevDistance !== null;
+                const showHotCold = numberZoneMode !== "distance";
+                const isHot = showHotCold && numberZoneHotCold.hot.has(value);
+                const isCold = showHotCold && numberZoneHotCold.cold.has(value);
+                const trend = isHot ? numberZoneTrends[value] : null;
+                const cls = [
+                  "number-zone-cell",
+                  nd?.isLatest ? "current" : "",
+                  isHot ? "hot" : "",
+                  isCold ? "cold" : "",
+                  trend === "up" ? "trend-up" : "",
+                  trend === "down" ? "trend-down" : "",
+                ].filter(Boolean).join(" ");
+                return (
+                  <div className={cls} key={value} onClick={() => { setStatsViewOpen(false); setSixNumberViewOpen(true); }}>
+                    <span className="number-zone-value">{value}</span>
+                    <span className="number-zone-distance">
+                      {showPrev ? `(${nd!.prevDistance})` : nd?.value ?? "-"}
+                      {trend && <span className={`number-zone-trend ${trend}`}> {trend === "up" ? "▲" : "▼"}</span>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="tabs tabs-grid tabs-grid-6" style={{flexShrink:0, padding:"8px 10px 20px"}}>
+          {["distance", "1", "2", "3", "5", "all"].map((mode) => (
+            <button
+              className={numberZoneMode === mode ? "selected" : ""}
+              key={mode}
+              onClick={() => {
+                setNumberZoneMode(mode);
+                localStorage.setItem("londoner.numberZoneMode", mode);
+              }}
+              type="button"
+            >
+              {mode === "distance" ? "距离" : mode === "all" ? "全部" : `${mode}圈`}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   function StatsOtherTab() {
     return (
       <div className="other-body">
@@ -3647,7 +3710,7 @@ export function App() {
           <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
           <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
           <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
-          <button onClick={() => setNumberZoneOpen(true)} type="button">号码</button>
+          <button onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
         </div>
         <div className="dock-actions dock-actions-primary">
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
@@ -4996,7 +5059,7 @@ export function App() {
       {statsViewOpen ? (
         <section className="data-screen" aria-label="统计数据">
           <header className="data-screen-head">
-            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
+            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="numberZone"?"号码":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
             <button className="close-button title-close-button" onClick={() => setStatsViewOpen(false)} type="button">x</button>
           </header>
           <div className="stats-tab-body">
@@ -5021,6 +5084,7 @@ export function App() {
             {statsTab === "freq" && <StatsFrequencyTab />}
             {statsTab === "dist" && <StatsDistanceTab />}
             {statsTab === "wave" && <StatsWaveTab />}
+            {statsTab === "numberZone" && <StatsNumberZoneTab />}
             {statsTab === "other" && <StatsOtherTab />}
           </div>
           {statsTab === "colrow" && colRowTab !== "detail" ? (
@@ -5044,6 +5108,7 @@ export function App() {
             <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
             <button className={statsTab==="dist"?"selected":""} onClick={()=>{ setStatsTab("dist"); setStatsGroupTab("dist"); localStorage.setItem("londoner.statsGroupTab","dist"); }} type="button">距离</button>
             <button className={statsTab==="wave"?"selected":""} onClick={()=>{ setStatsTab("wave"); setStatsGroupTab("wave"); localStorage.setItem("londoner.statsGroupTab","wave"); }} type="button">波浪</button>
+            <button className={statsTab==="numberZone"?"selected":""} onClick={()=>setStatsTab("numberZone")} type="button">号码</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
           </footer>
         </section>
