@@ -216,7 +216,7 @@ button:disabled {
 
 .top-stats-count {
   color: #4a3a12;
-  font-size: 1.15em;
+  font-size: 1em;
   font-weight: var(--weight-strong);
 }
 
@@ -758,38 +758,23 @@ button:disabled {
 
 /* Combined collapsed bar — both sections collapsed, shown side by side */
 .collapsed-combo-bar {
-  background: #ffffff;
-  border: 1px solid transparent;
+  background: transparent;
+  border: 0;
   border-radius: 6px;
   display: flex;
+  gap: 3px;
   margin-bottom: 3px;
-  overflow: hidden;
 }
 
 .collapsed-combo-bar .section-toggle {
-  border-radius: 0;
+  border-radius: 6px;
   flex: 1 1 0;
-}
-
-.collapsed-combo-bar .section-toggle:first-child {
-  border-radius: 6px 0 0 6px;
-}
-
-.collapsed-combo-bar .section-toggle:last-child {
-  border-radius: 0 6px 6px 0;
 }
 
 .collapsed-combo-bar .section-toggle:only-child {
   border-radius: 6px;
 }
 
-.collapsed-combo-bar .section-toggle + .section-toggle {
-  border-left: 1px solid #e2dbcf;
-}
-
-.app-shell.theme-dark .collapsed-combo-bar .section-toggle + .section-toggle {
-  border-left-color: #343434;
-}
 
 /* Hide individual collapsed sections when both are collapsed (combined bar replaces them) */
 .home-panels > .six-stats-panel.collapsed,
@@ -1045,9 +1030,8 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .collapsed-combo-bar {
-  background: #202020;
-  border: 1px solid #343434;
-  overflow: hidden;
+  background: transparent;
+  border: 0;
 }
 
 .app-shell.theme-dark .collapsed-combo-bar .section-toggle {
@@ -3268,7 +3252,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .data-screen-actions.frequency-scope-actions {
-  gap: 3px;
+  gap: 2px;
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
@@ -3956,7 +3940,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .colrow-scope-actions {
-  gap: 3px;
+  gap: 2px;
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
@@ -4533,7 +4517,7 @@ body:has(.app-shell.theme-dark) {
   color: #775949;
   display: grid;
   font-size: 12px;
-  gap: 3px;
+  gap: 2px;
   max-height: 120px;
   overflow: auto;
   padding: 7px 8px;
@@ -4956,7 +4940,7 @@ body:has(.app-shell.theme-dark) {
   :root {
     --app-direction: column;
     --app-display: flex;
-    --app-gap: 3px;
+    --app-gap: 2px;
     --app-min-height: 100dvh;
     --app-padding: clamp(8px, 2dvh, 12px) max(6px, env(safe-area-inset-right)) clamp(5px, 1.5dvh, 8px) max(6px, env(safe-area-inset-left));
     --control-font-size: 13px;
@@ -4986,7 +4970,7 @@ body:has(.app-shell.theme-dark) {
     --signal-gap: 4px;
     --signal-label-height: 23px;
     --signal-padding: 3px 7px;
-    --signal-stack-gap: 3px;
+    --signal-stack-gap: 2px;
   }
 
   .six-stats-panel,
@@ -5115,7 +5099,7 @@ body:has(.app-shell.theme-dark) {
   border-radius: 8px;
   cursor: pointer;
   display: grid;
-  gap: 3px;
+  gap: 2px;
   padding: 4px 10px 5px;
   touch-action: manipulation;
 }
@@ -5175,7 +5159,7 @@ body:has(.app-shell.theme-dark) {
 .hot-table-filter-toggles {
   align-items: center;
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 
 .hot-table-filter-toggles button {
@@ -5977,7 +5961,7 @@ body:has(.app-shell.theme-dark) {
 
 .prediction-dots {
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 
 .prediction-dot {
@@ -6141,7 +6125,7 @@ body:has(.app-shell.theme-dark) {
 /* 追6 dots */
 .chase6-dots {
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 
 .chase6-dot {
@@ -6441,7 +6425,7 @@ body:has(.app-shell.theme-dark) {
 .short-repeat-dots {
   align-items: center;
   display: flex;
-  gap: 3px;
+  gap: 2px;
 }
 
 .short-repeat-dot {
