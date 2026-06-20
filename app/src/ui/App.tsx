@@ -390,6 +390,7 @@ export function App() {
   // 优选号算法逻辑保留用于研究/回测，但当前 UI 暂时隐藏，不对任何用户开放。
   const canUsePreferredNumber = false;
   const canUseQuality124 = sharedConnected && sharedUsername.trim().toLowerCase() === "ww";
+  const canViewSixStatsPanel = sharedConnected && ["ww", "wzs"].includes(sharedUsername.trim().toLowerCase());
   const tableSelectOptions = useMemo(() => {
     const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
     return casinoTables
@@ -3232,9 +3233,9 @@ export function App() {
       </section>
 
       <div className="home-panels">
-      {sixStatsPanelCollapsed || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || hotStatusCollapsed ? (
+      {(canViewSixStatsPanel && sixStatsPanelCollapsed) || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || hotStatusCollapsed ? (
         <section className="collapsed-combo-bar">
-          {sixStatsPanelCollapsed ? (
+          {canViewSixStatsPanel && sixStatsPanelCollapsed ? (
             <div
               className="section-toggle"
               onClick={() => { setSixStatsPanelCollapsed(false); localStorage.setItem("londoner.sixStatsPanelCollapsed", "0"); }}
@@ -3281,6 +3282,7 @@ export function App() {
         </section>
       ) : null}
 
+      {canViewSixStatsPanel ? (
       <section className={`six-stats-panel${sixStatsPanelCollapsed ? " collapsed" : ""}`}>
         <div
           className="section-toggle"
@@ -3313,6 +3315,7 @@ export function App() {
           </div>
         </div>
       </section>
+      ) : null}
 
       {columnStats.length > 0 ? (
         <section className={`columns-panel${columnsPanelCollapsed ? " collapsed" : ""}`}>

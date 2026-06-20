@@ -1011,8 +1011,8 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .finished-line {
   background: #1b1b1b;
-  border-color: #423d32;
-  color: #d4d4d4;
+  border-color: transparent;
+  color: #c8c8c8;
 }
 
 .app-shell.theme-dark .summary-panel {
@@ -1156,8 +1156,8 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .panel-head span { color: #b3b3b3; }
 
 /* --- Finished line --- */
-.app-shell.theme-dark .finished-line { color: #b3b3b3; }
-.app-shell.theme-dark .finished-line strong { color: #f2a84a; }
+.app-shell.theme-dark .finished-line { color: #c8c8c8; }
+.app-shell.theme-dark .finished-line strong { color: #d4d4d4; }
 
 /* --- Section toggle labels --- */
 .app-shell.theme-dark .section-toggle-label { color: #b3b3b3; }
@@ -2346,8 +2346,8 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .digit-entry-grid .digit-send {
-  background: #2b5f8f;
-  border-color: #3a78ad;
+  background: #7b5310;
+  border-color: #8a6018;
   color: #ffffff;
 }
 
