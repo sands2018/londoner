@@ -5039,6 +5039,37 @@ body:has(.app-shell.theme-dark) {
   z-index: 12;
 }
 
+.sim-table-felt .sim-number:active:not(:disabled),
+.sim-table-felt .sim-zero:active:not(:disabled),
+.sim-table-felt .sim-zero-trios button:active:not(:disabled),
+.sim-table-felt .sim-zero-first-four-spot:active:not(:disabled),
+.sim-table-felt .sim-bet-band button:active:not(:disabled),
+.sim-table-felt .sim-row-bets button:active:not(:disabled) {
+  filter: brightness(0.98);
+  opacity: 1;
+  transform: none;
+}
+
+.sim-table-felt .sim-hotspot:active:not(:disabled) {
+  filter: brightness(0.98);
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.sim-table-felt .sim-street-spot:active:not(:disabled) {
+  transform: translate(-50%, -6%);
+}
+
+.sim-table-felt .sim-six-spot:active:not(:disabled) {
+  transform: translate(-50%, 56%);
+}
+
+.sim-table-felt .sim-zero-trio-spot:active:not(:disabled) {
+  filter: brightness(0.98);
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
 .sim-table-chip {
   align-items: center;
   background:
