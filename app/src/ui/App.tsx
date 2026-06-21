@@ -129,6 +129,9 @@ const keyboardModeKey = "londoner.keyboardMode";
 const currentRedoNumbersKey = "londoner.currentRedoNumbers";
 const simulatorStateKey = "londoner.simulatorState";
 const simulatorDesktopModeKey = "londoner.simulatorDesktopMode";
+const simulatorDesktopDesignWidth = 1920;
+const simulatorDesktopDesignHeight = 1080;
+const simulatorDesktopViewportPadding = 16;
 const currentSessionIdKey = "londoner.currentSessionId";
 const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
@@ -590,6 +593,7 @@ export function App() {
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [simulatorDesktopMode, setSimulatorDesktopMode] = useState(() => localStorage.getItem(simulatorDesktopModeKey) === "1");
   const [draftSimulatorDesktopMode, setDraftSimulatorDesktopMode] = useState(simulatorDesktopMode);
+  const [simulatorDesktopScale, setSimulatorDesktopScale] = useState(1);
   const initialSimulatorState = useMemo(loadSimulatorState, []);
   const [simulatorBalance, setSimulatorBalance] = useState(initialSimulatorState.balance);
   const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(initialSimulatorState.selectedChip);
@@ -1416,6 +1420,34 @@ export function App() {
   }, [loaded, simulatorBalance, simulatorBetPlacements, simulatorBets, simulatorLastBets, simulatorLog, simulatorSelectedChip]);
 
   useEffect(() => {
+    if (!simulatorOpen || !simulatorDesktopMode) {
+      setSimulatorDesktopScale(1);
+      return undefined;
+    }
+
+    const updateScale = () => {
+      const viewport = window.visualViewport;
+      const availableWidth = Math.max(320, (viewport?.width ?? window.innerWidth) - simulatorDesktopViewportPadding);
+      const availableHeight = Math.max(240, (viewport?.height ?? window.innerHeight) - simulatorDesktopViewportPadding);
+      const nextScale = Math.min(
+        availableWidth / simulatorDesktopDesignWidth,
+        availableHeight / simulatorDesktopDesignHeight,
+      );
+      setSimulatorDesktopScale(Number.isFinite(nextScale) && nextScale > 0 ? nextScale : 1);
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    window.addEventListener("orientationchange", updateScale);
+    window.visualViewport?.addEventListener("resize", updateScale);
+    return () => {
+      window.removeEventListener("resize", updateScale);
+      window.removeEventListener("orientationchange", updateScale);
+      window.visualViewport?.removeEventListener("resize", updateScale);
+    };
+  }, [simulatorDesktopMode, simulatorOpen]);
+
+  useEffect(() => {
     localStorage.setItem(keyboardModeKey, keyboardMode);
   }, [keyboardMode]);
 
@@ -1759,17 +1791,63 @@ export function App() {
       event.stopPropagation();
       return;
     }
+
     const directBetElement = targetElement?.closest<HTMLElement>("[data-sim-kind]");
     const directKind = directBetElement?.dataset.simKind as SimulatorBetKind | undefined;
-    if (directBetElement && (directKind === "dozen" || directKind === "outside" || directKind === "row")) {
-      const directRect = directBetElement.getBoundingClientRect();
-      const directY = y - directRect.top;
-      const dozenTopLineReserve = Math.min(30, Math.max(16, directRect.height * 0.24));
-      const isDozenTopLine = directKind === "dozen" && directY <= dozenTopLineReserve;
+    const directHotspot = targetElement?.closest<HTMLElement>(".sim-hotspot, .sim-zero-trio-spot, .sim-zero-first-four-spot");
+    if (directBetElement && directHotspot === directBetElement && (directKind === "street" || directKind === "six")) {
       const label = directBetElement.dataset.simLabel;
       const payout = Number.parseInt(directBetElement.dataset.simPayout ?? "", 10);
       const betNumbers = simulatorDecodeNumbers(directBetElement.dataset.simNumbers);
-      if (!isDozenTopLine && label && Number.isFinite(payout) && betNumbers.length > 0) {
+      if (label && Number.isFinite(payout) && betNumbers.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        placeSimulatorBet(directKind, label, betNumbers, payout);
+        return;
+      }
+    }
+
+    let allowDozenLineOnly = false;
+    const largeBetHit = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[data-sim-kind="dozen"], [data-sim-kind="outside"]')).find((element) => {
+      const rect = element.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    });
+    if (largeBetHit) {
+      const kind = largeBetHit.dataset.simKind as SimulatorBetKind | undefined;
+      const rect = largeBetHit.getBoundingClientRect();
+      const localX = (x - rect.left) / rect.width;
+      const localY = (y - rect.top) / rect.height;
+      const label = largeBetHit.dataset.simLabel;
+      const payout = Number.parseInt(largeBetHit.dataset.simPayout ?? "", 10);
+      const betNumbers = simulatorDecodeNumbers(largeBetHit.dataset.simNumbers);
+      const isDozen = kind === "dozen";
+      const inDozenLineReserve = isDozen && localY <= 0.4;
+      const inCenter =
+        localX >= 0.18 &&
+        localX <= 0.82 &&
+        (isDozen ? localY >= 0.42 && localY <= 0.82 : localY >= 0.22 && localY <= 0.78);
+
+      if (inCenter && kind && label && Number.isFinite(payout) && betNumbers.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        placeSimulatorBet(kind, label, betNumbers, payout);
+        return;
+      }
+
+      if (inDozenLineReserve) {
+        allowDozenLineOnly = true;
+      } else {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+    }
+
+    if (directBetElement && directKind === "row") {
+      const label = directBetElement.dataset.simLabel;
+      const payout = Number.parseInt(directBetElement.dataset.simPayout ?? "", 10);
+      const betNumbers = simulatorDecodeNumbers(directBetElement.dataset.simNumbers);
+      if (label && Number.isFinite(payout) && betNumbers.length > 0) {
         event.preventDefault();
         event.stopPropagation();
         placeSimulatorBet(directKind, label, betNumbers, payout);
@@ -1840,7 +1918,9 @@ export function App() {
           const baseT = projectedStreets[0].t;
           const clickT = (x - firstStreet.x) * unitX + (y - firstStreet.y) * unitY;
           const clickP = Math.abs((x - firstStreet.x) * -unitY + (y - firstStreet.y) * unitX);
-          const bottomBand = Math.max(18, Math.min(42, spacing * 0.32));
+          const bottomBand = allowDozenLineOnly
+            ? Math.max(28, Math.min(64, spacing * 0.48))
+            : Math.max(18, Math.min(42, spacing * 0.32));
           if (clickP <= bottomBand) {
             const normalized = (clickT - baseT) / spacing;
             const firstFourCandidate = candidates.find((item) => item.kind === "first-four");
@@ -1850,7 +1930,8 @@ export function App() {
             } else {
               const streetIndex = Math.round(normalized);
               const streetDistance = Math.abs(normalized - streetIndex);
-              if (streetIndex >= 0 && streetIndex < projectedStreets.length && streetDistance <= 0.3) {
+              const streetTolerance = allowDozenLineOnly ? 0.42 : 0.3;
+              if (streetIndex >= 0 && streetIndex < projectedStreets.length && streetDistance <= streetTolerance) {
                 bottomChoice = projectedStreets[streetIndex].item;
               } else {
                 const sixIndex = Math.round(normalized - 0.5);
@@ -1868,6 +1949,12 @@ export function App() {
           }
         }
       }
+    }
+
+    if (allowDozenLineOnly) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
     }
 
     const globalCandidates = candidates.filter((item) => item.kind !== "street" && item.kind !== "six" && item.kind !== "first-four");
@@ -5829,7 +5916,10 @@ export function App() {
 
       {simulatorOpen ? (
         <section className={`simulator-screen ${simulatorDesktopMode ? "desktop-mode" : ""}`} aria-label="轮盘模拟">
-          <div className="simulator-landscape">
+          <div
+            className="simulator-landscape"
+            style={simulatorDesktopMode ? ({ "--simulator-desktop-scale": simulatorDesktopScale } as any) : undefined}
+          >
             {simulatorRoundPop ? (
               <div className="simulator-round-pop-overlay" aria-hidden="true">
                 <div className={`simulator-round-pop ${simulatorRoundPop.phase === "result" ? `result-phase sim-result-${getNumberColor(simulatorRoundPop.result)}` : simulatorRoundPop.net >= 0 ? "positive" : "negative"}`} key={`${simulatorRoundPop.id}-${simulatorRoundPop.phase}`}>
@@ -6157,11 +6247,11 @@ export function App() {
                   <button aria-label="开下一口" className="sim-action-play" onClick={settleSimulatorRound} title="开下一口" type="button">
                     <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
                   </button>
-                  <button className="sim-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
+                  {!simulatorDesktopMode ? <button className="sim-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button> : null}
                 </div>
                 <div className="simulator-bottom-feed" aria-label="模拟信息">
                   <button className="simulator-recent-numbers" onClick={() => setSimulatorRecentOpen(true)} type="button" aria-label="查看最近号码">
-                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-10).reverse().map((value, index) => (
+                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-(simulatorDesktopMode ? 20 : 10)).reverse().map((value, index) => (
                       <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
                     ))}
                   </button>
@@ -6179,6 +6269,8 @@ export function App() {
                     <button aria-label="打开结算明细" className="sim-feed-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
                       <List aria-hidden="true" size={16} strokeWidth={2.3} />
                     </button>
+                    {simulatorDesktopMode ? <button aria-label="跳到第200个号码" className="sim-feed-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} title="跳到第200个号码" type="button">200</button> : null}
+                    {simulatorDesktopMode ? <button aria-label="返回程序" className="sim-feed-return" onClick={() => setSimulatorOpen(false)} title="返回程序" type="button">返回</button> : null}
                   </div>
                 </div>
                 <div className="simulator-bottom-status" aria-label="模拟进度和胜负">
@@ -6194,7 +6286,7 @@ export function App() {
                     <span>胜负</span>
                     <strong className={simulatorBalance >= 0 ? "positive" : "negative"}>{simulatorBalance >= 0 ? "+" : ""}{simulatorBalance}</strong>
                   </div>
-                  <button className="simulator-return-button" onClick={() => setSimulatorOpen(false)} type="button">返回</button>
+                  {!simulatorDesktopMode ? <button className="simulator-return-button" onClick={() => setSimulatorOpen(false)} type="button">返回</button> : null}
                 </div>
               </footer>
             </div>
