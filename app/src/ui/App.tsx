@@ -513,7 +513,7 @@ export function App() {
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
   const [shotViewOpen, setShotViewOpen] = useState(false);
-  const [shotStatus, setShotStatus] = useState("相机未开启");
+  const [shotStatus, setShotStatus] = useState("Camera is off.");
   const [shotBusy, setShotBusy] = useState(false);
   const [shotCount, setShotCount] = useState(0);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
@@ -1432,11 +1432,11 @@ export function App() {
 
   async function startShotCamera() {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setShotStatus("当前浏览器不支持相机。");
+      setShotStatus("Camera is not supported by this browser.");
       return;
     }
     setShotBusy(true);
-    setShotStatus("正在请求相机权限...");
+    setShotStatus("Requesting camera permission...");
     try {
       stopShotCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -1449,11 +1449,11 @@ export function App() {
         video.srcObject = stream;
         await video.play().catch(() => undefined);
       }
-      setShotStatus("相机已开启，取景画面不会显示。");
+      setShotStatus("Camera is active. Preview is hidden.");
     } catch (error) {
       stopShotCamera();
-      const message = error instanceof Error ? error.message : "未知错误";
-      setShotStatus(`相机开启失败：${message}`);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setShotStatus(`Camera failed: ${message}`);
     } finally {
       setShotBusy(false);
     }
@@ -1468,7 +1468,7 @@ export function App() {
   function captureShot() {
     const video = shotVideoRef.current;
     if (!video || !shotStreamRef.current || video.readyState < 2) {
-      setShotStatus("相机还没有准备好。");
+      setShotStatus("Camera is not ready.");
       return;
     }
     const width = video.videoWidth || 1280;
@@ -1478,7 +1478,7 @@ export function App() {
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      setShotStatus("无法创建截图画布。");
+      setShotStatus("Unable to create capture canvas.");
       return;
     }
     ctx.drawImage(video, 0, 0, width, height);
@@ -1486,7 +1486,7 @@ export function App() {
     canvas.toBlob((blob) => {
       setShotBusy(false);
       if (!blob) {
-        setShotStatus("图片生成失败。");
+        setShotStatus("Image generation failed.");
         return;
       }
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -1498,7 +1498,7 @@ export function App() {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 30000);
       setShotCount((value) => value + 1);
-      setShotStatus(`已保存：${filename}`);
+      setShotStatus(`Saved: ${filename}`);
     }, "image/jpeg", 0.92);
   }
 
@@ -5985,21 +5985,21 @@ export function App() {
       ) : null}
 
       {shotViewOpen ? (
-        <section className="shot-screen" aria-label="Shot 快照">
+        <section className="shot-screen" aria-label="Shot">
           <video ref={shotVideoRef} className="shot-hidden-video" autoPlay muted playsInline />
           <div className="shot-panel">
             <header>
               <strong>Shot</strong>
               <button onClick={closeShotView} type="button">X</button>
             </header>
-            <div className="shot-stage" aria-label="快照模式">
+            <div className="shot-stage" aria-label="Shot mode">
               <div className="shot-fake-display">
                 <span>CAMERA READY</span>
-                <strong>快照模式</strong>
-                <em>不显示取景画面</em>
+                <strong>Shot Mode</strong>
+                <em>Preview hidden</em>
               </div>
               <p>{shotStatus}</p>
-              <small>已拍 {shotCount} 张</small>
+              <small>{shotCount} shots saved</small>
             </div>
             <div className="shot-actions">
               <button disabled={shotBusy || !shotStreamRef.current} onClick={captureShot} type="button">Shot</button>
