@@ -1441,7 +1441,12 @@ export function App() {
       stopShotCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: { facingMode: { ideal: "environment" } },
+        video: {
+          aspectRatio: { ideal: 16 / 9 },
+          facingMode: { ideal: "environment" },
+          height: { min: 1080, ideal: 2160 },
+          width: { min: 1920, ideal: 3840 },
+        },
       });
       shotStreamRef.current = stream;
       const video = shotVideoRef.current;
@@ -6044,12 +6049,14 @@ export function App() {
                     </label>
                   </div>
                 </section>
-                <section className="config-card config-bets">
-                  <h2><span>工具</span></h2>
-                  <div className="config-tool-actions">
-                    <button onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">Shot</button>
-                  </div>
-                </section>
+                {sharedConnected ? (
+                  <section className="config-card config-bets">
+                    <h2><span>工具</span></h2>
+                    <div className="config-tool-actions">
+                      <button onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">Test</button>
+                    </div>
+                  </section>
+                ) : null}
               </div>
             ) : configTab === "table" ? (
             <>
