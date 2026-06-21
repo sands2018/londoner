@@ -5928,15 +5928,17 @@ body:has(.app-shell.theme-dark) {
 }
 
 .sim-street-spot {
-  height: 36px;
+  height: 37px;
   transform: translate(-50%, -50%);
-  width: 36px;
+  width: 38px;
+  z-index: 5;
 }
 
 .sim-six-spot {
-  height: 38px;
+  height: 36px;
   transform: translate(-50%, -50%);
-  width: 42px;
+  width: 39px;
+  z-index: 4;
 }
 
 .sim-split-spot {
@@ -5949,11 +5951,6 @@ body:has(.app-shell.theme-dark) {
   height: 44px;
   width: 44px;
   z-index: 3;
-}
-
-.sim-street-spot,
-.sim-six-spot {
-  z-index: 4;
 }
 
 .sim-zero-trio-spot {

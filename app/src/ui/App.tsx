@@ -1930,12 +1930,14 @@ export function App() {
             } else {
               const streetIndex = Math.round(normalized);
               const streetDistance = Math.abs(normalized - streetIndex);
-              const streetTolerance = allowDozenLineOnly ? 0.42 : 0.3;
+              const streetTolerance = allowDozenLineOnly ? 0.46 : 0.3;
               if (streetIndex >= 0 && streetIndex < projectedStreets.length && streetDistance <= streetTolerance) {
                 bottomChoice = projectedStreets[streetIndex].item;
               } else {
                 const sixIndex = Math.round(normalized - 0.5);
-                if (sixIndex >= 0 && sixIndex < projectedSixes.length) {
+                const sixDistance = Math.abs(normalized - (sixIndex + 0.5));
+                const sixTolerance = allowDozenLineOnly ? 0.18 : 0.32;
+                if (sixIndex >= 0 && sixIndex < projectedSixes.length && sixDistance <= sixTolerance) {
                   bottomChoice = projectedSixes[sixIndex].item;
                 }
               }
