@@ -1614,9 +1614,22 @@ export function App() {
     return simulatorBets.find((item) => item.key === key)?.amount ?? 0;
   }
 
+  function getSimulatorTableChipClass(amount: number) {
+    if (amount <= 100) return "sim-table-chip-green";
+    if (amount <= 1000) return "sim-table-chip-red";
+    return "sim-table-chip-purple";
+  }
+
+  function renderSimulatorTableChip(amount: number) {
+    return amount > 0 ? (
+      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount)}`}>
+        <span className="sim-table-chip-text">{amount}</span>
+      </span>
+    ) : null;
+  }
+
   function renderSimulatorChip(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
-    const amount = getSimulatorBetAmount(kind, betNumbers);
-    return amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : null;
+    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers));
   }
 
   function resetSimulator() {
@@ -5890,7 +5903,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("zero-trio", bet.label, bet.numbers, bet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })}
@@ -5907,7 +5920,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("first-four", simulatorFirstFourBet.label, simulatorFirstFourBet.numbers, simulatorFirstFourBet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })()}
@@ -5948,7 +5961,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -5967,7 +5980,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -5986,7 +5999,7 @@ export function App() {
                                 style={{ left: `${((index + 0.5) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -6005,7 +6018,7 @@ export function App() {
                                 style={{ left: `${((index + 1) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? <span className="sim-table-chip"><span className="sim-table-chip-text">{amount}</span></span> : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -6073,16 +6086,32 @@ export function App() {
               </section>
 
               <footer className="simulator-chip-tray" aria-label="筹码">
-                {simulatorChips.map((chip) => (
-                  <button
-                    className={`simulator-chip simulator-chip-${chip} ${simulatorSelectedChip === chip ? "selected" : ""}`}
-                    key={chip}
-                    onClick={() => setSimulatorSelectedChip(chip)}
-                    type="button"
-                  >
-                    <span>{chip}</span>
-                  </button>
-                ))}
+                <div className="simulator-chip-picker">
+                  <div className="simulator-chip-picker-row">
+                    {simulatorChips.slice(0, 3).map((chip) => (
+                      <button
+                        className={`simulator-chip simulator-chip-${chip} ${simulatorSelectedChip === chip ? "selected" : ""}`}
+                        key={chip}
+                        onClick={() => setSimulatorSelectedChip(chip)}
+                        type="button"
+                      >
+                        <span>{chip}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="simulator-chip-picker-row simulator-chip-picker-row-offset">
+                    {simulatorChips.slice(3).map((chip) => (
+                      <button
+                        className={`simulator-chip simulator-chip-${chip} ${simulatorSelectedChip === chip ? "selected" : ""}`}
+                        key={chip}
+                        onClick={() => setSimulatorSelectedChip(chip)}
+                        type="button"
+                      >
+                        <span>{chip}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="simulator-chip-actions">
                   <button aria-label="开下一口" className="sim-action-play" onClick={settleSimulatorRound} title="开下一口" type="button">
                     <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
