@@ -512,6 +512,10 @@ export function App() {
   const [colRowExploreRows, setColRowExploreRows] = useState<number[]>(() => loadColRowExploreSelections().rows);
   const [colRowExploreRounds, setColRowExploreRounds] = useState<number[]>(() => loadColRowExploreSelections().rounds);
   const [configViewOpen, setConfigViewOpen] = useState(false);
+  const [shotViewOpen, setShotViewOpen] = useState(false);
+  const [shotStatus, setShotStatus] = useState("相机未开启");
+  const [shotBusy, setShotBusy] = useState(false);
+  const [shotCount, setShotCount] = useState(0);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [simulatorBalance, setSimulatorBalance] = useState(0);
   const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(100);
@@ -524,6 +528,8 @@ export function App() {
   const simulatorBetIdRef = useRef(0);
   const simulatorProgressRef = useRef(0);
   const simulatorRoundPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shotVideoRef = useRef<HTMLVideoElement>(null);
+  const shotStreamRef = useRef<MediaStream | null>(null);
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
@@ -1404,6 +1410,97 @@ export function App() {
       clearTimeout(simulatorRoundPopTimerRef.current);
     }
   }, []);
+
+  useEffect(() => {
+    if (!shotViewOpen) {
+      stopShotCamera();
+      return undefined;
+    }
+    void startShotCamera();
+    return () => stopShotCamera();
+  }, [shotViewOpen]);
+
+  function stopShotCamera() {
+    if (shotStreamRef.current) {
+      shotStreamRef.current.getTracks().forEach((track) => track.stop());
+      shotStreamRef.current = null;
+    }
+    if (shotVideoRef.current) {
+      shotVideoRef.current.srcObject = null;
+    }
+  }
+
+  async function startShotCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setShotStatus("当前浏览器不支持相机。");
+      return;
+    }
+    setShotBusy(true);
+    setShotStatus("正在请求相机权限...");
+    try {
+      stopShotCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: "environment" } },
+      });
+      shotStreamRef.current = stream;
+      const video = shotVideoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        await video.play().catch(() => undefined);
+      }
+      setShotStatus("相机已开启，取景画面不会显示。");
+    } catch (error) {
+      stopShotCamera();
+      const message = error instanceof Error ? error.message : "未知错误";
+      setShotStatus(`相机开启失败：${message}`);
+    } finally {
+      setShotBusy(false);
+    }
+  }
+
+  function closeShotView() {
+    stopShotCamera();
+    setShotViewOpen(false);
+    setShotBusy(false);
+  }
+
+  function captureShot() {
+    const video = shotVideoRef.current;
+    if (!video || !shotStreamRef.current || video.readyState < 2) {
+      setShotStatus("相机还没有准备好。");
+      return;
+    }
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setShotStatus("无法创建截图画布。");
+      return;
+    }
+    ctx.drawImage(video, 0, 0, width, height);
+    setShotBusy(true);
+    canvas.toBlob((blob) => {
+      setShotBusy(false);
+      if (!blob) {
+        setShotStatus("图片生成失败。");
+        return;
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `shot-${timestamp}.jpg`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      setShotCount((value) => value + 1);
+      setShotStatus(`已保存：${filename}`);
+    }, "image/jpeg", 0.92);
+  }
 
   function openPredictionWindow() {
     if (!canUseSmartSignals) return;
@@ -5887,6 +5984,31 @@ export function App() {
         </section>
       ) : null}
 
+      {shotViewOpen ? (
+        <section className="shot-screen" aria-label="Shot 快照">
+          <video ref={shotVideoRef} className="shot-hidden-video" autoPlay muted playsInline />
+          <div className="shot-panel">
+            <header>
+              <strong>Shot</strong>
+              <button onClick={closeShotView} type="button">X</button>
+            </header>
+            <div className="shot-stage" aria-label="快照模式">
+              <div className="shot-fake-display">
+                <span>CAMERA READY</span>
+                <strong>快照模式</strong>
+                <em>不显示取景画面</em>
+              </div>
+              <p>{shotStatus}</p>
+              <small>已拍 {shotCount} 张</small>
+            </div>
+            <div className="shot-actions">
+              <button disabled={shotBusy || !shotStreamRef.current} onClick={captureShot} type="button">Shot</button>
+              <button disabled={shotBusy} onClick={() => void startShotCamera()} type="button">Restart</button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {configViewOpen ? (
           <section className="data-screen config-screen" aria-label="配置">
             <header className="data-screen-head">
@@ -5920,6 +6042,12 @@ export function App() {
                       />
                       <span>斐波那契数字序列</span>
                     </label>
+                  </div>
+                </section>
+                <section className="config-card config-bets">
+                  <h2><span>工具</span></h2>
+                  <div className="config-tool-actions">
+                    <button onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">Shot</button>
                   </div>
                 </section>
               </div>
