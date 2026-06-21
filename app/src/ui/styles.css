@@ -6482,14 +6482,33 @@ body:has(.app-shell.theme-dark) {
     width: 100svh;
   }
 
+  html.android .simulator-main {
+    grid-template-rows: minmax(0, 1fr) 64px;
+  }
+
+  html.android .sim-table-felt {
+    --sim-dozens-height: 20%;
+    --sim-outside-height: 20%;
+  }
+
+  html.android .simulator-table {
+    grid-template-columns: 40px minmax(0, 1fr) 32px;
+  }
+
+  html.android .sim-dozens,
+  html.android .sim-outside {
+    padding-left: 40px;
+    padding-right: 32px;
+  }
+
   html.android .sim-number {
-    font-size: clamp(18px, 3.65svh, 38px);
+    font-size: clamp(17px, 3.2svh, 34px);
     line-height: 0.9;
     overflow: hidden;
   }
 
   html.android .sim-zero {
-    font-size: clamp(28px, 4.8svh, 50px);
+    font-size: clamp(24px, 4.1svh, 44px);
   }
 
   html.android .sim-bet-band button,
@@ -6509,7 +6528,7 @@ body:has(.app-shell.theme-dark) {
 
   html.android .simulator-chip-tray {
     gap: 3px;
-    min-height: 68px;
+    min-height: 64px;
     padding: 4px 5px;
   }
 
