@@ -8,7 +8,7 @@ import {
   type ColRowIndex,
   type RouletteNumber,
 } from "../core/roulette";
-import { CircleUser, Keyboard, SkipBack, SkipForward } from "lucide-react";
+import { CircleUser, Keyboard, Play, SkipBack, SkipForward, Undo2 } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -518,6 +518,8 @@ export function App() {
   const [simulatorBets, setSimulatorBets] = useState<SimulatorBet[]>([]);
   const [simulatorBetPlacements, setSimulatorBetPlacements] = useState<SimulatorBetPlacement[]>([]);
   const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>([]);
+  const [simulatorDetailOpen, setSimulatorDetailOpen] = useState(false);
+  const [simulatorRecentOpen, setSimulatorRecentOpen] = useState(false);
   const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; result: RouletteNumber } | null>(null);
   const simulatorBetIdRef = useRef(0);
   const simulatorProgressRef = useRef(0);
@@ -1479,9 +1481,26 @@ export function App() {
     currentTarget: HTMLDivElement;
     preventDefault: () => void;
     stopPropagation: () => void;
+    target: EventTarget | null;
   }) {
+    const targetElement = event.target instanceof HTMLElement ? event.target : null;
+    if (targetElement?.closest(".simulator-return-zone")) return;
     const x = event.clientX;
     const y = event.clientY;
+    const feltRect = event.currentTarget.getBoundingClientRect();
+    const relativeX = (x - feltRect.left) / feltRect.width;
+    const relativeY = (y - feltRect.top) / feltRect.height;
+    const isReturnBlank =
+      !targetElement?.closest("[data-sim-kind]") &&
+      relativeX >= 0 &&
+      relativeX <= 0.46 &&
+      (relativeY <= 0.24 || relativeY >= 0.76);
+    if (isReturnBlank) {
+      event.preventDefault();
+      event.stopPropagation();
+      setSimulatorOpen(false);
+      return;
+    }
     type Candidate = {
       kind: SimulatorBetKind;
       label: string;
@@ -5531,9 +5550,64 @@ export function App() {
                 </div>
               </div>
             ) : null}
+            {simulatorDetailOpen ? (
+              <div className="simulator-detail-overlay" role="dialog" aria-modal="true" aria-label="模拟明细">
+                <div className="simulator-detail-panel">
+                  <header>
+                    <strong>明细</strong>
+                    <button onClick={() => setSimulatorDetailOpen(false)} type="button">X</button>
+                  </header>
+                  <div className="simulator-detail-grid">
+                    <section>
+                      <h3>下注</h3>
+                      {simulatorBets.length === 0 ? <p>暂无下注</p> : simulatorBets.map((bet) => (
+                        <div className="simulator-ticket-row" key={bet.id}>
+                          <span>{bet.label}</span>
+                          <strong>{bet.amount}</strong>
+                        </div>
+                      ))}
+                    </section>
+                    <section>
+                      <h3>结算</h3>
+                      {simulatorLog.length === 0 ? <p>等待开球</p> : simulatorLog.map((item) => (
+                        <div className="simulator-log-row" key={`${item.round}-${item.result}-${item.balanceAfter}`}>
+                          <span>#{item.round}</span>
+                          <strong className={`sim-result-${getNumberColor(item.result)}`}>{item.result}</strong>
+                          <em className={item.net >= 0 ? "positive" : "negative"}>{item.net >= 0 ? "+" : ""}{item.net}</em>
+                        </div>
+                      ))}
+                    </section>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {simulatorRecentOpen ? (
+              <div className="simulator-detail-overlay" role="dialog" aria-modal="true" aria-label="最近号码">
+                <div className="simulator-detail-panel simulator-recent-panel">
+                  <header>
+                    <strong>最近号码</strong>
+                    <span>最多 105 个</span>
+                    <button onClick={() => setSimulatorRecentOpen(false)} type="button">关闭</button>
+                  </header>
+                  <div className="simulator-recent-grid">
+                    {numbers.length === 0 ? (
+                      <em>暂无号码</em>
+                    ) : (
+                      numbers.slice(-105).reverse().map((value, index) => (
+                        <span className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-recent-${index}-${value}`}>
+                          {value}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <div className="simulator-main">
               <section className="simulator-table-wrap">
                 <div className="sim-table-felt" onClickCapture={handleSimulatorTableClick}>
+                  <button className="simulator-return-zone simulator-return-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setSimulatorOpen(false); }} type="button" aria-label="返回程序" />
+                  <button className="simulator-return-zone simulator-return-zone-b" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setSimulatorOpen(false); }} type="button" aria-label="返回程序" />
                   <div className="simulator-table">
                     <div className="sim-zero-zone">
                       <button
@@ -5745,51 +5819,7 @@ export function App() {
                 </div>
               </section>
 
-              <aside className="simulator-side simulator-control">
-                <button className="simulator-return" onClick={() => setSimulatorOpen(false)} type="button">返回程序</button>
-                <div className="simulator-meter-row">
-                  <div className="simulator-meter">
-                    <span>胜负</span>
-                    <strong>{simulatorBalance}</strong>
-                  </div>
-                  <div className="simulator-meter">
-                    <span>下注</span>
-                    <strong>{simulatorTotalStake}</strong>
-                  </div>
-                  <div className="simulator-meter">
-                    <span>进度</span>
-                    <strong>{Math.min(simulatorIndex, simulatorNumbers.length)} / {simulatorNumbers.length}</strong>
-                  </div>
-                  <div className="simulator-last-result">
-                    <span>上口</span>
-                    {simulatorLastNumber !== null ? <strong className={`sim-result-${getNumberColor(simulatorLastNumber)}`}>{simulatorLastNumber}</strong> : <em>--</em>}
-                  </div>
-                </div>
-                <div className="simulator-actions">
-                  <button className="simulator-primary" onClick={resetSimulator} type="button">重置模拟</button>
-                </div>
-                <div className="simulator-ticket">
-                  <h3>下注单</h3>
-                  {simulatorBets.length === 0 ? <p>暂无下注</p> : simulatorBets.map((bet) => (
-                    <div className="simulator-ticket-row" key={bet.id}>
-                      <span>{bet.label}</span>
-                      <strong>{bet.amount}</strong>
-                    </div>
-                  ))}
-                </div>
-                <div className="simulator-log">
-                  <h3>结算</h3>
-                  {simulatorLog.length === 0 ? <p>等待开球</p> : simulatorLog.map((item) => (
-                    <div className="simulator-log-row" key={`${item.round}-${item.result}-${item.balanceAfter}`}>
-                      <span>#{item.round}</span>
-                      <strong className={`sim-result-${getNumberColor(item.result)}`}>{item.result}</strong>
-                      <em className={item.net >= 0 ? "positive" : "negative"}>{item.net >= 0 ? "+" : ""}{item.net}</em>
-                    </div>
-                  ))}
-                </div>
-              </aside>
               <footer className="simulator-chip-tray" aria-label="筹码">
-                <span>筹码</span>
                 {simulatorChips.map((chip) => (
                   <button
                     className={`simulator-chip simulator-chip-${chip} ${simulatorSelectedChip === chip ? "selected" : ""}`}
@@ -5801,10 +5831,42 @@ export function App() {
                   </button>
                 ))}
                 <div className="simulator-chip-actions">
-                  <button onClick={settleSimulatorRound} type="button">开下一口</button>
-                  <button disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
-                  <button disabled={simulatorBetPlacements.length === 0} onClick={undoSimulatorBet} type="button">undo</button>
-                  <button onClick={clearSimulatorBets} type="button">清空下注</button>
+                  <button aria-label="开下一口" className="sim-action-play" onClick={settleSimulatorRound} title="开下一口" type="button">
+                    <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
+                  </button>
+                  <button className="sim-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
+                  <button aria-label="撤销下注" className="sim-action-undo" disabled={simulatorBetPlacements.length === 0} onClick={undoSimulatorBet} title="撤销下注" type="button">
+                    <Undo2 aria-hidden="true" size={15} strokeWidth={2.4} />
+                  </button>
+                  <button className="sim-action-ac" onClick={clearSimulatorBets} type="button">AC</button>
+                </div>
+                <div className="simulator-bottom-feed" aria-label="模拟信息">
+                  <button className="simulator-recent-numbers" onClick={() => setSimulatorRecentOpen(true)} type="button" aria-label="查看最近号码">
+                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-8).reverse().map((value, index) => (
+                      <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
+                    ))}
+                  </button>
+                  <button className="simulator-log-preview" onClick={() => setSimulatorDetailOpen(true)} type="button" aria-label="打开模拟明细">
+                    {simulatorLog[0] ? (
+                      <>
+                        <span>#{simulatorLog[0].round}</span>
+                        <strong className={`sim-result-${getNumberColor(simulatorLog[0].result)}`}>{simulatorLog[0].result}</strong>
+                        <em className={simulatorLog[0].net >= 0 ? "positive" : "negative"}>{simulatorLog[0].net >= 0 ? "+" : ""}{simulatorLog[0].net}</em>
+                      </>
+                    ) : (
+                      <em>等待开球</em>
+                    )}
+                  </button>
+                </div>
+                <div className="simulator-bottom-status" aria-label="模拟进度和胜负">
+                  <div>
+                    <span>进度</span>
+                    <strong>{Math.min(simulatorIndex, simulatorNumbers.length)} / {simulatorNumbers.length}</strong>
+                  </div>
+                  <div>
+                    <span>胜负</span>
+                    <strong className={simulatorBalance >= 0 ? "positive" : "negative"}>{simulatorBalance >= 0 ? "+" : ""}{simulatorBalance}</strong>
+                  </div>
                 </div>
               </footer>
             </div>

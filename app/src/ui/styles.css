@@ -5324,14 +5324,31 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-chip {
   --chip-color: #d18d34;
+  --chip-inner: #7a5120;
   align-items: center;
   aspect-ratio: 1;
   background:
-    radial-gradient(circle at 50% 50%, #303030 0 32%, transparent 33%),
-    conic-gradient(#f8f1d8 0 20deg, var(--chip-color) 20deg 52deg, #f8f1d8 52deg 84deg, var(--chip-color) 84deg 116deg, #f8f1d8 116deg 148deg, var(--chip-color) 148deg 180deg, #f8f1d8 180deg 212deg, var(--chip-color) 212deg 244deg, #f8f1d8 244deg 276deg, var(--chip-color) 276deg 308deg, #f8f1d8 308deg 340deg, var(--chip-color) 340deg 360deg);
-  border: 2px solid rgb(255 248 225 / 0.92);
+    radial-gradient(circle at 36% 28%, rgb(255 255 255 / 0.42) 0 8%, transparent 24%),
+    radial-gradient(circle at 50% 50%, #2c3135 0 30%, transparent 31%),
+    radial-gradient(circle at 50% 50%, transparent 0 44%, var(--chip-inner) 45% 63%, transparent 64%),
+    conic-gradient(
+      from 0deg,
+      #f7f1df 0 17deg,
+      var(--chip-color) 17deg 60deg,
+      #f7f1df 60deg 77deg,
+      var(--chip-color) 77deg 120deg,
+      #f7f1df 120deg 137deg,
+      var(--chip-color) 137deg 180deg,
+      #f7f1df 180deg 197deg,
+      var(--chip-color) 197deg 240deg,
+      #f7f1df 240deg 257deg,
+      var(--chip-color) 257deg 300deg,
+      #f7f1df 300deg 317deg,
+      var(--chip-color) 317deg 360deg
+    );
+  border: 0;
   border-radius: 50%;
-  box-shadow: 0 3px 10px rgb(0 0 0 / 0.42);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.42), inset 0 2px 3px rgb(255 255 255 / 0.16), inset 0 -3px 4px rgb(0 0 0 / 0.4);
   color: #f8e7a8;
   display: flex;
   font-size: 12px;
@@ -5341,18 +5358,30 @@ body:has(.app-shell.theme-dark) {
   min-height: 42px;
   min-width: 42px;
   padding: 0;
+  position: relative;
+}
+
+.simulator-chip::before {
+  border: 2px dashed rgb(255 249 225 / 0.76);
+  border-radius: 50%;
+  content: "";
+  inset: 7px;
+  pointer-events: none;
+  position: absolute;
 }
 
 .simulator-chip span {
   align-items: center;
-  background: #3a3a3a;
+  background: transparent;
   border-radius: 50%;
   display: flex;
   height: 52%;
   justify-content: center;
   min-width: 52%;
   padding: 0 4px;
+  position: relative;
   text-shadow: 0 1px 1px rgb(0 0 0 / 0.7);
+  z-index: 1;
 }
 
 .simulator-chip.selected {
@@ -5361,27 +5390,33 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-chip-10 {
-  --chip-color: #f0a02a;
+  --chip-color: #c56e19;
+  --chip-inner: #744013;
 }
 
 .simulator-chip-20 {
-  --chip-color: #f1dc24;
+  --chip-color: #1f6a3e;
+  --chip-inner: #124127;
 }
 
 .simulator-chip-50 {
   --chip-color: #65c7dd;
+  --chip-inner: #2e7788;
 }
 
 .simulator-chip-100 {
   --chip-color: #168fd0;
+  --chip-inner: #0d496c;
 }
 
 .simulator-chip-500 {
   --chip-color: #583269;
+  --chip-inner: #372042;
 }
 
 .simulator-chip-1000 {
   --chip-color: #b02e2c;
+  --chip-inner: #682020;
 }
 
 @media (orientation: portrait) {
@@ -5815,19 +5850,18 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-chip.selected {
-  filter: brightness(1.22) saturate(1.18);
-  box-shadow: 0 0 0 3px #fff3b8 inset, 0 0 0 2px rgb(244 198 86 / 0.68), 0 0 22px rgb(255 220 112 / 0.95);
+  filter: brightness(1.25) saturate(1.08);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.48), inset 0 2px 3px rgb(255 255 255 / 0.16), inset 0 -3px 4px rgb(0 0 0 / 0.4), 0 0 22px rgb(255 220 112 / 0.82);
   opacity: 1;
-  transform: translateY(-3px) scale(1.06);
+  transform: translateY(-3px) scale(1.12);
 }
 
 .simulator-chip.selected span {
-  background: #4a3d24;
   color: #fff4bd;
 }
 
 .simulator-chip span {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.95), 0 0 3px rgb(0 0 0 / 0.8);
 }
@@ -5843,14 +5877,23 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-chip-tray {
   justify-content: flex-start;
+  gap: 6px;
+}
+
+.simulator-chip-tray .simulator-chip {
+  height: 36px;
+  max-height: 36px;
+  min-height: 36px;
+  min-width: 36px;
+  width: 36px;
 }
 
 .simulator-chip-actions {
   display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(4, minmax(50px, 1fr));
-  margin-left: 10px;
-  min-width: min(340px, 39%);
+  gap: 6px;
+  grid-template-columns: 58px repeat(3, 42px);
+  margin-left: 4px;
+  min-width: 0;
 }
 
 .simulator-chip-actions button {
@@ -5858,16 +5901,66 @@ body:has(.app-shell.theme-dark) {
   border: 1px solid rgb(255 235 184 / 0.36);
   border-radius: 9px;
   color: #fff8dc;
+  display: grid;
   font-family: var(--ui-font-family);
   font-size: 13px;
   font-weight: var(--weight-ui);
-  min-height: 38px;
+  min-height: 35px;
+  padding: 0 6px;
+  place-items: center;
 }
 
 .simulator-chip-actions button:disabled {
   background: linear-gradient(180deg, #28332c, #111a15);
   border-color: rgb(255 235 184 / 0.14);
   color: rgb(244 234 211 / 0.38);
+}
+
+.simulator-chip-actions .sim-action-200,
+.simulator-chip-actions .sim-action-ac {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.simulator-bottom-status {
+  display: grid;
+  gap: 4px;
+  margin-left: auto;
+  min-width: 138px;
+}
+
+.simulator-bottom-status > div {
+  align-items: center;
+  background: rgb(2 15 9 / 0.78);
+  border: 1px solid rgb(244 215 157 / 0.16);
+  border-radius: 8px;
+  color: #d7ccb4;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-height: 26px;
+  padding: 4px 9px;
+}
+
+.simulator-bottom-status span {
+  color: rgb(244 234 211 / 0.58);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.simulator-bottom-status strong {
+  color: #f2d990;
+  font-size: 16px;
+  font-weight: var(--weight-strong);
+  line-height: 1;
+  text-align: right;
+}
+
+.simulator-bottom-status strong.positive {
+  color: #ffd061;
+}
+
+.simulator-bottom-status strong.negative {
+  color: #8fd0aa;
 }
 
 .simulator-round-pop-overlay {
@@ -6018,6 +6111,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-main {
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) 76px;
 }
 
@@ -6045,27 +6139,271 @@ body:has(.app-shell.theme-dark) {
   min-height: 76px;
 }
 
+.simulator-bottom-feed {
+  align-self: stretch;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: #f4ead3;
+  display: grid;
+  flex: 1 1 auto;
+  gap: 3px;
+  grid-template-rows: 30px minmax(0, 1fr);
+  margin-left: 5px;
+  min-width: 170px;
+  overflow: hidden;
+  padding: 1px 7px 6px;
+}
+
+.simulator-recent-numbers,
+.simulator-log-preview {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+}
+
+.simulator-recent-numbers {
+  justify-content: flex-start;
+}
+
+.simulator-recent-numbers strong,
+.simulator-log-preview strong {
+  align-items: center;
+  border-radius: 5px;
+  display: inline-flex;
+  font-size: 12px;
+  height: 21px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 24px;
+  padding: 0 4px;
+}
+
+.simulator-recent-numbers strong.latest {
+  font-size: 17px;
+  height: 28px;
+  min-width: 32px;
+}
+
+.simulator-recent-numbers em,
+.simulator-log-preview em {
+  color: rgb(244 234 211 / 0.55);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.simulator-log-preview {
+  color: #d7ccb4;
+  font-size: 12px;
+}
+
+.simulator-log-preview span {
+  color: rgb(244 234 211 / 0.52);
+}
+
+.simulator-log-preview em.positive {
+  color: #ffd061;
+}
+
+.simulator-log-preview em.negative {
+  color: #8fd0aa;
+}
+
+.simulator-detail-overlay {
+  align-items: center;
+  background: rgb(0 0 0 / 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  z-index: 35;
+}
+
+.simulator-detail-panel {
+  background: linear-gradient(180deg, #07150f, #020705);
+  border: 1px solid rgb(238 205 138 / 0.35);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.62);
+  color: #f4ead3;
+  display: grid;
+  gap: 8px;
+  max-height: min(82%, 440px);
+  padding: 10px;
+  width: min(72%, 680px);
+}
+
+.simulator-detail-panel header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.simulator-detail-panel header strong {
+  color: #e6c879;
+  font-size: 15px;
+}
+
+.simulator-detail-panel header button {
+  background: linear-gradient(180deg, #26332b, #101a14);
+  border: 1px solid rgb(238 205 138 / 0.42);
+  border-radius: 7px;
+  color: #e6c879;
+  min-height: 28px;
+  min-width: 38px;
+}
+
+.simulator-detail-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.simulator-detail-grid section {
+  background: rgb(2 12 8 / 0.7);
+  border: 1px solid rgb(244 215 157 / 0.12);
+  border-radius: 9px;
+  min-height: 0;
+  overflow: auto;
+  padding: 7px;
+}
+
+.simulator-detail-grid h3 {
+  color: #e6c879;
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+
+.simulator-recent-panel {
+  max-height: min(82%, 460px);
+  width: min(78%, 720px);
+}
+
+.simulator-recent-panel header span {
+  color: rgb(244 234 211 / 0.58);
+  font-size: 12px;
+}
+
+.simulator-recent-grid {
+  align-content: start;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 2px 2px;
+}
+
+.simulator-recent-grid span {
+  align-items: center;
+  border-radius: 6px;
+  display: flex;
+  font-size: 15px;
+  font-weight: 700;
+  height: 30px;
+  justify-content: center;
+  line-height: 1;
+}
+
+.simulator-recent-grid span.latest {
+  box-shadow: 0 0 0 2px rgb(238 205 138 / 0.65), 0 0 16px rgb(238 205 138 / 0.35);
+  color: #fff5c7;
+}
+
+.simulator-recent-grid em {
+  color: rgb(244 234 211 / 0.6);
+  font-style: normal;
+}
+
+.simulator-detail-grid p {
+  color: rgb(244 234 211 / 0.55);
+  font-size: 12px;
+  margin: 0;
+}
+
+.simulator-return-zone {
+  background: transparent;
+  border: 0;
+  opacity: 0;
+  padding: 0;
+  position: absolute;
+  z-index: 30;
+}
+
+.simulator-return-zone-a {
+  height: 18%;
+  left: 0;
+  top: 0;
+  width: 39%;
+}
+
+.simulator-return-zone-b {
+  bottom: 0;
+  height: 18%;
+  left: 0;
+  width: 39%;
+}
+
 .sim-table-felt .sim-table-chip,
 .sim-table-felt .sim-number > .sim-table-chip,
 .sim-table-felt .sim-bet-band .sim-table-chip,
 .sim-table-felt .sim-row-bets .sim-table-chip,
 .sim-table-felt .sim-zero-hotspots .sim-table-chip,
 .sim-table-felt .sim-zero-trios .sim-table-chip {
+  --sim-chip-color: #1675aa;
+  background:
+    radial-gradient(circle at 36% 28%, rgb(255 255 255 / 0.42) 0 8%, transparent 24%),
+    radial-gradient(circle at 50% 50%, #2c3135 0 30%, transparent 31%),
+    radial-gradient(circle at 50% 50%, transparent 0 44%, #0d496c 45% 63%, transparent 64%),
+    conic-gradient(
+      from 0deg,
+      #f7f1df 0 17deg,
+      var(--sim-chip-color) 17deg 60deg,
+      #f7f1df 60deg 77deg,
+      var(--sim-chip-color) 77deg 120deg,
+      #f7f1df 120deg 137deg,
+      var(--sim-chip-color) 137deg 180deg,
+      #f7f1df 180deg 197deg,
+      var(--sim-chip-color) 197deg 240deg,
+      #f7f1df 240deg 257deg,
+      var(--sim-chip-color) 257deg 300deg,
+      #f7f1df 300deg 317deg,
+      var(--sim-chip-color) 317deg 360deg
+    );
+  border: 0;
+  box-sizing: border-box;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.68), inset 0 2px 3px rgb(255 255 255 / 0.18), inset 0 -3px 4px rgb(0 0 0 / 0.45);
   color: #fff4bd;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
-  height: 26px;
+  height: 32px;
   text-shadow: 0 1px 1px rgb(0 0 0 / 1), 0 2px 3px rgb(0 0 0 / 0.95), 0 0 4px rgb(0 0 0 / 0.9);
-  width: 26px;
+  width: 32px;
+}
+
+.sim-table-felt .sim-table-chip::before {
+  border: 2px dashed rgb(255 249 225 / 0.76);
+  border-radius: 50%;
+  content: "";
+  inset: 7px;
+  pointer-events: none;
+  position: absolute;
 }
 
 .sim-table-felt .sim-table-chip-text {
   display: inline-block;
   letter-spacing: 0;
   line-height: 1;
+  position: relative;
   transform: rotate(-45deg);
   transform-origin: center;
   white-space: nowrap;
+  z-index: 1;
 }
 
 .message-actions button {
