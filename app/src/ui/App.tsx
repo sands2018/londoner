@@ -1632,13 +1632,25 @@ export function App() {
     return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers));
   }
 
-  function resetSimulator() {
+  function clearSimulatorRoundState(nextProgress = numbers.length) {
+    if (simulatorRoundPopTimerRef.current) {
+      clearTimeout(simulatorRoundPopTimerRef.current);
+      simulatorRoundPopTimerRef.current = null;
+    }
+    simulatorProgressRef.current = nextProgress;
     setSimulatorBalance(0);
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
     setSimulatorLastBets([]);
     setSimulatorLog([]);
     setSimulatorRoundPop(null);
+    setSimulatorDetailOpen(false);
+    setSimulatorRecentOpen(false);
+    localStorage.removeItem(simulatorStateKey);
+  }
+
+  function resetSimulator() {
+    clearSimulatorRoundState(0);
     if (numbers.length > 0) {
       setRedoNumbers([...redoNumbers, ...numbers.slice().reverse()]);
       setNumbers([]);
@@ -2326,6 +2338,7 @@ export function App() {
       return;
     }
 
+    clearSimulatorRoundState(parsed.numbers.length);
     setNumbers(parsed.numbers);
     setRedoNumbers([]);
     setLastSavedNumbers([]);
@@ -2468,6 +2481,7 @@ export function App() {
       return;
     }
     if (numbers.length === 0) {
+      clearSimulatorRoundState(incoming.numbers.length);
       setNumbers(incoming.numbers);
       setRedoNumbers([]);
       setLastSavedNumbers([]);
@@ -2597,6 +2611,7 @@ export function App() {
       confirmText: "导入",
       onConfirm: () => {
         const importedNumbers = selected.numbers.filter(isRouletteNumber);
+        clearSimulatorRoundState(importedNumbers.length);
         setNumbers(importedNumbers);
         setRedoNumbers([]);
         setLastSavedNumbers([]);
@@ -2767,6 +2782,7 @@ export function App() {
       confirmText: "打开",
       onConfirm: () => {
         const openedNumbers = session.numbers.filter(isRouletteNumber);
+        clearSimulatorRoundState(openedNumbers.length);
         setNumbers(openedNumbers);
         setRedoNumbers([]);
         setLastSavedNumbers(openedNumbers);
@@ -2860,6 +2876,7 @@ export function App() {
       setSelectedSessionIds([target.id]);
 
       if (currentSessionId === left.id || currentSessionId === right.id) {
+        clearSimulatorRoundState(mergedNumbers.length);
         setNumbers(mergedNumbers);
         setRedoNumbers([]);
         setLastSavedNumbers(mergedNumbers);
