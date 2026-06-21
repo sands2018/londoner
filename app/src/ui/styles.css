@@ -6124,9 +6124,11 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-bottom-status {
   display: grid;
+  grid-template-columns: minmax(154px, 1fr) 42px;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 4px;
   margin-left: auto;
-  min-width: 154px;
+  min-width: 202px;
 }
 
 .simulator-bottom-status > div {
@@ -6136,9 +6138,24 @@ body:has(.app-shell.theme-dark) {
   border-radius: 8px;
   color: #d7ccb4;
   display: grid;
+  grid-column: 1;
   grid-template-columns: 44px minmax(0, 1fr);
   min-height: 22px;
   padding: 2px 9px;
+}
+
+.simulator-return-button {
+  background: linear-gradient(180deg, rgb(41 54 44 / 0.95), rgb(19 31 24 / 0.95));
+  border: 1px solid rgb(244 215 157 / 0.28);
+  border-radius: 8px;
+  color: #d9b56e;
+  font-family: var(--ui-font-family);
+  font-size: 13px;
+  font-weight: var(--weight-ui);
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  min-height: 0;
+  padding: 0 6px;
 }
 
 .simulator-bottom-status span {
@@ -6275,6 +6292,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .config-tool-actions {
+  align-items: center;
   display: flex;
   gap: 8px;
   padding: 12px;
@@ -6290,6 +6308,19 @@ body:has(.app-shell.theme-dark) {
   min-height: 38px;
   min-width: 104px;
   padding: 0 18px;
+}
+
+.config-tool-toggle {
+  background: linear-gradient(180deg, #2b2925, #1d1d1d);
+  border: 1px solid rgb(156 122 84 / 0.48);
+  border-radius: 999px;
+  color: #d2b17e;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.config-tool-toggle::before {
+  --dialog-check-size: 18px;
 }
 
 .shot-screen {
@@ -6489,12 +6520,20 @@ body:has(.app-shell.theme-dark) {
 .sim-table-felt {
   --sim-outside-height: 56px;
   --sim-dozens-height: 64px;
-  display: block;
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
   position: relative;
 }
 
 .simulator-table {
-  height: calc(100% - var(--sim-outside-height) - var(--sim-dozens-height));
+  display: grid;
+  gap: 0;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 12fr) minmax(0, 1fr);
+  grid-row: 1 / span 3;
+  height: 100%;
   overflow: visible;
   position: relative;
   z-index: 6;
@@ -6502,19 +6541,25 @@ body:has(.app-shell.theme-dark) {
 
 .sim-dozens,
 .sim-outside {
-  left: 0;
-  position: absolute;
-  right: 0;
+  bottom: auto;
+  left: auto;
+  padding-left: 0;
+  padding-right: 0;
+  position: relative;
+  right: auto;
+  z-index: 5;
 }
 
 .sim-dozens {
-  bottom: var(--sim-outside-height);
-  height: var(--sim-dozens-height);
+  grid-column: 2 / 14;
+  grid-row: 4;
+  height: 100%;
 }
 
 .sim-outside {
-  bottom: 0;
-  height: var(--sim-outside-height);
+  grid-column: 2 / 14;
+  grid-row: 5;
+  height: 100%;
 }
 
 .simulator-main {
@@ -6531,15 +6576,14 @@ body:has(.app-shell.theme-dark) {
 
 .sim-table-felt {
   flex: 1 1 auto;
-  grid-template-rows: minmax(0, 0.88fr) 54px 56px;
 }
 
 .sim-dozens {
-  min-height: 54px;
+  min-height: 0;
 }
 
 .sim-outside {
-  min-height: 56px;
+  min-height: 0;
 }
 
 .simulator-chip-tray {
@@ -6558,7 +6602,7 @@ body:has(.app-shell.theme-dark) {
   grid-template-rows: 34px 34px;
   height: 72px;
   margin-left: 5px;
-  min-width: 260px;
+  min-width: 240px;
   overflow: hidden;
   padding: 0 7px;
 }
@@ -6758,27 +6802,36 @@ body:has(.app-shell.theme-dark) {
   margin: 0;
 }
 
-.simulator-return-zone {
+.simulator-no-bet-zone {
   background: transparent;
   border: 0;
+  min-height: 0;
+  min-width: 0;
   opacity: 0;
   padding: 0;
-  position: absolute;
+  pointer-events: auto;
+  position: relative;
   z-index: 30;
 }
 
-.simulator-return-zone-a {
-  height: 18%;
-  left: 0;
-  top: 0;
-  width: 39%;
+.simulator-no-bet-zone-a {
+  grid-column: 1;
+  grid-row: 4;
 }
 
-.simulator-return-zone-b {
-  bottom: 0;
-  height: 18%;
-  left: 0;
-  width: 39%;
+.simulator-no-bet-zone-b {
+  grid-column: 1;
+  grid-row: 5;
+}
+
+.simulator-no-bet-zone-c {
+  grid-column: 14;
+  grid-row: 4;
+}
+
+.simulator-no-bet-zone-d {
+  grid-column: 14;
+  grid-row: 5;
 }
 
 .sim-table-felt .sim-table-chip,
@@ -7010,7 +7063,8 @@ body:has(.app-shell.theme-dark) {
 
   html.android .simulator-bottom-status {
     gap: 2px;
-    min-width: 104px;
+    grid-template-columns: minmax(104px, 1fr) 32px;
+    min-width: 138px;
   }
 
   html.android .simulator-bottom-status > div {
@@ -7020,12 +7074,42 @@ body:has(.app-shell.theme-dark) {
     padding: 1px 4px;
   }
 
+  html.android .simulator-return-button {
+    border-radius: 6px;
+    font-size: 10px;
+    min-height: 20px;
+    padding: 0 2px;
+  }
+
   html.android .simulator-bottom-status span {
     font-size: 10px;
   }
 
   html.android .simulator-bottom-status strong {
     font-size: 12px;
+  }
+}
+
+.simulator-screen.desktop-mode {
+  padding: 8px;
+}
+
+.simulator-screen.desktop-mode .simulator-landscape {
+  height: calc(100dvh - 16px);
+  left: 50%;
+  max-height: none;
+  max-width: none;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100dvw - 16px);
+}
+
+@media (orientation: portrait) {
+  .simulator-screen.desktop-mode .simulator-landscape,
+  html.android .simulator-screen.desktop-mode .simulator-landscape {
+    height: calc(100dvh - 16px);
+    transform: translate(-50%, -50%);
+    width: calc(100dvw - 16px);
   }
 }
 

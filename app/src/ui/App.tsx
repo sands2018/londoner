@@ -128,6 +128,7 @@ const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
 const currentRedoNumbersKey = "londoner.currentRedoNumbers";
 const simulatorStateKey = "londoner.simulatorState";
+const simulatorDesktopModeKey = "londoner.simulatorDesktopMode";
 const currentSessionIdKey = "londoner.currentSessionId";
 const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
@@ -587,6 +588,8 @@ export function App() {
   const [shotBusy, setShotBusy] = useState(false);
   const [shotCount, setShotCount] = useState(0);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [simulatorDesktopMode, setSimulatorDesktopMode] = useState(() => localStorage.getItem(simulatorDesktopModeKey) === "1");
+  const [draftSimulatorDesktopMode, setDraftSimulatorDesktopMode] = useState(simulatorDesktopMode);
   const initialSimulatorState = useMemo(loadSimulatorState, []);
   const [simulatorBalance, setSimulatorBalance] = useState(initialSimulatorState.balance);
   const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(initialSimulatorState.selectedChip);
@@ -1740,22 +1743,38 @@ export function App() {
     target: EventTarget | null;
   }) {
     const targetElement = event.target instanceof HTMLElement ? event.target : null;
-    if (targetElement?.closest(".simulator-return-zone")) return;
-    const x = event.clientX;
-    const y = event.clientY;
-    const feltRect = event.currentTarget.getBoundingClientRect();
-    const relativeX = (x - feltRect.left) / feltRect.width;
-    const relativeY = (y - feltRect.top) / feltRect.height;
-    const isReturnBlank =
-      !targetElement?.closest("[data-sim-kind]") &&
-      relativeX >= 0 &&
-      relativeX <= 0.46 &&
-      (relativeY <= 0.24 || relativeY >= 0.76);
-    if (isReturnBlank) {
+    if (targetElement?.closest(".simulator-no-bet-zone")) {
       event.preventDefault();
       event.stopPropagation();
-      setSimulatorOpen(false);
       return;
+    }
+    const x = event.clientX;
+    const y = event.clientY;
+    const isNoBetZoneClick = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(".simulator-no-bet-zone")).some((element) => {
+      const rect = element.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    });
+    if (isNoBetZoneClick) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    const directBetElement = targetElement?.closest<HTMLElement>("[data-sim-kind]");
+    const directKind = directBetElement?.dataset.simKind as SimulatorBetKind | undefined;
+    if (directBetElement && (directKind === "dozen" || directKind === "outside" || directKind === "row")) {
+      const directRect = directBetElement.getBoundingClientRect();
+      const directY = y - directRect.top;
+      const dozenTopLineReserve = Math.min(30, Math.max(16, directRect.height * 0.24));
+      const isDozenTopLine = directKind === "dozen" && directY <= dozenTopLineReserve;
+      const label = directBetElement.dataset.simLabel;
+      const payout = Number.parseInt(directBetElement.dataset.simPayout ?? "", 10);
+      const betNumbers = simulatorDecodeNumbers(directBetElement.dataset.simNumbers);
+      if (!isDozenTopLine && label && Number.isFinite(payout) && betNumbers.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        placeSimulatorBet(directKind, label, betNumbers, payout);
+        return;
+      }
     }
     type Candidate = {
       kind: SimulatorBetKind;
@@ -3295,6 +3314,7 @@ export function App() {
   function openConfigView() {
     reloadGameConfigState();
     setDraftWindowMode(windowMode);
+    setDraftSimulatorDesktopMode(simulatorDesktopMode);
     void refreshCasinoTables().then((items) => {
       setDraftCasinoTables(items);
       setDraftSelectedCasinoId("");
@@ -3539,7 +3559,9 @@ export function App() {
   function saveConfigView() {
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
+      setSimulatorDesktopMode(draftSimulatorDesktopMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
+      localStorage.setItem(simulatorDesktopModeKey, draftSimulatorDesktopMode ? "1" : "0");
       setConfigViewOpen(false);
       return;
     }
@@ -5806,7 +5828,7 @@ export function App() {
       ) : null}
 
       {simulatorOpen ? (
-        <section className="simulator-screen" aria-label="轮盘模拟">
+        <section className={`simulator-screen ${simulatorDesktopMode ? "desktop-mode" : ""}`} aria-label="轮盘模拟">
           <div className="simulator-landscape">
             {simulatorRoundPop ? (
               <div className="simulator-round-pop-overlay" aria-hidden="true">
@@ -5889,8 +5911,10 @@ export function App() {
             <div className="simulator-main">
               <section className="simulator-table-wrap">
                 <div className="sim-table-felt" onClickCapture={handleSimulatorTableClick}>
-                  <button className="simulator-return-zone simulator-return-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setSimulatorOpen(false); }} type="button" aria-label="返回程序" />
-                  <button className="simulator-return-zone simulator-return-zone-b" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setSimulatorOpen(false); }} type="button" aria-label="返回程序" />
+                  <button className="simulator-no-bet-zone simulator-no-bet-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                  <button className="simulator-no-bet-zone simulator-no-bet-zone-b" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                  <button className="simulator-no-bet-zone simulator-no-bet-zone-c" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                  <button className="simulator-no-bet-zone simulator-no-bet-zone-d" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
                   <div className="simulator-table">
                     <div className="sim-zero-zone">
                       <button
@@ -6170,6 +6194,7 @@ export function App() {
                     <span>胜负</span>
                     <strong className={simulatorBalance >= 0 ? "positive" : "negative"}>{simulatorBalance >= 0 ? "+" : ""}{simulatorBalance}</strong>
                   </div>
+                  <button className="simulator-return-button" onClick={() => setSimulatorOpen(false)} type="button">返回</button>
                 </div>
               </footer>
             </div>
@@ -6242,6 +6267,14 @@ export function App() {
                     <h2><span>工具</span></h2>
                     <div className="config-tool-actions">
                       <button onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">Test</button>
+                      <label className="config-option-row config-tool-toggle">
+                        <input
+                          checked={draftSimulatorDesktopMode}
+                          onChange={(event) => setDraftSimulatorDesktopMode(event.target.checked)}
+                          type="checkbox"
+                        />
+                        <span>电脑</span>
+                      </label>
                     </div>
                   </section>
                 ) : null}
