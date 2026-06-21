@@ -3703,7 +3703,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"}`}>
+    <main className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""}`}>
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">

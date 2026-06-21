@@ -108,6 +108,10 @@ html.android .app-shell {
   zoom: 0.92;
 }
 
+html.android .app-shell.simulator-active {
+  zoom: 1;
+}
+
 html.android .prediction-screen {
   zoom: 0.92;
 }
@@ -6492,13 +6496,13 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .simulator-table {
-    grid-template-columns: 40px minmax(0, 1fr) 32px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 12fr) minmax(0, 1fr);
   }
 
   html.android .sim-dozens,
   html.android .sim-outside {
-    padding-left: 40px;
-    padding-right: 32px;
+    padding-left: calc(100% / 14);
+    padding-right: calc(100% / 14);
   }
 
   html.android .sim-number {
