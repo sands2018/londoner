@@ -126,6 +126,7 @@ import {
 
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
+const currentRedoNumbersKey = "londoner.currentRedoNumbers";
 const currentSessionIdKey = "londoner.currentSessionId";
 const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
@@ -310,6 +311,17 @@ function simulatorDecodeNumbers(value: string | undefined): RouletteNumber[] {
     .split(",")
     .map((item) => Number.parseInt(item, 10))
     .filter(isRouletteNumber);
+}
+
+function loadCurrentRedoNumbers(): RouletteNumber[] {
+  const raw = localStorage.getItem(currentRedoNumbersKey);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter(isRouletteNumber) : [];
+  } catch {
+    return [];
+  }
 }
 
 function normalizeRepeatTier(value: string | null): RepeatTier {
@@ -1270,6 +1282,7 @@ export function App() {
   useEffect(() => {
     storage.loadCurrent().then(async (storedNumbers) => {
       const loadedNumbers = storedNumbers.filter(isRouletteNumber);
+      const loadedRedoNumbers = loadCurrentRedoNumbers();
       let savedNumbers = loadedNumbers;
       if (currentSessionId) {
         const openedSession = (await storage.listSessions()).find((session) => session.id === currentSessionId);
@@ -1278,6 +1291,7 @@ export function App() {
         }
       }
       setNumbers(loadedNumbers);
+      setRedoNumbers(loadedRedoNumbers);
       setLastSavedNumbers(savedNumbers);
       setLoaded(true);
     });
@@ -1296,6 +1310,12 @@ export function App() {
       void storage.saveCurrent(numbers);
     }
   }, [loaded, numbers]);
+
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem(currentRedoNumbersKey, JSON.stringify(redoNumbers));
+    }
+  }, [loaded, redoNumbers]);
 
   useEffect(() => {
     localStorage.setItem(keyboardModeKey, keyboardMode);
@@ -1832,6 +1852,8 @@ export function App() {
     setCurrentSessionId(id);
     setCurrentTableOverrideId("");
     setLastSavedNumbers(numbers);
+    setRedoNumbers([]);
+    localStorage.setItem(currentRedoNumbersKey, "[]");
     setActiveDialog(null);
     setNoticeDialog({ title: "保存成功", message: `保存"${name}"成功。` });
   }
