@@ -6071,9 +6071,9 @@ body:has(.app-shell.theme-dark) {
 .simulator-chip-actions {
   display: grid;
   gap: 6px;
-  grid-template-columns: 58px 42px;
+  grid-template-columns: 80px 42px;
   grid-template-rows: repeat(2, 33px);
-  margin-left: 10px;
+  margin-left: 8px;
   min-width: 0;
 }
 
@@ -6138,11 +6138,12 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-bottom-status {
   display: grid;
-  grid-template-columns: minmax(154px, 1fr) 42px;
+  flex: 1 1 216px;
+  grid-template-columns: minmax(168px, 1fr) 42px;
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  margin-left: auto;
-  min-width: 202px;
+  margin-left: 4px;
+  min-width: 216px;
 }
 
 .simulator-bottom-status > div {
@@ -6605,20 +6606,23 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-bottom-feed {
+  --sim-mobile-feed-gap: 4px;
+  --sim-mobile-recent-size: 26px;
   align-self: center;
   background: transparent;
   border: 0;
   border-radius: 0;
   color: #f4ead3;
   display: grid;
-  flex: 1 1 auto;
-  gap: 4px;
+  flex: 0 0 calc(var(--sim-mobile-recent-size) * 10 + var(--sim-mobile-feed-gap) * 9 + 8px);
+  gap: var(--sim-mobile-feed-gap);
   grid-template-rows: 34px 34px;
   height: 72px;
   margin-left: 5px;
-  min-width: 240px;
+  min-width: 0;
   overflow: hidden;
-  padding: 0 7px;
+  padding: 0 4px;
+  width: calc(var(--sim-mobile-recent-size) * 10 + var(--sim-mobile-feed-gap) * 9 + 8px);
 }
 
 .simulator-recent-numbers {
@@ -6627,8 +6631,8 @@ body:has(.app-shell.theme-dark) {
   border: 0;
   color: inherit;
   display: grid;
-  gap: 5px;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: var(--sim-mobile-feed-gap);
+  grid-template-columns: repeat(10, var(--sim-mobile-recent-size));
   min-width: 0;
   padding: 0;
   width: 100%;
@@ -6649,7 +6653,7 @@ body:has(.app-shell.theme-dark) {
   line-height: 1;
   min-width: 0;
   padding: 0 4px;
-  width: 100%;
+  width: var(--sim-mobile-recent-size);
 }
 
 .simulator-recent-numbers strong.latest {
@@ -7018,7 +7022,7 @@ body:has(.app-shell.theme-dark) {
 
   html.android .simulator-chip-actions {
     gap: 4px;
-    grid-template-columns: 44px 34px;
+    grid-template-columns: 57px 34px;
     grid-template-rows: repeat(2, 34px);
     margin-left: 8px;
   }
@@ -7032,18 +7036,19 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .simulator-bottom-feed {
+    --sim-mobile-feed-gap: 3px;
     align-self: center;
-    gap: 4px;
+    gap: var(--sim-mobile-feed-gap);
     grid-template-rows: 28px 40px;
     height: 72px;
     margin-left: 2px;
-    min-width: 180px;
+    min-width: 0;
     padding: 0 3px;
   }
 
   html.android .simulator-recent-numbers,
   html.android .simulator-log-preview {
-    gap: 3px;
+    gap: var(--sim-mobile-feed-gap);
   }
 
   html.android .simulator-recent-numbers strong,
@@ -7076,9 +7081,11 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .simulator-bottom-status {
+    flex: 1 1 146px;
     gap: 2px;
-    grid-template-columns: minmax(104px, 1fr) 32px;
-    min-width: 138px;
+    grid-template-columns: minmax(112px, 1fr) 32px;
+    margin-left: 3px;
+    min-width: 146px;
   }
 
   html.android .simulator-bottom-status > div {
