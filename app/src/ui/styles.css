@@ -5965,17 +5965,21 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-round-pop-overlay {
   align-items: center;
+  bottom: 76px;
   display: flex;
-  inset: 0;
   justify-content: center;
+  left: 0;
   pointer-events: none;
   position: absolute;
+  right: 0;
+  top: 0;
   z-index: 30;
 }
 
 .simulator-round-pop {
   align-items: center;
-  animation: simRoundPopFade 2s ease-out forwards;
+  animation: simRoundPopFade 3s ease-out forwards;
+  background: transparent;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -5985,15 +5989,63 @@ body:has(.app-shell.theme-dark) {
   text-shadow: 0 3px 14px rgb(0 0 0 / 0.75), 0 0 28px rgb(0 0 0 / 0.58);
 }
 
+.simulator-round-pop.sim-result-red,
+.simulator-round-pop.sim-result-black,
+.simulator-round-pop.sim-result-green {
+  background: transparent;
+}
+
+.simulator-round-pop.result-phase {
+  animation-duration: 2s;
+}
+
 .simulator-round-pop span {
   color: #f4ead3;
   font-size: clamp(22px, 4.4dvh, 38px);
   font-weight: var(--weight-strong);
 }
 
+.simulator-round-pop.positive span,
+.simulator-round-pop.negative span {
+  font-size: clamp(42px, 9dvh, 76px);
+  line-height: 1.08;
+}
+
+.simulator-round-pop .simulator-round-settle-line {
+  color: #ffd061;
+}
+
+.simulator-round-pop .simulator-round-settle-line strong {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 900;
+}
+
+.simulator-round-pop .simulator-round-win.positive strong {
+  color: #ff6f6f;
+}
+
+.simulator-round-pop .simulator-round-win.negative strong {
+  color: #8fd0aa;
+}
+
+.simulator-round-pop .simulator-round-win.zero strong {
+  color: #ffd061;
+}
+
 .simulator-round-pop strong {
   font-size: clamp(72px, 17dvh, 132px);
   font-weight: 900;
+}
+
+.simulator-round-pop .simulator-round-number {
+  align-items: center;
+  border-radius: 50%;
+  display: flex;
+  font-size: clamp(60px, 14dvh, 108px);
+  height: clamp(110px, 24dvh, 170px);
+  justify-content: center;
+  width: clamp(110px, 24dvh, 170px);
 }
 
 .simulator-round-pop.positive strong {
@@ -6004,10 +6056,28 @@ body:has(.app-shell.theme-dark) {
   color: #8fd0aa;
 }
 
+.simulator-round-pop.sim-result-red strong {
+  background: linear-gradient(180deg, #d44848, #8d171d);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.65);
+  color: #ffdfcf;
+}
+
+.simulator-round-pop.sim-result-black strong {
+  background: linear-gradient(180deg, #202020, #030303);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.7);
+  color: #f6f1e6;
+}
+
+.simulator-round-pop.sim-result-green strong {
+  background: linear-gradient(180deg, #18834b, #07552e);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.65);
+  color: #a8ffd4;
+}
+
 @keyframes simRoundPopFade {
   0% { opacity: 0; transform: scale(0.45); }
-  12% { opacity: 1; transform: scale(1.04); }
-  72% { opacity: 0.92; transform: scale(1); }
+  9% { opacity: 1; transform: scale(1.04); }
+  78% { opacity: 0.96; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.16); }
 }
 
@@ -6404,6 +6474,121 @@ body:has(.app-shell.theme-dark) {
   transform-origin: center;
   white-space: nowrap;
   z-index: 1;
+}
+
+@media (orientation: portrait) {
+  html.android .simulator-landscape {
+    height: 100svw;
+    width: 100svh;
+  }
+
+  html.android .sim-number {
+    font-size: clamp(18px, 3.65svh, 38px);
+    line-height: 0.9;
+    overflow: hidden;
+  }
+
+  html.android .sim-zero {
+    font-size: clamp(28px, 4.8svh, 50px);
+  }
+
+  html.android .sim-bet-band button,
+  html.android .sim-row-bets button {
+    font-size: clamp(12px, 2.05svh, 18px);
+    line-height: 0.95;
+    overflow: hidden;
+  }
+
+  html.android .sim-dozens button {
+    font-size: clamp(15px, 2.65svh, 22px);
+  }
+
+  html.android .sim-outside button {
+    font-size: clamp(12px, 2svh, 18px);
+  }
+
+  html.android .simulator-chip-tray {
+    gap: 3px;
+    min-height: 68px;
+    padding: 4px 5px;
+  }
+
+  html.android .simulator-chip-tray .simulator-chip {
+    height: 30px;
+    max-height: 30px;
+    min-height: 30px;
+    min-width: 30px;
+    width: 30px;
+  }
+
+  html.android .simulator-chip span {
+    font-size: 10px;
+  }
+
+  html.android .simulator-chip-actions {
+    gap: 4px;
+    grid-template-columns: 44px repeat(3, 34px);
+    margin-left: 2px;
+  }
+
+  html.android .simulator-chip-actions button {
+    border-radius: 7px;
+    font-size: 10px;
+    min-height: 30px;
+    padding: 0 3px;
+  }
+
+  html.android .simulator-bottom-feed {
+    gap: 1px;
+    grid-template-rows: 24px minmax(0, 1fr);
+    margin-left: 2px;
+    min-width: 92px;
+    padding: 0 3px 3px;
+  }
+
+  html.android .simulator-recent-numbers,
+  html.android .simulator-log-preview {
+    gap: 3px;
+  }
+
+  html.android .simulator-recent-numbers strong,
+  html.android .simulator-log-preview strong {
+    border-radius: 4px;
+    font-size: 10px;
+    height: 18px;
+    min-width: 19px;
+    padding: 0 2px;
+  }
+
+  html.android .simulator-recent-numbers strong.latest {
+    font-size: 13px;
+    height: 22px;
+    min-width: 24px;
+  }
+
+  html.android .simulator-log-preview {
+    font-size: 10px;
+  }
+
+  html.android .simulator-bottom-status {
+    gap: 2px;
+    min-width: 88px;
+  }
+
+  html.android .simulator-bottom-status > div {
+    border-radius: 6px;
+    grid-template-columns: 30px minmax(0, 1fr);
+    min-height: 22px;
+    padding: 2px 4px;
+  }
+
+  html.android .simulator-bottom-status span {
+    font-size: 10px;
+  }
+
+  html.android .simulator-bottom-status strong {
+    font-size: 12px;
+  }
 }
 
 .message-actions button {

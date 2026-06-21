@@ -520,7 +520,7 @@ export function App() {
   const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>([]);
   const [simulatorDetailOpen, setSimulatorDetailOpen] = useState(false);
   const [simulatorRecentOpen, setSimulatorRecentOpen] = useState(false);
-  const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; result: RouletteNumber } | null>(null);
+  const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; phase: "result" | "net"; result: RouletteNumber; stake: number; winReturn: number } | null>(null);
   const simulatorBetIdRef = useRef(0);
   const simulatorProgressRef = useRef(0);
   const simulatorRoundPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1657,13 +1657,16 @@ export function App() {
     const balanceBefore = simulatorBalance + stake;
     const nextBalance = simulatorBalance + winReturn;
     const popId = keyPopIdRef.current++;
-    setSimulatorRoundPop({ id: popId, net, result: simulatorNextNumber });
+    setSimulatorRoundPop({ id: popId, net, phase: "result", result: simulatorNextNumber, stake, winReturn });
     if (simulatorRoundPopTimerRef.current) {
       clearTimeout(simulatorRoundPopTimerRef.current);
     }
     simulatorRoundPopTimerRef.current = setTimeout(() => {
-      setSimulatorRoundPop((current) => (current?.id === popId ? null : current));
-      simulatorRoundPopTimerRef.current = null;
+      setSimulatorRoundPop((current) => (current?.id === popId ? { ...current, phase: "net" } : current));
+      simulatorRoundPopTimerRef.current = setTimeout(() => {
+        setSimulatorRoundPop((current) => (current?.id === popId ? null : current));
+        simulatorRoundPopTimerRef.current = null;
+      }, 3000);
     }, 2000);
     setSimulatorBalance(nextBalance);
     setSimulatorLog((items) => [
@@ -5544,9 +5547,19 @@ export function App() {
           <div className="simulator-landscape">
             {simulatorRoundPop ? (
               <div className="simulator-round-pop-overlay" aria-hidden="true">
-                <div className={`simulator-round-pop ${simulatorRoundPop.net >= 0 ? "positive" : "negative"}`} key={simulatorRoundPop.id}>
-                  <span>开 {simulatorRoundPop.result}</span>
-                  <strong>{simulatorRoundPop.net >= 0 ? "+" : ""}{simulatorRoundPop.net}</strong>
+                <div className={`simulator-round-pop ${simulatorRoundPop.phase === "result" ? `result-phase sim-result-${getNumberColor(simulatorRoundPop.result)}` : simulatorRoundPop.net >= 0 ? "positive" : "negative"}`} key={`${simulatorRoundPop.id}-${simulatorRoundPop.phase}`}>
+                  {simulatorRoundPop.phase === "result" ? (
+                    <>
+                      <strong className="simulator-round-number">{simulatorRoundPop.result}</strong>
+                    </>
+                  ) : (
+                    <>
+                      <span className="simulator-round-settle-line">押注 <strong>{simulatorRoundPop.stake}</strong></span>
+                      <span className={`simulator-round-settle-line simulator-round-win ${simulatorRoundPop.net > 0 ? "positive" : simulatorRoundPop.net < 0 ? "negative" : "zero"}`}>
+                        赢回 <strong>{simulatorRoundPop.winReturn}</strong>
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ) : null}
