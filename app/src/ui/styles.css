@@ -5280,7 +5280,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-log-row {
-  grid-template-columns: 38px 28px minmax(0, 1fr);
+  grid-template-columns: 46px 34px 70px minmax(74px, 1fr);
 }
 
 .simulator-log-row strong {
@@ -5292,9 +5292,103 @@ body:has(.app-shell.theme-dark) {
   width: 24px;
 }
 
+.simulator-log-row span,
+.simulator-log-row b,
+.simulator-log-row em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .simulator-log-row em {
   font-style: normal;
   text-align: right;
+}
+
+.simulator-log-row b {
+  color: #d7ccb4;
+  font-weight: var(--weight-ui);
+  text-align: right;
+}
+
+.simulator-log-head {
+  color: rgb(244 234 211 / 0.55);
+  font-size: 11px;
+  min-height: 20px;
+}
+
+.simulator-log-head span:not(:first-child) {
+  text-align: right;
+}
+
+.simulator-log-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.simulator-log-table th,
+.simulator-log-table td {
+  border-bottom: 1px solid rgb(255 255 255 / 0.055);
+  height: 26px;
+  line-height: 1;
+  overflow: hidden;
+  padding: 0 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simulator-log-table th {
+  color: rgb(244 234 211 / 0.55);
+  font-size: 11px;
+  font-weight: var(--weight-ui);
+}
+
+.simulator-log-table th:nth-child(1),
+.simulator-log-table td:nth-child(1) {
+  width: 42px;
+}
+
+.simulator-log-table th:nth-child(2),
+.simulator-log-table td:nth-child(2) {
+  text-align: center;
+  width: 30px;
+}
+
+.simulator-log-table th:nth-child(3),
+.simulator-log-table td:nth-child(3) {
+  text-align: right;
+  width: 56px;
+}
+
+.simulator-log-table th:nth-child(4),
+.simulator-log-table td:nth-child(4) {
+  text-align: right;
+  width: 56px;
+}
+
+.simulator-log-table th:nth-child(5),
+.simulator-log-table td:nth-child(5) {
+  text-align: right;
+  width: 66px;
+}
+
+.simulator-log-table strong {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.simulator-log-table .positive {
+  color: #f2bf62;
+}
+
+.simulator-log-table .negative {
+  color: #8fc3a2;
 }
 
 .simulator-log-row em.positive {
@@ -5895,12 +5989,14 @@ body:has(.app-shell.theme-dark) {
 .simulator-chip-actions {
   display: grid;
   gap: 6px;
-  grid-template-columns: 58px repeat(3, 42px);
+  grid-template-columns: 58px 42px;
+  grid-template-rows: repeat(2, 33px);
   margin-left: 4px;
   min-width: 0;
 }
 
-.simulator-chip-actions button {
+.simulator-chip-actions button,
+.simulator-feed-actions button {
   background: linear-gradient(180deg, #d1a245, #805a22);
   border: 1px solid rgb(255 235 184 / 0.36);
   border-radius: 9px;
@@ -5909,19 +6005,40 @@ body:has(.app-shell.theme-dark) {
   font-family: var(--ui-font-family);
   font-size: 13px;
   font-weight: var(--weight-ui);
-  min-height: 35px;
+  min-height: 0;
   padding: 0 6px;
   place-items: center;
 }
 
-.simulator-chip-actions button:disabled {
+.simulator-chip-actions .sim-action-play,
+.simulator-chip-actions .sim-action-200 {
+  grid-row: 1 / span 2;
+}
+
+.simulator-chip-actions .sim-action-play {
+  background: linear-gradient(180deg, #3f8fce, #1f5c91);
+  border-color: rgb(174 220 255 / 0.42);
+}
+
+.simulator-chip-actions .sim-action-200 {
+  background: linear-gradient(180deg, #4c9b5a, #24643a);
+  border-color: rgb(190 245 196 / 0.38);
+}
+
+.simulator-feed-actions .sim-feed-detail {
+  background: linear-gradient(180deg, #d46f35, #8d351f);
+  border-color: rgb(255 185 146 / 0.42);
+}
+
+.simulator-chip-actions button:disabled,
+.simulator-feed-actions button:disabled {
   background: linear-gradient(180deg, #28332c, #111a15);
   border-color: rgb(255 235 184 / 0.14);
   color: rgb(244 234 211 / 0.38);
 }
 
 .simulator-chip-actions .sim-action-200,
-.simulator-chip-actions .sim-action-ac {
+.simulator-feed-actions button {
   font-size: 12px;
   letter-spacing: 0;
 }
@@ -5930,7 +6047,7 @@ body:has(.app-shell.theme-dark) {
   display: grid;
   gap: 4px;
   margin-left: auto;
-  min-width: 138px;
+  min-width: 154px;
 }
 
 .simulator-bottom-status > div {
@@ -5941,8 +6058,8 @@ body:has(.app-shell.theme-dark) {
   color: #d7ccb4;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
-  min-height: 26px;
-  padding: 4px 9px;
+  min-height: 22px;
+  padding: 2px 9px;
 }
 
 .simulator-bottom-status span {
@@ -5969,7 +6086,7 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-round-pop-overlay {
   align-items: center;
-  bottom: 76px;
+  bottom: 92px;
   display: flex;
   justify-content: center;
   left: 0;
@@ -6323,7 +6440,7 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-main {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) 76px;
+  grid-template-rows: minmax(0, 1fr) 92px;
 }
 
 .simulator-table-wrap {
@@ -6347,35 +6464,37 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-chip-tray {
-  min-height: 76px;
+  min-height: 92px;
 }
 
 .simulator-bottom-feed {
-  align-self: stretch;
+  align-self: center;
   background: transparent;
   border: 0;
   border-radius: 0;
   color: #f4ead3;
   display: grid;
   flex: 1 1 auto;
-  gap: 3px;
-  grid-template-rows: 30px minmax(0, 1fr);
+  gap: 4px;
+  grid-template-rows: 30px 38px;
+  height: 72px;
   margin-left: 5px;
-  min-width: 170px;
+  min-width: 260px;
   overflow: hidden;
-  padding: 1px 7px 6px;
+  padding: 0 7px;
 }
 
-.simulator-recent-numbers,
-.simulator-log-preview {
+.simulator-recent-numbers {
   align-items: center;
   background: transparent;
   border: 0;
   color: inherit;
-  display: flex;
+  display: grid;
   gap: 5px;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   min-width: 0;
   padding: 0;
+  width: 100%;
 }
 
 .simulator-recent-numbers {
@@ -6391,14 +6510,28 @@ body:has(.app-shell.theme-dark) {
   height: 21px;
   justify-content: center;
   line-height: 1;
-  min-width: 24px;
+  min-width: 0;
   padding: 0 4px;
+  width: 100%;
 }
 
 .simulator-recent-numbers strong.latest {
   font-size: 17px;
   height: 28px;
-  min-width: 32px;
+  min-width: 0;
+}
+
+.simulator-feed-actions {
+  align-items: stretch;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.simulator-feed-actions button {
+  min-height: 38px;
+  padding: 0 5px;
 }
 
 .simulator-recent-numbers em,
@@ -6443,9 +6576,12 @@ body:has(.app-shell.theme-dark) {
   color: #f4ead3;
   display: grid;
   gap: 8px;
-  max-height: min(82%, 440px);
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(90%, 560px);
+  min-height: 0;
   padding: 10px;
-  width: min(72%, 680px);
+  min-width: 320px;
+  width: min(52%, 480px);
 }
 
 .simulator-detail-panel header {
@@ -6473,6 +6609,11 @@ body:has(.app-shell.theme-dark) {
   gap: 8px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   min-height: 0;
+  overflow: hidden;
+}
+
+.simulator-settle-detail-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .simulator-detail-grid section {
@@ -6488,6 +6629,7 @@ body:has(.app-shell.theme-dark) {
   color: #e6c879;
   font-size: 13px;
   margin: 0 0 6px;
+  white-space: nowrap;
 }
 
 .simulator-recent-panel {
@@ -6624,7 +6766,11 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .simulator-main {
-    grid-template-rows: minmax(0, 1fr) 64px;
+    grid-template-rows: minmax(0, 1fr) 76px;
+  }
+
+  html.android .simulator-round-pop-overlay {
+    bottom: 76px;
   }
 
   html.android .sim-table-felt {
@@ -6669,7 +6815,7 @@ body:has(.app-shell.theme-dark) {
 
   html.android .simulator-chip-tray {
     gap: 3px;
-    min-height: 64px;
+    min-height: 76px;
     padding: 4px 5px;
   }
 
@@ -6687,11 +6833,13 @@ body:has(.app-shell.theme-dark) {
 
   html.android .simulator-chip-actions {
     gap: 4px;
-    grid-template-columns: 44px repeat(3, 34px);
+    grid-template-columns: 44px 34px;
+    grid-template-rows: repeat(2, 34px);
     margin-left: 2px;
   }
 
-  html.android .simulator-chip-actions button {
+  html.android .simulator-chip-actions button,
+  html.android .simulator-feed-actions button {
     border-radius: 7px;
     font-size: 10px;
     min-height: 30px;
@@ -6699,11 +6847,13 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .simulator-bottom-feed {
-    gap: 1px;
-    grid-template-rows: 24px minmax(0, 1fr);
+    align-self: center;
+    gap: 4px;
+    grid-template-rows: 24px 44px;
+    height: 72px;
     margin-left: 2px;
-    min-width: 92px;
-    padding: 0 3px 3px;
+    min-width: 180px;
+    padding: 0 3px;
   }
 
   html.android .simulator-recent-numbers,
@@ -6716,14 +6866,24 @@ body:has(.app-shell.theme-dark) {
     border-radius: 4px;
     font-size: 10px;
     height: 18px;
-    min-width: 19px;
+    min-width: 0;
     padding: 0 2px;
   }
 
   html.android .simulator-recent-numbers strong.latest {
     font-size: 13px;
     height: 22px;
-    min-width: 24px;
+    min-width: 0;
+  }
+
+  html.android .simulator-feed-actions {
+    gap: 4px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  html.android .simulator-feed-actions button {
+    min-height: 44px;
+    padding: 0 2px;
   }
 
   html.android .simulator-log-preview {
@@ -6732,14 +6892,14 @@ body:has(.app-shell.theme-dark) {
 
   html.android .simulator-bottom-status {
     gap: 2px;
-    min-width: 88px;
+    min-width: 104px;
   }
 
   html.android .simulator-bottom-status > div {
     border-radius: 6px;
     grid-template-columns: 30px minmax(0, 1fr);
-    min-height: 22px;
-    padding: 2px 4px;
+    min-height: 20px;
+    padding: 1px 4px;
   }
 
   html.android .simulator-bottom-status span {

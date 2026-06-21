@@ -8,7 +8,7 @@ import {
   type ColRowIndex,
   type RouletteNumber,
 } from "../core/roulette";
-import { CircleUser, Keyboard, Play, SkipBack, SkipForward, Undo2 } from "lucide-react";
+import { ChevronsUp, CircleUser, Keyboard, List, Play, Repeat, SkipBack, SkipForward, Undo2 } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -127,6 +127,7 @@ import {
 const storage = new LocalStorageAdapter();
 const keyboardModeKey = "londoner.keyboardMode";
 const currentRedoNumbersKey = "londoner.currentRedoNumbers";
+const simulatorStateKey = "londoner.simulatorState";
 const currentSessionIdKey = "londoner.currentSessionId";
 const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
@@ -188,6 +189,15 @@ interface SimulatorLog {
   round: number;
   stake: number;
   winReturn: number;
+}
+
+interface PersistedSimulatorState {
+  balance: number;
+  bets: SimulatorBet[];
+  betPlacements: SimulatorBetPlacement[];
+  lastBets: SimulatorBet[];
+  log: SimulatorLog[];
+  selectedChip: number;
 }
 
 const simulatorDozenBets = [
@@ -311,6 +321,66 @@ function simulatorDecodeNumbers(value: string | undefined): RouletteNumber[] {
     .split(",")
     .map((item) => Number.parseInt(item, 10))
     .filter(isRouletteNumber);
+}
+
+function isSimulatorBetKind(value: unknown): value is SimulatorBetKind {
+  return value === "straight" || value === "split" || value === "corner" || value === "street" || value === "six" || value === "dozen" || value === "column" || value === "outside";
+}
+
+function normalizeSimulatorBet(value: unknown): SimulatorBet | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const amount = typeof item.amount === "number" && Number.isFinite(item.amount) ? item.amount : null;
+  const id = typeof item.id === "number" && Number.isFinite(item.id) ? item.id : null;
+  const key = typeof item.key === "string" ? item.key : "";
+  const kind = isSimulatorBetKind(item.kind) ? item.kind : null;
+  const label = typeof item.label === "string" ? item.label : "";
+  const numbers = Array.isArray(item.numbers) ? item.numbers.filter(isRouletteNumber) : [];
+  const payout = typeof item.payout === "number" && Number.isFinite(item.payout) ? item.payout : null;
+  if (amount === null || id === null || !key || kind === null || !label || numbers.length === 0 || payout === null) return null;
+  return { amount, id, key, kind, label, numbers, payout };
+}
+
+function normalizeSimulatorBetPlacement(value: unknown): SimulatorBetPlacement | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const amount = typeof item.amount === "number" && Number.isFinite(item.amount) ? item.amount : null;
+  const key = typeof item.key === "string" ? item.key : "";
+  return amount !== null && key ? { amount, key } : null;
+}
+
+function normalizeSimulatorLog(value: unknown): SimulatorLog | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const balanceBefore = typeof item.balanceBefore === "number" && Number.isFinite(item.balanceBefore) ? item.balanceBefore : null;
+  const balanceAfter = typeof item.balanceAfter === "number" && Number.isFinite(item.balanceAfter) ? item.balanceAfter : null;
+  const net = typeof item.net === "number" && Number.isFinite(item.net) ? item.net : null;
+  const result = typeof item.result === "number" && isRouletteNumber(item.result) ? item.result : null;
+  const round = typeof item.round === "number" && Number.isFinite(item.round) ? item.round : null;
+  const stake = typeof item.stake === "number" && Number.isFinite(item.stake) ? item.stake : null;
+  const winReturn = typeof item.winReturn === "number" && Number.isFinite(item.winReturn) ? item.winReturn : null;
+  if (balanceBefore === null || balanceAfter === null || net === null || result === null || round === null || stake === null || winReturn === null) return null;
+  return { balanceBefore, balanceAfter, net, result, round, stake, winReturn };
+}
+
+function loadSimulatorState(): PersistedSimulatorState {
+  const fallback: PersistedSimulatorState = { balance: 0, bets: [], betPlacements: [], lastBets: [], log: [], selectedChip: 100 };
+  const raw = localStorage.getItem(simulatorStateKey);
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const balance = typeof parsed.balance === "number" && Number.isFinite(parsed.balance) ? parsed.balance : fallback.balance;
+    const selectedChip = typeof parsed.selectedChip === "number" && (simulatorChips as readonly number[]).includes(parsed.selectedChip) ? parsed.selectedChip : fallback.selectedChip;
+    const bets = Array.isArray(parsed.bets) ? parsed.bets.map(normalizeSimulatorBet).filter((item): item is SimulatorBet => item !== null) : [];
+    const betPlacements = Array.isArray(parsed.betPlacements)
+      ? parsed.betPlacements.map(normalizeSimulatorBetPlacement).filter((item): item is SimulatorBetPlacement => item !== null)
+      : [];
+    const lastBets = Array.isArray(parsed.lastBets) ? parsed.lastBets.map(normalizeSimulatorBet).filter((item): item is SimulatorBet => item !== null) : [];
+    const log = Array.isArray(parsed.log) ? parsed.log.map(normalizeSimulatorLog).filter((item): item is SimulatorLog => item !== null) : [];
+    return { balance, bets, betPlacements, lastBets, log, selectedChip };
+  } catch {
+    return fallback;
+  }
 }
 
 function loadCurrentRedoNumbers(): RouletteNumber[] {
@@ -517,15 +587,17 @@ export function App() {
   const [shotBusy, setShotBusy] = useState(false);
   const [shotCount, setShotCount] = useState(0);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
-  const [simulatorBalance, setSimulatorBalance] = useState(0);
-  const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(100);
-  const [simulatorBets, setSimulatorBets] = useState<SimulatorBet[]>([]);
-  const [simulatorBetPlacements, setSimulatorBetPlacements] = useState<SimulatorBetPlacement[]>([]);
-  const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>([]);
+  const initialSimulatorState = useMemo(loadSimulatorState, []);
+  const [simulatorBalance, setSimulatorBalance] = useState(initialSimulatorState.balance);
+  const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(initialSimulatorState.selectedChip);
+  const [simulatorBets, setSimulatorBets] = useState<SimulatorBet[]>(initialSimulatorState.bets);
+  const [simulatorBetPlacements, setSimulatorBetPlacements] = useState<SimulatorBetPlacement[]>(initialSimulatorState.betPlacements);
+  const [simulatorLastBets, setSimulatorLastBets] = useState<SimulatorBet[]>(initialSimulatorState.lastBets);
+  const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>(initialSimulatorState.log);
   const [simulatorDetailOpen, setSimulatorDetailOpen] = useState(false);
   const [simulatorRecentOpen, setSimulatorRecentOpen] = useState(false);
   const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; phase: "result" | "net"; result: RouletteNumber; stake: number; winReturn: number } | null>(null);
-  const simulatorBetIdRef = useRef(0);
+  const simulatorBetIdRef = useRef(Math.max(0, ...initialSimulatorState.bets.map((bet) => bet.id), ...initialSimulatorState.lastBets.map((bet) => bet.id)));
   const simulatorProgressRef = useRef(0);
   const simulatorRoundPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shotVideoRef = useRef<HTMLVideoElement>(null);
@@ -569,6 +641,7 @@ export function App() {
   const simulatorNextNumber = redoNumbers.at(-1) ?? null;
   const simulatorLastNumber = numbers.at(-1) ?? null;
   const simulatorTotalStake = simulatorBets.reduce((sum, bet) => sum + bet.amount, 0);
+  const simulatorTotalBetAmount = simulatorLog.reduce((sum, item) => sum + item.stake, 0) + simulatorTotalStake;
   const tableSelectOptions = useMemo(() => {
     const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
     return casinoTables
@@ -1301,6 +1374,7 @@ export function App() {
       setNumbers(loadedNumbers);
       setRedoNumbers(loadedRedoNumbers);
       setLastSavedNumbers(savedNumbers);
+      simulatorProgressRef.current = loadedNumbers.length;
       setLoaded(true);
     });
     storage.listSessions().then(setAllSavedSessions);
@@ -1324,6 +1398,19 @@ export function App() {
       localStorage.setItem(currentRedoNumbersKey, JSON.stringify(redoNumbers));
     }
   }, [loaded, redoNumbers]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const state: PersistedSimulatorState = {
+      balance: simulatorBalance,
+      bets: simulatorBets,
+      betPlacements: simulatorBetPlacements,
+      lastBets: simulatorLastBets,
+      log: simulatorLog,
+      selectedChip: simulatorSelectedChip,
+    };
+    localStorage.setItem(simulatorStateKey, JSON.stringify(state));
+  }, [loaded, simulatorBalance, simulatorBetPlacements, simulatorBets, simulatorLastBets, simulatorLog, simulatorSelectedChip]);
 
   useEffect(() => {
     localStorage.setItem(keyboardModeKey, keyboardMode);
@@ -1432,11 +1519,11 @@ export function App() {
 
   async function startShotCamera() {
     if (!navigator.mediaDevices?.getUserMedia) {
-      setShotStatus("Camera is not supported by this browser.");
+      setShotStatus("Finding function is not ready.");
       return;
     }
     setShotBusy(true);
-    setShotStatus("Requesting camera permission...");
+    setShotStatus("Requesting permission...");
     try {
       stopShotCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -1536,6 +1623,7 @@ export function App() {
     setSimulatorBalance(0);
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
+    setSimulatorLastBets([]);
     setSimulatorLog([]);
     setSimulatorRoundPop(null);
     if (numbers.length > 0) {
@@ -1544,33 +1632,74 @@ export function App() {
     }
   }
 
+  function addSimulatorBetBatch(bets: readonly Omit<SimulatorBet, "id">[]) {
+    const additions = bets.filter((bet) => bet.amount > 0 && bet.numbers.length > 0);
+    if (additions.length === 0) return;
+    const total = additions.reduce((sum, bet) => sum + bet.amount, 0);
+    setSimulatorBalance((value) => value - total);
+    setSimulatorBetPlacements((items) => [
+      ...items,
+      ...additions.map((bet) => ({ amount: bet.amount, key: bet.key })),
+    ]);
+    setSimulatorBets((items) => {
+      let next = items;
+      additions.forEach((bet) => {
+        const existingIndex = next.findIndex((item) => item.key === bet.key);
+        if (existingIndex >= 0) {
+          next = next.map((item, index) =>
+            index === existingIndex ? { ...item, amount: item.amount + bet.amount } : item,
+          );
+          return;
+        }
+        simulatorBetIdRef.current += 1;
+        next = [
+          ...next,
+          {
+            ...bet,
+            id: simulatorBetIdRef.current,
+            numbers: [...bet.numbers],
+          },
+        ];
+      });
+      return next;
+    });
+  }
+
   function placeSimulatorBet(kind: SimulatorBetKind, label: string, betNumbers: readonly RouletteNumber[], payout: number) {
     if (betNumbers.length === 0) return;
     const key = simulatorBetKey(kind, betNumbers);
-    const amount = simulatorSelectedChip;
-    setSimulatorBalance((value) => value - amount);
-    setSimulatorBetPlacements((items) => [...items, { amount, key }]);
-    setSimulatorBets((items) => {
-      const existingIndex = items.findIndex((item) => item.key === key);
-      if (existingIndex >= 0) {
-        return items.map((item, index) =>
-          index === existingIndex ? { ...item, amount: item.amount + amount } : item,
-        );
-      }
-      simulatorBetIdRef.current += 1;
-      return [
-        ...items,
-        {
-          amount,
-          id: simulatorBetIdRef.current,
-          key,
-          kind,
-          label,
-          numbers: [...betNumbers],
-          payout,
-        },
-      ];
-    });
+    addSimulatorBetBatch([{
+      amount: simulatorSelectedChip,
+      key,
+      kind,
+      label,
+      numbers: [...betNumbers],
+      payout,
+    }]);
+  }
+
+  function repeatSimulatorLastBets() {
+    if (simulatorLastBets.length === 0) return;
+    addSimulatorBetBatch(simulatorLastBets.map((bet) => ({
+      amount: bet.amount,
+      key: bet.key,
+      kind: bet.kind,
+      label: bet.label,
+      numbers: [...bet.numbers],
+      payout: bet.payout,
+    })));
+  }
+
+  function doubleSimulatorBets() {
+    if (simulatorBets.length === 0) return;
+    addSimulatorBetBatch(simulatorBets.map((bet) => ({
+      amount: bet.amount,
+      key: bet.key,
+      kind: bet.kind,
+      label: bet.label,
+      numbers: [...bet.numbers],
+      payout: bet.payout,
+    })));
   }
 
   function handleSimulatorNumberClick(value: RouletteNumber) {
@@ -1739,6 +1868,7 @@ export function App() {
     setSimulatorBalance(0);
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
+    setSimulatorLastBets([]);
     setSimulatorLog([]);
     setSimulatorRoundPop(null);
     setNumbers(simulatorNumbers.slice(0, targetIndex));
@@ -1758,6 +1888,7 @@ export function App() {
     const net = winReturn - stake;
     const balanceBefore = simulatorBalance + stake;
     const nextBalance = simulatorBalance + winReturn;
+    setSimulatorLastBets(simulatorBets.map((bet) => ({ ...bet, numbers: [...bet.numbers] })));
     const popId = keyPopIdRef.current++;
     setSimulatorRoundPop({ id: popId, net, phase: "result", result: simulatorNextNumber, stake, winReturn });
     if (simulatorRoundPopTimerRef.current) {
@@ -5672,25 +5803,32 @@ export function App() {
                     <strong>明细</strong>
                     <button onClick={() => setSimulatorDetailOpen(false)} type="button">X</button>
                   </header>
-                  <div className="simulator-detail-grid">
+                  <div className="simulator-detail-grid simulator-settle-detail-grid">
                     <section>
-                      <h3>下注</h3>
-                      {simulatorBets.length === 0 ? <p>暂无下注</p> : simulatorBets.map((bet) => (
-                        <div className="simulator-ticket-row" key={bet.id}>
-                          <span>{bet.label}</span>
-                          <strong>{bet.amount}</strong>
-                        </div>
-                      ))}
-                    </section>
-                    <section>
-                      <h3>结算</h3>
-                      {simulatorLog.length === 0 ? <p>等待开球</p> : simulatorLog.map((item) => (
-                        <div className="simulator-log-row" key={`${item.round}-${item.result}-${item.balanceAfter}`}>
-                          <span>#{item.round}</span>
-                          <strong className={`sim-result-${getNumberColor(item.result)}`}>{item.result}</strong>
-                          <em className={item.net >= 0 ? "positive" : "negative"}>{item.net >= 0 ? "+" : ""}{item.net}</em>
-                        </div>
-                      ))}
+                      {simulatorLog.length === 0 ? <p>等待开球</p> : (
+                        <table className="simulator-log-table">
+                          <thead>
+                            <tr>
+                              <th>局</th>
+                              <th>号</th>
+                              <th>投注</th>
+                              <th>输赢</th>
+                              <th>结算</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {simulatorLog.map((item) => (
+                              <tr key={`${item.round}-${item.result}-${item.balanceAfter}`}>
+                                <td>#{item.round}</td>
+                                <td><strong className={`sim-result-${getNumberColor(item.result)}`}>{item.result}</strong></td>
+                                <td>{item.stake}</td>
+                                <td className={item.net >= 0 ? "positive" : "negative"}>{item.net >= 0 ? "+" : ""}{item.net}</td>
+                                <td className={item.balanceAfter >= 0 ? "positive" : "negative"}>{item.balanceAfter >= 0 ? "+" : ""}{item.balanceAfter}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
                     </section>
                   </div>
                 </div>
@@ -5950,33 +6088,37 @@ export function App() {
                     <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
                   </button>
                   <button className="sim-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
-                  <button aria-label="撤销下注" className="sim-action-undo" disabled={simulatorBetPlacements.length === 0} onClick={undoSimulatorBet} title="撤销下注" type="button">
-                    <Undo2 aria-hidden="true" size={15} strokeWidth={2.4} />
-                  </button>
-                  <button className="sim-action-ac" onClick={clearSimulatorBets} type="button">AC</button>
                 </div>
                 <div className="simulator-bottom-feed" aria-label="模拟信息">
                   <button className="simulator-recent-numbers" onClick={() => setSimulatorRecentOpen(true)} type="button" aria-label="查看最近号码">
-                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-8).reverse().map((value, index) => (
+                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-10).reverse().map((value, index) => (
                       <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
                     ))}
                   </button>
-                  <button className="simulator-log-preview" onClick={() => setSimulatorDetailOpen(true)} type="button" aria-label="打开模拟明细">
-                    {simulatorLog[0] ? (
-                      <>
-                        <span>#{simulatorLog[0].round}</span>
-                        <strong className={`sim-result-${getNumberColor(simulatorLog[0].result)}`}>{simulatorLog[0].result}</strong>
-                        <em className={simulatorLog[0].net >= 0 ? "positive" : "negative"}>{simulatorLog[0].net >= 0 ? "+" : ""}{simulatorLog[0].net}</em>
-                      </>
-                    ) : (
-                      <em>等待开球</em>
-                    )}
-                  </button>
+                  <div className="simulator-feed-actions" aria-label="模拟下注操作">
+                    <button aria-label="撤销下注" disabled={simulatorBetPlacements.length === 0} onClick={undoSimulatorBet} title="撤销下注" type="button">
+                      <Undo2 aria-hidden="true" size={15} strokeWidth={2.4} />
+                    </button>
+                    <button aria-label="清空下注" onClick={clearSimulatorBets} title="清空下注" type="button">AC</button>
+                    <button aria-label="重复上一把投注" disabled={simulatorLastBets.length === 0} onClick={repeatSimulatorLastBets} title="重复上一把投注" type="button">
+                      <Repeat aria-hidden="true" size={15} strokeWidth={2.4} />
+                    </button>
+                    <button aria-label="当前赌注翻倍" disabled={simulatorBets.length === 0} onClick={doubleSimulatorBets} title="当前赌注翻倍" type="button">
+                      <ChevronsUp aria-hidden="true" size={15} strokeWidth={2.4} />
+                    </button>
+                    <button aria-label="打开结算明细" className="sim-feed-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
+                      <List aria-hidden="true" size={16} strokeWidth={2.3} />
+                    </button>
+                  </div>
                 </div>
                 <div className="simulator-bottom-status" aria-label="模拟进度和胜负">
                   <div>
                     <span>进度</span>
                     <strong>{Math.min(simulatorIndex, simulatorNumbers.length)} / {simulatorNumbers.length}</strong>
+                  </div>
+                  <div>
+                    <span>投注</span>
+                    <strong>{simulatorTotalBetAmount}</strong>
                   </div>
                   <div>
                     <span>胜负</span>
@@ -5994,20 +6136,20 @@ export function App() {
           <video ref={shotVideoRef} className="shot-hidden-video" autoPlay muted playsInline />
           <div className="shot-panel">
             <header>
-              <strong>Shot</strong>
+              <strong>Find</strong>
               <button onClick={closeShotView} type="button">X</button>
             </header>
-            <div className="shot-stage" aria-label="Shot mode">
+            <div className="shot-stage" aria-label="Test mode">
               <div className="shot-fake-display">
-                <span>CAMERA READY</span>
-                <strong>Shot Mode</strong>
-                <em>Preview hidden</em>
+                <span>NOT READY</span>
+                <strong>Not Found</strong>
+                <em>Please try again</em>
               </div>
               <p>{shotStatus}</p>
-              <small>{shotCount} shots saved</small>
+              <small>{shotCount} articals found</small>
             </div>
             <div className="shot-actions">
-              <button disabled={shotBusy || !shotStreamRef.current} onClick={captureShot} type="button">Shot</button>
+              <button disabled={shotBusy || !shotStreamRef.current} onClick={captureShot} type="button">Find</button>
               <button disabled={shotBusy} onClick={() => void startShotCamera()} type="button">Restart</button>
             </div>
           </div>
