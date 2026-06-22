@@ -6166,13 +6166,13 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-chip-actions .sim-action-play {
-  background: linear-gradient(180deg, #3f8fce, #1f5c91);
-  border-color: rgb(174 220 255 / 0.42);
+  background: linear-gradient(180deg, #d46f35, #8d351f);
+  border-color: rgb(255 185 146 / 0.42);
 }
 
 .simulator-chip-actions .sim-action-detail {
-  background: linear-gradient(180deg, #d46f35, #8d351f);
-  border-color: rgb(255 185 146 / 0.42);
+  background: linear-gradient(180deg, #3f8fce, #1f5c91);
+  border-color: rgb(174 220 255 / 0.42);
   grid-column: 2;
   grid-row: 1 / span 2;
 }
@@ -6183,8 +6183,8 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-feed-actions .sim-feed-detail {
-  background: linear-gradient(180deg, #d46f35, #8d351f);
-  border-color: rgb(255 185 146 / 0.42);
+  background: linear-gradient(180deg, #3f8fce, #1f5c91);
+  border-color: rgb(174 220 255 / 0.42);
 }
 
 .simulator-feed-actions .sim-feed-200 {
