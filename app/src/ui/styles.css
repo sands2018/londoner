@@ -8215,6 +8215,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     width: min(100dvw, var(--app-content-max-width));
   }
 
+  .number-zone-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .summary-grid {
     grid-template-columns: 2fr 1fr;
   }
