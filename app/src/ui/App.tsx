@@ -5999,7 +5999,7 @@ export function App() {
                   <header>
                     <strong>最近号码</strong>
                     <span>最多 105 个</span>
-                    <button onClick={() => setSimulatorRecentOpen(false)} type="button">关闭</button>
+                    <button aria-label="关闭" onClick={() => setSimulatorRecentOpen(false)} type="button">X</button>
                   </header>
                   <div className="simulator-recent-grid">
                     {numbers.length === 0 ? (
@@ -6243,7 +6243,9 @@ export function App() {
               </section>
 
               <footer className="simulator-chip-tray" aria-label="筹码">
-                <div className="simulator-chip-picker">
+                <div className="simulator-chip-picker-wrap">
+                  <div className="simulator-chip-picker-label">请选择面值</div>
+                  <div className="simulator-chip-picker">
                   <div className="simulator-chip-picker-row">
                     {simulatorChips.slice(0, 3).map((chip) => (
                       <button
@@ -6268,6 +6270,7 @@ export function App() {
                       </button>
                     ))}
                   </div>
+                  </div>
                 </div>
                 <div className="simulator-chip-actions">
                   <button aria-label="开下一口" className="sim-action-play" onClick={settleSimulatorRound} title="开下一口" type="button">
@@ -6281,7 +6284,7 @@ export function App() {
                 </div>
                 <div className="simulator-bottom-feed" aria-label="模拟信息">
                   <button className="simulator-recent-numbers" onClick={() => setSimulatorRecentOpen(true)} type="button" aria-label="查看最近号码">
-                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-(simulatorDesktopMode ? 20 : 10)).reverse().map((value, index) => (
+                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-(simulatorDesktopMode ? 12 : 10)).reverse().map((value, index) => (
                       <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
                     ))}
                   </button>
@@ -6312,7 +6315,7 @@ export function App() {
                   </div>
                   <div>
                     <span>投注</span>
-                    <strong>{simulatorTotalBetAmount}</strong>
+                    <strong>{simulatorTotalStake} / {simulatorTotalBetAmount}</strong>
                   </div>
                   <div>
                     <span>胜负</span>

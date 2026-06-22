@@ -5407,6 +5407,7 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-log-table th:nth-child(1),
 .simulator-log-table td:nth-child(1) {
+  text-align: left;
   width: 42px;
 }
 
@@ -5478,6 +5479,15 @@ body:has(.app-shell.theme-dark) {
   color: #c2b186;
   font-size: 13px;
   margin-right: 4px;
+}
+
+.simulator-chip-picker-wrap {
+  align-items: center;
+  display: flex;
+}
+
+.simulator-chip-picker-label {
+  display: none;
 }
 
 .simulator-chip-picker {
@@ -6203,12 +6213,12 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-bottom-status {
   display: grid;
-  flex: 1 1 216px;
+  flex: 0 1 200px;
   grid-template-columns: minmax(168px, 1fr);
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  margin-left: 4px;
-  min-width: 216px;
+  margin-left: 10px;
+  min-width: 190px;
 }
 
 .simulator-bottom-status > div {
@@ -7299,18 +7309,21 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode {
-  --sim-desktop-action-h: 48px;
-  --sim-desktop-action-tall: 104px;
+  --sim-desktop-action-h: 64px;
+  --sim-desktop-action-tall: 144px;
   --sim-desktop-action-w: 72px;
-  --sim-desktop-chip: 56px;
-  --sim-desktop-chip-picker-h: 126px;
-  --sim-desktop-chip-row-gap: 2px;
+  --sim-desktop-play-w: 150px;
+  --sim-desktop-chip: 70px;
+  --sim-desktop-chip-col-gap: 12px;
+  --sim-desktop-chip-picker-h: 150px;
+  --sim-desktop-chip-row-gap: 16px;
+  --sim-desktop-feed-gap: 14px;
   --sim-desktop-gap: 7px;
-  --sim-desktop-latest: 41px;
+  --sim-desktop-latest: 70px;
   --sim-desktop-panel-h: 243px;
-  --sim-desktop-recent: 31px;
-  --sim-desktop-table-chip: 48px;
-  --sim-desktop-table-chip-inset: 10px;
+  --sim-desktop-recent: 56px;
+  --sim-desktop-table-chip: 66px;
+  --sim-desktop-table-chip-inset: 13px;
   padding: 0;
 }
 
@@ -7340,7 +7353,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .sim-table-felt .sim-table-chip {
-  font-size: 17px;
+  font-size: 24px;
   height: var(--sim-desktop-table-chip);
   width: var(--sim-desktop-table-chip);
 }
@@ -7350,22 +7363,66 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .sim-number:not(.sim-zero) {
-  font-size: 44px;
+  font-size: 50px;
+}
+
+.simulator-screen.desktop-mode .sim-number,
+.simulator-screen.desktop-mode .sim-row-bets button,
+.simulator-screen.desktop-mode .sim-bet-band button,
+.simulator-screen.desktop-mode .sim-zero,
+.simulator-screen.desktop-mode .sim-zero-trios button {
+  border-width: 2px;
+}
+
+.simulator-screen.desktop-mode .sim-row-bets button,
+.simulator-screen.desktop-mode .sim-bet-band button {
+  font-size: 32px;
+}
+
+.simulator-screen.desktop-mode .sim-outside-red::before,
+.simulator-screen.desktop-mode .sim-outside-black::before {
+  height: 62px;
+  width: 104px;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-picker {
-  gap: var(--sim-desktop-chip-row-gap);
-  height: var(--sim-desktop-chip-picker-h);
+  align-items: center;
+  flex-direction: row;
+  gap: 12px;
+  height: auto;
+  justify-content: center;
+  padding-left: 0;
   width: max-content;
 }
 
+.simulator-screen.desktop-mode .simulator-chip-picker-wrap {
+  flex-direction: column;
+  height: var(--sim-desktop-chip-picker-h);
+  justify-content: center;
+  padding-left: 8px;
+}
+
+.simulator-screen.desktop-mode .simulator-chip-picker-label {
+  align-self: stretch;
+  color: #d8bd79;
+  display: block;
+  font-size: 30px;
+  font-weight: var(--weight-ui);
+  line-height: 1;
+  margin-bottom: 20px;
+  padding-left: 12px;
+  text-shadow: 0 2px 8px rgb(3 12 8 / 0.75);
+  transform: translateY(-16px);
+  text-align: left;
+}
+
 .simulator-screen.desktop-mode .simulator-chip-picker-row {
-  gap: var(--sim-desktop-gap);
+  gap: var(--sim-desktop-chip-col-gap);
   grid-template-columns: repeat(3, var(--sim-desktop-chip));
 }
 
 .simulator-screen.desktop-mode .simulator-chip-picker-row-offset {
-  padding-left: 32px;
+  padding-left: 0;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-picker .simulator-chip {
@@ -7376,8 +7433,12 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   width: var(--sim-desktop-chip);
 }
 
+.simulator-screen.desktop-mode .simulator-chip-picker .simulator-chip span {
+  font-size: 28px;
+}
+
 .simulator-screen.desktop-mode .simulator-chip-actions {
-  grid-template-columns: var(--sim-desktop-action-w);
+  grid-template-columns: var(--sim-desktop-play-w);
   grid-template-rows: var(--sim-desktop-action-tall);
   margin-left: 22px;
 }
@@ -7395,9 +7456,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-bottom-feed {
   flex: 0 1 auto;
-  gap: var(--sim-desktop-gap);
+  gap: var(--sim-desktop-feed-gap);
   grid-template-rows: var(--sim-desktop-latest) var(--sim-desktop-action-h);
-  height: calc(var(--sim-desktop-latest) + var(--sim-desktop-action-h) + var(--sim-desktop-gap));
+  height: calc(var(--sim-desktop-latest) + var(--sim-desktop-action-h) + var(--sim-desktop-feed-gap));
+  margin-left: 18px;
   min-width: 0;
   padding: 0 4px;
   width: max-content;
@@ -7412,7 +7474,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-recent-numbers {
   gap: var(--sim-desktop-gap);
-  grid-template-columns: var(--sim-desktop-latest) repeat(19, var(--sim-desktop-recent));
+  grid-template-columns: var(--sim-desktop-latest) repeat(11, var(--sim-desktop-recent));
   justify-self: start;
   overflow: visible;
   width: max-content;
@@ -7420,39 +7482,130 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-recent-numbers strong {
   border-radius: 7px;
-  font-size: 18px;
+  font-size: 28px;
   height: var(--sim-desktop-recent);
   width: var(--sim-desktop-recent);
 }
 
 .simulator-screen.desktop-mode .simulator-recent-numbers strong.latest {
-  font-size: 26px;
+  font-size: 36px;
   height: var(--sim-desktop-latest);
   width: var(--sim-desktop-latest);
 }
 
 .simulator-screen.desktop-mode .simulator-feed-actions button {
   padding: 0 8px;
+  font-size: 28px;
+}
+
+.simulator-screen.desktop-mode .simulator-chip-actions button svg,
+.simulator-screen.desktop-mode .simulator-feed-actions button svg {
+  height: 34px;
+  width: 34px;
 }
 
 .simulator-screen.desktop-mode .simulator-bottom-status {
+  flex: 1 1 330px;
   gap: var(--sim-desktop-gap);
   grid-template-columns: minmax(154px, 1fr);
-  min-width: 170px;
+  margin-left: 18px;
+  min-width: 330px;
 }
 
 .simulator-screen.desktop-mode .simulator-bottom-status > div {
+  border-width: 2px;
   border-radius: 8px;
-  grid-template-columns: 44px minmax(0, 1fr);
-  padding: 2px 10px;
+  grid-template-columns: 72px minmax(0, 1fr);
+  padding: 8px 16px;
 }
 
 .simulator-screen.desktop-mode .simulator-bottom-status span {
-  font-size: 13px;
+  font-size: 30px;
 }
 
 .simulator-screen.desktop-mode .simulator-bottom-status strong {
-  font-size: 16px;
+  font-size: 30px;
+}
+
+.simulator-screen.desktop-mode .simulator-detail-panel {
+  width: min(78%, 900px);
+}
+
+.simulator-screen.desktop-mode .simulator-detail-panel header strong {
+  font-size: 30px;
+}
+
+.simulator-screen.desktop-mode .simulator-detail-panel header button {
+  font-size: 26px;
+  min-height: 46px;
+  min-width: 58px;
+}
+
+.simulator-screen.desktop-mode .simulator-detail-grid h3 {
+  font-size: 26px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table {
+  font-size: 28px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table th,
+.simulator-screen.desktop-mode .simulator-log-table td {
+  height: 44px;
+  padding: 0 4px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table th {
+  font-size: 26px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table th:nth-child(1),
+.simulator-screen.desktop-mode .simulator-log-table td:nth-child(1) {
+  width: 78px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table th:nth-child(2),
+.simulator-screen.desktop-mode .simulator-log-table td:nth-child(2) {
+  width: 56px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table th:nth-child(3),
+.simulator-screen.desktop-mode .simulator-log-table td:nth-child(3),
+.simulator-screen.desktop-mode .simulator-log-table th:nth-child(4),
+.simulator-screen.desktop-mode .simulator-log-table td:nth-child(4) {
+  width: 94px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table th:nth-child(5),
+.simulator-screen.desktop-mode .simulator-log-table td:nth-child(5) {
+  width: 112px;
+}
+
+.simulator-screen.desktop-mode .simulator-log-table strong {
+  height: 42px;
+  width: 42px;
+}
+
+.simulator-screen.desktop-mode .simulator-recent-panel {
+  max-height: min(90%, 700px);
+  width: min(90%, 980px);
+}
+
+.simulator-screen.desktop-mode .simulator-recent-panel header {
+  min-height: 54px;
+}
+
+.simulator-screen.desktop-mode .simulator-recent-panel header span {
+  font-size: 24px;
+}
+
+.simulator-screen.desktop-mode .simulator-recent-grid {
+  gap: 10px;
+}
+
+.simulator-screen.desktop-mode .simulator-recent-grid span {
+  font-size: 31px;
+  height: 58px;
 }
 
 .message-actions button {
