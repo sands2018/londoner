@@ -1534,6 +1534,21 @@ export function App() {
     }
   }, [canUseSimulator, simulatorOpen]);
 
+  useEffect(() => {
+    const handleSimulatorShortcut = (event: KeyboardEvent) => {
+      if (!canUseSimulator || event.key !== "F12") return;
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+        return;
+      }
+      event.preventDefault();
+      setSimulatorOpen((open) => !open);
+    };
+
+    window.addEventListener("keydown", handleSimulatorShortcut);
+    return () => window.removeEventListener("keydown", handleSimulatorShortcut);
+  }, [canUseSimulator]);
+
   useEffect(() => () => {
     if (simulatorRoundPopTimerRef.current) {
       clearTimeout(simulatorRoundPopTimerRef.current);
