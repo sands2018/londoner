@@ -7237,6 +7237,34 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
   }
 }
 
+@media (orientation: portrait) and (max-height: 760px) {
+  html.android .simulator-bottom-feed {
+    flex-basis: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
+    width: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
+  }
+
+  html.android .simulator-recent-numbers {
+    grid-template-columns: repeat(8, var(--sim-mobile-recent-size));
+  }
+
+  html.android .simulator-recent-numbers strong:nth-of-type(n + 9) {
+    display: none;
+  }
+
+  html.android .simulator-bottom-status {
+    flex-basis: 168px;
+    min-width: 158px;
+  }
+
+  html.android .simulator-bottom-status > div {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  html.android .simulator-bottom-status strong {
+    white-space: nowrap;
+  }
+}
+
 .simulator-screen.desktop-mode {
   --sim-desktop-action-h: 48px;
   --sim-desktop-action-tall: 104px;
