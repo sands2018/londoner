@@ -2364,6 +2364,10 @@ body:has(.app-shell.theme-dark) {
   z-index: 20;
 }
 
+.modal-backdrop.message-top-layer {
+  z-index: 80;
+}
+
 .app-shell.simulator-active .modal-backdrop {
   z-index: 60;
 }
@@ -8199,7 +8203,16 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 @media (min-width: 760px) {
   :root {
-    --app-content-max-width: 960px;
+    --app-content-max-width: 576px;
+  }
+
+  .data-screen:not(.simulator-screen),
+  .prediction-screen {
+    left: 50%;
+    max-width: var(--app-content-max-width);
+    right: auto;
+    transform: translateX(-50%);
+    width: min(100dvw, var(--app-content-max-width));
   }
 
   .summary-grid {

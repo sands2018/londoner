@@ -6717,7 +6717,7 @@ export function App() {
       ) : null}
 
       {noticeDialog ? (
-        <MessageDialog title={noticeDialog.title} onClose={() => setNoticeDialog(null)}>
+        <MessageDialog title={noticeDialog.title} onClose={() => setNoticeDialog(null)} backdropClassName="message-top-layer">
           {noticeDialog.message}
         </MessageDialog>
       ) : null}
@@ -7340,15 +7340,16 @@ function formatMergeIssueSummary(
 
 interface MessageDialogProps {
   actions?: ReactNode;
+  backdropClassName?: string;
   children: ReactNode;
   onClose: () => void;
   panelClassName?: string;
   title: string;
 }
 
-function MessageDialog({ actions, children, onClose, panelClassName = "", title }: MessageDialogProps) {
+function MessageDialog({ actions, backdropClassName = "", children, onClose, panelClassName = "", title }: MessageDialogProps) {
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
+    <div className={`modal-backdrop ${backdropClassName}`.trim()} role="dialog" aria-modal="true">
       <div className={`message-panel ${panelClassName}`.trim()}>
         <div className="modal-head">
           <strong>{title}</strong>
