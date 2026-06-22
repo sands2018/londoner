@@ -5176,11 +5176,13 @@ body:has(.app-shell.theme-dark) {
 
 .sim-outside-red::before,
 .sim-outside-black::before {
+  border: 0;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   content: "";
   display: inline-block;
-  height: 24px;
-  transform: rotate(45deg);
-  width: 48px;
+  height: 30px;
+  transform: none;
+  width: 54px;
 }
 
 .sim-outside-red::before {
@@ -5189,7 +5191,6 @@ body:has(.app-shell.theme-dark) {
 
 .sim-outside-black::before {
   background: #030403;
-  border: 1px solid rgb(238 236 196 / 0.58);
 }
 
 .sim-bet-band .sim-table-chip,
@@ -6023,9 +6024,9 @@ body:has(.app-shell.theme-dark) {
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   content: "";
   display: block;
-  height: 27px;
+  height: 32px;
   transform: none;
-  width: 42px;
+  width: 50px;
 }
 
 .sim-outside-red::before {
@@ -6034,7 +6035,6 @@ body:has(.app-shell.theme-dark) {
 
 .sim-outside-black::before {
   background: #030403;
-  box-shadow: inset 0 0 0 1px rgb(238 236 196 / 0.62);
 }
 
 .simulator-chip:not(.selected) {
@@ -6113,6 +6113,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-tray .si
 
 html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions {
   margin-left: 36px;
+}
+
+html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
+  grid-template-rows: 34px 38px;
+  height: 76px;
+}
+
+html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions button {
+  min-height: 38px;
 }
 
 
@@ -6271,10 +6280,22 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
   display: flex;
   flex-direction: column;
   gap: 8px;
+  isolation: isolate;
   line-height: 1;
   position: absolute;
   text-align: center;
-  text-shadow: 0 3px 14px rgb(0 0 0 / 0.75), 0 0 28px rgb(0 0 0 / 0.58);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.58), 0 2px 6px rgb(0 0 0 / 0.46);
+}
+
+.simulator-round-pop:not(.result-phase)::before {
+  background:
+    radial-gradient(ellipse at center, rgb(0 36 24 / 0.86) 0 30%, rgb(0 46 30 / 0.74) 42%, rgb(0 54 34 / 0.52) 62%, transparent 84%);
+  content: "";
+  filter: blur(20px);
+  inset: -52px -124px;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
 }
 
 .simulator-round-pop.sim-result-red,
@@ -6284,6 +6305,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
 }
 
 .simulator-round-pop.result-phase {
+  animation-name: simRoundNumberPopFade;
   animation-duration: 2s;
 }
 
@@ -6300,13 +6322,17 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
 }
 
 .simulator-round-pop .simulator-round-settle-line {
-  color: #ffd061;
+  color: #f6b84a;
+  position: relative;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.58), 0 2px 5px rgb(0 0 0 / 0.44);
+  z-index: 1;
 }
 
 .simulator-round-pop .simulator-round-settle-line strong {
   color: inherit;
   font-size: inherit;
   font-weight: 900;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.62), 0 2px 5px rgb(0 0 0 / 0.46);
 }
 
 .simulator-round-pop .simulator-round-win.positive strong {
@@ -6318,7 +6344,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
 }
 
 .simulator-round-pop .simulator-round-win.zero strong {
-  color: #ffd061;
+  color: #f6b84a;
 }
 
 .simulator-round-pop strong {
@@ -6331,13 +6357,13 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
   border-radius: 50%;
   display: flex;
   font-size: clamp(60px, 14dvh, 108px);
-  height: clamp(110px, 24dvh, 170px);
+  height: clamp(116px, 25dvh, 178px);
   justify-content: center;
-  width: clamp(110px, 24dvh, 170px);
+  width: clamp(116px, 25dvh, 178px);
 }
 
 .simulator-round-pop.positive strong {
-  color: #ffd061;
+  color: #f6b84a;
 }
 
 .simulator-round-pop.negative strong {
@@ -6346,19 +6372,19 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
 
 .simulator-round-pop.sim-result-red strong {
   background: linear-gradient(180deg, #d44848, #8d171d);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.65);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.48);
   color: #ffdfcf;
 }
 
 .simulator-round-pop.sim-result-black strong {
   background: linear-gradient(180deg, #202020, #030303);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.7);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.52);
   color: #f6f1e6;
 }
 
 .simulator-round-pop.sim-result-green strong {
   background: linear-gradient(180deg, #18834b, #07552e);
-  box-shadow: 0 12px 40px rgb(0 0 0 / 0.65);
+  box-shadow: 0 8px 22px rgb(0 0 0 / 0.48);
   color: #a8ffd4;
 }
 
@@ -6518,6 +6544,13 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions 
   9% { opacity: 1; transform: scale(1.04); }
   78% { opacity: 0.96; transform: scale(1); }
   100% { opacity: 0; transform: scale(1.16); }
+}
+
+@keyframes simRoundNumberPopFade {
+  0% { opacity: 0; transform: scale(0.45); }
+  9% { opacity: 1; transform: scale(1.04); }
+  86% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.12); }
 }
 
 .simulator-landscape {

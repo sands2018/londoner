@@ -5946,7 +5946,7 @@ export function App() {
                     </>
                   ) : (
                     <>
-                      <span className="simulator-round-settle-line">押注 <strong>{simulatorRoundPop.stake}</strong></span>
+                      <span className="simulator-round-settle-line">投注 <strong>{simulatorRoundPop.stake}</strong></span>
                       <span className={`simulator-round-settle-line simulator-round-win ${simulatorRoundPop.net > 0 ? "positive" : simulatorRoundPop.net < 0 ? "negative" : "zero"}`}>
                         赢回 <strong>{simulatorRoundPop.winReturn}</strong>
                       </span>
