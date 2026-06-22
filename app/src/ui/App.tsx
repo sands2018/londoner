@@ -639,6 +639,7 @@ export function App() {
   const sharedUsernameNormalized = sharedUsername.trim().toLowerCase();
   const canUseSmartSignals = sharedConnected;
   const canUseQuality124 = canUseSmartSignals && ["ww", "wzs"].includes(sharedUsernameNormalized);
+  const canUseSimulator = sharedConnected && ["ww", "wzs"].includes(sharedUsernameNormalized);
   const canViewSixStatsPanel = sharedConnected;
   const simulatorNumbers = useMemo(
     () => [...numbers, ...redoNumbers.slice().reverse()],
@@ -1527,6 +1528,12 @@ export function App() {
     }
   }, [canUseSmartSignals, predictionWindowOpen]);
 
+  useEffect(() => {
+    if (!canUseSimulator && simulatorOpen) {
+      setSimulatorOpen(false);
+    }
+  }, [canUseSimulator, simulatorOpen]);
+
   useEffect(() => () => {
     if (simulatorRoundPopTimerRef.current) {
       clearTimeout(simulatorRoundPopTimerRef.current);
@@ -1635,7 +1642,7 @@ export function App() {
   }
 
   function openSnapshotFromDock() {
-    if (sharedConnected && ["ww", "wzs"].includes(sharedUsernameNormalized)) {
+    if (canUseSimulator) {
       setSimulatorOpen(true);
       return;
     }
@@ -5931,7 +5938,7 @@ export function App() {
         </section>
       ) : null}
 
-      {simulatorOpen ? (
+      {canUseSimulator && simulatorOpen ? (
         <section className={`simulator-screen ${simulatorDesktopMode ? "desktop-mode" : ""}`} aria-label="轮盘模拟">
           <div
             className="simulator-landscape"
