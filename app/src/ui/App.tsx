@@ -1775,6 +1775,9 @@ export function App() {
     target: EventTarget | null;
   }) {
     const targetElement = event.target instanceof HTMLElement ? event.target : null;
+    if (targetElement?.closest(".sim-table-side-action")) {
+      return;
+    }
     if (targetElement?.closest(".simulator-no-bet-zone")) {
       event.preventDefault();
       event.stopPropagation();
@@ -1995,8 +1998,7 @@ export function App() {
     );
   }
 
-  function jumpSimulatorTo200() {
-    if (simulatorNumbers.length < 200) return;
+  function applySimulatorJumpTo200() {
     const targetIndex = 200;
     setSimulatorBalance(0);
     setSimulatorBets([]);
@@ -2006,6 +2008,19 @@ export function App() {
     setSimulatorRoundPop(null);
     setNumbers(simulatorNumbers.slice(0, targetIndex));
     setRedoNumbers(simulatorNumbers.slice(targetIndex).reverse());
+  }
+
+  function jumpSimulatorTo200() {
+    if (simulatorNumbers.length < 200 || simulatorIndex === 200) return;
+    const goingForward = simulatorIndex < 200;
+    setConfirmDialog({
+      title: "请确认",
+      message: goingForward
+        ? "是否要前进到第200个号码？"
+        : "是否要后退到第200个号码，200个号码之后的投注信息将清空",
+      confirmText: "确定",
+      onConfirm: applySimulatorJumpTo200,
+    });
   }
 
   function settleSimulatorRound() {
@@ -4077,7 +4092,7 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""}`}>
+    <main className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorOpen && simulatorDesktopMode ? "simulator-desktop-active" : ""}`}>
       <section className="top-stats-strip" aria-label="统计数据">
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
@@ -6003,10 +6018,19 @@ export function App() {
             <div className="simulator-main">
               <section className="simulator-table-wrap">
                 <div className="sim-table-felt" onClickCapture={handleSimulatorTableClick}>
-                  <button className="simulator-no-bet-zone simulator-no-bet-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                  <button className="simulator-no-bet-zone simulator-no-bet-zone-b" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                  <button className="simulator-no-bet-zone simulator-no-bet-zone-c" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                  <button className="simulator-no-bet-zone simulator-no-bet-zone-d" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                  {simulatorDesktopMode ? (
+                    <>
+                      <button className="simulator-no-bet-zone simulator-no-bet-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                      <button className="simulator-no-bet-zone simulator-no-bet-zone-b" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                      <button className="simulator-no-bet-zone simulator-no-bet-zone-c" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                      <button className="simulator-no-bet-zone simulator-no-bet-zone-d" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
+                    </>
+                  ) : (
+                    <>
+                      <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
+                      <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-return" onClick={() => setSimulatorOpen(false)} type="button">返回</button>
+                    </>
+                  )}
                   <div className="simulator-table">
                     <div className="sim-zero-zone">
                       <button
@@ -6249,7 +6273,11 @@ export function App() {
                   <button aria-label="开下一口" className="sim-action-play" onClick={settleSimulatorRound} title="开下一口" type="button">
                     <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
                   </button>
-                  {!simulatorDesktopMode ? <button className="sim-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button> : null}
+                  {!simulatorDesktopMode ? (
+                    <button aria-label="打开结算明细" className="sim-action-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
+                      <List aria-hidden="true" size={15} strokeWidth={2.3} />
+                    </button>
+                  ) : null}
                 </div>
                 <div className="simulator-bottom-feed" aria-label="模拟信息">
                   <button className="simulator-recent-numbers" onClick={() => setSimulatorRecentOpen(true)} type="button" aria-label="查看最近号码">
@@ -6268,9 +6296,11 @@ export function App() {
                     <button aria-label="当前赌注翻倍" disabled={simulatorBets.length === 0} onClick={doubleSimulatorBets} title="当前赌注翻倍" type="button">
                       <ChevronsUp aria-hidden="true" size={15} strokeWidth={2.4} />
                     </button>
-                    <button aria-label="打开结算明细" className="sim-feed-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
-                      <List aria-hidden="true" size={16} strokeWidth={2.3} />
-                    </button>
+                    {simulatorDesktopMode ? (
+                      <button aria-label="打开结算明细" className="sim-feed-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
+                        <List aria-hidden="true" size={16} strokeWidth={2.3} />
+                      </button>
+                    ) : null}
                     {simulatorDesktopMode ? <button aria-label="跳到第200个号码" className="sim-feed-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} title="跳到第200个号码" type="button">200</button> : null}
                     {simulatorDesktopMode ? <button aria-label="返回程序" className="sim-feed-return" onClick={() => setSimulatorOpen(false)} title="返回程序" type="button">返回</button> : null}
                   </div>
@@ -6288,7 +6318,6 @@ export function App() {
                     <span>胜负</span>
                     <strong className={simulatorBalance >= 0 ? "positive" : "negative"}>{simulatorBalance >= 0 ? "+" : ""}{simulatorBalance}</strong>
                   </div>
-                  {!simulatorDesktopMode ? <button className="simulator-return-button" onClick={() => setSimulatorOpen(false)} type="button">返回</button> : null}
                 </div>
               </footer>
             </div>
