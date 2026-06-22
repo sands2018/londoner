@@ -5439,7 +5439,7 @@ body:has(.app-shell.theme-dark) {
 .simulator-chip-tray {
   align-items: center;
   background: linear-gradient(180deg, rgb(28 46 36 / 0.84), rgb(18 33 25 / 0.88));
-  border: 1px solid rgb(238 205 138 / 0.2);
+  border: 0;
   border-radius: 10px;
   display: flex;
   gap: clamp(8px, 1.4vw, 16px);
@@ -5683,7 +5683,7 @@ body:has(.app-shell.theme-dark) {
   border-width: 1px;
   border-radius: 0;
   box-shadow: none;
-  font-size: clamp(34px, 5.8vw, 72px);
+  font-size: clamp(31px, 5.3vw, 66px);
 }
 
 .sim-number > .sim-table-chip {
@@ -6468,6 +6468,10 @@ body:has(.app-shell.theme-dark) {
   grid-template-rows: minmax(0, 1fr);
 }
 
+.simulator-screen:not(.desktop-mode) .simulator-landscape {
+  border: 0;
+}
+
 .simulator-main {
   grid-template-columns: minmax(0, 1fr) clamp(128px, 13vw, 158px);
 }
@@ -6538,7 +6542,7 @@ body:has(.app-shell.theme-dark) {
   display: grid;
   gap: 0;
   grid-template-columns: repeat(14, minmax(0, 1fr));
-  grid-template-rows: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 40fr)) repeat(2, minmax(0, 33fr));
   position: relative;
 }
 
@@ -6579,11 +6583,12 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-main {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) 92px;
+  grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
 }
 
 .simulator-table-wrap {
   align-items: stretch;
+  border: 0;
   justify-content: stretch;
   padding: 0;
   padding-bottom: 0;
@@ -6822,10 +6827,10 @@ body:has(.app-shell.theme-dark) {
 
 .simulator-no-bet-zone {
   background: transparent;
-  border: 0;
+  border: 1px solid rgb(238 236 196 / 0.72);
   min-height: 0;
   min-width: 0;
-  opacity: 0;
+  opacity: 1;
   padding: 0;
   pointer-events: auto;
   position: relative;
@@ -6833,21 +6838,25 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-no-bet-zone-a {
+  border-bottom: 0;
   grid-column: 1;
   grid-row: 4;
 }
 
 .simulator-no-bet-zone-b {
+  border-top: 0;
   grid-column: 1;
   grid-row: 5;
 }
 
 .simulator-no-bet-zone-c {
+  border-bottom: 0;
   grid-column: 14;
   grid-row: 4;
 }
 
 .simulator-no-bet-zone-d {
+  border-top: 0;
   grid-column: 14;
   grid-row: 5;
 }
@@ -6932,11 +6941,11 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .simulator-main {
-    grid-template-rows: minmax(0, 1fr) 76px;
+    grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
   }
 
   html.android .simulator-round-pop-overlay {
-    bottom: 76px;
+    bottom: 22.5%;
   }
 
   html.android .sim-table-felt {
@@ -6955,7 +6964,7 @@ body:has(.app-shell.theme-dark) {
   }
 
   html.android .sim-number {
-    font-size: clamp(17px, 3.2svh, 34px);
+    font-size: clamp(16px, 3svh, 31px);
     line-height: 0.9;
     overflow: hidden;
   }
@@ -7120,7 +7129,7 @@ body:has(.app-shell.theme-dark) {
   --sim-desktop-chip-row-gap: 2px;
   --sim-desktop-gap: 7px;
   --sim-desktop-latest: 41px;
-  --sim-desktop-panel-h: 138px;
+  --sim-desktop-panel-h: 243px;
   --sim-desktop-recent: 31px;
   --sim-desktop-table-chip: 48px;
   --sim-desktop-table-chip-inset: 10px;
@@ -7139,7 +7148,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .simulator-screen.desktop-mode .simulator-main {
-  grid-template-rows: minmax(0, 1fr) var(--sim-desktop-panel-h);
+  grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
 }
 
 .simulator-screen.desktop-mode .simulator-chip-tray {
