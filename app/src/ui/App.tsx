@@ -5684,8 +5684,8 @@ export function App() {
       ) : null}
 
       {canUseSmartSignals && predictionWindowOpen ? (
-          <section className="prediction-screen" aria-label="智能明细">
-            <div className="modal-head">
+          <section className="data-screen prediction-screen" aria-label="智能明细">
+            <div className="data-screen-head">
               <strong>智能明细</strong>
               <button className="close-button" onClick={() => setPredictionWindowOpen(false)} type="button">x</button>
             </div>

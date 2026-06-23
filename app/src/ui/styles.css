@@ -4492,6 +4492,8 @@ body:has(.app-shell.theme-dark) {
 .simulator-screen {
   background: #050806;
   color: #f4ead3;
+  display: grid;
+  grid-template-rows: 1fr;
   inset: 0;
   overflow: hidden;
   position: fixed;
@@ -7370,6 +7372,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   --sim-desktop-recent: 56px;
   --sim-desktop-table-chip: 66px;
   --sim-desktop-table-chip-inset: 13px;
+  overflow: hidden;
   padding: 0;
 }
 
