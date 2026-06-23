@@ -1,7 +1,8 @@
 import { getGroupIndex, getRowIndex, type RouletteNumber } from "./roulette";
 
 const PROGRESSION_1 = [1] as const;
-const PROGRESSION_12 = [1, 2] as const;
+const PROGRESSION_2 = [2] as const;
+const PROGRESSION_4 = [4] as const;
 const PROGRESSION_124 = [1, 2, 4] as const;
 // 三组的第四口历史上适合降斜率追，避免直接跳到 8 带来过大的回撤。
 const PROGRESSION_1235 = [1, 2, 3, 5] as const;
@@ -22,18 +23,19 @@ export const QUALITY_124_TIER_ORDER = [
 
 export type Quality124Tier = (typeof QUALITY_124_TIER_ORDER)[number];
 export type Quality124Kind = "group" | "row";
+export type Quality124Tag = "波" | "短" | "延";
 
 type Progression = readonly number[];
 type TempoBand = "unknown" | "fast" | "medium_fast" | "medium" | "slow";
 
-export const QUALITY_124_TIER_META: Record<Quality124Tier, { label: string; stars: number; description: string }> = {
+export const QUALITY_124_TIER_META: Record<Quality124Tier, { label: string; stars: number; tag?: Quality124Tag; description: string }> = {
   group1: { label: "一组", stars: 1, description: "一组空4，近12口节奏活跃，只打一口" },
   group2: { label: "二组", stars: 3, description: "二组空4，近18口核心区高度集中，打1-2-4" },
-  group2tempo: { label: "二组短追", stars: 1, description: "二组空3，近18口排除fast，打1-2" },
-  group3: { label: "三组", stars: 2, description: "三组空3/4，近18口高度集中且排除fast，打1-2-3-5" },
+  group2tempo: { label: "二组短追", stars: 1, tag: "短", description: "二组空3后观察一口，仍未出则单口打2" },
+  group3: { label: "三组", stars: 2, tag: "波", description: "三组空3/4，近18口高度集中且漂移向上，打1-2-3-5" },
   row1: { label: "1行", stars: 1, description: "1行空3，近12口中高速，只打一口" },
-  row2: { label: "2行", stars: 2, description: "2行空3，近24口集中，打1-2-4" },
-  row3: { label: "3行", stars: 2, description: "3行空3，近37口中慢集中，打1-2-4-8" },
+  row2: { label: "2行", stars: 3, tag: "延", description: "2行空3后观察两口，仍未出则单口打4" },
+  row3: { label: "3行", stars: 2, tag: "波", description: "3行空3，近37口中慢集中且漂移向上，打1-2-4-8" },
 };
 
 export interface Quality124Signal {
@@ -43,6 +45,7 @@ export interface Quality124Signal {
   tier: Quality124Tier;
   tierLabel: string;
   stars: number;
+  tag?: Quality124Tag;
   entryAfter: number;
   round: number;
   chaseLen: number;
@@ -50,6 +53,7 @@ export interface Quality124Signal {
   progression: readonly number[];
   zoneRate: number;
   concentration: number;
+  drift: number;
   tempoBand: TempoBand;
 }
 
@@ -82,6 +86,8 @@ interface RuleSelection {
   zone: number;
   conc: number;
   band: TempoBand;
+  drift?: number;
+  delayRounds?: number;
 }
 
 interface ActiveQuality124 extends RuleSelection {
@@ -90,6 +96,7 @@ interface ActiveQuality124 extends RuleSelection {
   ci: 0 | 1 | 2;
   entryAfter: number;
   roundIndex: number;
+  delayRemaining: number;
   bet: number;
 }
 
@@ -136,6 +143,16 @@ function concentration(gaps: readonly number[], window: number): number {
     }
   }
   return recent.filter((gap) => Math.abs(gap - mode) <= 1).length / recent.length;
+}
+
+function driftScore(gaps: readonly number[], window: number): number {
+  const recent = gaps.slice(-window);
+  if (recent.length < Math.max(6, Math.floor(window / 2))) return 0;
+  const split = Math.floor(recent.length / 2);
+  const early = recent.slice(0, split);
+  const late = recent.slice(split);
+  if (early.length === 0 || late.length === 0) return 0;
+  return (avg(late) - avg(early)) / window;
 }
 
 function tempoBand(gaps: readonly number[]): TempoBand {
@@ -200,10 +217,13 @@ function selectRule(state: EntityState, entryAfter: number): RuleSelection | nul
         return { tier: "group2", progression: PROGRESSION_124, zone, conc, band };
       }
       if (state.ci === 2 && (entryAfter === 3 || entryAfter === 4) && zone >= 0.25 && conc >= STRONG_GROUP_CONCENTRATION && notFast) {
-        return { tier: "group3", progression: PROGRESSION_1235, zone, conc, band };
+        const drift = driftScore(state.gaps, 18);
+        if (drift >= 0.08) {
+          return { tier: "group3", progression: PROGRESSION_1235, zone, conc, band, drift };
+        }
       }
       if (state.ci === 1 && entryAfter === 3 && zone >= 0.25 && conc >= 0.45 && notFast) {
-        return { tier: "group2tempo", progression: PROGRESSION_12, zone, conc, band };
+        return { tier: "group2tempo", progression: PROGRESSION_2, zone, conc, band, delayRounds: 1 };
       }
     }
   }
@@ -222,7 +242,7 @@ function selectRule(state: EntityState, entryAfter: number): RuleSelection | nul
       const zone = zoneRate(state.gaps, entryAfter, 24, 3);
       const conc = concentration(state.gaps, 24);
       if (zone >= 0.25 && conc >= 0.55) {
-        return { tier: "row2", progression: PROGRESSION_124, zone, conc, band };
+        return { tier: "row2", progression: PROGRESSION_4, zone, conc, band, delayRounds: 2 };
       }
     }
 
@@ -230,7 +250,10 @@ function selectRule(state: EntityState, entryAfter: number): RuleSelection | nul
       const zone = zoneRate(state.gaps, entryAfter, 37, 4);
       const conc = concentration(state.gaps, 37);
       if (zone >= 0.2 && conc >= 0.55 && isMediumSlow(band)) {
-        return { tier: "row3", progression: PROGRESSION_1248, zone, conc, band };
+        const drift = driftScore(state.gaps, 37);
+        if (drift >= 0.08) {
+          return { tier: "row3", progression: PROGRESSION_1248, zone, conc, band, drift };
+        }
       }
     }
   }
@@ -283,6 +306,7 @@ function toSignal(active: ActiveQuality124): Quality124Signal {
     tier: active.tier,
     tierLabel: meta.label,
     stars: meta.stars,
+    tag: meta.tag,
     entryAfter: active.entryAfter,
     round: active.roundIndex + 1,
     chaseLen: active.progression.length,
@@ -290,6 +314,7 @@ function toSignal(active: ActiveQuality124): Quality124Signal {
     progression: active.progression,
     zoneRate: active.zone,
     concentration: active.conc,
+    drift: active.drift ?? 0,
     tempoBand: active.band,
   };
 }
@@ -321,6 +346,14 @@ export function analyzeQuality124(numbers: readonly RouletteNumber[], roiStartIn
         const entryAfter = Number(entryText);
         const active = state.active[entryAfter];
         if (!active) continue;
+        if (active.delayRemaining > 0) {
+          if (hit) {
+            delete state.active[entryAfter];
+            continue;
+          }
+          active.delayRemaining -= 1;
+          continue;
+        }
         const amount = progressionAmount(active.progression, active.roundIndex);
         active.bet += amount;
         if (hit) {
@@ -353,25 +386,33 @@ export function analyzeQuality124(numbers: readonly RouletteNumber[], roiStartIn
       if (entryAfter < 3 || entryAfter > 4 || state.active[entryAfter]) continue;
       const selected = selectRule(state, entryAfter);
       if (!selected) continue;
+      if (selected.tier === "group2" && state.active[3]?.tier === "group2tempo") {
+        delete state.active[3];
+      }
       state.active[entryAfter] = {
-        firstBetIndex: index + 1,
+        firstBetIndex: index + 1 + (selected.delayRounds ?? 0),
         kind: state.kind,
         ci: state.ci,
         tier: selected.tier,
         progression: selected.progression,
         entryAfter,
         roundIndex: 0,
+        delayRemaining: selected.delayRounds ?? 0,
         bet: 0,
         zone: selected.zone,
         conc: selected.conc,
         band: selected.band,
+        drift: selected.drift ?? 0,
       };
     }
   }
 
   return {
     activeSignals: states
-      .flatMap((state) => Object.values(state.active).filter((active): active is ActiveQuality124 => Boolean(active)).map(toSignal))
+      .flatMap((state) => Object.values(state.active)
+        .filter((active): active is ActiveQuality124 => Boolean(active))
+        .filter((active) => active.delayRemaining === 0)
+        .map(toSignal))
       // Active cards emphasize stronger/starred signals first; detail ROI tables use QUALITY_124_TIER_ORDER.
       .sort((a, b) => b.stars - a.stars || a.kind.localeCompare(b.kind) || a.ci - b.ci || b.entryAfter - a.entryAfter),
     totalRoi: settleRoi(total),

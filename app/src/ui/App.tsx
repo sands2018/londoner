@@ -2337,14 +2337,14 @@ export function App() {
   async function exportCurrentData() {
     const text = formatNumbers(numbers);
     if (!text) {
-      setNoticeDialog({ title: "导出数据", message: "当前没有可导出的数据。" });
+      setNoticeDialog({ title: "输出数据", message: "当前没有可输出的数据。" });
       return;
     }
 
     const copied = await copyTextToClipboard(text);
     setNoticeDialog({
-      title: "导出数据",
-      message: copied ? "数据已复制到剪贴板。" : "数据复制失败，请检查浏览器剪贴板权限。",
+      title: "输出数据",
+      message: copied ? "数据已输出到剪贴板。" : "数据输出失败，请检查浏览器剪贴板权限。",
     });
   }
 
@@ -2489,7 +2489,7 @@ export function App() {
     setLastSavedNumbers([]);
     clearCurrentSession();
     setActiveDialog(null);
-    setNoticeDialog({ title: "导入数据", message: `已导入 ${parsed.numbers.length} 个数字。` });
+    setNoticeDialog({ title: "输入数据", message: `已输入 ${parsed.numbers.length} 个数字。` });
   }
 
   async function tryAutoLogin(): Promise<{ u: string; p: string } | null> {
@@ -4430,7 +4430,7 @@ export function App() {
         <section className="quality124-signal-area" aria-label="124EXT信号">
           {quality124Signals.map((item) => (
             <div
-              className={`quality124-signal-item quality124-tier-${item.tier}`}
+              className={`quality124-signal-item quality124-tier-${item.tier} quality124-tier-${item.stars} ${item.tag === "波" ? "quality124-wave" : item.tag ? "quality124-delay" : ""}`}
               key={`quality124-${item.kind}-${item.ci}-${item.entryAfter}-${item.tier}`}
               onClick={() => { setPredictionTab("quality124"); openPredictionWindow(); }}
               role="button"
@@ -4438,7 +4438,14 @@ export function App() {
             >
               <span className="quality124-signal-label">{item.label}</span>
               <span className="quality124-signal-chase">
-                <span className="quality124-stars">{item.stars > 0 ? "★".repeat(item.stars) : ""}</span>
+                <span className="quality124-stars">
+                  {Array.from({ length: 3 }, (_, i) => (
+                    <span key={i} className={i < item.stars ? "quality124-star-filled" : "quality124-star-empty"}>
+                      {i < item.stars ? "★" : "☆"}
+                    </span>
+                  ))}
+                </span>
+                {item.tag ? <span className="quality124-tag">{item.tag}</span> : null}
                 <span className="quality124-dots">
                   {Array.from({ length: item.chaseLen }, (_, i) => i + 1).map((n) => (
                     <span key={n} className={`quality124-dot ${n <= item.round ? "filled" : ""}`} />
@@ -4671,10 +4678,10 @@ export function App() {
         <div className="dock-actions">
           <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
           <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
-          <button onClick={openImportDialog} type="button">导入</button>
+          <button onClick={openImportDialog} type="button">输入</button>
           <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
           <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
-          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">导出</button>
+          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">输出</button>
           <button onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
         </div>
         <div className="dock-actions dock-actions-primary">
@@ -5746,7 +5753,7 @@ export function App() {
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
-                  <p className="prediction-desc">124EXT：按每个行/组自己的频率、距离、集中度入场，并自适应追轮。一组=空4/近12/打1；二组=空4/近18高度集中/打1-2-4，二组短追=空3/打1-2；三组=空3-4/近18高度集中/排除fast/打1-2-3-5；1行=空3/近12中高速/打1；2行=空3/近24/打1-2-4；3行=空3/近37中慢/打1-2-4-8。</p>
+                  <p className="prediction-desc">124EXT：按每个行/组自己的频率、距离、集中度和波浪漂移入场。一组=空4/打1；二组=空4/打1-2-4；二组短追=空3后观察1口，仍未出则打2；三组=空3-4/波浪过滤/打1-2-3-5；1行=空3/打1；2行=空3后观察2口，仍未出则打4；3行=空3/波浪过滤/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -5763,7 +5770,7 @@ export function App() {
                     {QUALITY_124_TIER_ORDER.map((tier) => {
                       const meta = QUALITY_124_TIER_META[tier];
                       const item = quality124.tierRois[tier];
-                      const stars = meta.stars > 0 ? ` ${"★".repeat(meta.stars)}` : "";
+                      const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
                       return (
                         <div className="detail-stats-row" key={tier}>
                           <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
@@ -6661,7 +6668,7 @@ export function App() {
         <div className="modal-backdrop" role="dialog" aria-modal="true">
           <div className="modal-panel">
             <div className="modal-head">
-              <strong>{activeDialog === "save" ? "保存" : activeDialog === "connect" ? "接上" : "导入"}</strong>
+              <strong>{activeDialog === "save" ? "保存" : activeDialog === "connect" ? "接上" : importMode === "files" ? "导入" : "输入"}</strong>
               <button className="close-button" onClick={() => setActiveDialog(null)} type="button">X</button>
             </div>
 
@@ -6694,7 +6701,7 @@ export function App() {
                     onClick={activeDialog === "connect" ? connectInputData : importMode === "files" ? importFilesFromText : importData}
                     type="button"
                   >
-                    {activeDialog === "connect" ? "接上" : "导入"}
+                    {activeDialog === "connect" ? "接上" : importMode === "files" ? "导入" : "输入"}
                   </button>
                   {activeDialog === "import" && importMode === "files" ? (
                     <>

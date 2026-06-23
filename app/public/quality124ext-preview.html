@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>124EXT Signal Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --dot-size: 8px;
+      --weight-regular: 400;
+      --weight-ui: 500;
+      --weight-emphasis: 500;
+      --page-bg: #111111;
+      --panel-bg: #171717;
+      --panel-border: #313131;
+      --text: #d4d4d4;
+      --muted: #8c8c8c;
+      --gold: #b99a62;
+      --q124-line: #4a353d;
+      --q124-body: #21191d;
+      --q124-body-active: #2a2026;
+      --q124-dot: #aa7282;
+      font-family: "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--page-bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      padding: 18px 12px 32px;
+    }
+
+    .preview-shell {
+      margin: 0 auto;
+      max-width: 460px;
+    }
+
+    .preview-title {
+      align-items: baseline;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      color: #d2b57a;
+      font-size: 20px;
+      font-weight: var(--weight-emphasis);
+      letter-spacing: 0;
+      margin: 0;
+    }
+
+    .preview-note {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .preview-panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    .panel-head {
+      align-items: center;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .panel-head strong {
+      color: #c9a56e;
+      font-size: 14px;
+      font-weight: var(--weight-emphasis);
+    }
+
+    .panel-head span {
+      color: #858585;
+      font-size: 11px;
+    }
+
+    .quality124-signal-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: 0;
+    }
+
+    .quality124-signal-item {
+      align-items: stretch;
+      border: 1px solid var(--q124-line);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      flex: 0 0 calc((100% - 5px) / 2);
+      min-width: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .quality124-signal-label {
+      align-items: center;
+      background: #33262c;
+      color: #c596a2;
+      display: flex;
+      flex: 0 0 42px;
+      font-size: 15px;
+      font-weight: var(--weight-emphasis);
+      justify-content: center;
+      min-height: 36px;
+      white-space: nowrap;
+    }
+
+    .quality124-signal-chase {
+      align-items: center;
+      background: var(--q124-body);
+      display: flex;
+      flex: 1;
+      gap: 5px;
+      justify-content: space-between;
+      min-height: 36px;
+      min-width: 0;
+      padding: 0 7px;
+    }
+
+    .quality124-signal-item:active .quality124-signal-chase {
+      background: var(--q124-body-active);
+    }
+
+    .quality124-stars {
+      color: #ad7a86;
+      flex: 0 0 34px;
+      font-size: 11px;
+      font-weight: var(--weight-ui);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .quality124-star-filled,
+    .quality124-star-empty {
+      display: inline-block;
+    }
+
+    .quality124-star-empty {
+      color: rgba(173, 122, 134, 0.28);
+    }
+
+    .quality124-dots {
+      display: flex;
+      gap: 2px;
+      justify-content: center;
+      min-width: 28px;
+    }
+
+    .quality124-dot {
+      background: transparent;
+      border: 1px solid #6a4a56;
+      border-radius: 999px;
+      height: var(--dot-size);
+      width: var(--dot-size);
+    }
+
+    .quality124-dot.filled {
+      background: var(--q124-dot);
+      border-color: var(--q124-dot);
+    }
+
+    .quality124-bet {
+      color: #c596a2;
+      flex: 0 0 16px;
+      font-size: 15px;
+      font-weight: var(--weight-emphasis);
+      text-align: right;
+    }
+
+    .quality124-tag {
+      align-items: center;
+      color: #b48a72;
+      display: inline-flex;
+      flex: 0 0 18px;
+      font-size: 10px;
+      font-weight: var(--weight-ui);
+      height: 18px;
+      justify-content: center;
+    }
+
+    .quality124-tier-3 .quality124-signal-label {
+      background: #442b34;
+      color: #d8a5b2;
+    }
+
+    .quality124-tier-3 .quality124-stars,
+    .quality124-tier-3 .quality124-bet {
+      color: #d8a5b2;
+    }
+
+    .quality124-tier-3 .quality124-dot.filled {
+      background: #b86f86;
+      border-color: #b86f86;
+    }
+
+    .quality124-tier-2 .quality124-signal-label {
+      background: #42303a;
+      color: #d2a2b0;
+    }
+
+    .quality124-tier-2 .quality124-stars,
+    .quality124-tier-2 .quality124-bet {
+      color: #d2a2b0;
+    }
+
+    .quality124-tier-2 .quality124-dot.filled {
+      background: #b97f94;
+      border-color: #b97f94;
+    }
+
+    .quality124-tier-1 .quality124-signal-label {
+      background: #2e252a;
+      color: #a9828c;
+    }
+
+    .quality124-tier-1 .quality124-stars,
+    .quality124-tier-1 .quality124-bet {
+      color: #a9828c;
+    }
+
+    .quality124-tier-1 .quality124-dot {
+      border-color: #5f4850;
+    }
+
+    .quality124-tier-1 .quality124-dot.filled {
+      background: #8f6672;
+      border-color: #8f6672;
+    }
+
+    .quality124-delay .quality124-tag {
+      color: #b68596;
+      opacity: 0.58;
+    }
+
+    .quality124-wave .quality124-tag {
+      color: #bc8498;
+      opacity: 0.58;
+    }
+
+    .sample-caption {
+      color: #858585;
+      font-size: 11px;
+      line-height: 1.5;
+      margin: 8px 0 0;
+    }
+
+    .light-panel {
+      --panel-bg: #f6f1ed;
+      --panel-border: #e1d2c8;
+      --text: #3a3430;
+      --muted: #8a7770;
+      --q124-line: #dfcbd0;
+      --q124-body: #f4edf0;
+      --q124-body-active: #efe2e7;
+      --q124-dot: #8e5a68;
+      background: var(--panel-bg);
+      border-color: var(--panel-border);
+      color: var(--text);
+    }
+
+    .light-panel .panel-head strong { color: #78525c; }
+    .light-panel .panel-head span,
+    .light-panel .sample-caption { color: var(--muted); }
+    .light-panel .quality124-signal-item { border-color: var(--q124-line); }
+    .light-panel .quality124-signal-label { background: #ead2d8; color: #65414a; }
+    .light-panel .quality124-signal-chase { background: var(--q124-body); }
+    .light-panel .quality124-dot { background: rgba(255, 255, 255, 0.62); border-color: #c498a4; }
+    .light-panel .quality124-tier-3 .quality124-signal-label { background: #e7c4cc; color: #54313c; }
+    .light-panel .quality124-tier-3 .quality124-stars,
+    .light-panel .quality124-tier-3 .quality124-bet { color: #7c4a58; }
+    .light-panel .quality124-tier-2 .quality124-signal-label { background: #e8cdd6; color: #5c3745; }
+    .light-panel .quality124-tier-2 .quality124-stars,
+    .light-panel .quality124-tier-2 .quality124-bet { color: #8e5368; }
+    .light-panel .quality124-tier-1 .quality124-signal-label { background: #e6d8dd; color: #684c56; }
+    .light-panel .quality124-tier-1 .quality124-stars,
+    .light-panel .quality124-tier-1 .quality124-bet { color: #83616c; }
+    .light-panel .quality124-star-empty { color: rgba(110, 75, 90, 0.24); }
+
+    @media (max-width: 380px) {
+      body { padding-left: 8px; padding-right: 8px; }
+      .quality124-signal-label { flex-basis: 38px; font-size: 14px; }
+      .quality124-signal-chase { gap: 4px; padding: 0 5px; }
+      .quality124-stars { flex-basis: 31px; font-size: 10px; }
+      .quality124-bet { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-shell">
+    <div class="preview-title">
+      <h1>124EXT 信号卡片</h1>
+      <span class="preview-note">增强版样本</span>
+    </div>
+
+    <section class="preview-panel">
+      <div class="panel-head">
+        <strong>深色模式</strong>
+        <span>二组与2行三星 / 波浪二星 / 短追与单口一星</span>
+      </div>
+      <div class="quality124-signal-area">
+        <div class="quality124-signal-item quality124-tier-3">
+          <span class="quality124-signal-label">二组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★★</span></span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">1</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-3">
+          <span class="quality124-signal-label">二组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★★</span></span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot filled"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">2</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-3">
+          <span class="quality124-signal-label">二组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★★</span></span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot filled"></span><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">4</span>
+          </span>
+        </div>
+
+        <div class="quality124-signal-item quality124-tier-2 quality124-wave">
+          <span class="quality124-signal-label">三组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★</span><span class="quality124-star-empty">☆</span></span>
+            <span class="quality124-tag">波</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot"></span><span class="quality124-dot"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">1</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-2 quality124-wave">
+          <span class="quality124-signal-label">三组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★</span><span class="quality124-star-empty">☆</span></span>
+            <span class="quality124-tag">波</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot filled"></span><span class="quality124-dot filled"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">3</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-3 quality124-delay">
+          <span class="quality124-signal-label">2行</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★★</span></span>
+            <span class="quality124-tag">延</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">4</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-2 quality124-wave">
+          <span class="quality124-signal-label">3行</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★</span><span class="quality124-star-empty">☆</span></span>
+            <span class="quality124-tag">波</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot"></span><span class="quality124-dot"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">1</span>
+          </span>
+        </div>
+
+        <div class="quality124-signal-item quality124-tier-1">
+          <span class="quality124-signal-label">一组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★</span><span class="quality124-star-empty">☆☆</span></span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">1</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-1 quality124-delay">
+          <span class="quality124-signal-label">二组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★</span><span class="quality124-star-empty">☆☆</span></span>
+            <span class="quality124-tag">短</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">2</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-1">
+          <span class="quality124-signal-label">1行</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★</span><span class="quality124-star-empty">☆☆</span></span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">1</span>
+          </span>
+        </div>
+      </div>
+      <p class="sample-caption">样本含义：波=drift 波浪过滤后出现；延=延迟追；短=二组延迟短追。正式显示时可以保留这些小标，也可以只靠星级和颜色区分。</p>
+    </section>
+
+    <section class="preview-panel light-panel">
+      <div class="panel-head">
+        <strong>浅色模式</strong>
+        <span>同一套卡片在浅色背景下的效果</span>
+      </div>
+      <div class="quality124-signal-area">
+        <div class="quality124-signal-item quality124-tier-3">
+          <span class="quality124-signal-label">二组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★★</span></span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot filled"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">2</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-3 quality124-delay">
+          <span class="quality124-signal-label">2行</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★★</span></span>
+            <span class="quality124-tag">延</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">4</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-2 quality124-wave">
+          <span class="quality124-signal-label">3行</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★★</span><span class="quality124-star-empty">☆</span></span>
+            <span class="quality124-tag">波</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span><span class="quality124-dot"></span><span class="quality124-dot"></span><span class="quality124-dot"></span></span>
+            <span class="quality124-bet">1</span>
+          </span>
+        </div>
+        <div class="quality124-signal-item quality124-tier-1 quality124-delay">
+          <span class="quality124-signal-label">二组</span>
+          <span class="quality124-signal-chase">
+            <span class="quality124-stars"><span class="quality124-star-filled">★</span><span class="quality124-star-empty">☆☆</span></span>
+            <span class="quality124-tag">短</span>
+            <span class="quality124-dots"><span class="quality124-dot filled"></span></span>
+            <span class="quality124-bet">2</span>
+          </span>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
