@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildAutoTableProfileState } from "./autoTableProfile";
+import {
+  assignSessionToAutoTableProfileState,
+  buildAutoTableProfileState,
+  type AutoTableInputSession,
+} from "./autoTableProfile";
 import type { RouletteNumber } from "./roulette";
 
 function repeat(values: RouletteNumber[], times: number): RouletteNumber[] {
@@ -17,6 +21,23 @@ const probableTableOneNumbers = [
   ...tableOneNumbers.slice(0, 60),
 ];
 
+const wynnTableOneNumbers = repeat([22, 18, 29, 7, 28, 12, 35], 20);
+const wynnTableTwoNumbers = repeat([10, 5, 24, 16, 33, 1, 20], 20);
+const wynnTableThreeNumbers = repeat([0, 32, 15, 19, 4, 21, 2], 20);
+
+function makeSession(
+  id: string,
+  updatedAt: string,
+  numbers: RouletteNumber[],
+): AutoTableInputSession {
+  return {
+    id,
+    name: `${id}-wynn`,
+    updatedAt,
+    numbers,
+  };
+}
+
 describe("auto table profile", () => {
   it("creates an automatic profile for unassigned sessions and reuses it for similar sessions", () => {
     const state = buildAutoTableProfileState([
@@ -25,7 +46,7 @@ describe("auto table profile", () => {
     ]);
 
     expect(state.assignmentsById.get("a")?.source).toBe("auto");
-    expect(state.assignmentsById.get("a")?.autoMatchLevel).toBe("new");
+    expect(state.assignmentsById.get("a")?.autoMatchLevel).toBe("confirmed");
     expect(state.assignmentsById.get("b")?.source).toBe("auto");
     expect(state.assignmentsById.get("b")?.effectiveTableId).toBe(state.assignmentsById.get("a")?.effectiveTableId);
   });
@@ -42,7 +63,7 @@ describe("auto table profile", () => {
     expect(assignment?.source).toBe("manual");
     expect(assignment?.manualTableId).toBe("t_manual");
     expect(assignment?.effectiveTableId).toBe("t_manual");
-    expect(assignment?.autoTableId).toBe("auto_01");
+    expect(assignment?.autoTableId).toBe("t_manual");
   });
 
   it("can automatically match an unassigned session to a manually seeded table profile", () => {
@@ -71,6 +92,59 @@ describe("auto table profile", () => {
       "自动画像1",
       "自动画像2",
     ]);
+  });
+
+  it("uses batch spatial clustering to split same-venue history into table-like groups", () => {
+    const state = buildAutoTableProfileState([
+      makeSession("20260601-1630", "2026-06-01T08:30:00.000Z", wynnTableOneNumbers),
+      makeSession("20260602-0018", "2026-06-01T16:18:00.000Z", wynnTableOneNumbers),
+      makeSession("20260603-0030", "2026-06-02T16:30:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260603-0230", "2026-06-02T18:30:00.000Z", wynnTableThreeNumbers),
+      makeSession("20260603-2101", "2026-06-03T13:01:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260604-1630", "2026-06-04T08:30:00.000Z", wynnTableOneNumbers),
+      makeSession("20260604-2223", "2026-06-04T14:23:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260605-0230", "2026-06-04T18:30:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260606-0131", "2026-06-05T17:31:00.000Z", wynnTableThreeNumbers),
+      makeSession("20260607-0217", "2026-06-06T18:17:00.000Z", wynnTableThreeNumbers),
+    ]);
+
+    const groupTableIds = (ids: string[]) => ids.map((id) => state.assignmentsById.get(id)?.effectiveTableId);
+    const tableOneIds = groupTableIds(["20260601-1630", "20260602-0018", "20260604-1630"]);
+    const tableTwoIds = groupTableIds(["20260603-0030", "20260603-2101", "20260604-2223", "20260605-0230"]);
+    const tableThreeIds = groupTableIds(["20260603-0230", "20260606-0131", "20260607-0217"]);
+
+    expect(new Set(tableOneIds).size).toBe(1);
+    expect(new Set(tableTwoIds).size).toBe(1);
+    expect(new Set(tableThreeIds).size).toBe(1);
+    expect(new Set([tableOneIds[0], tableTwoIds[0], tableThreeIds[0]]).size).toBe(3);
+    expect(state.tables.filter((table) => table.id.startsWith("auto_"))).toHaveLength(3);
+  });
+
+  it("classifies an unsaved current session against the existing spatial model without creating a table", () => {
+    const state = buildAutoTableProfileState([
+      makeSession("20260601-1630", "2026-06-01T08:30:00.000Z", wynnTableOneNumbers),
+      makeSession("20260602-0018", "2026-06-01T16:18:00.000Z", wynnTableOneNumbers),
+      makeSession("20260603-0030", "2026-06-02T16:30:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260603-0230", "2026-06-02T18:30:00.000Z", wynnTableThreeNumbers),
+      makeSession("20260603-2101", "2026-06-03T13:01:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260604-1630", "2026-06-04T08:30:00.000Z", wynnTableOneNumbers),
+      makeSession("20260604-2223", "2026-06-04T14:23:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260605-0230", "2026-06-04T18:30:00.000Z", wynnTableTwoNumbers),
+      makeSession("20260606-0131", "2026-06-05T17:31:00.000Z", wynnTableThreeNumbers),
+      makeSession("20260607-0217", "2026-06-06T18:17:00.000Z", wynnTableThreeNumbers),
+    ]);
+    const expectedTableId = state.assignmentsById.get("20260603-2101")?.effectiveTableId;
+
+    const assignment = assignSessionToAutoTableProfileState({
+      id: "current",
+      name: "current-auto-table",
+      updatedAt: "9999-12-31T23:59:59.999Z",
+      numbers: wynnTableTwoNumbers,
+    }, state);
+
+    expect(assignment.source).toBe("auto");
+    expect(assignment.effectiveTableId).toBe(expectedTableId);
+    expect(state.assignmentsById.has("current")).toBe(false);
   });
 
   it("treats the default unknown manual table as unassigned", () => {

@@ -8303,6 +8303,14 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   text-align: center;
 }
 
+.prediction-roi-row.hot-calibration-row {
+  grid-template-columns: 18% 14% 16% 16% 14% 22%;
+}
+
+.prediction-roi-row.hot-table-feature-row {
+  grid-template-columns: 20% 14% 34% 32%;
+}
+
 .prediction-roi-row:last-child {
   border-bottom: 0;
 }
@@ -9672,8 +9680,48 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   right: 4px;
 }
 
+.hot-table-badge-enhance {
+  color: #c07040;
+}
+
+.hot-table-badge-observe {
+  color: #9a7342;
+}
+
+.hot-table-badge-hint {
+  color: #7a7568;
+}
+
+.hot-table-badge-block {
+  color: #66705f;
+}
+
+.hot-table-badge-baseline {
+  color: #8a7a6a;
+}
+
 .app-shell.theme-dark .hot-table-badge {
   color: #b89060;
+}
+
+.app-shell.theme-dark .hot-table-badge-enhance {
+  color: #c99762;
+}
+
+.app-shell.theme-dark .hot-table-badge-observe {
+  color: #b89060;
+}
+
+.app-shell.theme-dark .hot-table-badge-hint {
+  color: #8f887d;
+}
+
+.app-shell.theme-dark .hot-table-badge-block {
+  color: #8a907d;
+}
+
+.app-shell.theme-dark .hot-table-badge-baseline {
+  color: #a99578;
 }
 
 .app-shell.theme-dark .repeat-signal-item.repeat-hot .repeat-tier-badge.hot-badge {

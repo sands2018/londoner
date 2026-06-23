@@ -90,19 +90,27 @@ import { computePeakSma, computePeakStats, extractGaps } from "../core/wave";
 import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
-import { analyzeHotNumbers, type HotNumberSignal } from "../core/hotNumbers";
+import { analyzeHotNumbers, type HotNumberRoi, type HotNumberSignal, type HotNumberSignalEvent } from "../core/hotNumbers";
 import {
+  buildHotTableCalibrationState,
+  evaluateHotTableCalibration,
+  hotTableCalibrationActionLabel,
+  type HotTableCalibrationAction,
+  type HotTableCalibrationDecision,
+  type HotTableCalibrationState,
+} from "../core/hotTableCalibration";
+import {
+  assignSessionToAutoTableProfileState,
   buildAutoTableProfileState,
   type TableAssignment,
-  type TableAssignmentSource,
 } from "../core/autoTableProfile";
 import {
   buildTableProfiles,
-  computeHotNumberTableTierRoi,
   evaluateHotNumberTableSupport,
-  type HotNumberTableTierStats,
   type HotTableSupport,
-  type HotTableSupportLevel,
+  matchTableProfile,
+  type TableMatch,
+  type TableProfile,
 } from "../core/tableHotProfile";
 import {
   analyzeNumberMergeV2,
@@ -133,6 +141,7 @@ const simulatorDesktopDesignWidth = 1920;
 const simulatorDesktopDesignHeight = 1080;
 const simulatorDesktopViewportPadding = 16;
 const currentSessionIdKey = "londoner.currentSessionId";
+const currentAutoTableSessionId = "__current_auto_table__";
 const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
@@ -287,6 +296,12 @@ type RefineTab = "compare" | "detail";
 type OtherTab = "longs" | "numbers" | "rounds";
 type OtherRoundTab = "bet" | "summary";
 
+interface HotCalibrationBreakdownRow {
+  action: HotTableCalibrationAction;
+  stats: HotNumberRoi;
+}
+
+const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
 const disabledRoi = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
 const emptyColRowStats = {
   rawDistances: Array.from({ length: 8 }, () => [] as number[]),
@@ -543,11 +558,11 @@ export function App() {
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
-  const [showHotTableStrong, setShowHotTableStrong] = useState(() => localStorage.getItem("londoner.showHotTableStrong") !== "0");
-  const [showHotTableSupport, setShowHotTableSupport] = useState(() => localStorage.getItem("londoner.showHotTableSupport") !== "0");
-  const [showHotTableWatch, setShowHotTableWatch] = useState(() => localStorage.getItem("londoner.showHotTableWatch") === "1");
-  const [showHotTableConflict, setShowHotTableConflict] = useState(() => localStorage.getItem("londoner.showHotTableConflict") === "1");
-  const [showHotTableUnknown, setShowHotTableUnknown] = useState(() => localStorage.getItem("londoner.showHotTableUnknown") !== "0");
+  const [showHotCalibrationEnhance, setShowHotCalibrationEnhance] = useState(() => localStorage.getItem("londoner.showHotCalibrationEnhance") !== "0");
+  const [showHotCalibrationBaseline, setShowHotCalibrationBaseline] = useState(() => localStorage.getItem("londoner.showHotCalibrationBaseline") !== "0");
+  const [showHotCalibrationObserve, setShowHotCalibrationObserve] = useState(() => localStorage.getItem("londoner.showHotCalibrationObserve") !== "0");
+  const [showHotCalibrationHint, setShowHotCalibrationHint] = useState(() => localStorage.getItem("londoner.showHotCalibrationHint") === "1");
+  const [showHotCalibrationBlock, setShowHotCalibrationBlock] = useState(() => localStorage.getItem("londoner.showHotCalibrationBlock") === "1");
   const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
@@ -730,11 +745,45 @@ export function App() {
     ),
     [autoTableState.profileSessions, autoTableState.tables, currentSessionId],
   );
-  const currentSessionAssignment = useMemo(
-    () => (currentSessionId ? autoTableState.assignmentsById.get(currentSessionId) : undefined),
-    [autoTableState.assignmentsById, currentSessionId],
+  const hotTableCalibrationSessions = useMemo(
+    () => allSavedSessions
+      .filter((session) => session.id !== currentSessionId)
+      .map((session) => ({
+        id: session.id,
+        name: session.name,
+        numbers: session.numbers,
+        updatedAt: session.updatedAt,
+        importIndex: session.importIndex,
+        tableId: autoTableState.assignmentsById.get(session.id)?.effectiveTableId ?? session.tableId,
+      })),
+    [allSavedSessions, autoTableState.assignmentsById, currentSessionId],
   );
-  const currentManualTableId = currentSessionAssignment?.manualTableId ?? (!currentSessionId ? currentTableOverrideId || undefined : undefined);
+  const hotTableCalibrationState = useMemo(
+    () => buildHotTableCalibrationState(hotTableCalibrationSessions, autoTableState.tables),
+    [hotTableCalibrationSessions, autoTableState.tables],
+  );
+  const currentSessionAssignment = useMemo(
+    () => {
+      if (currentSessionId) return autoTableState.assignmentsById.get(currentSessionId);
+      if (numbers.length === 0) return undefined;
+      return assignSessionToAutoTableProfileState({
+        id: currentAutoTableSessionId,
+        name: "current-auto-table",
+        numbers,
+        updatedAt: "9999-12-31T23:59:59.999Z",
+      }, autoTableState);
+    },
+    [autoTableState, currentSessionId, numbers],
+  );
+  const currentManualTableId = !currentSessionId && currentTableOverrideId
+    ? currentTableOverrideId
+    : currentSessionAssignment?.manualTableId;
+  // Saved and unsaved current sessions both read formal auto-table assignment
+  // from buildAutoTableProfileState; realtime matching below is only explanatory.
+  const currentAutoTableId = currentSessionAssignment?.source === "auto"
+    ? currentSessionAssignment.effectiveTableId
+    : undefined;
+  const currentResolvedTableId = currentManualTableId ?? currentAutoTableId;
   const [allGameBets, setAllGameBets] = useState<number[][]>([]);
   const [selectedBetKeys, setSelectedBetKeys] = useState<string[]>([]);
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
@@ -786,39 +835,82 @@ export function App() {
     [hotNumberSignal?.number, numbers, tableProfiles],
   );
   const hotTableSupport = useMemo(
-    () => currentManualTableId
-      ? evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles, currentManualTableId)
+    () => currentResolvedTableId
+      ? evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles, currentResolvedTableId)
       : autoHotTableSupport,
-    [autoHotTableSupport, currentManualTableId, hotNumberSignal?.number, numbers, tableProfiles],
+    [autoHotTableSupport, currentResolvedTableId, hotNumberSignal?.number, numbers, tableProfiles],
   );
-  const hotTableSource: TableAssignmentSource = currentManualTableId
-    ? "manual"
-    : hotTableSupport.match.profile ? "auto" : "none";
-  const hotNumberTableTierRoi = useMemo(
-    () => computeHotNumberTableTierRoi(numbers, hotNumber.events, tableProfiles, currentManualTableId || undefined),
-    [hotNumber.events, numbers, tableProfiles, currentManualTableId],
+  const hotTableMatch = useMemo(
+    () => matchTableProfile(numbers, tableProfiles, currentResolvedTableId),
+    [currentResolvedTableId, numbers, tableProfiles],
+  );
+  const hotTableCalibration = useMemo(
+    () => evaluateHotTableCalibration(hotTableSupport, hotTableCalibrationState),
+    [hotTableCalibrationState, hotTableSupport],
   );
   const currentManualTableLabel = currentManualTableId
     ? tableLabelById.get(currentManualTableId) ?? tableNameById.get(currentManualTableId) ?? currentManualTableId
     : "";
+  const currentResolvedTableLabel = currentResolvedTableId
+    ? tableLabelById.get(currentResolvedTableId) ?? tableNameById.get(currentResolvedTableId) ?? currentResolvedTableId
+    : "";
   const currentTableUsageLabel = currentManualTableId
     ? `${currentManualTableLabel} · 人工指定`
-    : hotTableSupport.match.profile
-      ? `${hotTableSupport.match.profile.tableName} · 自动匹配`
-      : "未识别 · 自动匹配";
+    : currentAutoTableId
+      ? `${currentResolvedTableLabel} · 自动归桌`
+      : hotTableSupport.match.profile
+        ? `${hotTableSupport.match.profile.tableName} · 实时匹配`
+        : "未识别 · 实时匹配";
   const autoTableSuggestionLabel = autoHotTableSupport.match.profile
     ? `${autoHotTableSupport.match.profile.tableName} · ${formatTableMatchLevel(autoHotTableSupport.match.level)}`
     : "未识别";
+  const hotTableFeatureLabel = currentManualTableId
+    ? `${currentManualTableLabel} · 人工指定`
+    : currentAutoTableId
+      ? `${currentResolvedTableLabel} · 自动归桌`
+      : hotTableMatch.profile
+        ? `${hotTableMatch.profile.tableName} · 实时匹配`
+        : "未识别 · 实时匹配";
+  const hotCalibrationVisibility = useMemo<Record<HotTableCalibrationAction, boolean>>(() => ({
+    enhance: showHotCalibrationEnhance,
+    baseline: showHotCalibrationBaseline,
+    observe: showHotCalibrationObserve,
+    hint: showHotCalibrationHint,
+    block: showHotCalibrationBlock,
+  }), [
+    showHotCalibrationBaseline,
+    showHotCalibrationBlock,
+    showHotCalibrationEnhance,
+    showHotCalibrationHint,
+    showHotCalibrationObserve,
+  ]);
   const hotNumberSignalVisible = shouldShowHotTableSignal(
-    hotTableSupport.level,
-    showHotTableStrong,
-    showHotTableSupport,
-    showHotTableWatch,
-    showHotTableConflict,
-    showHotTableUnknown,
+    hotTableCalibration,
+    hotCalibrationVisibility,
   );
   const shouldComputeColdDetailStats = predictionWindowOpen && predictionTab === "cold";
   const shouldComputeColdSplitRoi = predictionWindowOpen && (predictionTab === "overview" || predictionTab === "cold");
+  const shouldComputeHotDetailStats = predictionWindowOpen && predictionTab === "hotNumber";
+  const hotCalibrationBreakdown = useMemo(
+    () => shouldComputeHotDetailStats
+      ? summarizeHotCalibrationEvents(
+        numbers,
+        hotNumber.events,
+        tableProfiles,
+        hotTableCalibrationState,
+        currentResolvedTableId,
+        REPEAT_INITIAL_ROUNDS,
+      )
+      : emptyHotCalibrationBreakdown(),
+    [
+      currentResolvedTableId,
+      hotNumber.events,
+      hotTableCalibrationState,
+      numbers,
+      shouldComputeHotDetailStats,
+      tableProfiles,
+    ],
+  );
   const coldDetailStats = useMemo(
     () => shouldComputeColdDetailStats ? computeColdDetailStats(numbers) : [],
     [numbers, shouldComputeColdDetailStats],
@@ -4535,7 +4627,7 @@ export function App() {
           <section className="repeat-signal-area" aria-label="单号信号">
             {filteredHotNumber.map((item) => (
               <div
-                className={`repeat-signal-item repeat-hot ${hotTableSignalClass(hotTableSupport)}`}
+                className={`repeat-signal-item repeat-hot ${hotTableSignalClass(hotTableCalibration)}`}
                 key={`hot-${item.number}`}
                 onClick={() => { setPredictionTab("hotNumber"); openPredictionWindow(); }}
                 role="button"
@@ -4543,8 +4635,8 @@ export function App() {
               >
                 <span className="repeat-tier-badge hot-badge">{item.mode === "short" ? "热门S" : "热门"}</span>
                 <strong className="repeat-number">{item.number}</strong>
-                <span className={`repeat-tier-badge hot-table-badge ${hotTableBadgeClass(hotTableSupport)}`}>
-                  {formatHotTableBadge(hotTableSupport, hotTableSource)}
+                <span className={`repeat-tier-badge hot-table-badge ${hotTableBadgeClass(hotTableCalibration)}`}>
+                  {formatHotTableBadge(hotTableCalibration)}
                 </span>
               </div>
             ))}
@@ -5700,11 +5792,11 @@ export function App() {
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
                         <span className="hot-table-filter-toggles">
-                          <button className="hot-table-filter-strong on" onClick={() => { if (!showHotTableStrong) { setShowHotTableStrong(true); localStorage.setItem("londoner.showHotTableStrong", "1"); } }} type="button">强</button>
-                          <button className={showHotTableSupport ? "on" : ""} onClick={() => { const v = !showHotTableSupport; setShowHotTableSupport(v); localStorage.setItem("londoner.showHotTableSupport", v ? "1" : "0"); }} type="button">中</button>
-                          <button className={showHotTableWatch ? "on" : ""} onClick={() => { const v = !showHotTableWatch; setShowHotTableWatch(v); localStorage.setItem("londoner.showHotTableWatch", v ? "1" : "0"); }} type="button">弱</button>
-                          <button className={showHotTableConflict ? "on" : ""} onClick={() => { const v = !showHotTableConflict; setShowHotTableConflict(v); localStorage.setItem("londoner.showHotTableConflict", v ? "1" : "0"); }} type="button">冲突</button>
-                          <button className={showHotTableUnknown ? "on" : ""} onClick={() => { const v = !showHotTableUnknown; setShowHotTableUnknown(v); localStorage.setItem("londoner.showHotTableUnknown", v ? "1" : "0"); }} type="button">未知</button>
+                          <button className={showHotCalibrationEnhance ? "on" : ""} onClick={() => { const v = !showHotCalibrationEnhance; setShowHotCalibrationEnhance(v); localStorage.setItem("londoner.showHotCalibrationEnhance", v ? "1" : "0"); }} type="button">增强</button>
+                          <button className={showHotCalibrationBaseline ? "on" : ""} onClick={() => { const v = !showHotCalibrationBaseline; setShowHotCalibrationBaseline(v); localStorage.setItem("londoner.showHotCalibrationBaseline", v ? "1" : "0"); }} type="button">原始</button>
+                          <button className={showHotCalibrationObserve ? "on" : ""} onClick={() => { const v = !showHotCalibrationObserve; setShowHotCalibrationObserve(v); localStorage.setItem("londoner.showHotCalibrationObserve", v ? "1" : "0"); }} type="button">观察</button>
+                          <button className={showHotCalibrationHint ? "on" : ""} onClick={() => { const v = !showHotCalibrationHint; setShowHotCalibrationHint(v); localStorage.setItem("londoner.showHotCalibrationHint", v ? "1" : "0"); }} type="button">提示</button>
+                          <button className={showHotCalibrationBlock ? "on" : ""} onClick={() => { const v = !showHotCalibrationBlock; setShowHotCalibrationBlock(v); localStorage.setItem("londoner.showHotCalibrationBlock", v ? "1" : "0"); }} type="button">屏蔽</button>
                         </span>
                       </span>
                     </div>
@@ -5724,7 +5816,7 @@ export function App() {
                         </div>
                       ) : null}
                       <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">桌台</span><span>{formatHotTableBadge(hotTableSupport, hotTableSource)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span>
+                        <span className="prediction-roi-subheader">校准</span><span>{formatHotTableBadge(hotTableCalibration)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableCalibrationMetric(hotTableCalibration, hotTableSupport)}</span>
                       </div>
                     </div>
                   </div>
@@ -5871,28 +5963,35 @@ export function App() {
                       <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span><span>{hotNumberRoiFrom201.hits}</span>
                       <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
-                    {hotNumberSignal ? (
-                      <>
-                        <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><strong>{hotNumberSignal.number}</strong><span>148={hotNumberSignal.count148}</span><span>S1={hotNumberSignal.seg1}</span><span>S2={hotNumberSignal.seg2}</span><span>S3={hotNumberSignal.seg3}</span>
-                        </div>
-                        <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">桌台增强</span><strong>{formatHotTableBadge(hotTableSupport, hotTableSource)}</strong><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableMetric(hotTableSupport)}</span><span>{hotTableSupport.reason}</span>
-                        </div>
-                      </>
-                    ) : null}
-                    {hotNumberTableTierRoi.length > 0 ? (
-                      <>
-                        <div className="prediction-roi-row prediction-roi-header"><span>桌台档位</span><span>信号</span><span>投入</span><span>命中</span><span>ROI</span></div>
-                        {hotNumberTableTierRoi.map((tier) => (
-                          <div className="prediction-roi-row" key={tier.tier}>
-                            <span className="prediction-roi-subheader">{tier.label}</span>
-                            <span>{tier.signals}</span><span>{tier.bet}</span><span>{tier.hits}</span>
-                            <strong className="roi-value" style={{ color: tier.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{tier.roi >= 0 ? "+" : ""}{tier.roi.toFixed(1)}%</strong>
-                          </div>
-                        ))}
-                      </>
-                    ) : null}
+                  </div>
+                  <p className="prediction-desc">校准档位统计：按本局每次热门信号逐条归入增强 / 原始 / 观察 / 提示 / 屏蔽；下表 ROI 口径为押注区数据（200后）。</p>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header hot-calibration-row"><span>档位</span><span>信号</span><span>投入</span><span>赢回</span><span>命中</span><span>ROI</span></div>
+                    {hotCalibrationBreakdown.map((row) => (
+                      <div className="prediction-roi-row hot-calibration-row" key={row.action}>
+                        <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
+                        <strong>{row.stats.signals}</strong>
+                        <span>{row.stats.bet}</span>
+                        <span>{row.stats.win}</span>
+                        <span>{row.stats.hits}</span>
+                        <strong className="roi-value" style={{ color: row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.stats.roi >= 0 ? "+" : ""}{row.stats.roi.toFixed(1)}%</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="prediction-roi-table">
+                    <div className="prediction-roi-row prediction-roi-header hot-table-feature-row"><span>本桌特征</span><span>匹配</span><span>桌号</span><span>数据</span></div>
+                    <div className="prediction-roi-row hot-table-feature-row">
+                      <span className="prediction-roi-subheader">桌面画像</span>
+                      <strong>{formatTableMatchLevel(hotTableMatch.level)}</strong>
+                      <span>{hotTableFeatureLabel}</span>
+                      <span>{formatTableMatchMetric(hotTableMatch)}</span>
+                    </div>
+                    <div className="prediction-roi-row hot-table-feature-row">
+                      <span className="prediction-roi-subheader">画像样本</span>
+                      <span>{hotTableMatch.profile ? `${hotTableMatch.profile.sessionCount}局` : "-"}</span>
+                      <span>{hotTableMatch.profile?.tableName ?? "-"}</span>
+                      <span>{hotTableMatch.profile ? `${hotTableMatch.profile.totalNumbers}口` : "-"}</span>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -7400,10 +7499,55 @@ function formatSessionTableLabel(
   return "";
 }
 
-function formatHotTableBadge(support: HotTableSupport, _source: TableAssignmentSource = "none"): string {
+function emptyHotRoi(): HotNumberRoi {
+  return { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+}
+
+function emptyHotCalibrationBreakdown(): HotCalibrationBreakdownRow[] {
+  return hotCalibrationActionOrder.map((action) => ({ action, stats: emptyHotRoi() }));
+}
+
+function addHotRoi(stats: HotNumberRoi, hit: boolean): void {
+  stats.signals += 1;
+  stats.bet += 1;
+  if (hit) {
+    stats.hits += 1;
+    stats.win += 36;
+  }
+  stats.roi = stats.bet > 0 ? ((stats.win - stats.bet) / stats.bet) * 100 : 0;
+}
+
+function summarizeHotCalibrationEvents(
+  numbers: readonly RouletteNumber[],
+  events: readonly HotNumberSignalEvent[],
+  profiles: readonly TableProfile[],
+  calibrationState: HotTableCalibrationState,
+  forcedTableId: string | undefined,
+  roiStartIndex: number,
+): HotCalibrationBreakdownRow[] {
+  const rows = emptyHotCalibrationBreakdown();
+  const statsByAction = new Map(rows.map((row) => [row.action, row.stats]));
+
+  for (const event of events) {
+    if (event.position < roiStartIndex) continue;
+    const prefix = numbers.slice(0, event.position);
+    const support = evaluateHotNumberTableSupport(prefix, event.signal.number, profiles, forcedTableId);
+    const calibration = evaluateHotTableCalibration(support, calibrationState);
+    const stats = statsByAction.get(calibration.action);
+    if (stats) addHotRoi(stats, event.hit);
+  }
+
+  return rows;
+}
+
+function formatHotTableBadge(calibration: HotTableCalibrationDecision): string {
+  return hotTableCalibrationActionLabel(calibration.action);
+}
+
+function formatHotTableSupportLevel(support: HotTableSupport): string {
   if (support.level === "strong") return "强";
-  if (support.level === "support") return "中";
-  if (support.level === "watch") return "弱";
+  if (support.level === "support") return "支持";
+  if (support.level === "watch") return "观察";
   if (support.level === "conflict") return "冲突";
   if (support.level === "unknown") return "未知";
   return "";
@@ -7419,6 +7563,46 @@ function formatHotTableMetric(support: HotTableSupport): string {
   return "-";
 }
 
+function formatHotTableCalibrationMetric(
+  calibration: HotTableCalibrationDecision,
+  support: HotTableSupport,
+): string {
+  if (calibration.stats) {
+    return `${calibration.stats.signals}信号 / ${calibration.stats.roi >= 0 ? "+" : ""}${calibration.stats.roi.toFixed(1)}%`;
+  }
+  return formatHotTableMetric(support);
+}
+
+function formatHotTableCalibrationSource(calibration: HotTableCalibrationDecision): string {
+  if (calibration.scope === "table") return "同桌画像";
+  if (calibration.scope === "venue") return "同场地";
+  return "原始热门";
+}
+
+function formatHotTableCalibrationSample(calibration: HotTableCalibrationDecision): string {
+  if (calibration.sample === "tier") return "同特征档";
+  if (calibration.sample === "overall") return "整体样本";
+  return "样本不足";
+}
+
+function formatHotTableCalibrationBucket(calibration: HotTableCalibrationDecision): string {
+  return calibration.bucket?.label ?? "-";
+}
+
+function formatHotTableCalibrationStats(calibration: HotTableCalibrationDecision): string {
+  const stats = calibration.stats;
+  if (!stats) return "-";
+  return `${stats.signals}信号 / 命中${stats.hits}`;
+}
+
+function formatHotTableCalibrationActionNote(calibration: HotTableCalibrationDecision): string {
+  if (calibration.action === "enhance") return "首页增强显示";
+  if (calibration.action === "observe") return "首页观察显示";
+  if (calibration.action === "hint") return "默认仅详情提示";
+  if (calibration.action === "block") return "默认屏蔽";
+  return "沿用原始热门";
+}
+
 function formatTableMatchLevel(level: HotTableSupport["match"]["level"]): string {
   if (level === "confirmed") return "强";
   if (level === "probable") return "中";
@@ -7426,31 +7610,27 @@ function formatTableMatchLevel(level: HotTableSupport["match"]["level"]): string
   return "无";
 }
 
-function hotTableSignalClass(support: HotTableSupport): string {
-  if (support.level === "strong") return "repeat-hot-table-strong";
-  if (support.level === "support") return "repeat-hot-table-support";
-  if (support.level === "conflict") return "repeat-hot-table-conflict";
+function formatTableMatchMetric(match: TableMatch): string {
+  if (!match.profile) return "-";
+  return `相似度 ${match.similarity.toFixed(2)} / gap ${match.gap.toFixed(2)}`;
+}
+
+function hotTableSignalClass(calibration: HotTableCalibrationDecision): string {
+  if (calibration.action === "enhance") return "repeat-hot-table-strong";
+  if (calibration.action === "observe") return "repeat-hot-table-support";
+  if (calibration.action === "block") return "repeat-hot-table-conflict";
   return "";
 }
 
-function hotTableBadgeClass(support: HotTableSupport): string {
-  return `hot-table-badge-${support.level}`;
+function hotTableBadgeClass(calibration: HotTableCalibrationDecision): string {
+  return `hot-table-badge-${calibration.action}`;
 }
 
 function shouldShowHotTableSignal(
-  level: HotTableSupportLevel,
-  _showStrong: boolean,
-  showSupport: boolean,
-  showWatch: boolean,
-  showConflict: boolean,
-  showUnknown: boolean,
+  calibration: HotTableCalibrationDecision,
+  visibility: Readonly<Record<HotTableCalibrationAction, boolean>>,
 ): boolean {
-  if (level === "strong") return true;
-  if (level === "support") return showSupport;
-  if (level === "watch") return showWatch;
-  if (level === "conflict") return showConflict;
-  if (level === "unknown") return showUnknown;
-  return true;
+  return visibility[calibration.action] ?? true;
 }
 
 function sessionTableSortKey(session: SavedSession, assignments: ReadonlyMap<string, TableAssignment>): string {
