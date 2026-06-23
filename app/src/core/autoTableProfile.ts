@@ -63,7 +63,7 @@ const MISSING_MANUAL_TABLE_PARENT_ID = "manual_missing";
 const MIN_MANUAL_SESSIONS_FOR_PROBABLE_AUTO_MATCH = 3;
 
 function isKnownManualTableId(tableId: string | undefined): tableId is string {
-  return Boolean(tableId && !tableId.startsWith("t_unknown_"));
+  return Boolean(tableId && !tableId.startsWith("t_unknown_") && !isAutoTableId(tableId));
 }
 
 function isAutoTableId(tableId: string): boolean {

@@ -100,6 +100,7 @@ import {
   type HotTableCalibrationState,
 } from "../core/hotTableCalibration";
 import {
+  AUTO_TABLE_PREFIX,
   assignSessionToAutoTableProfileState,
   buildAutoTableProfileState,
   type TableAssignment,
@@ -147,6 +148,13 @@ const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
 const windowModeKey = "londoner.windowMode";
 const repeatFilterOptions: RepeatTier[] = [REPEAT_TIER_CORE, REPEAT_TIER_AGGRESSIVE];
+
+function sanitizeManualTableId(tableId: string | undefined): string | undefined {
+  const trimmed = tableId?.trim();
+  if (!trimmed || trimmed.startsWith(AUTO_TABLE_PREFIX)) return undefined;
+  return trimmed;
+}
+
 type WindowMode = "classic" | "fibonacci";
 const classicStatScopes: readonly number[] = [8, 13, 21, 40, 60, 100, -1];
 const fibonacciStatScopes: readonly number[] = [8, 13, 21, 34, 55, 89, 144, -1];
@@ -728,6 +736,7 @@ export function App() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(() => {
     return localStorage.getItem(currentSessionIdKey);
   });
+  const [currentSourceName, setCurrentSourceName] = useState("");
   const [saveName, setSaveName] = useState("");
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const autoTableState = useMemo(
@@ -768,12 +777,12 @@ export function App() {
       if (numbers.length === 0) return undefined;
       return assignSessionToAutoTableProfileState({
         id: currentAutoTableSessionId,
-        name: "current-auto-table",
+        name: currentSourceName || "current-auto-table",
         numbers,
         updatedAt: "9999-12-31T23:59:59.999Z",
       }, autoTableState);
     },
-    [autoTableState, currentSessionId, numbers],
+    [autoTableState, currentSessionId, currentSourceName, numbers],
   );
   const currentManualTableId = !currentSessionId && currentTableOverrideId
     ? currentTableOverrideId
@@ -2332,6 +2341,7 @@ export function App() {
   function clearCurrentSession() {
     setCurrentSessionId(null);
     setCurrentTableOverrideId("");
+    setCurrentSourceName("");
   }
 
   function defaultSessionName() {
@@ -2356,7 +2366,7 @@ export function App() {
   async function persistSession(name: string, existingId?: string) {
     const id = existingId ?? crypto.randomUUID?.() ?? `${Date.now()}`;
     const existing = existingId ? (await storage.listSessions()).find((s) => s.id === existingId) : undefined;
-    const tableIdToPersist = currentManualTableId ?? existing?.tableId;
+    const tableIdToPersist = sanitizeManualTableId(currentManualTableId ?? existing?.tableId);
     await storage.saveSession({
       id,
       name,
@@ -2367,6 +2377,7 @@ export function App() {
     });
     await refreshSessions();
     setCurrentSessionId(id);
+    setCurrentSourceName(name);
     setCurrentTableOverrideId("");
     setLastSavedNumbers(numbers);
     setRedoNumbers([]);
@@ -2580,6 +2591,7 @@ export function App() {
     setRedoNumbers([]);
     setLastSavedNumbers([]);
     clearCurrentSession();
+    setCurrentSourceName("");
     setActiveDialog(null);
     setNoticeDialog({ title: "输入数据", message: `已输入 ${parsed.numbers.length} 个数字。` });
   }
@@ -2723,6 +2735,7 @@ export function App() {
       setRedoNumbers([]);
       setLastSavedNumbers([]);
       clearCurrentSession();
+      setCurrentSourceName(incoming.label);
       setActiveDialog(null);
       setNoticeDialog({ title: "接上数据", message: `已接上（${incoming.numbers.length} 个数字）` });
       return;
@@ -2817,6 +2830,7 @@ export function App() {
     const overlapLength = result?.alignment?.overlapLength ?? result?.tolerantAlignment?.overlapLength;
     setNumbers(mergedNumbers);
     setRedoNumbers([]);
+    setCurrentSourceName(incoming.label);
     setActiveDialog(null);
     setTransferConnectDialog(null);
     setNoticeDialog({
@@ -2853,6 +2867,7 @@ export function App() {
         setRedoNumbers([]);
         setLastSavedNumbers([]);
         clearCurrentSession();
+        setCurrentSourceName(`transfer-${selected.id}`);
         setDataViewOpen(false);
         setNoticeDialog({ title: "导入传输数据", message: `已导入 ${importedNumbers.length} 个数字。` });
       },
@@ -3024,6 +3039,7 @@ export function App() {
         setRedoNumbers([]);
         setLastSavedNumbers(openedNumbers);
         setCurrentSessionId(session.id);
+        setCurrentSourceName(session.name);
         setCurrentTableOverrideId("");
         setDataViewOpen(false);
         setNoticeDialog({ title: "打开数据", message: `已打开：${session.name}` });
@@ -3118,6 +3134,7 @@ export function App() {
         setRedoNumbers([]);
         setLastSavedNumbers(mergedNumbers);
         setCurrentSessionId(target.id);
+        setCurrentSourceName(target.name);
       }
 
       setSessionMergeDialog(null);
@@ -3193,7 +3210,7 @@ export function App() {
       ...session,
       name,
       sharedUploader: editUploader.trim(),
-      tableId: editTableId || undefined,
+      tableId: sanitizeManualTableId(editTableId),
       updatedAt,
     };
 
@@ -3210,7 +3227,7 @@ export function App() {
   }
 
   async function applyTableCalibration() {
-    const tableId = tableCalibrationValue || undefined;
+    const tableId = sanitizeManualTableId(tableCalibrationValue);
     const tableLabel = tableId ? tableLabelById.get(tableId) ?? tableNameById.get(tableId) ?? tableId : "未归属";
 
     if (currentSessionId) {
@@ -7796,8 +7813,8 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
     const rawTableId = (item as { TableId?: unknown; tableId?: unknown }).TableId
       ?? (item as { TableId?: unknown; tableId?: unknown }).tableId;
     const tableId = typeof rawTableId === "string"
-      ? rawTableId
-      : "";
+      ? sanitizeManualTableId(rawTableId)
+      : undefined;
     imported.push({
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
@@ -7805,7 +7822,7 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
       updatedAt: new Date(time).toISOString(),
       importIndex: importIdx,
       sharedUploader,
-      tableId: tableId || undefined,
+      tableId,
     });
   }
 

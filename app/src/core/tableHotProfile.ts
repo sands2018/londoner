@@ -257,7 +257,7 @@ export function evaluateHotNumberTableSupport(
   forcedTableId?: string,
 ): HotTableSupport {
   const match = matchTableProfile(numbers, profiles, forcedTableId);
-  if (!hotNumber) {
+  if (hotNumber === null || hotNumber === undefined) {
     return { level: "none", profile: null, match, sector: null, rank: null, z: 0, reason: "暂无热门信号" };
   }
   if (!match.profile) {

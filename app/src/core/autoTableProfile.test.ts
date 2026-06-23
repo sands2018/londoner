@@ -158,6 +158,17 @@ describe("auto table profile", () => {
     expect(assignment?.effectiveTableId).toBe("auto_01");
   });
 
+  it("treats persisted auto table ids as unassigned rather than manual", () => {
+    const state = buildAutoTableProfileState([
+      { id: "auto", name: "Auto", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "auto_99" },
+    ]);
+
+    const assignment = state.assignmentsById.get("auto");
+    expect(assignment?.source).toBe("auto");
+    expect(assignment?.manualTableId).toBeUndefined();
+    expect(assignment?.effectiveTableId).toBe("auto_01");
+  });
+
   it("requires confirmed matching before auto-joining a small manual table profile", () => {
     const state = buildAutoTableProfileState([
       { id: "seed", name: "Seed", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_1" },
