@@ -301,7 +301,20 @@ interface HotCalibrationBreakdownRow {
   stats: HotNumberRoi;
 }
 
+interface HotRecent10Benchmark {
+  rows: HotCalibrationBreakdownRow[];
+  sessionCount: number;
+  bettingSpins: number;
+  calculatedAt: string;
+}
+
+type HotBenchmarkTab = "current" | "history" | "recent10";
+
 const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
+const hotLocalHistoryBenchmarkKey = "londoner.hotLocalHistoryBenchmark";
+const hotRecent10BenchmarkKey = "londoner.hotRecent10Benchmark";
+const hotHistoryDataBenchmarkArchiveKey = "londoner.hotHistoryDataBenchmarkArchive";
+const hotLocalHistoryStartTime = Date.parse("2021-01-01T00:00:00.000+08:00");
 const disabledRoi = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
 const emptyColRowStats = {
   rawDistances: Array.from({ length: 8 }, () => [] as number[]),
@@ -411,6 +424,75 @@ function loadCurrentRedoNumbers(): RouletteNumber[] {
   } catch {
     return [];
   }
+}
+
+function normalizeHotRecent10Benchmark(value: unknown): HotRecent10Benchmark | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const sessionCount = typeof item.sessionCount === "number" && Number.isFinite(item.sessionCount) ? item.sessionCount : null;
+  const bettingSpins = typeof item.bettingSpins === "number" && Number.isFinite(item.bettingSpins) ? item.bettingSpins : null;
+  const calculatedAt = typeof item.calculatedAt === "string" ? item.calculatedAt : "";
+  if (sessionCount === null || bettingSpins === null || !calculatedAt || !Array.isArray(item.rows)) return null;
+
+  const statsByAction = new Map<HotTableCalibrationAction, HotNumberRoi>();
+  for (const row of item.rows) {
+    if (!row || typeof row !== "object") continue;
+    const source = row as Record<string, unknown>;
+    const action = source.action;
+    const stats = source.stats;
+    if (!hotCalibrationActionOrder.includes(action as HotTableCalibrationAction) || !stats || typeof stats !== "object") continue;
+    const sourceStats = stats as Record<string, unknown>;
+    const signals = typeof sourceStats.signals === "number" && Number.isFinite(sourceStats.signals) ? sourceStats.signals : null;
+    const bet = typeof sourceStats.bet === "number" && Number.isFinite(sourceStats.bet) ? sourceStats.bet : null;
+    const win = typeof sourceStats.win === "number" && Number.isFinite(sourceStats.win) ? sourceStats.win : null;
+    const hits = typeof sourceStats.hits === "number" && Number.isFinite(sourceStats.hits) ? sourceStats.hits : null;
+    const roi = typeof sourceStats.roi === "number" && Number.isFinite(sourceStats.roi) ? sourceStats.roi : null;
+    if (signals === null || bet === null || win === null || hits === null || roi === null) continue;
+    statsByAction.set(action as HotTableCalibrationAction, { signals, bet, win, hits, roi });
+  }
+
+  return {
+    rows: hotCalibrationActionOrder.map((action) => ({ action, stats: statsByAction.get(action) ?? emptyHotRoi() })),
+    sessionCount,
+    bettingSpins,
+    calculatedAt,
+  };
+}
+
+function loadHotBenchmark(key: string): HotRecent10Benchmark | null {
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return normalizeHotRecent10Benchmark(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function loadHotRecent10Benchmark(): HotRecent10Benchmark | null {
+  return loadHotBenchmark(hotRecent10BenchmarkKey);
+}
+
+function loadHotLocalHistoryBenchmark(): HotRecent10Benchmark | null {
+  return loadHotBenchmark(hotLocalHistoryBenchmarkKey);
+}
+
+function hotHistoryDataArchiveBenchmark(): HotRecent10Benchmark {
+  return {
+    rows: HOT_HISTORY_BENCHMARK.rows.map((row) => ({
+      action: row.action,
+      stats: {
+        signals: row.signals,
+        bet: row.bet,
+        win: row.win,
+        hits: row.hits,
+        roi: row.roi,
+      },
+    })),
+    sessionCount: HOT_HISTORY_BENCHMARK.sessions,
+    bettingSpins: HOT_HISTORY_BENCHMARK.bettingSpins,
+    calculatedAt: "2026-06-24T00:00:00.000+08:00",
+  };
 }
 
 function normalizeRepeatTier(value: string | null): RepeatTier {
@@ -555,7 +637,10 @@ export function App() {
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
   const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
-  const [hotBenchmarkTab, setHotBenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.hotBenchmarkTab") === "history" ? "history" : "current");
+  const [hotBenchmarkTab, setHotBenchmarkTab] = useState<HotBenchmarkTab>(() => {
+    const saved = localStorage.getItem("londoner.hotBenchmarkTab");
+    return saved === "history" || saved === "recent10" ? saved : "current";
+  });
   const [quality124BenchmarkTab, setQuality124BenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.quality124BenchmarkTab") === "history" ? "history" : "current");
   const [chaseSixBenchmarkTab, setChaseSixBenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.chaseSixBenchmarkTab") === "history" ? "history" : "current");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
@@ -566,6 +651,12 @@ export function App() {
   const [showHotCalibrationObserve, setShowHotCalibrationObserve] = useState(() => localStorage.getItem("londoner.showHotCalibrationObserve") !== "0");
   const [showHotCalibrationHint, setShowHotCalibrationHint] = useState(() => localStorage.getItem("londoner.showHotCalibrationHint") === "1");
   const [showHotCalibrationBlock, setShowHotCalibrationBlock] = useState(() => localStorage.getItem("londoner.showHotCalibrationBlock") === "1");
+  const [hotLocalHistoryBenchmark, setHotLocalHistoryBenchmark] = useState<HotRecent10Benchmark | null>(() => loadHotLocalHistoryBenchmark());
+  const [hotLocalHistoryLoading, setHotLocalHistoryLoading] = useState(false);
+  const [hotLocalHistoryError, setHotLocalHistoryError] = useState("");
+  const [hotRecent10Benchmark, setHotRecent10Benchmark] = useState<HotRecent10Benchmark | null>(() => loadHotRecent10Benchmark());
+  const [hotRecent10Loading, setHotRecent10Loading] = useState(false);
+  const [hotRecent10Error, setHotRecent10Error] = useState("");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
   const [showPreferredNumber, setShowPreferredNumber] = useState(() => localStorage.getItem("londoner.showPreferredNumber") !== "0");
@@ -884,8 +975,15 @@ export function App() {
   const hotCalibrationBreakdown = useMemo(
     () => shouldComputeHotDetailStats
       ? summarizeHotCalibrationEvents(
+        {
+          id: currentSessionId ?? "current",
+          name: "current",
+          numbers,
+          updatedAt: new Date().toISOString(),
+        },
         numbers,
         hotNumber.events,
+        null,
         tableProfiles,
         hotTableCalibrationState,
         currentResolvedTableId,
@@ -900,6 +998,10 @@ export function App() {
       shouldComputeHotDetailStats,
       tableProfiles,
     ],
+  );
+  const hotSelectedCurrentSummary = useMemo(
+    () => summarizeSelectedHotRows(hotCalibrationBreakdown, hotCalibrationVisibility),
+    [hotCalibrationBreakdown, hotCalibrationVisibility],
   );
   const currentSessionName = useMemo(() => {
     if (currentSessionId) {
@@ -1375,6 +1477,9 @@ export function App() {
     });
     storage.listSessions().then(setAllSavedSessions);
     storage.listCasinoTables().then(setCasinoTables);
+    if (!localStorage.getItem(hotHistoryDataBenchmarkArchiveKey)) {
+      localStorage.setItem(hotHistoryDataBenchmarkArchiveKey, JSON.stringify(hotHistoryDataArchiveBenchmark()));
+    }
   }, []);
 
   useEffect(() => {
@@ -2196,6 +2301,62 @@ export function App() {
     const list = await storage.listSessions();
     setSessions(list);
     setAllSavedSessions(list);
+  }
+
+  async function refreshHotLocalHistoryBenchmark() {
+    const startedAt = performance.now();
+    flushSync(() => {
+      setHotLocalHistoryLoading(true);
+      setHotLocalHistoryError("");
+    });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      const savedSessions = await storage.listSessions();
+      setSessions(savedSessions);
+      setAllSavedSessions(savedSessions);
+      const benchmark = calculateHotSavedBenchmark(savedSessions, casinoTables, currentSessionId, {
+        minSessionTime: hotLocalHistoryStartTime,
+      });
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
+      }
+      localStorage.setItem(hotLocalHistoryBenchmarkKey, JSON.stringify(benchmark));
+      setHotLocalHistoryBenchmark(benchmark);
+    } catch (error) {
+      setHotLocalHistoryError(error instanceof Error ? error.message : "计算失败");
+    } finally {
+      setHotLocalHistoryLoading(false);
+    }
+  }
+
+  async function refreshHotRecent10Benchmark() {
+    const startedAt = performance.now();
+    flushSync(() => {
+      setHotRecent10Loading(true);
+      setHotRecent10Error("");
+    });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      const savedSessions = await storage.listSessions();
+      setSessions(savedSessions);
+      setAllSavedSessions(savedSessions);
+      const benchmark = calculateHotSavedBenchmark(savedSessions, casinoTables, currentSessionId, {
+        maxSessions: 10,
+      });
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
+      }
+      localStorage.setItem(hotRecent10BenchmarkKey, JSON.stringify(benchmark));
+      setHotRecent10Benchmark(benchmark);
+    } catch (error) {
+      setHotRecent10Error(error instanceof Error ? error.message : "计算失败");
+    } finally {
+      setHotRecent10Loading(false);
+    }
   }
 
   async function refreshCasinoTables() {
@@ -5636,13 +5797,6 @@ export function App() {
                       <span>热门</span>
                       <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
                         <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
-                        <span className="hot-table-filter-toggles">
-                          <button className={showHotCalibrationEnhance ? "on" : ""} onClick={() => { const v = !showHotCalibrationEnhance; setShowHotCalibrationEnhance(v); localStorage.setItem("londoner.showHotCalibrationEnhance", v ? "1" : "0"); }} type="button">增强</button>
-                          <button className={showHotCalibrationBaseline ? "on" : ""} onClick={() => { const v = !showHotCalibrationBaseline; setShowHotCalibrationBaseline(v); localStorage.setItem("londoner.showHotCalibrationBaseline", v ? "1" : "0"); }} type="button">原始</button>
-                          <button className={showHotCalibrationObserve ? "on" : ""} onClick={() => { const v = !showHotCalibrationObserve; setShowHotCalibrationObserve(v); localStorage.setItem("londoner.showHotCalibrationObserve", v ? "1" : "0"); }} type="button">观察</button>
-                          <button className={showHotCalibrationHint ? "on" : ""} onClick={() => { const v = !showHotCalibrationHint; setShowHotCalibrationHint(v); localStorage.setItem("londoner.showHotCalibrationHint", v ? "1" : "0"); }} type="button">提示</button>
-                          <button className={showHotCalibrationBlock ? "on" : ""} onClick={() => { const v = !showHotCalibrationBlock; setShowHotCalibrationBlock(v); localStorage.setItem("londoner.showHotCalibrationBlock", v ? "1" : "0"); }} type="button">屏蔽</button>
-                        </span>
                       </span>
                     </div>
                     <div className="prediction-roi-table" style={{ margin: 0 }}>
@@ -5883,6 +6037,15 @@ export function App() {
                     >
                       历史
                     </button>
+                    <button
+                      aria-selected={hotBenchmarkTab === "recent10"}
+                      className={hotBenchmarkTab === "recent10" ? "selected" : ""}
+                      onClick={() => { setHotBenchmarkTab("recent10"); localStorage.setItem("londoner.hotBenchmarkTab", "recent10"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      最近10
+                    </button>
                   </div>
                   {hotBenchmarkTab === "current" ? (
                     <div className="prediction-roi-table">
@@ -5898,19 +6061,107 @@ export function App() {
                           <strong className="roi-value" style={{ color: row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.stats.roi)}</strong>
                         </div>
                       ))}
+                      <div className="prediction-roi-row hot-calibration-row hot-summary-row">
+                        <span className="prediction-roi-subheader">汇总</span>
+                        <strong>{hotSelectedCurrentSummary.signals}</strong>
+                        <span>{formatSp100(hotSelectedCurrentSummary.signals, hotCurrentBettingSpins)}</span>
+                        <span>{hotSelectedCurrentSummary.bet}</span>
+                        <span>{hotSelectedCurrentSummary.win}</span>
+                        <span>{hotSelectedCurrentSummary.hits}</span>
+                        <strong className="roi-value" style={{ color: hotSelectedCurrentSummary.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(hotSelectedCurrentSummary.roi)}</strong>
+                      </div>
+                    </div>
+                  ) : hotBenchmarkTab === "history" ? (
+                    <div className="hot-recent10-panel">
+                      {(() => {
+                        const hasData = Boolean(hotLocalHistoryBenchmark && hotLocalHistoryBenchmark.sessionCount > 0);
+                        const historyRows = hotLocalHistoryBenchmark?.rows ?? emptyHotCalibrationBreakdown();
+                        const summary = summarizeSelectedHotRows(historyRows, hotCalibrationVisibility);
+                        return (
+                        <div className="prediction-roi-table">
+                          <div className="prediction-roi-row prediction-roi-header hot-history-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
+                          {historyRows.map((row) => (
+                            <div className="prediction-roi-row hot-history-row" key={row.action}>
+                              <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
+                              <strong>{hasData ? row.stats.signals : "-"}</strong>
+                              <span>{hasData ? formatSp100(row.stats.signals, hotLocalHistoryBenchmark?.bettingSpins ?? 0) : "-"}</span>
+                              <span>{hasData ? row.stats.hits : "-"}</span>
+                              <strong className="roi-value" style={{ color: hasData ? (row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(row.stats.roi) : "-"}</strong>
+                            </div>
+                          ))}
+                          <div className="prediction-roi-row hot-history-row hot-summary-row">
+                            <span className="prediction-roi-subheader">汇总</span>
+                            <strong>{hasData ? summary.signals : "-"}</strong>
+                            <span>{hasData ? formatSp100(summary.signals, hotLocalHistoryBenchmark?.bettingSpins ?? 0) : "-"}</span>
+                            <span>{hasData ? summary.hits : "-"}</span>
+                            <strong className="roi-value" style={{ color: hasData ? (summary.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(summary.roi) : "-"}</strong>
+                          </div>
+                        </div>
+                        );
+                      })()}
+                      {hotLocalHistoryLoading ? (
+                        <div className="hot-recent10-loading" aria-live="polite" role="status">
+                          <div className="hot-recent10-loading-card">
+                            <span className="hot-recent10-spinner" aria-hidden="true" />
+                            <span>计算中</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {hotLocalHistoryError ? <div className="hot-recent10-error">{hotLocalHistoryError}</div> : null}
+                      <button
+                        className="primary-action hot-recent10-refresh"
+                        disabled={hotLocalHistoryLoading}
+                        onClick={refreshHotLocalHistoryBenchmark}
+                        type="button"
+                      >
+                        {hotLocalHistoryLoading ? "计算中" : "刷新"}
+                      </button>
                     </div>
                   ) : (
-                    <div className="prediction-roi-table">
-                      <div className="prediction-roi-row prediction-roi-header hot-history-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
-                      {HOT_HISTORY_BENCHMARK.rows.map((row) => (
-                        <div className="prediction-roi-row hot-history-row" key={row.action}>
-                          <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
-                          <strong>{row.signals}</strong>
-                          <span>{row.sp100.toFixed(2)}</span>
-                          <span>{row.hits}</span>
-                          <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                    <div className="hot-recent10-panel">
+                      {(() => {
+                        const hasData = Boolean(hotRecent10Benchmark && hotRecent10Benchmark.sessionCount > 0);
+                        const recentRows = hotRecent10Benchmark?.rows ?? emptyHotCalibrationBreakdown();
+                        const summary = summarizeSelectedHotRows(recentRows, hotCalibrationVisibility);
+                        return (
+                        <div className="prediction-roi-table">
+                          <div className="prediction-roi-row prediction-roi-header hot-history-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>最近ROI</span></div>
+                          {recentRows.map((row) => (
+                            <div className="prediction-roi-row hot-history-row" key={row.action}>
+                              <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
+                              <strong>{hasData ? row.stats.signals : "-"}</strong>
+                              <span>{hasData ? formatSp100(row.stats.signals, hotRecent10Benchmark?.bettingSpins ?? 0) : "-"}</span>
+                              <span>{hasData ? row.stats.hits : "-"}</span>
+                              <strong className="roi-value" style={{ color: hasData ? (row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(row.stats.roi) : "-"}</strong>
+                            </div>
+                          ))}
+                          <div className="prediction-roi-row hot-history-row hot-summary-row">
+                            <span className="prediction-roi-subheader">汇总</span>
+                            <strong>{hasData ? summary.signals : "-"}</strong>
+                            <span>{hasData ? formatSp100(summary.signals, hotRecent10Benchmark?.bettingSpins ?? 0) : "-"}</span>
+                            <span>{hasData ? summary.hits : "-"}</span>
+                            <strong className="roi-value" style={{ color: hasData ? (summary.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(summary.roi) : "-"}</strong>
+                          </div>
                         </div>
-                      ))}
+                        );
+                      })()}
+                      {hotRecent10Loading ? (
+                        <div className="hot-recent10-loading" aria-live="polite" role="status">
+                          <div className="hot-recent10-loading-card">
+                            <span className="hot-recent10-spinner" aria-hidden="true" />
+                            <span>计算中</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {hotRecent10Error ? <div className="hot-recent10-error">{hotRecent10Error}</div> : null}
+                      <button
+                        className="primary-action hot-recent10-refresh"
+                        disabled={hotRecent10Loading}
+                        onClick={refreshHotRecent10Benchmark}
+                        type="button"
+                      >
+                        {hotRecent10Loading ? "计算中" : "刷新"}
+                      </button>
                     </div>
                   )}
                   <div className="prediction-roi-table">
@@ -5927,6 +6178,15 @@ export function App() {
                       <span>{hotTableMatch.profile?.tableName ?? "-"}</span>
                       <span>{hotTableMatch.profile ? `${hotTableMatch.profile.totalNumbers}口` : "-"}</span>
                     </div>
+                  </div>
+                  <div className="hot-detail-filter-toggles">
+                    <span className="hot-table-filter-toggles">
+                      <button className={showHotCalibrationEnhance ? "on" : ""} onClick={() => { const v = !showHotCalibrationEnhance; setShowHotCalibrationEnhance(v); localStorage.setItem("londoner.showHotCalibrationEnhance", v ? "1" : "0"); }} type="button">增强</button>
+                      <button className={showHotCalibrationBaseline ? "on" : ""} onClick={() => { const v = !showHotCalibrationBaseline; setShowHotCalibrationBaseline(v); localStorage.setItem("londoner.showHotCalibrationBaseline", v ? "1" : "0"); }} type="button">原始</button>
+                      <button className={showHotCalibrationObserve ? "on" : ""} onClick={() => { const v = !showHotCalibrationObserve; setShowHotCalibrationObserve(v); localStorage.setItem("londoner.showHotCalibrationObserve", v ? "1" : "0"); }} type="button">观察</button>
+                      <button className={showHotCalibrationHint ? "on" : ""} onClick={() => { const v = !showHotCalibrationHint; setShowHotCalibrationHint(v); localStorage.setItem("londoner.showHotCalibrationHint", v ? "1" : "0"); }} type="button">提示</button>
+                      <button className={showHotCalibrationBlock ? "on" : ""} onClick={() => { const v = !showHotCalibrationBlock; setShowHotCalibrationBlock(v); localStorage.setItem("londoner.showHotCalibrationBlock", v ? "1" : "0"); }} type="button">屏蔽</button>
+                    </span>
                   </div>
                 </>
               ) : (
@@ -7443,6 +7703,19 @@ function formatSessionTableLabel(
   return "";
 }
 
+function compareSessionsChronologically(left: SavedSession, right: SavedSession): number {
+  const leftTime = new Date(left.updatedAt).getTime();
+  const rightTime = new Date(right.updatedAt).getTime();
+  const timeDiff = (Number.isFinite(leftTime) ? leftTime : 0) - (Number.isFinite(rightTime) ? rightTime : 0);
+  if (timeDiff !== 0) return timeDiff;
+  const leftIndex = left.importIndex ?? Number.MAX_SAFE_INTEGER;
+  const rightIndex = right.importIndex ?? Number.MAX_SAFE_INTEGER;
+  if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+  const nameDiff = left.name.localeCompare(right.name, "zh-Hans-CN");
+  if (nameDiff !== 0) return nameDiff;
+  return left.id.localeCompare(right.id);
+}
+
 function emptyHotRoi(): HotNumberRoi {
   return { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
 }
@@ -7461,9 +7734,38 @@ function addHotRoi(stats: HotNumberRoi, hit: boolean): void {
   stats.roi = stats.bet > 0 ? ((stats.win - stats.bet) / stats.bet) * 100 : 0;
 }
 
+function addHotRoiTotals(target: HotNumberRoi, value: HotNumberRoi): void {
+  target.signals += value.signals;
+  target.bet += value.bet;
+  target.win += value.win;
+  target.hits += value.hits;
+  target.roi = target.bet > 0 ? ((target.win - target.bet) / target.bet) * 100 : 0;
+}
+
+function addHotCalibrationBreakdownTotals(target: HotCalibrationBreakdownRow[], value: readonly HotCalibrationBreakdownRow[]): void {
+  const byAction = new Map(target.map((row) => [row.action, row.stats]));
+  for (const row of value) {
+    const stats = byAction.get(row.action);
+    if (stats) addHotRoiTotals(stats, row.stats);
+  }
+}
+
+function summarizeSelectedHotRows(
+  rows: readonly HotCalibrationBreakdownRow[],
+  visibility: Readonly<Record<HotTableCalibrationAction, boolean>>,
+): HotNumberRoi {
+  const summary = emptyHotRoi();
+  for (const row of rows) {
+    if (visibility[row.action]) addHotRoiTotals(summary, row.stats);
+  }
+  return summary;
+}
+
 function summarizeHotCalibrationEvents(
+  session: SavedSession,
   numbers: readonly RouletteNumber[],
   events: readonly HotNumberSignalEvent[],
+  priorAutoTableState: ReturnType<typeof buildAutoTableProfileState> | null,
   profiles: readonly TableProfile[],
   calibrationState: HotTableCalibrationState,
   forcedTableId: string | undefined,
@@ -7475,13 +7777,74 @@ function summarizeHotCalibrationEvents(
   for (const event of events) {
     if (event.position < roiStartIndex) continue;
     const prefix = numbers.slice(0, event.position);
-    const support = evaluateHotNumberTableSupport(prefix, event.signal.number, profiles, forcedTableId);
+    const prefixAssignment = forcedTableId || !priorAutoTableState
+      ? null
+      : assignSessionToAutoTableProfileState({ ...session, numbers: prefix }, priorAutoTableState);
+    const effectiveTableId = forcedTableId ?? prefixAssignment?.effectiveTableId;
+    const support = evaluateHotNumberTableSupport(prefix, event.signal.number, profiles, effectiveTableId);
     const calibration = evaluateHotTableCalibration(support, calibrationState);
     const stats = statsByAction.get(calibration.action);
     if (stats) addHotRoi(stats, event.hit);
   }
 
   return rows;
+}
+
+function calculateHotSavedBenchmark(
+  savedSessions: readonly SavedSession[],
+  casinoTables: readonly CasinoTable[],
+  currentSessionId: string | null,
+  options: { maxSessions?: number; minSessionTime?: number } = {},
+): HotRecent10Benchmark {
+  const sorted = savedSessions
+    .filter((session) => session.id !== currentSessionId)
+    .filter((session) => session.numbers.length > 0)
+    .filter((session) => {
+      if (typeof options.minSessionTime !== "number") return true;
+      const time = new Date(session.updatedAt).getTime();
+      return Number.isFinite(time) && time >= options.minSessionTime;
+    })
+    .sort(compareSessionsChronologically);
+  const recentStart = typeof options.maxSessions === "number" ? Math.max(0, sorted.length - options.maxSessions) : 0;
+  const rows = emptyHotCalibrationBreakdown();
+  let bettingSpins = 0;
+
+  for (let index = recentStart; index < sorted.length; index += 1) {
+    const session = sorted[index];
+    const priorSessions = sorted.slice(0, index);
+    const priorAutoTableState = buildAutoTableProfileState(priorSessions, casinoTables);
+    const profiles = buildTableProfiles(priorAutoTableState.profileSessions, priorAutoTableState.tables);
+    const calibrationSessions = priorSessions.map((prior) => ({
+      id: prior.id,
+      name: prior.name,
+      numbers: prior.numbers,
+      updatedAt: prior.updatedAt,
+      importIndex: prior.importIndex,
+      tableId: priorAutoTableState.assignmentsById.get(prior.id)?.effectiveTableId ?? prior.tableId,
+    }));
+    const calibrationState = buildHotTableCalibrationState(calibrationSessions, priorAutoTableState.tables);
+    const forcedTableId = session.tableId;
+    const hot = analyzeHotNumbers(session.numbers, REPEAT_INITIAL_ROUNDS);
+    const breakdown = summarizeHotCalibrationEvents(
+      session,
+      session.numbers,
+      hot.events,
+      priorAutoTableState,
+      profiles,
+      calibrationState,
+      forcedTableId,
+      REPEAT_INITIAL_ROUNDS,
+    );
+    addHotCalibrationBreakdownTotals(rows, breakdown);
+    bettingSpins += Math.max(0, session.numbers.length - REPEAT_INITIAL_ROUNDS);
+  }
+
+  return {
+    rows,
+    sessionCount: sorted.length - recentStart,
+    bettingSpins,
+    calculatedAt: new Date().toISOString(),
+  };
 }
 
 function formatHotTableBadge(calibration: HotTableCalibrationDecision): string {

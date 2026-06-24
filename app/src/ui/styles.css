@@ -1566,6 +1566,10 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .prediction-roi-row strong { color: #e0e0e0; }
 .app-shell.theme-dark .prediction-roi-row.prediction-roi-header span,
 .app-shell.theme-dark .prediction-roi-row .prediction-roi-subheader { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .prediction-roi-row.hot-summary-row {
+  background: #24211d;
+  border-top-color: #4a4034;
+}
 
 .app-shell.theme-dark .overview-card { background: #1b1b1b; border-color: #38342e; }
 .app-shell.theme-dark .overview-card:active { background: #252525; }
@@ -8329,6 +8333,85 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   min-height: 30px;
   padding-bottom: 4px;
   padding-top: 4px;
+}
+
+.hot-recent10-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.hot-recent10-error {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d0d8cc;
+  border-radius: 6px;
+  color: #a44832;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.hot-recent10-loading {
+  align-items: center;
+  background: rgba(18, 24, 22, 0.72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 2800;
+}
+
+.hot-recent10-loading-card {
+  align-items: center;
+  background: #1d2521;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+  color: #f4f0e8;
+  display: flex;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-ui);
+  gap: 10px;
+  justify-content: center;
+  min-height: 58px;
+  min-width: 156px;
+  padding: 14px 18px;
+}
+
+.hot-recent10-spinner {
+  animation: hot-recent10-spin 0.75s linear infinite;
+  border: 2px solid rgba(244, 240, 232, 0.28);
+  border-top-color: #f0a06e;
+  border-radius: 999px;
+  height: 16px;
+  width: 16px;
+}
+
+.hot-recent10-refresh {
+  justify-self: center;
+  min-width: 96px;
+}
+
+.prediction-roi-row.hot-summary-row {
+  background: #fff7ec;
+  border-top: 1px solid #e4d2ba;
+}
+
+.hot-detail-filter-toggles {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 0 2px 4px;
+}
+
+@keyframes hot-recent10-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .prediction-roi-row.hot-table-feature-row {
