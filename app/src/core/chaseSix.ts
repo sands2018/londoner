@@ -90,6 +90,25 @@ export interface ChaseSixAnalysis {
   waveFilteredRoi: ChaseSixRoi;
 }
 
+export type ChaseSixBenchmarkRowId = "total" | "group1" | "group2" | "group3" | "strong" | "waveStrong" | "waveFiltered";
+
+export interface ChaseSixSignalStats {
+  signals: number;
+  bet: number;
+  win: number;
+  hits: number;
+  roi: number;
+}
+
+export interface ChaseSixBenchmarkRow extends ChaseSixSignalStats {
+  id: ChaseSixBenchmarkRowId;
+  label: string;
+}
+
+export interface ChaseSixSignalBreakdown {
+  rows: readonly ChaseSixBenchmarkRow[];
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 波浪特征计算
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -184,6 +203,208 @@ function sumRoi(parts: ChaseSixRoi[]): ChaseSixRoi {
 const GROUP1_WINDOWS = [0, 1, 2, 3];
 const GROUP2_WINDOWS = [3, 4, 5, 6, 7];
 const GROUP3_WINDOWS = [7, 8, 9, 10];
+
+function emptyChaseSixSignalStats(): ChaseSixSignalStats {
+  return { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+}
+
+function settleChaseSixSignalStats(stats: ChaseSixSignalStats): ChaseSixSignalStats {
+  return { ...stats, roi: stats.bet > 0 ? ((stats.win - stats.bet) / stats.bet) * 100 : 0 };
+}
+
+function sumChaseSixSignalStats(rows: readonly ChaseSixSignalStats[]): ChaseSixSignalStats {
+  const stats = emptyChaseSixSignalStats();
+  for (const row of rows) {
+    stats.signals += row.signals;
+    stats.bet += row.bet;
+    stats.win += row.win;
+    stats.hits += row.hits;
+  }
+  return settleChaseSixSignalStats(stats);
+}
+
+export function analyzeChaseSixSignalBreakdown(
+  numbers: readonly RouletteNumber[],
+  historyWindow = 200,
+  roiStartIndex = 0,
+): ChaseSixSignalBreakdown {
+  const W = CHASE6_WINDOWS;
+  const PROG = CHASE6_PROGRESSION;
+  const CHASE_LEN = CHASE6_CHASE_LEN;
+
+  interface ActiveChase {
+    wi: number;
+    sr: number;
+    totalBet: number;
+    isStrong: boolean;
+    isWaveQualified: boolean;
+  }
+
+  interface Candidate {
+    gap: number;
+    isStrong: boolean;
+    isWaveQualified: boolean;
+    wi: number;
+  }
+
+  interface PassResult {
+    statsByWi: ChaseSixSignalStats[];
+    strong: ChaseSixSignalStats;
+    waveStrong: ChaseSixSignalStats;
+    waveFiltered: ChaseSixSignalStats;
+  }
+
+  function getCandidate(
+    history: readonly RouletteNumber[],
+    value: RouletteNumber,
+    allowedWindows: readonly number[] | null,
+  ): Candidate | null {
+    if (value === 0) return null;
+
+    const gaps = new Array<number>(W).fill(0);
+    const appearCount = new Array<number>(W).fill(0);
+    const gapHistory: number[][] = Array.from({ length: W }, () => []);
+
+    for (const current of history) {
+      if (current === 0) continue;
+      for (let wi = 0; wi < W; wi += 1) {
+        if (isInChaseSixWindow(wi, current)) {
+          gapHistory[wi].unshift(gaps[wi]);
+          if (gapHistory[wi].length > MAX_GAP_HISTORY) gapHistory[wi].length = MAX_GAP_HISTORY;
+          gaps[wi] = 0;
+          appearCount[wi] += 1;
+        } else {
+          gaps[wi] += 1;
+        }
+      }
+    }
+
+    const candidates: Array<{ gap: number; wi: number }> = [];
+    for (let wi = 0; wi < W; wi += 1) {
+      if (allowedWindows && !allowedWindows.includes(wi)) continue;
+      if (
+        isInChaseSixWindow(wi, value) &&
+        gaps[wi] >= CHASE6_MIN_GAP &&
+        gaps[wi] <= CHASE6_MAX_GAP &&
+        appearCount[wi] >= CHASE6_MIN_APPEARANCES
+      ) {
+        candidates.push({ wi, gap: gaps[wi] });
+      }
+    }
+
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => b.gap - a.gap || a.wi - b.wi);
+    const selected = candidates[0];
+    const wave = computeWaveFeatures(gapHistory[selected.wi]);
+    return {
+      wi: selected.wi,
+      gap: selected.gap,
+      isStrong: appearCount[selected.wi] >= CHASE6_STRONG_APPEARANCES,
+      isWaveQualified:
+        wave.avg5 <= CHASE6_WAVE_AVG5_MAX &&
+        wave.long20Rate10 < CHASE6_WAVE_LONG20_RATE10_MAX,
+    };
+  }
+
+  function recordCompletion(
+    stats: PassResult,
+    chase: ActiveChase,
+    hit: boolean,
+    winAmount: number,
+  ): void {
+    const target = stats.statsByWi[chase.wi];
+    target.signals += 1;
+    target.bet += chase.totalBet;
+    target.win += winAmount;
+    if (hit) target.hits += 1;
+
+    if (!chase.isStrong) return;
+    stats.strong.signals += 1;
+    stats.strong.bet += chase.totalBet;
+    stats.strong.win += winAmount;
+    if (hit) stats.strong.hits += 1;
+
+    const bucket = chase.isWaveQualified ? stats.waveStrong : stats.waveFiltered;
+    bucket.signals += 1;
+    bucket.bet += chase.totalBet;
+    bucket.win += winAmount;
+    if (hit) bucket.hits += 1;
+  }
+
+  function runPass(allowedWindows: readonly number[] | null): PassResult {
+    const activeChases: ActiveChase[] = [];
+    const stats: PassResult = {
+      statsByWi: Array.from({ length: W }, () => emptyChaseSixSignalStats()),
+      strong: emptyChaseSixSignalStats(),
+      waveStrong: emptyChaseSixSignalStats(),
+      waveFiltered: emptyChaseSixSignalStats(),
+    };
+
+    for (let round = 0; round < numbers.length; round += 1) {
+      const value = numbers[round];
+      const surviving: ActiveChase[] = [];
+
+      for (const chase of activeChases) {
+        const roundIndex = round - chase.sr;
+        if (roundIndex >= CHASE_LEN) continue;
+        const betAmount = PROG[roundIndex] ?? PROG[PROG.length - 1];
+        chase.totalBet += betAmount;
+
+        if (value !== 0 && isInChaseSixWindow(chase.wi, value)) {
+          recordCompletion(stats, chase, true, betAmount * 6);
+          continue;
+        }
+
+        if (roundIndex + 1 < CHASE_LEN) {
+          surviving.push(chase);
+        } else {
+          recordCompletion(stats, chase, false, 0);
+        }
+      }
+
+      activeChases.length = 0;
+      activeChases.push(...surviving);
+
+      if (round < roiStartIndex) continue;
+      const historyStart = Math.max(0, round - historyWindow);
+      const history = numbers.slice(historyStart, round);
+      const candidate = getCandidate(history, value, allowedWindows);
+      if (candidate && !activeChases.some((chase) => chase.wi === candidate.wi)) {
+        activeChases.push({
+          wi: candidate.wi,
+          sr: round + 1,
+          totalBet: 0,
+          isStrong: candidate.isStrong,
+          isWaveQualified: candidate.isWaveQualified,
+        });
+      }
+    }
+
+    return {
+      statsByWi: stats.statsByWi.map(settleChaseSixSignalStats),
+      strong: settleChaseSixSignalStats(stats.strong),
+      waveStrong: settleChaseSixSignalStats(stats.waveStrong),
+      waveFiltered: settleChaseSixSignalStats(stats.waveFiltered),
+    };
+  }
+
+  const global = runPass(null);
+  const group1 = runPass(GROUP1_WINDOWS);
+  const group2 = runPass(GROUP2_WINDOWS);
+  const group3 = runPass(GROUP3_WINDOWS);
+
+  const rows: ChaseSixBenchmarkRow[] = [
+    { id: "total", label: "全部", ...sumChaseSixSignalStats(global.statsByWi) },
+    { id: "group1", label: "一组窗", ...sumChaseSixSignalStats(GROUP1_WINDOWS.map((wi) => group1.statsByWi[wi])) },
+    { id: "group2", label: "二组窗", ...sumChaseSixSignalStats(GROUP2_WINDOWS.map((wi) => group2.statsByWi[wi])) },
+    { id: "group3", label: "三组窗", ...sumChaseSixSignalStats(GROUP3_WINDOWS.map((wi) => group3.statsByWi[wi])) },
+    { id: "strong", label: "强信号", ...global.strong },
+    { id: "waveStrong", label: "波浪强", ...global.waveStrong },
+    { id: "waveFiltered", label: "波浪排除", ...global.waveFiltered },
+  ];
+
+  return { rows };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 主分析函数

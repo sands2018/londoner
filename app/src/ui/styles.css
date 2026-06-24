@@ -1572,11 +1572,6 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .overview-card-title { color: #d4d4d4; }
 
 /* overview card color variants — keep distinct hues, dim for dark */
-.app-shell.theme-dark .overview-cold .overview-card-title { color: #88a8b8; }
-.app-shell.theme-dark .overview-cold .prediction-roi-table { border-color: #2a3438; }
-.app-shell.theme-dark .overview-cold .prediction-roi-row { border-bottom-color: #222a30; }
-.app-shell.theme-dark .overview-cold .prediction-roi-row span { color: #7a8a90; }
-
 .app-shell.theme-dark .overview-rhythm .overview-card-title { color: #8aaa8a; }
 .app-shell.theme-dark .overview-rhythm .prediction-roi-table { border-color: #2a382a; }
 .app-shell.theme-dark .overview-rhythm .prediction-roi-row { border-bottom-color: #223022; }
@@ -8307,7 +8302,33 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .prediction-roi-row.hot-calibration-row {
-  grid-template-columns: 18% 14% 16% 16% 14% 22%;
+  grid-template-columns: 16% 12% 14% 12% 12% 12% 22%;
+}
+
+.prediction-roi-row.hot-history-row {
+  grid-template-columns: 20% 18% 20% 18% 24%;
+}
+
+.prediction-roi-row.quality124-tier-row {
+  grid-template-columns: 26% 16% 18% 16% 24%;
+}
+
+.prediction-roi-row.chase6-benchmark-row {
+  grid-template-columns: 26% 16% 18% 16% 24%;
+}
+
+.hot-benchmark-tabs,
+.quality124-benchmark-tabs,
+.chase6-benchmark-tabs {
+  margin-top: 0;
+}
+
+.hot-benchmark-tabs button,
+.quality124-benchmark-tabs button,
+.chase6-benchmark-tabs button {
+  min-height: 30px;
+  padding-bottom: 4px;
+  padding-top: 4px;
 }
 
 .prediction-roi-row.hot-table-feature-row {
@@ -8531,15 +8552,6 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   font-size: var(--font-size-small);
   font-weight: var(--weight-ui);
 }
-
-.overview-cold {
-  background: #e8eef2;
-  border-color: #c8d8e0;
-}
-.overview-cold .overview-card-title { color: #486068; }
-.overview-cold .prediction-roi-table { border-color: #c8d8e0; }
-.overview-cold .prediction-roi-row { border-bottom-color: #d4dce4; }
-.overview-cold .prediction-roi-row span { color: #607080; }
 
 .overview-rhythm {
   background: #eef4ea;

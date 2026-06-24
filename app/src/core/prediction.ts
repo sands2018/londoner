@@ -223,6 +223,157 @@ export function computeRoi(numbers: readonly RouletteNumber[], allowedCis?: read
   return { bet, win, roi };
 }
 
+export interface ColdSignalStats {
+  signals: number;
+  bet: number;
+  win: number;
+  hits: number;
+  failures: number;
+  roi: number;
+}
+
+export interface ColdRoiBreakdownRow extends ColdSignalStats {
+  ci: ColRowIndex;
+  label: string;
+  trend: "up" | "down" | "flat";
+}
+
+export interface ColdRoiBreakdown {
+  total: ColdSignalStats;
+  rowsOnly: ColdSignalStats;
+  groupsOnly: ColdSignalStats;
+  byCi: ColdRoiBreakdownRow[];
+}
+
+const COLD_ALL_CIS = [0, 1, 2, 3, 4, 5] as const;
+const COLD_GROUP_CIS = [0, 1, 2] as const;
+const COLD_ROW_CIS = [3, 4, 5] as const;
+
+function emptyColdSignalStats(): ColdSignalStats {
+  return { signals: 0, bet: 0, win: 0, hits: 0, failures: 0, roi: 0 };
+}
+
+function settleColdSignalStats(stats: ColdSignalStats): ColdSignalStats {
+  return { ...stats, roi: stats.bet > 0 ? ((stats.win - stats.bet) / stats.bet) * 100 : 0 };
+}
+
+function sumColdSignalStats(rows: readonly ColdSignalStats[]): ColdSignalStats {
+  const stats = emptyColdSignalStats();
+  for (const row of rows) {
+    stats.signals += row.signals;
+    stats.bet += row.bet;
+    stats.win += row.win;
+    stats.hits += row.hits;
+    stats.failures += row.failures;
+  }
+  return settleColdSignalStats(stats);
+}
+
+function coldTrend(timeline: readonly { bet: number; win: number }[]): "up" | "down" | "flat" {
+  if (timeline.length < 4) return "flat";
+  const mid = Math.floor(timeline.length / 2);
+  let firstBet = 0;
+  let firstWin = 0;
+  let secondBet = 0;
+  let secondWin = 0;
+  for (let i = 0; i < mid; i += 1) {
+    firstBet += timeline[i].bet;
+    firstWin += timeline[i].win;
+  }
+  for (let i = mid; i < timeline.length; i += 1) {
+    secondBet += timeline[i].bet;
+    secondWin += timeline[i].win;
+  }
+  const firstRoi = firstBet > 0 ? (firstWin - firstBet) / firstBet : 0;
+  const secondRoi = secondBet > 0 ? (secondWin - secondBet) / secondBet : 0;
+  if (secondRoi > firstRoi + 0.05) return "up";
+  if (secondRoi < firstRoi - 0.05) return "down";
+  return "flat";
+}
+
+export function computeColdRoiBreakdown(
+  numbers: readonly RouletteNumber[],
+  allowedCis: readonly number[] = COLD_ALL_CIS,
+  roiStartIndex = 0,
+): ColdRoiBreakdown {
+  const allowed = new Set<number>(allowedCis);
+  const labels = COLD_ALL_CIS.map((ci) => getColRowLabel(ci));
+  const ciData = COLD_ALL_CIS.map(() => ({
+    ...emptyColdSignalStats(),
+    timeline: [] as { bet: number; win: number }[],
+  }));
+  const lastSeen = [-1, -1, -1, -1, -1, -1];
+  const activeChases: { ci: ColRowIndex; startRound: number; chaseLen: number; totalBet: number }[] = [];
+
+  for (let round = 0; round < numbers.length; round += 1) {
+    const value = numbers[round];
+    const hitCis = value !== 0 ? getNumberColRows(value).map((hit) => hit as number) : [];
+    const remaining: typeof activeChases = [];
+
+    for (const chase of activeChases) {
+      const betIndex = round - chase.startRound;
+      if (betIndex >= chase.chaseLen) continue;
+      const amount = PROGRESSION[betIndex] ?? PROGRESSION[PROGRESSION.length - 1];
+      chase.totalBet += amount;
+      const hit = hitCis.includes(chase.ci);
+      const finished = hit || betIndex + 1 >= chase.chaseLen;
+      if (!finished) {
+        remaining.push(chase);
+        continue;
+      }
+      const won = hit ? amount * 3 : 0;
+      const data = ciData[chase.ci];
+      data.signals += 1;
+      data.bet += chase.totalBet;
+      data.win += won;
+      if (hit) data.hits += 1;
+      else data.failures += 1;
+      data.timeline.push({ bet: chase.totalBet, win: won });
+    }
+
+    activeChases.length = 0;
+    activeChases.push(...remaining);
+
+    for (const ci of hitCis) lastSeen[ci] = round;
+    if (round < Math.max(10, roiStartIndex)) continue;
+
+    for (const ci of COLD_ALL_CIS) {
+      if (!allowed.has(ci)) continue;
+      const currentGap = lastSeen[ci] >= 0 ? round - lastSeen[ci] - 1 : round;
+      const gaps = extractGapsLocal(numbers.slice(0, round), ci);
+      const recentGaps = gaps.slice(-GAP_WINDOW);
+      if (recentGaps.length < 5) continue;
+      const sorted = [...recentGaps].sort((a, b) => a - b);
+      const threshold = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * EXTREME_PCT))];
+      if (currentGap < threshold + EXTREME_BUFFER || currentGap < MIN_GAP) continue;
+      if (activeChases.some((chase) => chase.ci === ci)) continue;
+      activeChases.push({ ci, startRound: round + 1, chaseLen: CHASE_LENGTH, totalBet: 0 });
+    }
+  }
+
+  const byCi = COLD_ALL_CIS.map((ci): ColdRoiBreakdownRow => {
+    const settled = settleColdSignalStats(ciData[ci]);
+    return {
+      ci,
+      label: labels[ci],
+      signals: settled.signals,
+      bet: settled.bet,
+      win: settled.win,
+      hits: settled.hits,
+      failures: settled.failures,
+      roi: settled.roi,
+      trend: coldTrend(ciData[ci].timeline),
+    };
+  });
+
+  return {
+    total: sumColdSignalStats(byCi.filter((row) => allowed.has(row.ci))),
+    rowsOnly: sumColdSignalStats(byCi.filter((row) => COLD_ROW_CIS.includes(row.ci as 3 | 4 | 5))),
+    groupsOnly: sumColdSignalStats(byCi.filter((row) => COLD_GROUP_CIS.includes(row.ci as 0 | 1 | 2))),
+    byCi,
+  };
+}
+
 /** 计算节奏追号ROI (自适应峰值, 波浪恢复). allowedCis默认全六组, 可传入[3,4,5]仅行 */
 export function computeRhythmRoi(numbers: readonly RouletteNumber[], allowedCis?: readonly number[], startRound?: number): { bet: number; win: number; roi: number } {
   const cis = allowedCis ?? [0, 1, 2, 3, 4, 5];

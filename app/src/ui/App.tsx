@@ -2,10 +2,8 @@
 import { flushSync } from "react-dom";
 import {
   getNumberColor,
-  getNumberColRows,
   getRowIndex,
   isRouletteNumber,
-  type ColRowIndex,
   type RouletteNumber,
 } from "../core/roulette";
 import { ChevronsUp, CircleUser, Keyboard, List, Play, Repeat, SkipBack, SkipForward, Undo2 } from "lucide-react";
@@ -76,21 +74,15 @@ import {
   upsertSharedSession,
 } from "../storage/sharedStorage";
 import type { CasinoTable, SavedSession } from "../storage/storage";
-import {
-  ColdReversalEngine,
-  computeColdDetailStats,
-  computeRoi,
-  EXTREME_BUFFER,
-  MIN_GAP,
-  PredictionTracker,
-  type ColdSignal,
-} from "../core/prediction";
 import { analyzePreferredNumber } from "../core/preferredNumber";
 import { computePeakSma, computePeakStats, extractGaps } from "../core/wave";
-import { analyzeChaseSixRolling, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
+import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
+import { CHASE6_HISTORY_BENCHMARK } from "../core/chaseSixHistoryBenchmark";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
+import { QUALITY_124_HISTORY_BENCHMARK } from "../core/quality124HistoryBenchmark";
 import { analyzeHotNumbers, type HotNumberRoi, type HotNumberSignal, type HotNumberSignalEvent } from "../core/hotNumbers";
+import { HOT_HISTORY_BENCHMARK } from "../core/hotHistoryBenchmark";
 import {
   buildHotTableCalibrationState,
   evaluateHotTableCalibration,
@@ -563,6 +555,9 @@ export function App() {
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
   const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
+  const [hotBenchmarkTab, setHotBenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.hotBenchmarkTab") === "history" ? "history" : "current");
+  const [quality124BenchmarkTab, setQuality124BenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.quality124BenchmarkTab") === "history" ? "history" : "current");
+  const [chaseSixBenchmarkTab, setChaseSixBenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.chaseSixBenchmarkTab") === "history" ? "history" : "current");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
@@ -571,7 +566,6 @@ export function App() {
   const [showHotCalibrationObserve, setShowHotCalibrationObserve] = useState(() => localStorage.getItem("londoner.showHotCalibrationObserve") !== "0");
   const [showHotCalibrationHint, setShowHotCalibrationHint] = useState(() => localStorage.getItem("londoner.showHotCalibrationHint") === "1");
   const [showHotCalibrationBlock, setShowHotCalibrationBlock] = useState(() => localStorage.getItem("londoner.showHotCalibrationBlock") === "1");
-  const [showCold, setShowCold] = useState(() => localStorage.getItem("londoner.showCold") !== "0");
   const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
   const [showPreferredNumber, setShowPreferredNumber] = useState(() => localStorage.getItem("londoner.showPreferredNumber") !== "0");
@@ -635,8 +629,6 @@ export function App() {
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
-  const [coldAdaptiveMode, setColdAdaptiveMode] = useState<string>(() => localStorage.getItem("londoner.coldAdaptiveMode") || "adaptiveRow");
-  const coldModeLabel = coldAdaptiveMode === "off" ? "不切换" : coldAdaptiveMode === "adaptive" ? "自适应" : "自适应+默认行";
   const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
   const [draftCasinoTables, setDraftCasinoTables] = useState<CasinoTable[]>([]);
   const [draftSelectedCasinoId, setDraftSelectedCasinoId] = useState("");
@@ -804,9 +796,6 @@ export function App() {
   const [gameSortDirection, setGameSortDirection] = useState<GameSortDirection>("desc");
   const [gameSettingsRevision, setGameSettingsRevision] = useState(0);
 
-  // 预测引擎初始化
-  const coldEngine = useMemo(() => new ColdReversalEngine(), []);
-  const predictionTracker = useMemo(() => new PredictionTracker(), []);
   const statScopes = useMemo(
     () => (windowMode === "fibonacci" ? fibonacciStatScopes : classicStatScopes),
     [windowMode],
@@ -820,24 +809,18 @@ export function App() {
     [windowMode],
   );
 
-  const predictions = useMemo(() => {
-    if (numbers.length < 10) return [];
-    return coldEngine.analyze(numbers);
-  }, [numbers, coldEngine]);
-
-  const predictionAccuracy = predictionTracker.getFormattedAccuracy();
-  const predictionRecordCount = predictionTracker.count;
-
   // [PERF] 124 (rhythm) temporarily disabled — see AGENTS.md "Hot path perf budget"
   const quality124 = useMemo(() => analyzeQuality124(numbers), [numbers]);
   const quality124Signals = quality124.activeSignals;
   const quality124Roi = quality124.totalRoi;
   const quality124From201 = useMemo(() => analyzeQuality124(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const quality124RoiFrom201 = quality124From201.totalRoi;
+  const quality124CurrentBettingSpins = Math.max(0, numbers.length - REPEAT_INITIAL_ROUNDS);
   const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
   const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
+  const hotCurrentBettingSpins = Math.max(0, numbers.length - REPEAT_INITIAL_ROUNDS);
   const hotEnvironmentHistory = [...hotNumber.environmentHistory].reverse();
   const autoHotTableSupport = useMemo(
     () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles),
@@ -897,8 +880,6 @@ export function App() {
     hotTableCalibration,
     hotCalibrationVisibility,
   );
-  const shouldComputeColdDetailStats = predictionWindowOpen && predictionTab === "cold";
-  const shouldComputeColdSplitRoi = predictionWindowOpen && (predictionTab === "overview" || predictionTab === "cold");
   const shouldComputeHotDetailStats = predictionWindowOpen && predictionTab === "hotNumber";
   const hotCalibrationBreakdown = useMemo(
     () => shouldComputeHotDetailStats
@@ -920,12 +901,6 @@ export function App() {
       tableProfiles,
     ],
   );
-  const coldDetailStats = useMemo(
-    () => shouldComputeColdDetailStats ? computeColdDetailStats(numbers) : [],
-    [numbers, shouldComputeColdDetailStats],
-  );
-
-  // 长套自适应: 从历史session计算行/组累计ROI
   const currentSessionName = useMemo(() => {
     if (currentSessionId) {
       const found = allSavedSessions.find((s) => s.id === currentSessionId);
@@ -933,74 +908,6 @@ export function App() {
     }
     return "";
   }, [currentSessionId, allSavedSessions]);
-
-  // 长套自适应: 从同年、当前session之前的历史session计算行/组累计ROI
-  const coldAdaptiveCis = useMemo(() => {
-    if (coldAdaptiveMode === "off") return [0, 1, 2, 3, 4, 5] as const;
-    const currentYear = (() => {
-      const m = currentSessionName.match(/(\d{4})/);
-      if (m) return m[1];
-      return "";
-    })();
-    if (!currentYear || !currentSessionId) return [0, 1, 2, 3, 4, 5] as const;
-
-    // Sort by dateKey asc + importIndex asc
-    const getDateKey = (name: string) => {
-      const m = name.match(/(\d{4})[-.]?(\d{2})[-.]?(\d{2})/);
-      if (m) return m[1] + m[2] + m[3];
-      const m2 = name.match(/(\d{4})(\d{2})(\d{2})/);
-      if (m2) return m2[1] + m2[2] + m2[3];
-      return "99999999";
-    };
-    // dateKey asc + importIndex asc (matches backtesting sort)
-    const sorted = allSavedSessions
-      .filter((s) => !s.name.startsWith("DEBUG-"))
-      .filter((s) => (s.name.match(/(\d{4})/) || [""])[0] === currentYear)
-      .sort((a, b) => {
-        const dk = getDateKey(a.name).localeCompare(getDateKey(b.name));
-        if (dk !== 0) return dk;
-        const ai = a.importIndex;
-        const bi = b.importIndex;
-        if (ai !== undefined && bi !== undefined) return ai - bi;
-        if (ai !== undefined) return -1;  // with index before without
-        if (bi !== undefined) return 1;
-        return 0;  // neither has index, keep stable
-      });
-
-    // Find current session position
-    const curPos = sorted.findIndex((s) => s.id === currentSessionId);
-    if (curPos < 0) return [0, 1, 2, 3, 4, 5] as const;
-
-    // Only accumulate sessions BEFORE current
-    let rowBet = 0, rowWin = 0, grpBet = 0, grpWin = 0;
-    for (let i = 0; i < curPos; i++) {
-      const s = sorted[i];
-      const r = computeRoi(s.numbers, [3, 4, 5]);
-      const g = computeRoi(s.numbers, [0, 1, 2]);
-      rowBet += r.bet; rowWin += r.win;
-      grpBet += g.bet; grpWin += g.win;
-    }
-
-    // Cold start / tie handling
-    if (rowBet === 0 && grpBet === 0) {
-      return (coldAdaptiveMode === "adaptiveRow" ? [3, 4, 5] : [0, 1, 2, 3, 4, 5]) as readonly number[];
-    }
-    const rowRoi = rowBet > 0 ? ((rowWin - rowBet) / rowBet) : 0;
-    const grpRoi = grpBet > 0 ? ((grpWin - grpBet) / grpBet) : 0;
-    if (rowRoi > grpRoi) return [3, 4, 5] as const;
-    if (grpRoi > rowRoi) return [0, 1, 2] as const;
-    // tie: rowRoi == grpRoi
-    return (coldAdaptiveMode === "adaptiveRow" ? [3, 4, 5] : [0, 1, 2, 3, 4, 5]) as readonly number[];
-  }, [coldAdaptiveMode, allSavedSessions, currentSessionName, currentSessionId]);
-  const coldRowsOnlyRoi = useMemo(
-    () => shouldComputeColdSplitRoi ? computeRoi(numbers, [3, 4, 5]) : disabledRoi,
-    [numbers, shouldComputeColdSplitRoi],
-  );
-  const coldGroupsOnlyRoi = useMemo(
-    () => shouldComputeColdSplitRoi ? computeRoi(numbers, [0, 1, 2]) : disabledRoi,
-    [numbers, shouldComputeColdSplitRoi],
-  );
-  const coldActiveRoi = useMemo(() => computeRoi(numbers, coldAdaptiveCis), [numbers, coldAdaptiveCis]);
 
   const shouldComputeWaveStats = statsViewOpen && statsTab === "wave";
   const waveRhythmData = useMemo(() => {
@@ -1059,29 +966,6 @@ export function App() {
     });
   }, [numbers, shouldComputeWaveStats]);
 
-  // 波浪恢复: 每个行组独立追踪波浪状态
-  // 直接从号码推算追号状态 — 不存独立state, 永远同步
-  const signalDisplay = useMemo(() => {
-    const items: Array<{ ci: ColRowIndex; label: string; round: number; betAmt: number; isNew: boolean; currentGap: number; threshold: number; peak: number; chaseLen: number; kind: "cold" }> = [];
-
-    // 长套信号
-    for (const s of predictions) {
-      if (!coldAdaptiveCis.includes(s.index)) continue;
-      const chaseLen = s.chaseLength;
-      const triggerGap = Math.max(MIN_GAP, s.threshold + EXTREME_BUFFER);
-      const round = s.currentGap - triggerGap + 1;
-      const betAmtForRound = (roundIndex: number) => s.progression[roundIndex] ?? s.progression[s.progression.length - 1] ?? 1;
-
-      if (round <= 1) {
-        items.push({ ci: s.index, label: s.label, round: 1, betAmt: betAmtForRound(0), isNew: true, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen, kind: "cold" });
-      } else if (round <= chaseLen) {
-        items.push({ ci: s.index, label: s.label, round, betAmt: betAmtForRound(round - 1), isNew: false, currentGap: s.currentGap, threshold: s.threshold, peak: 0, chaseLen, kind: "cold" });
-      }
-    }
-
-    return items;
-  }, [predictions, numbers, coldAdaptiveCis]);
-
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
   const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
   const chaseSixSignals = cs.activeSignals;
@@ -1089,6 +973,14 @@ export function App() {
   const chaseSixG1Roi = cs.group1Roi;
   const chaseSixG2Roi = cs.group2Roi;
   const chaseSixG3Roi = cs.group3Roi;
+  const shouldComputeChaseSixBenchmarkStats = predictionWindowOpen && predictionTab === "chase6";
+  const chaseSixCurrentBettingSpins = Math.max(0, numbers.length - REPEAT_INITIAL_ROUNDS);
+  const chaseSixBenchmarkRows = useMemo(
+    () => shouldComputeChaseSixBenchmarkStats
+      ? analyzeChaseSixSignalBreakdown(numbers, 200, REPEAT_INITIAL_ROUNDS).rows
+      : [],
+    [numbers, shouldComputeChaseSixBenchmarkStats],
+  );
 
   // [PERF] 追3 temporarily disabled — see AGENTS.md "Hot path perf budget"
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1122,9 +1014,6 @@ export function App() {
     if (canUseQuality124 && showQuality124) {
       bet += quality124Roi.bet; win += quality124Roi.win;
     }
-    if (showCold) {
-      bet += coldActiveRoi.bet; win += coldActiveRoi.win;
-    }
     if (chase6Filter !== "全关") {
       bet += chaseSixRoi.bet; win += chaseSixRoi.win;
     }
@@ -1144,21 +1033,19 @@ export function App() {
       bet += hotNumberRoi.bet; win += hotNumberRoi.win;
     }
     return { bet, win, net: win - bet };
-  }, [canUseSmartSignals, canUseQuality124, showQuality124, quality124Roi, showCold, coldActiveRoi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
+  }, [canUseSmartSignals, canUseQuality124, showQuality124, quality124Roi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
 
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
     if (!canUseSmartSignals) return null;
     if (numbers.length <= 200) return null;
     // [PERF] const rhs = ... computeRhythmRoi ... — see AGENTS.md
-    const cold = computeRoi(numbers, coldAdaptiveCis, 200);
     const c6 = analyzeChaseSixRolling(numbers, 200, 200);
     const c3f = { totalRoi: { signals:0, bet:0, win:0, hits:0, roi:0 } }; // [PERF] analyzeChaseThree numbers.slice(200) — see AGENTS.md
     let bet = 0, win = 0;
     // [PERF] show124 disabled
     // if (show124) { bet += rhs.bet; win += rhs.win; }
     if (canUseQuality124 && showQuality124) { bet += quality124RoiFrom201.bet; win += quality124RoiFrom201.win; }
-    if (showCold) { bet += cold.bet; win += cold.win; }
     if (chase6Filter !== "全关") { bet += c6.totalRoi.bet; win += c6.totalRoi.win; }
     if (chase3Filter !== "全关") { bet += c3f.totalRoi.bet; win += c3f.totalRoi.win; }
     if (canUsePreferredNumber && showPreferredNumber) { bet += preferredNumberRoiFrom201.bet; win += preferredNumberRoiFrom201.win; }
@@ -1168,7 +1055,7 @@ export function App() {
     if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
     if (showHotNumber) { bet += hotNumberRoiFrom201.bet; win += hotNumberRoiFrom201.win; }
     return { bet, win, net: win - bet };
-  }, [numbers, canUseSmartSignals, canUseQuality124, showQuality124, quality124RoiFrom201, showCold, coldAdaptiveCis, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
+  }, [numbers, canUseSmartSignals, canUseQuality124, showQuality124, quality124RoiFrom201, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -1491,12 +1378,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (loaded && numbers.length >= 10) {
-      predictionTracker.backfill(coldEngine, numbers);
-    }
-  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
     if (loaded) {
       void storage.saveCurrent(numbers);
     }
@@ -1608,6 +1489,13 @@ export function App() {
       }
     }
   }, [numbers.length, simulatorBets.length, simulatorLog, simulatorTotalStake]);
+
+  useEffect(() => {
+    if (predictionTab === "cold") {
+      setPredictionTab("overview");
+      localStorage.setItem("londoner.predictionTab", "overview");
+    }
+  }, [predictionTab]);
 
   useEffect(() => {
     if (!canUsePreferredNumber && predictionTab === "preferredNumber") {
@@ -2191,12 +2079,6 @@ export function App() {
     setRedoNumbers(redoNumbers.slice(0, -1));
   }
 
-  function getPredictionRank(predictions: ColdSignal[], item: ColdSignal): number {
-    const sorted = [...predictions].sort((a, b) => b.excess - a.excess);
-    const index = sorted.findIndex((p) => p.index === item.index);
-    return Math.min(3, index);
-  }
-
   let audioCtx: AudioContext | null = null;
   function playKeySound() {
     if (!audioCtx) audioCtx = new AudioContext();
@@ -2224,9 +2106,6 @@ export function App() {
       setKeyPops(prev => [...prev, { id: popId, value }]);
     });
 
-    if (predictions.length > 0 && value !== 0) {
-      predictionTracker.record(predictions, value);
-    }
     setNumbers(next);
     setRedoNumbers([]);
   }
@@ -4567,30 +4446,6 @@ export function App() {
         </section>
       ) : null}
 
-      {(() => { if (!canUseSmartSignals) return null; const filtered = signalDisplay.filter(item => item.kind === "cold" && showCold); return filtered.length > 0 ? (
-        <section className="prediction-signal-area" aria-label="预测信号">
-          {filtered.map((item) => (
-            <div
-              className={`prediction-signal-item ${item.isNew ? "" : "chase-active"}`}
-              key={`${item.kind}-${item.ci}`}
-              onClick={() => { setPredictionTab("cold"); openPredictionWindow(); }}
-              role="button"
-              tabIndex={0}
-            >
-              <strong className="prediction-signal-label">{item.label}</strong>
-              <span className="prediction-chase">
-                <span className="prediction-dots">
-                  {Array.from({length: item.chaseLen}, (_, i) => i + 1).map((n) => (
-                    <span key={n} className={`prediction-dot ${n <= item.round ? "filled" : ""}`} />
-                  ))}
-                </span>
-                <span className="prediction-bet">{item.betAmt}</span>
-              </span>
-            </div>
-          ))}
-        </section>
-      ) : null; })()}
-
       {(() => { if (!canUseSmartSignals) return null; const c6f = chase6Filter; const filtered6 = c6f === "全关" ? [] : c6f === "TOP2" ? chaseSixSignals.filter(item => item.isStrong || item.isWaveStrong) : c6f === "TOP1" ? chaseSixSignals.filter(item => item.isWaveStrong) : chaseSixSignals; return filtered6.length > 0 ? (
         <section className="chase6-signal-area" aria-label="追6信号">
           {filtered6.map((item) => (
@@ -5491,7 +5346,7 @@ export function App() {
                 </table>
                 <div className="other-option-rows">
                   <div className="other-option-row">
-                    <span>长套后轮次：</span>
+                    <span>追打后轮次：</span>
                     <div className="data-screen-actions other-option-actions">
                       {otherLongBetCountOptions.map((value) => (
                         <button
@@ -5506,7 +5361,7 @@ export function App() {
                     </div>
                   </div>
                   <div className="other-option-row">
-                    <span>长套轮次：</span>
+                    <span>追打轮次：</span>
                     <div className="data-screen-actions other-option-actions other-round-option-actions">
                       {otherLongRoundOptions.map((value) => (
                         <button
@@ -5695,7 +5550,6 @@ export function App() {
               {canUseQuality124 ? (
                 <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">124EXT</button>
               ) : null}
-              <button className={predictionTab === "cold" ? "selected" : ""} onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} type="button">长套</button>
               <button className={predictionTab === "chase6" ? "selected" : ""} onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} type="button">追6</button>
               {canUsePreferredNumber ? (
                 <button className={predictionTab === "preferredNumber" ? "selected" : ""} onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} type="button">优选号</button>
@@ -5747,32 +5601,6 @@ export function App() {
                     </div>
                   </div>
                   ) : null}
-                  <div className="overview-card overview-cold overview-other-card" onClick={() => { setPredictionTab("cold"); localStorage.setItem("londoner.predictionTab", "cold"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>长套</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showCold ? " on" : ""}`} onClick={() => { const v = !showCold; setShowCold(v); localStorage.setItem("londoner.showCold", v ? "1" : "0"); }} type="button" />
-                        {showCold ? (
-                          <span className="signal-tier-opts">
-                            {["不切换","自适应","自适应+默认行"].map(t => (
-                              <button key={t} className={`signal-tier-btn${coldModeLabel === t ? " active" : ""}`} onClick={() => { const mode = t === "不切换" ? "off" : t === "自适应" ? "adaptive" : "adaptiveRow"; setColdAdaptiveMode(mode); localStorage.setItem("londoner.coldAdaptiveMode", mode); }} type="button">{t}</button>
-                            ))}
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{coldActiveRoi.bet}</strong><strong>{coldActiveRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">ROI-仅行</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
-                        <strong className="roi-value" style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
                   <div className="overview-card overview-chase6 overview-other-card" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
                     <div className="overview-card-title">
                       <span>追6</span>
@@ -5862,7 +5690,6 @@ export function App() {
                 </div>
               ) : predictionTab === "quality124" && canUseQuality124 ? (
                 <>
-                  <p className="prediction-desc">124EXT：按每个行/组自己的频率、距离、集中度和波浪漂移入场。一组=空4/打1；二组=空4/打1-2-4；二组短追=空3后观察1口，仍未出则打2；三组=空3-4/波浪过滤/打1-2-3-5；1行=空3/打1；2行=空3后观察2口，仍未出则打4；3行=空3/波浪过滤/打1-2-4-8。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -5874,21 +5701,62 @@ export function App() {
                       <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
-                  <div className="detail-stats-table cols-4">
-                    <div className="detail-stats-header"><span>档位</span><span>信号</span><span>命中</span><span>ROI</span></div>
-                    {QUALITY_124_TIER_ORDER.map((tier) => {
-                      const meta = QUALITY_124_TIER_META[tier];
-                      const item = quality124.tierRois[tier];
-                      const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
-                      return (
-                        <div className="detail-stats-row" key={tier}>
-                          <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
-                          <span>{item.signals}</span><span>{item.hits}</span>
-                          <span className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{item.roi >= 0 ? "+" : ""}{item.roi.toFixed(1)}%</span>
-                        </div>
-                      );
-                    })}
+                  <div className="tabs tabs-top tabs-solid tabs-full quality124-benchmark-tabs" aria-label="124EXT统计范围" role="tablist">
+                    <button
+                      aria-selected={quality124BenchmarkTab === "current"}
+                      className={quality124BenchmarkTab === "current" ? "selected" : ""}
+                      onClick={() => { setQuality124BenchmarkTab("current"); localStorage.setItem("londoner.quality124BenchmarkTab", "current"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      当前
+                    </button>
+                    <button
+                      aria-selected={quality124BenchmarkTab === "history"}
+                      className={quality124BenchmarkTab === "history" ? "selected" : ""}
+                      onClick={() => { setQuality124BenchmarkTab("history"); localStorage.setItem("londoner.quality124BenchmarkTab", "history"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      历史
+                    </button>
                   </div>
+                  {quality124BenchmarkTab === "current" ? (
+                    <div className="prediction-roi-table">
+                      <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>ROI</span></div>
+                      {QUALITY_124_TIER_ORDER.map((tier) => {
+                        const meta = QUALITY_124_TIER_META[tier];
+                        const item = quality124From201.tierRois[tier];
+                        const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
+                        return (
+                          <div className="prediction-roi-row quality124-tier-row" key={tier}>
+                            <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
+                            <span>{item.signals}</span>
+                            <span>{formatSp100(item.signals, quality124CurrentBettingSpins)}</span>
+                            <span>{item.hits}</span>
+                            <strong className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(item.roi)}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="prediction-roi-table">
+                      <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
+                      {QUALITY_124_HISTORY_BENCHMARK.rows.map((row) => {
+                        const meta = QUALITY_124_TIER_META[row.tier];
+                        const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
+                        return (
+                          <div className="prediction-roi-row quality124-tier-row" key={row.tier}>
+                            <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
+                            <span>{row.signals}</span>
+                            <span>{row.sp100.toFixed(2)}</span>
+                            <span>{row.hits}</span>
+                            <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </>
               ) : predictionTab === "preferredNumber" && canUsePreferredNumber ? (
                 <>
@@ -5918,39 +5786,8 @@ export function App() {
                     </div>
                   </div>
                 </>
-              ) : predictionTab === "cold" ? (
-                <>
-                  <p className="prediction-desc">行组连续未出现超过历史92%分位+3轮缓冲时触发，1-2-4-8追打4轮。{coldAdaptiveMode !== "off" ? " 自适应"+ (coldAdaptiveMode === "adaptiveRow" ? "(冷启动押行)" : "") + "已启用" : ""}</p>
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                    <div className="prediction-roi-row">
-                      <strong>{numbers.length}</strong><strong>{coldActiveRoi.bet}</strong><strong>{coldActiveRoi.win}</strong>
-                      <strong className="roi-value" style={{ color: coldActiveRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldActiveRoi.roi >= 0 ? "+" : ""}{coldActiveRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">ROI-仅行</span><span>{coldRowsOnlyRoi.bet}</span><span>{coldRowsOnlyRoi.win}</span>
-                      <strong className="roi-value" style={{ color: coldRowsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldRowsOnlyRoi.roi >= 0 ? "+" : ""}{coldRowsOnlyRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">ROI-仅组</span><span>{coldGroupsOnlyRoi.bet}</span><span>{coldGroupsOnlyRoi.win}</span>
-                      <strong className="roi-value" style={{ color: coldGroupsOnlyRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{coldGroupsOnlyRoi.roi >= 0 ? "+" : ""}{coldGroupsOnlyRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                  </div>
-                  <div className="detail-stats-table">
-                    <div className="detail-stats-header"><span>行组</span><span>成功</span><span>失败</span><span>ROI</span><span>趋势</span></div>
-                    {coldDetailStats.map((row) => (
-                      <div className="detail-stats-row" key={row.ci}>
-                        <strong className="detail-stats-label">{row.label}</strong>
-                        <span>{row.successes}</span><span>{row.failures}</span>
-                        <span className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.roi >= 0 ? "+" : ""}{row.roi.toFixed(0)}%</span>
-                        <span className={`detail-trend trend-${row.trend}`}>{row.trend === "up" ? "↑" : row.trend === "down" ? "↓" : "→"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
               ) : predictionTab === "chase6" ? (
                 <>
-                  <p className="prediction-desc">追6：行组冷波触发，1-2-4-8-16-32六级倍投追打6轮。波浪过滤排除弱信号。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -5966,10 +5803,56 @@ export function App() {
                       <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
+                  <div className="tabs tabs-top tabs-solid tabs-full chase6-benchmark-tabs" aria-label="追6统计范围" role="tablist">
+                    <button
+                      aria-selected={chaseSixBenchmarkTab === "current"}
+                      className={chaseSixBenchmarkTab === "current" ? "selected" : ""}
+                      onClick={() => { setChaseSixBenchmarkTab("current"); localStorage.setItem("londoner.chaseSixBenchmarkTab", "current"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      当前
+                    </button>
+                    <button
+                      aria-selected={chaseSixBenchmarkTab === "history"}
+                      className={chaseSixBenchmarkTab === "history" ? "selected" : ""}
+                      onClick={() => { setChaseSixBenchmarkTab("history"); localStorage.setItem("londoner.chaseSixBenchmarkTab", "history"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      历史
+                    </button>
+                  </div>
+                  {chaseSixBenchmarkTab === "current" ? (
+                    <div className="prediction-roi-table">
+                      <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>ROI</span></div>
+                      {chaseSixBenchmarkRows.map((row) => (
+                        <div className="prediction-roi-row chase6-benchmark-row" key={row.id}>
+                          <span className="prediction-roi-subheader">{row.label}</span>
+                          <strong>{row.signals}</strong>
+                          <span>{formatSp100(row.signals, chaseSixCurrentBettingSpins)}</span>
+                          <span>{row.hits}</span>
+                          <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="prediction-roi-table">
+                      <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
+                      {CHASE6_HISTORY_BENCHMARK.rows.map((row) => (
+                        <div className="prediction-roi-row chase6-benchmark-row" key={row.id}>
+                          <span className="prediction-roi-subheader">{row.label}</span>
+                          <strong>{row.signals}</strong>
+                          <span>{row.sp100.toFixed(2)}</span>
+                          <span>{row.hits}</span>
+                          <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : predictionTab === "hotNumber" ? (
                 <>
-                  <p className="prediction-desc">自适应双模：默认长热148加速（S1-S2-S3递增+burst&lt;4）；短热DS三窗（37/74/111共识+趋势+burst&lt;4）。111口纸面复盘：短热信号&gt;=5且ROI&gt;=0且比长热高20%则优先短热。信号不减，优先档无信号回落另一档。</p>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>命中</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
@@ -5981,20 +5864,55 @@ export function App() {
                       <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
-                  <p className="prediction-desc">校准档位统计：按本局每次热门信号逐条归入增强 / 原始 / 观察 / 提示 / 屏蔽；下表 ROI 口径为押注区数据（200后）。</p>
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header hot-calibration-row"><span>档位</span><span>信号</span><span>投入</span><span>赢回</span><span>命中</span><span>ROI</span></div>
-                    {hotCalibrationBreakdown.map((row) => (
-                      <div className="prediction-roi-row hot-calibration-row" key={row.action}>
-                        <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
-                        <strong>{row.stats.signals}</strong>
-                        <span>{row.stats.bet}</span>
-                        <span>{row.stats.win}</span>
-                        <span>{row.stats.hits}</span>
-                        <strong className="roi-value" style={{ color: row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{row.stats.roi >= 0 ? "+" : ""}{row.stats.roi.toFixed(1)}%</strong>
-                      </div>
-                    ))}
+                  <div className="tabs tabs-top tabs-solid tabs-full hot-benchmark-tabs" aria-label="热门统计范围" role="tablist">
+                    <button
+                      aria-selected={hotBenchmarkTab === "current"}
+                      className={hotBenchmarkTab === "current" ? "selected" : ""}
+                      onClick={() => { setHotBenchmarkTab("current"); localStorage.setItem("londoner.hotBenchmarkTab", "current"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      当前
+                    </button>
+                    <button
+                      aria-selected={hotBenchmarkTab === "history"}
+                      className={hotBenchmarkTab === "history" ? "selected" : ""}
+                      onClick={() => { setHotBenchmarkTab("history"); localStorage.setItem("londoner.hotBenchmarkTab", "history"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      历史
+                    </button>
                   </div>
+                  {hotBenchmarkTab === "current" ? (
+                    <div className="prediction-roi-table">
+                      <div className="prediction-roi-row prediction-roi-header hot-calibration-row"><span>档位</span><span>信号</span><span>SP100</span><span>投入</span><span>赢回</span><span>命中</span><span>ROI</span></div>
+                      {hotCalibrationBreakdown.map((row) => (
+                        <div className="prediction-roi-row hot-calibration-row" key={row.action}>
+                          <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
+                          <strong>{row.stats.signals}</strong>
+                          <span>{formatSp100(row.stats.signals, hotCurrentBettingSpins)}</span>
+                          <span>{row.stats.bet}</span>
+                          <span>{row.stats.win}</span>
+                          <span>{row.stats.hits}</span>
+                          <strong className="roi-value" style={{ color: row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.stats.roi)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="prediction-roi-table">
+                      <div className="prediction-roi-row prediction-roi-header hot-history-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
+                      {HOT_HISTORY_BENCHMARK.rows.map((row) => (
+                        <div className="prediction-roi-row hot-history-row" key={row.action}>
+                          <span className="prediction-roi-subheader">{hotTableCalibrationActionLabel(row.action)}</span>
+                          <strong>{row.signals}</strong>
+                          <span>{row.sp100.toFixed(2)}</span>
+                          <span>{row.hits}</span>
+                          <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header hot-table-feature-row"><span>本桌特征</span><span>匹配</span><span>桌号</span><span>数据</span></div>
                     <div className="prediction-roi-row hot-table-feature-row">
@@ -7385,6 +7303,15 @@ function formatStatNumber(value: number, isAverage?: boolean) {
 
 function formatPercent(value: number) {
   return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatSignedPercent(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+}
+
+function formatSp100(signals: number, denominatorSpins: number): string {
+  if (denominatorSpins <= 0) return "0.00";
+  return ((signals / denominatorSpins) * 100).toFixed(2);
 }
 
 function formatSessionMergeRelationship(result: NumberMergeV2Result): string {
