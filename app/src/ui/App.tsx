@@ -76,7 +76,7 @@ import {
 import type { CasinoTable, SavedSession } from "../storage/storage";
 import { analyzePreferredNumber } from "../core/preferredNumber";
 import { computePeakSma, computePeakStats, extractGaps } from "../core/wave";
-import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
+import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow, type ChaseSixBenchmarkRow, type ChaseSixBenchmarkRowId } from "../core/chaseSix";
 import { CHASE6_HISTORY_BENCHMARK } from "../core/chaseSixHistoryBenchmark";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124, type Quality124Roi, type Quality124Tier } from "../core/quality124";
@@ -321,10 +321,21 @@ interface Quality124SavedBenchmark {
   calculatedAt: string;
 }
 
+interface ChaseSixSavedBenchmark {
+  rows: ChaseSixBenchmarkRow[];
+  sessionCount: number;
+  bettingSpins: number;
+  calculatedAt: string;
+}
+
 type HotBenchmarkTab = "current" | "history" | "recent10";
 type Quality124BenchmarkTab = "current" | "history" | "recent10";
+type ChaseSixBenchmarkTab = "current" | "history" | "recent10";
 
 const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
+const chaseSixLocalHistoryBenchmarkKey = "londoner.chaseSixLocalHistoryBenchmark";
+const chaseSixRecent10BenchmarkKey = "londoner.chaseSixRecent10Benchmark";
+const chaseSixHistoryDataBenchmarkArchiveKey = "londoner.chaseSixHistoryDataBenchmarkArchive";
 const quality124LocalHistoryBenchmarkKey = "londoner.quality124LocalHistoryBenchmark";
 const quality124Recent10BenchmarkKey = "londoner.quality124Recent10Benchmark";
 const quality124HistoryDataBenchmarkArchiveKey = "londoner.quality124HistoryDataBenchmarkArchive";
@@ -582,6 +593,96 @@ function quality124HistoryDataArchiveBenchmark(): Quality124SavedBenchmark {
   };
 }
 
+const chaseSixBenchmarkRowIds: ChaseSixBenchmarkRowId[] = ["total", "group1", "group2", "group3", "strong", "waveStrong", "waveFiltered"];
+const chaseSixVisibleBenchmarkRowIds: ChaseSixBenchmarkRowId[] = ["total", "strong", "waveStrong"];
+
+function emptyChaseSixBenchmarkRow(id: ChaseSixBenchmarkRowId): ChaseSixBenchmarkRow {
+  const source = CHASE6_HISTORY_BENCHMARK.rows.find((row) => row.id === id);
+  return { id, label: source?.label ?? id, signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+}
+
+function chaseSixDisplayLabel(row: Pick<ChaseSixBenchmarkRow, "id" | "label">): string {
+  if (row.id === "strong") return "强(包括波浪强)";
+  if (row.id === "waveStrong") return "波浪强";
+  return row.label;
+}
+
+function normalizeChaseSixFilter(value: string | null): string {
+  if (value === "TOP2" || value === "强信号") return "强";
+  if (value === "TOP1") return "波浪强";
+  if (value === "全部" || value === "强" || value === "波浪强" || value === "全关") return value;
+  return "全部";
+}
+
+function normalizeChaseSixBenchmarkRow(value: unknown): ChaseSixBenchmarkRow | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const id = item.id;
+  if (!chaseSixBenchmarkRowIds.includes(id as ChaseSixBenchmarkRowId)) return null;
+  const signals = typeof item.signals === "number" && Number.isFinite(item.signals) ? item.signals : null;
+  const bet = typeof item.bet === "number" && Number.isFinite(item.bet) ? item.bet : null;
+  const win = typeof item.win === "number" && Number.isFinite(item.win) ? item.win : null;
+  const hits = typeof item.hits === "number" && Number.isFinite(item.hits) ? item.hits : null;
+  const roi = typeof item.roi === "number" && Number.isFinite(item.roi) ? item.roi : null;
+  if (signals === null || bet === null || win === null || hits === null || roi === null) return null;
+  return {
+    id: id as ChaseSixBenchmarkRowId,
+    label: typeof item.label === "string" ? item.label : emptyChaseSixBenchmarkRow(id as ChaseSixBenchmarkRowId).label,
+    signals,
+    bet,
+    win,
+    hits,
+    roi,
+  };
+}
+
+function normalizeChaseSixSavedBenchmark(value: unknown): ChaseSixSavedBenchmark | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const sessionCount = typeof item.sessionCount === "number" && Number.isFinite(item.sessionCount) ? item.sessionCount : null;
+  const bettingSpins = typeof item.bettingSpins === "number" && Number.isFinite(item.bettingSpins) ? item.bettingSpins : null;
+  const calculatedAt = typeof item.calculatedAt === "string" ? item.calculatedAt : "";
+  if (sessionCount === null || bettingSpins === null || !calculatedAt || !Array.isArray(item.rows)) return null;
+  const rowsById = new Map<ChaseSixBenchmarkRowId, ChaseSixBenchmarkRow>();
+  for (const row of item.rows) {
+    const parsed = normalizeChaseSixBenchmarkRow(row);
+    if (parsed) rowsById.set(parsed.id, parsed);
+  }
+  return {
+    rows: chaseSixBenchmarkRowIds.map((id) => rowsById.get(id) ?? emptyChaseSixBenchmarkRow(id)),
+    sessionCount,
+    bettingSpins,
+    calculatedAt,
+  };
+}
+
+function loadChaseSixBenchmark(key: string): ChaseSixSavedBenchmark | null {
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return normalizeChaseSixSavedBenchmark(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function chaseSixHistoryDataArchiveBenchmark(): ChaseSixSavedBenchmark {
+  return {
+    rows: CHASE6_HISTORY_BENCHMARK.rows.map((row) => ({
+      id: row.id,
+      label: row.label,
+      signals: row.signals,
+      bet: row.bet,
+      win: row.win,
+      hits: row.hits,
+      roi: row.roi,
+    })),
+    sessionCount: CHASE6_HISTORY_BENCHMARK.sessions,
+    bettingSpins: CHASE6_HISTORY_BENCHMARK.bettingSpins,
+    calculatedAt: "2026-06-24T00:00:00.000+08:00",
+  };
+}
+
 function loadQuality124TierVisibility(): Record<Quality124Tier, boolean> {
   const fallback = Object.fromEntries(QUALITY_124_TIER_ORDER.map((tier) => [tier, true])) as Record<Quality124Tier, boolean>;
   const raw = localStorage.getItem("londoner.quality124TierVisibility");
@@ -744,7 +845,10 @@ export function App() {
     const saved = localStorage.getItem("londoner.quality124BenchmarkTab");
     return saved === "history" || saved === "recent10" ? saved : "current";
   });
-  const [chaseSixBenchmarkTab, setChaseSixBenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.chaseSixBenchmarkTab") === "history" ? "history" : "current");
+  const [chaseSixBenchmarkTab, setChaseSixBenchmarkTab] = useState<ChaseSixBenchmarkTab>(() => {
+    const saved = localStorage.getItem("londoner.chaseSixBenchmarkTab");
+    return saved === "history" || saved === "recent10" ? saved : "current";
+  });
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [quality124TierVisibility, setQuality124TierVisibility] = useState<Record<Quality124Tier, boolean>>(() => loadQuality124TierVisibility());
@@ -760,13 +864,19 @@ export function App() {
   const [quality124Recent10Benchmark, setQuality124Recent10Benchmark] = useState<Quality124SavedBenchmark | null>(() => loadQuality124Benchmark(quality124Recent10BenchmarkKey));
   const [quality124Recent10Loading, setQuality124Recent10Loading] = useState(false);
   const [quality124Recent10Error, setQuality124Recent10Error] = useState("");
+  const [chaseSixLocalHistoryBenchmark, setChaseSixLocalHistoryBenchmark] = useState<ChaseSixSavedBenchmark | null>(() => loadChaseSixBenchmark(chaseSixLocalHistoryBenchmarkKey));
+  const [chaseSixLocalHistoryLoading, setChaseSixLocalHistoryLoading] = useState(false);
+  const [chaseSixLocalHistoryError, setChaseSixLocalHistoryError] = useState("");
+  const [chaseSixRecent10Benchmark, setChaseSixRecent10Benchmark] = useState<ChaseSixSavedBenchmark | null>(() => loadChaseSixBenchmark(chaseSixRecent10BenchmarkKey));
+  const [chaseSixRecent10Loading, setChaseSixRecent10Loading] = useState(false);
+  const [chaseSixRecent10Error, setChaseSixRecent10Error] = useState("");
   const [hotLocalHistoryBenchmark, setHotLocalHistoryBenchmark] = useState<HotRecent10Benchmark | null>(() => loadHotLocalHistoryBenchmark());
   const [hotLocalHistoryLoading, setHotLocalHistoryLoading] = useState(false);
   const [hotLocalHistoryError, setHotLocalHistoryError] = useState("");
   const [hotRecent10Benchmark, setHotRecent10Benchmark] = useState<HotRecent10Benchmark | null>(() => loadHotRecent10Benchmark());
   const [hotRecent10Loading, setHotRecent10Loading] = useState(false);
   const [hotRecent10Error, setHotRecent10Error] = useState("");
-  const [chase6Filter, setChase6Filter] = useState(() => localStorage.getItem("londoner.chase6Filter") || "全部");
+  const [chase6Filter, setChase6Filter] = useState(() => normalizeChaseSixFilter(localStorage.getItem("londoner.chase6Filter")));
   const [chase3Filter, setChase3Filter] = useState(() => localStorage.getItem("londoner.chase3Filter") || "全部");
   const [showPreferredNumber, setShowPreferredNumber] = useState(() => localStorage.getItem("londoner.showPreferredNumber") !== "0");
   const [showRepeat, setShowRepeat] = useState(() => localStorage.getItem("londoner.showRepeat") !== "0");
@@ -1190,8 +1300,10 @@ export function App() {
 
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
   const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
+  const chaseSixFrom201 = useMemo(() => analyzeChaseSixRolling(numbers, 200, REPEAT_INITIAL_ROUNDS), [numbers]);
   const chaseSixSignals = cs.activeSignals;
   const chaseSixRoi = cs.totalRoi;
+  const chaseSixRoiFrom201 = chaseSixFrom201.totalRoi;
   const chaseSixG1Roi = cs.group1Roi;
   const chaseSixG2Roi = cs.group2Roi;
   const chaseSixG3Roi = cs.group3Roi;
@@ -1202,6 +1314,10 @@ export function App() {
       ? analyzeChaseSixSignalBreakdown(numbers, 200, REPEAT_INITIAL_ROUNDS).rows
       : [],
     [numbers, shouldComputeChaseSixBenchmarkStats],
+  );
+  const chaseSixCurrentTotalSummary = useMemo(
+    () => summarizeChaseSixRowsForFilter(chaseSixBenchmarkRows, "全部"),
+    [chaseSixBenchmarkRows],
   );
 
   // [PERF] 追3 temporarily disabled — see AGENTS.md "Hot path perf budget"
@@ -1602,6 +1718,9 @@ export function App() {
     }
     if (!localStorage.getItem(quality124HistoryDataBenchmarkArchiveKey)) {
       localStorage.setItem(quality124HistoryDataBenchmarkArchiveKey, JSON.stringify(quality124HistoryDataArchiveBenchmark()));
+    }
+    if (!localStorage.getItem(chaseSixHistoryDataBenchmarkArchiveKey)) {
+      localStorage.setItem(chaseSixHistoryDataBenchmarkArchiveKey, JSON.stringify(chaseSixHistoryDataArchiveBenchmark()));
     }
   }, []);
 
@@ -2479,6 +2598,62 @@ export function App() {
       setQuality124Recent10Error(error instanceof Error ? error.message : "计算失败");
     } finally {
       setQuality124Recent10Loading(false);
+    }
+  }
+
+  async function refreshChaseSixLocalHistoryBenchmark() {
+    const startedAt = performance.now();
+    flushSync(() => {
+      setChaseSixLocalHistoryLoading(true);
+      setChaseSixLocalHistoryError("");
+    });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      const savedSessions = await storage.listSessions();
+      setSessions(savedSessions);
+      setAllSavedSessions(savedSessions);
+      const benchmark = calculateChaseSixSavedBenchmark(savedSessions, currentSessionId, {
+        minSessionTime: hotLocalHistoryStartTime,
+      });
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
+      }
+      localStorage.setItem(chaseSixLocalHistoryBenchmarkKey, JSON.stringify(benchmark));
+      setChaseSixLocalHistoryBenchmark(benchmark);
+    } catch (error) {
+      setChaseSixLocalHistoryError(error instanceof Error ? error.message : "计算失败");
+    } finally {
+      setChaseSixLocalHistoryLoading(false);
+    }
+  }
+
+  async function refreshChaseSixRecent10Benchmark() {
+    const startedAt = performance.now();
+    flushSync(() => {
+      setChaseSixRecent10Loading(true);
+      setChaseSixRecent10Error("");
+    });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      const savedSessions = await storage.listSessions();
+      setSessions(savedSessions);
+      setAllSavedSessions(savedSessions);
+      const benchmark = calculateChaseSixSavedBenchmark(savedSessions, currentSessionId, {
+        maxSessions: 10,
+      });
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
+      }
+      localStorage.setItem(chaseSixRecent10BenchmarkKey, JSON.stringify(benchmark));
+      setChaseSixRecent10Benchmark(benchmark);
+    } catch (error) {
+      setChaseSixRecent10Error(error instanceof Error ? error.message : "计算失败");
+    } finally {
+      setChaseSixRecent10Loading(false);
     }
   }
 
@@ -4786,7 +4961,7 @@ export function App() {
         </section>
       ) : null}
 
-      {(() => { if (!canUseSmartSignals) return null; const c6f = chase6Filter; const filtered6 = c6f === "全关" ? [] : c6f === "TOP2" ? chaseSixSignals.filter(item => item.isStrong || item.isWaveStrong) : c6f === "TOP1" ? chaseSixSignals.filter(item => item.isWaveStrong) : chaseSixSignals; return filtered6.length > 0 ? (
+      {(() => { if (!canUseSmartSignals) return null; const c6f = chase6Filter; const filtered6 = c6f === "全关" ? [] : c6f === "强" ? chaseSixSignals.filter(item => item.isStrong) : c6f === "波浪强" ? chaseSixSignals.filter(item => item.isWaveStrong) : chaseSixSignals; return filtered6.length > 0 ? (
         <section className="chase6-signal-area" aria-label="追6信号">
           {filtered6.map((item) => (
             <div
@@ -5948,8 +6123,19 @@ export function App() {
                         <button className={`signal-toggle${chase6Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase6Filter === "全关" ? "全部" : "全关"; setChase6Filter(v); localStorage.setItem("londoner.chase6Filter", v); }} type="button" />
                         {chase6Filter !== "全关" ? (
                           <span className="signal-tier-opts">
-                            {["全部","TOP2","TOP1"].map(t => (
-                              <button key={t} className={`signal-tier-btn${chase6Filter === t ? " active" : ""}`} onClick={() => { setChase6Filter(t); localStorage.setItem("londoner.chase6Filter", t); }} type="button">{t}</button>
+                            {[
+                              { value: "全部", label: "全部" },
+                              { value: "强", label: "强(包括波浪强)" },
+                              { value: "波浪强", label: "波浪强" },
+                            ].map((tier) => (
+                              <button
+                                className={`signal-tier-btn${chase6Filter === tier.value ? " active" : ""}`}
+                                key={tier.value}
+                                onClick={() => { setChase6Filter(tier.value); localStorage.setItem("londoner.chase6Filter", tier.value); }}
+                                type="button"
+                              >
+                                {tier.label}
+                              </button>
                             ))}
                           </span>
                         ) : null}
@@ -6240,16 +6426,12 @@ export function App() {
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
-                      <strong>{chase6Filter}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
+                      <strong>{chaseSixCurrentTotalSummary.signals}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
                       <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">强信号 ★</span><span>{cs.strongRoi.bet}</span><span>{cs.strongRoi.win}</span>
-                      <strong className="roi-value" style={{ color: cs.strongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.strongRoi.roi >= 0 ? "+" : ""}{cs.strongRoi.roi.toFixed(1)}%</strong>
-                    </div>
-                    <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
-                      <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
+                      <span className="prediction-roi-subheader">200后</span><span>{chaseSixRoiFrom201.bet}</span><span>{chaseSixRoiFrom201.win}</span>
+                      <strong className="roi-value" style={{ color: chaseSixRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoiFrom201.roi >= 0 ? "+" : ""}{chaseSixRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                   <div className="tabs tabs-top tabs-solid tabs-full chase6-benchmark-tabs" aria-label="追6统计范围" role="tablist">
@@ -6271,32 +6453,121 @@ export function App() {
                     >
                       历史
                     </button>
+                    <button
+                      aria-selected={chaseSixBenchmarkTab === "recent10"}
+                      className={chaseSixBenchmarkTab === "recent10" ? "selected" : ""}
+                      onClick={() => { setChaseSixBenchmarkTab("recent10"); localStorage.setItem("londoner.chaseSixBenchmarkTab", "recent10"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      最近10
+                    </button>
                   </div>
                   {chaseSixBenchmarkTab === "current" ? (
                     <div className="prediction-roi-table">
-                      <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>ROI</span></div>
-                      {chaseSixBenchmarkRows.map((row) => (
+                      <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>信号</span><span>数量</span><span>SP100</span><span>ROI</span></div>
+                      {chaseSixBenchmarkRows.filter((row) => chaseSixVisibleBenchmarkRowIds.includes(row.id)).map((row) => (
                         <div className="prediction-roi-row chase6-benchmark-row" key={row.id}>
-                          <span className="prediction-roi-subheader">{row.label}</span>
+                          <span className="prediction-roi-subheader">{chaseSixDisplayLabel(row)}</span>
                           <strong>{row.signals}</strong>
                           <span>{formatSp100(row.signals, chaseSixCurrentBettingSpins)}</span>
-                          <span>{row.hits}</span>
                           <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
                         </div>
                       ))}
+                      <div className="prediction-roi-row chase6-benchmark-row hot-summary-row">
+                        <span className="prediction-roi-subheader">汇总</span>
+                        <strong>{chaseSixCurrentTotalSummary.signals}</strong>
+                        <span>{formatSp100(chaseSixCurrentTotalSummary.signals, chaseSixCurrentBettingSpins)}</span>
+                        <strong className="roi-value" style={{ color: chaseSixCurrentTotalSummary.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(chaseSixCurrentTotalSummary.roi)}</strong>
+                      </div>
+                    </div>
+                  ) : chaseSixBenchmarkTab === "history" ? (
+                    <div className="hot-recent10-panel">
+                      {(() => {
+                        const hasData = Boolean(chaseSixLocalHistoryBenchmark && chaseSixLocalHistoryBenchmark.sessionCount > 0);
+                        const rows = chaseSixLocalHistoryBenchmark?.rows ?? makeChaseSixBenchmarkRows();
+                        const summary = summarizeChaseSixRowsForFilter(rows, "全部");
+                        return (
+                        <div className="prediction-roi-table">
+                          <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>信号</span><span>数量</span><span>SP100</span><span>历史ROI</span></div>
+                          {rows.filter((row) => chaseSixVisibleBenchmarkRowIds.includes(row.id)).map((row) => (
+                            <div className="prediction-roi-row chase6-benchmark-row" key={row.id}>
+                              <span className="prediction-roi-subheader">{chaseSixDisplayLabel(row)}</span>
+                              <strong>{hasData ? row.signals : "-"}</strong>
+                              <span>{hasData ? formatSp100(row.signals, chaseSixLocalHistoryBenchmark?.bettingSpins ?? 0) : "-"}</span>
+                              <strong className="roi-value" style={{ color: hasData ? (row.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(row.roi) : "-"}</strong>
+                            </div>
+                          ))}
+                          <div className="prediction-roi-row chase6-benchmark-row hot-summary-row">
+                            <span className="prediction-roi-subheader">汇总</span>
+                            <strong>{hasData ? summary.signals : "-"}</strong>
+                            <span>{hasData ? formatSp100(summary.signals, chaseSixLocalHistoryBenchmark?.bettingSpins ?? 0) : "-"}</span>
+                            <strong className="roi-value" style={{ color: hasData ? (summary.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(summary.roi) : "-"}</strong>
+                          </div>
+                        </div>
+                        );
+                      })()}
+                      {chaseSixLocalHistoryLoading ? (
+                        <div className="hot-recent10-loading" aria-live="polite" role="status">
+                          <div className="hot-recent10-loading-card">
+                            <span className="hot-recent10-spinner" aria-hidden="true" />
+                            <span>计算中</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {chaseSixLocalHistoryError ? <div className="hot-recent10-error">{chaseSixLocalHistoryError}</div> : null}
+                      <button
+                        className="primary-action hot-recent10-refresh"
+                        disabled={chaseSixLocalHistoryLoading}
+                        onClick={refreshChaseSixLocalHistoryBenchmark}
+                        type="button"
+                      >
+                        {chaseSixLocalHistoryLoading ? "计算中" : "刷新"}
+                      </button>
                     </div>
                   ) : (
-                    <div className="prediction-roi-table">
-                      <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
-                      {CHASE6_HISTORY_BENCHMARK.rows.map((row) => (
-                        <div className="prediction-roi-row chase6-benchmark-row" key={row.id}>
-                          <span className="prediction-roi-subheader">{row.label}</span>
-                          <strong>{row.signals}</strong>
-                          <span>{row.sp100.toFixed(2)}</span>
-                          <span>{row.hits}</span>
-                          <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                    <div className="hot-recent10-panel">
+                      {(() => {
+                        const hasData = Boolean(chaseSixRecent10Benchmark && chaseSixRecent10Benchmark.sessionCount > 0);
+                        const rows = chaseSixRecent10Benchmark?.rows ?? makeChaseSixBenchmarkRows();
+                        const summary = summarizeChaseSixRowsForFilter(rows, "全部");
+                        return (
+                        <div className="prediction-roi-table">
+                          <div className="prediction-roi-row prediction-roi-header chase6-benchmark-row"><span>信号</span><span>数量</span><span>SP100</span><span>最近ROI</span></div>
+                          {rows.filter((row) => chaseSixVisibleBenchmarkRowIds.includes(row.id)).map((row) => (
+                            <div className="prediction-roi-row chase6-benchmark-row" key={row.id}>
+                              <span className="prediction-roi-subheader">{chaseSixDisplayLabel(row)}</span>
+                              <strong>{hasData ? row.signals : "-"}</strong>
+                              <span>{hasData ? formatSp100(row.signals, chaseSixRecent10Benchmark?.bettingSpins ?? 0) : "-"}</span>
+                              <strong className="roi-value" style={{ color: hasData ? (row.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(row.roi) : "-"}</strong>
+                            </div>
+                          ))}
+                          <div className="prediction-roi-row chase6-benchmark-row hot-summary-row">
+                            <span className="prediction-roi-subheader">汇总</span>
+                            <strong>{hasData ? summary.signals : "-"}</strong>
+                            <span>{hasData ? formatSp100(summary.signals, chaseSixRecent10Benchmark?.bettingSpins ?? 0) : "-"}</span>
+                            <strong className="roi-value" style={{ color: hasData ? (summary.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(summary.roi) : "-"}</strong>
+                          </div>
                         </div>
-                      ))}
+                        );
+                      })()}
+                      {chaseSixRecent10Loading ? (
+                        <div className="hot-recent10-loading" aria-live="polite" role="status">
+                          <div className="hot-recent10-loading-card">
+                            <span className="hot-recent10-spinner" aria-hidden="true" />
+                            <span>计算中</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {chaseSixRecent10Error ? <div className="hot-recent10-error">{chaseSixRecent10Error}</div> : null}
+                      <button
+                        className="primary-action hot-recent10-refresh"
+                        disabled={chaseSixRecent10Loading}
+                        onClick={refreshChaseSixRecent10Benchmark}
+                        type="button"
+                      >
+                        {chaseSixRecent10Loading ? "计算中" : "刷新"}
+                      </button>
                     </div>
                   )}
                 </>
@@ -8080,6 +8351,64 @@ function calculateQuality124SavedBenchmark(
     bettingSpins,
     calculatedAt: new Date().toISOString(),
   };
+}
+
+function makeChaseSixBenchmarkRows(): ChaseSixBenchmarkRow[] {
+  return chaseSixBenchmarkRowIds.map(emptyChaseSixBenchmarkRow);
+}
+
+function addChaseSixBenchmarkRowTotals(target: ChaseSixBenchmarkRow, value: ChaseSixBenchmarkRow): void {
+  target.signals += value.signals;
+  target.bet += value.bet;
+  target.win += value.win;
+  target.hits += value.hits;
+  target.roi = target.bet > 0 ? ((target.win - target.bet) / target.bet) * 100 : 0;
+}
+
+function calculateChaseSixSavedBenchmark(
+  savedSessions: readonly SavedSession[],
+  currentSessionId: string | null,
+  options: { maxSessions?: number; minSessionTime?: number } = {},
+): ChaseSixSavedBenchmark {
+  const sorted = savedSessions
+    .filter((session) => session.id !== currentSessionId)
+    .filter((session) => session.numbers.length > 0)
+    .filter((session) => {
+      if (typeof options.minSessionTime !== "number") return true;
+      const time = new Date(session.updatedAt).getTime();
+      return Number.isFinite(time) && time >= options.minSessionTime;
+    })
+    .sort(compareSessionsChronologically);
+  const recentStart = typeof options.maxSessions === "number" ? Math.max(0, sorted.length - options.maxSessions) : 0;
+  const rows = makeChaseSixBenchmarkRows();
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  let bettingSpins = 0;
+
+  for (let index = recentStart; index < sorted.length; index += 1) {
+    const session = sorted[index];
+    const breakdown = analyzeChaseSixSignalBreakdown(session.numbers, 200, REPEAT_INITIAL_ROUNDS);
+    for (const row of breakdown.rows) {
+      const stats = byId.get(row.id);
+      if (stats) addChaseSixBenchmarkRowTotals(stats, row);
+    }
+    bettingSpins += Math.max(0, session.numbers.length - REPEAT_INITIAL_ROUNDS);
+  }
+
+  return {
+    rows,
+    sessionCount: sorted.length - recentStart,
+    bettingSpins,
+    calculatedAt: new Date().toISOString(),
+  };
+}
+
+function summarizeChaseSixRowsForFilter(
+  rows: readonly ChaseSixBenchmarkRow[],
+  filter: string,
+): ChaseSixBenchmarkRow {
+  if (filter === "全关") return emptyChaseSixBenchmarkRow("total");
+  const id: ChaseSixBenchmarkRowId = filter === "波浪强" ? "waveStrong" : filter === "强" ? "strong" : "total";
+  return rows.find((row) => row.id === id) ?? emptyChaseSixBenchmarkRow(id);
 }
 
 function emptyHotCalibrationBreakdown(): HotCalibrationBreakdownRow[] {

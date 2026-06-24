@@ -8320,7 +8320,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .prediction-roi-row.chase6-benchmark-row {
-  grid-template-columns: 26% 16% 18% 16% 24%;
+  grid-template-columns: 40% 18% 20% 22%;
 }
 
 .hot-benchmark-tabs,
