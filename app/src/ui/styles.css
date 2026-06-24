@@ -1192,6 +1192,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .manage-side-actions button,
 .app-shell.theme-dark .table-action,
 .app-shell.theme-dark .hot-table-filter-toggles button,
+.app-shell.theme-dark .quality124-tier-filter-toggles button,
 .app-shell.theme-dark .signal-tier-btn,
 .app-shell.theme-dark .shared-data-empty button,
 .app-shell.theme-dark .data-actions-shared-row button,
@@ -1205,6 +1206,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .hot-table-filter-toggles button.on,
+.app-shell.theme-dark .quality124-tier-filter-toggles button.on,
 .app-shell.theme-dark .signal-tier-btn.active {
   background: rgba(215, 175, 85, 0.14);
   border-color: rgba(215, 175, 85, 0.35);
@@ -8314,7 +8316,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .prediction-roi-row.quality124-tier-row {
-  grid-template-columns: 26% 16% 18% 16% 24%;
+  grid-template-columns: 40% 18% 20% 22%;
 }
 
 .prediction-roi-row.chase6-benchmark-row {
@@ -8406,6 +8408,42 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   display: flex;
   justify-content: center;
   padding: 0 2px 4px;
+}
+
+.quality124-detail-tier-toggles {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 0 2px 4px;
+}
+
+.quality124-tier-filter-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.quality124-tier-filter-toggles button {
+  background: #beb8ae;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+  line-height: 1;
+  min-height: auto;
+  min-width: 0;
+  padding: 3px 7px;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.quality124-tier-filter-toggles button.on {
+  background: #c09858;
+  border: none;
+  color: #fffdf8;
 }
 
 @keyframes hot-recent10-spin {

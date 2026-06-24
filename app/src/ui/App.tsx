@@ -79,7 +79,7 @@ import { computePeakSma, computePeakStats, extractGaps } from "../core/wave";
 import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow } from "../core/chaseSix";
 import { CHASE6_HISTORY_BENCHMARK } from "../core/chaseSixHistoryBenchmark";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
-import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124 } from "../core/quality124";
+import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124, type Quality124Roi, type Quality124Tier } from "../core/quality124";
 import { QUALITY_124_HISTORY_BENCHMARK } from "../core/quality124HistoryBenchmark";
 import { analyzeHotNumbers, type HotNumberRoi, type HotNumberSignal, type HotNumberSignalEvent } from "../core/hotNumbers";
 import { HOT_HISTORY_BENCHMARK } from "../core/hotHistoryBenchmark";
@@ -308,9 +308,26 @@ interface HotRecent10Benchmark {
   calculatedAt: string;
 }
 
+interface Quality124BenchmarkRow {
+  tier: Quality124Tier;
+  stats: Quality124Roi;
+}
+
+interface Quality124SavedBenchmark {
+  rows: Quality124BenchmarkRow[];
+  total: Quality124Roi;
+  sessionCount: number;
+  bettingSpins: number;
+  calculatedAt: string;
+}
+
 type HotBenchmarkTab = "current" | "history" | "recent10";
+type Quality124BenchmarkTab = "current" | "history" | "recent10";
 
 const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
+const quality124LocalHistoryBenchmarkKey = "londoner.quality124LocalHistoryBenchmark";
+const quality124Recent10BenchmarkKey = "londoner.quality124Recent10Benchmark";
+const quality124HistoryDataBenchmarkArchiveKey = "londoner.quality124HistoryDataBenchmarkArchive";
 const hotLocalHistoryBenchmarkKey = "londoner.hotLocalHistoryBenchmark";
 const hotRecent10BenchmarkKey = "londoner.hotRecent10Benchmark";
 const hotHistoryDataBenchmarkArchiveKey = "londoner.hotHistoryDataBenchmarkArchive";
@@ -495,6 +512,88 @@ function hotHistoryDataArchiveBenchmark(): HotRecent10Benchmark {
   };
 }
 
+function normalizeQuality124Roi(value: unknown): Quality124Roi | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const signals = typeof item.signals === "number" && Number.isFinite(item.signals) ? item.signals : null;
+  const bet = typeof item.bet === "number" && Number.isFinite(item.bet) ? item.bet : null;
+  const win = typeof item.win === "number" && Number.isFinite(item.win) ? item.win : null;
+  const hits = typeof item.hits === "number" && Number.isFinite(item.hits) ? item.hits : null;
+  const roi = typeof item.roi === "number" && Number.isFinite(item.roi) ? item.roi : null;
+  return signals === null || bet === null || win === null || hits === null || roi === null
+    ? null
+    : { signals, bet, win, hits, roi };
+}
+
+function normalizeQuality124SavedBenchmark(value: unknown): Quality124SavedBenchmark | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const sessionCount = typeof item.sessionCount === "number" && Number.isFinite(item.sessionCount) ? item.sessionCount : null;
+  const bettingSpins = typeof item.bettingSpins === "number" && Number.isFinite(item.bettingSpins) ? item.bettingSpins : null;
+  const calculatedAt = typeof item.calculatedAt === "string" ? item.calculatedAt : "";
+  const total = normalizeQuality124Roi(item.total);
+  if (sessionCount === null || bettingSpins === null || !calculatedAt || !total || !Array.isArray(item.rows)) return null;
+
+  const statsByTier = new Map<Quality124Tier, Quality124Roi>();
+  for (const row of item.rows) {
+    if (!row || typeof row !== "object") continue;
+    const source = row as Record<string, unknown>;
+    const tier = source.tier;
+    const stats = normalizeQuality124Roi(source.stats);
+    if (!QUALITY_124_TIER_ORDER.includes(tier as Quality124Tier) || !stats) continue;
+    statsByTier.set(tier as Quality124Tier, stats);
+  }
+
+  return {
+    rows: QUALITY_124_TIER_ORDER.map((tier) => ({ tier, stats: statsByTier.get(tier) ?? emptyQuality124Roi() })),
+    total,
+    sessionCount,
+    bettingSpins,
+    calculatedAt,
+  };
+}
+
+function loadQuality124Benchmark(key: string): Quality124SavedBenchmark | null {
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return normalizeQuality124SavedBenchmark(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function quality124HistoryDataArchiveBenchmark(): Quality124SavedBenchmark {
+  return {
+    rows: QUALITY_124_HISTORY_BENCHMARK.rows.map((row) => ({
+      tier: row.tier,
+      stats: {
+        signals: row.signals,
+        bet: row.bet,
+        win: row.win,
+        hits: row.hits,
+        roi: row.roi,
+      },
+    })),
+    total: { ...QUALITY_124_HISTORY_BENCHMARK.total },
+    sessionCount: QUALITY_124_HISTORY_BENCHMARK.sessions,
+    bettingSpins: QUALITY_124_HISTORY_BENCHMARK.bettingSpins,
+    calculatedAt: "2026-06-24T00:00:00.000+08:00",
+  };
+}
+
+function loadQuality124TierVisibility(): Record<Quality124Tier, boolean> {
+  const fallback = Object.fromEntries(QUALITY_124_TIER_ORDER.map((tier) => [tier, true])) as Record<Quality124Tier, boolean>;
+  const raw = localStorage.getItem("londoner.quality124TierVisibility");
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.fromEntries(QUALITY_124_TIER_ORDER.map((tier) => [tier, parsed[tier] !== false])) as Record<Quality124Tier, boolean>;
+  } catch {
+    return fallback;
+  }
+}
+
 function normalizeRepeatTier(value: string | null): RepeatTier {
   if (value === REPEAT_TIER_CORE || value === "精选信号") return REPEAT_TIER_CORE;
   if (value === REPEAT_TIER_AGGRESSIVE || value === "全部信号") return REPEAT_TIER_AGGRESSIVE;
@@ -641,16 +740,26 @@ export function App() {
     const saved = localStorage.getItem("londoner.hotBenchmarkTab");
     return saved === "history" || saved === "recent10" ? saved : "current";
   });
-  const [quality124BenchmarkTab, setQuality124BenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.quality124BenchmarkTab") === "history" ? "history" : "current");
+  const [quality124BenchmarkTab, setQuality124BenchmarkTab] = useState<Quality124BenchmarkTab>(() => {
+    const saved = localStorage.getItem("londoner.quality124BenchmarkTab");
+    return saved === "history" || saved === "recent10" ? saved : "current";
+  });
   const [chaseSixBenchmarkTab, setChaseSixBenchmarkTab] = useState<"current" | "history">(() => localStorage.getItem("londoner.chaseSixBenchmarkTab") === "history" ? "history" : "current");
   const [show124, setShow124] = useState(() => localStorage.getItem("londoner.show124") !== "0");
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
+  const [quality124TierVisibility, setQuality124TierVisibility] = useState<Record<Quality124Tier, boolean>>(() => loadQuality124TierVisibility());
   const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
   const [showHotCalibrationEnhance, setShowHotCalibrationEnhance] = useState(() => localStorage.getItem("londoner.showHotCalibrationEnhance") !== "0");
   const [showHotCalibrationBaseline, setShowHotCalibrationBaseline] = useState(() => localStorage.getItem("londoner.showHotCalibrationBaseline") !== "0");
   const [showHotCalibrationObserve, setShowHotCalibrationObserve] = useState(() => localStorage.getItem("londoner.showHotCalibrationObserve") !== "0");
   const [showHotCalibrationHint, setShowHotCalibrationHint] = useState(() => localStorage.getItem("londoner.showHotCalibrationHint") === "1");
   const [showHotCalibrationBlock, setShowHotCalibrationBlock] = useState(() => localStorage.getItem("londoner.showHotCalibrationBlock") === "1");
+  const [quality124LocalHistoryBenchmark, setQuality124LocalHistoryBenchmark] = useState<Quality124SavedBenchmark | null>(() => loadQuality124Benchmark(quality124LocalHistoryBenchmarkKey));
+  const [quality124LocalHistoryLoading, setQuality124LocalHistoryLoading] = useState(false);
+  const [quality124LocalHistoryError, setQuality124LocalHistoryError] = useState("");
+  const [quality124Recent10Benchmark, setQuality124Recent10Benchmark] = useState<Quality124SavedBenchmark | null>(() => loadQuality124Benchmark(quality124Recent10BenchmarkKey));
+  const [quality124Recent10Loading, setQuality124Recent10Loading] = useState(false);
+  const [quality124Recent10Error, setQuality124Recent10Error] = useState("");
   const [hotLocalHistoryBenchmark, setHotLocalHistoryBenchmark] = useState<HotRecent10Benchmark | null>(() => loadHotLocalHistoryBenchmark());
   const [hotLocalHistoryLoading, setHotLocalHistoryLoading] = useState(false);
   const [hotLocalHistoryError, setHotLocalHistoryError] = useState("");
@@ -903,10 +1012,21 @@ export function App() {
   // [PERF] 124 (rhythm) temporarily disabled — see AGENTS.md "Hot path perf budget"
   const quality124 = useMemo(() => analyzeQuality124(numbers), [numbers]);
   const quality124Signals = quality124.activeSignals;
+  const visibleQuality124Signals = useMemo(
+    () => quality124Signals.filter((item) => quality124TierVisibility[item.tier]),
+    [quality124Signals, quality124TierVisibility],
+  );
   const quality124Roi = quality124.totalRoi;
   const quality124From201 = useMemo(() => analyzeQuality124(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const quality124RoiFrom201 = quality124From201.totalRoi;
   const quality124CurrentBettingSpins = Math.max(0, numbers.length - REPEAT_INITIAL_ROUNDS);
+  const visibleQuality124From201Summary = useMemo(
+    () => summarizeSelectedQuality124Rows(
+      QUALITY_124_TIER_ORDER.map((tier) => ({ tier, stats: quality124From201.tierRois[tier] })),
+      quality124TierVisibility,
+    ),
+    [quality124From201.tierRois, quality124TierVisibility],
+  );
   const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
@@ -1479,6 +1599,9 @@ export function App() {
     storage.listCasinoTables().then(setCasinoTables);
     if (!localStorage.getItem(hotHistoryDataBenchmarkArchiveKey)) {
       localStorage.setItem(hotHistoryDataBenchmarkArchiveKey, JSON.stringify(hotHistoryDataArchiveBenchmark()));
+    }
+    if (!localStorage.getItem(quality124HistoryDataBenchmarkArchiveKey)) {
+      localStorage.setItem(quality124HistoryDataBenchmarkArchiveKey, JSON.stringify(quality124HistoryDataArchiveBenchmark()));
     }
   }, []);
 
@@ -2301,6 +2424,62 @@ export function App() {
     const list = await storage.listSessions();
     setSessions(list);
     setAllSavedSessions(list);
+  }
+
+  async function refreshQuality124LocalHistoryBenchmark() {
+    const startedAt = performance.now();
+    flushSync(() => {
+      setQuality124LocalHistoryLoading(true);
+      setQuality124LocalHistoryError("");
+    });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      const savedSessions = await storage.listSessions();
+      setSessions(savedSessions);
+      setAllSavedSessions(savedSessions);
+      const benchmark = calculateQuality124SavedBenchmark(savedSessions, currentSessionId, {
+        minSessionTime: hotLocalHistoryStartTime,
+      });
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
+      }
+      localStorage.setItem(quality124LocalHistoryBenchmarkKey, JSON.stringify(benchmark));
+      setQuality124LocalHistoryBenchmark(benchmark);
+    } catch (error) {
+      setQuality124LocalHistoryError(error instanceof Error ? error.message : "计算失败");
+    } finally {
+      setQuality124LocalHistoryLoading(false);
+    }
+  }
+
+  async function refreshQuality124Recent10Benchmark() {
+    const startedAt = performance.now();
+    flushSync(() => {
+      setQuality124Recent10Loading(true);
+      setQuality124Recent10Error("");
+    });
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      const savedSessions = await storage.listSessions();
+      setSessions(savedSessions);
+      setAllSavedSessions(savedSessions);
+      const benchmark = calculateQuality124SavedBenchmark(savedSessions, currentSessionId, {
+        maxSessions: 10,
+      });
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < 350) {
+        await new Promise((resolve) => setTimeout(resolve, 350 - elapsed));
+      }
+      localStorage.setItem(quality124Recent10BenchmarkKey, JSON.stringify(benchmark));
+      setQuality124Recent10Benchmark(benchmark);
+    } catch (error) {
+      setQuality124Recent10Error(error instanceof Error ? error.message : "计算失败");
+    } finally {
+      setQuality124Recent10Loading(false);
+    }
   }
 
   async function refreshHotLocalHistoryBenchmark() {
@@ -4575,9 +4754,9 @@ export function App() {
         </div>
       </section>
 
-      {canUseQuality124 && showQuality124 && quality124Signals.length > 0 ? (
+      {canUseQuality124 && showQuality124 && visibleQuality124Signals.length > 0 ? (
         <section className="quality124-signal-area" aria-label="124EXT信号">
-          {quality124Signals.map((item) => (
+          {visibleQuality124Signals.map((item) => (
             <div
               className={`quality124-signal-item quality124-tier-${item.tier} quality124-tier-${item.stars} ${item.tag === "波" ? "quality124-wave" : item.tag ? "quality124-delay" : ""}`}
               key={`quality124-${item.kind}-${item.ci}-${item.entryAfter}-${item.tier}`}
@@ -5874,10 +6053,19 @@ export function App() {
                     >
                       历史
                     </button>
+                    <button
+                      aria-selected={quality124BenchmarkTab === "recent10"}
+                      className={quality124BenchmarkTab === "recent10" ? "selected" : ""}
+                      onClick={() => { setQuality124BenchmarkTab("recent10"); localStorage.setItem("londoner.quality124BenchmarkTab", "recent10"); }}
+                      role="tab"
+                      type="button"
+                    >
+                      最近10
+                    </button>
                   </div>
                   {quality124BenchmarkTab === "current" ? (
                     <div className="prediction-roi-table">
-                      <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>ROI</span></div>
+                      <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>ROI</span></div>
                       {QUALITY_124_TIER_ORDER.map((tier) => {
                         const meta = QUALITY_124_TIER_META[tier];
                         const item = quality124From201.tierRois[tier];
@@ -5887,30 +6075,137 @@ export function App() {
                             <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
                             <span>{item.signals}</span>
                             <span>{formatSp100(item.signals, quality124CurrentBettingSpins)}</span>
-                            <span>{item.hits}</span>
                             <strong className="roi-value" style={{ color: item.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(item.roi)}</strong>
                           </div>
                         );
                       })}
+                      <div className="prediction-roi-row quality124-tier-row hot-summary-row">
+                        <strong className="detail-stats-label"><span className="label-text">汇总</span></strong>
+                        <span>{visibleQuality124From201Summary.signals}</span>
+                        <span>{formatSp100(visibleQuality124From201Summary.signals, quality124CurrentBettingSpins)}</span>
+                        <strong className="roi-value" style={{ color: visibleQuality124From201Summary.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(visibleQuality124From201Summary.roi)}</strong>
+                      </div>
+                    </div>
+                  ) : quality124BenchmarkTab === "history" ? (
+                    <div className="hot-recent10-panel">
+                      {(() => {
+                        const hasData = Boolean(quality124LocalHistoryBenchmark && quality124LocalHistoryBenchmark.sessionCount > 0);
+                        const rows = quality124LocalHistoryBenchmark?.rows ?? makeQuality124BenchmarkRows();
+                        const total = summarizeSelectedQuality124Rows(rows, quality124TierVisibility);
+                        return (
+                        <div className="prediction-roi-table">
+                          <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>历史ROI</span></div>
+                          {rows.map((row) => {
+                            const meta = QUALITY_124_TIER_META[row.tier];
+                            const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
+                            return (
+                              <div className="prediction-roi-row quality124-tier-row" key={row.tier}>
+                                <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
+                                <span>{hasData ? row.stats.signals : "-"}</span>
+                                <span>{hasData ? formatSp100(row.stats.signals, quality124LocalHistoryBenchmark?.bettingSpins ?? 0) : "-"}</span>
+                                <strong className="roi-value" style={{ color: hasData ? (row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(row.stats.roi) : "-"}</strong>
+                              </div>
+                            );
+                          })}
+                          <div className="prediction-roi-row quality124-tier-row hot-summary-row">
+                            <strong className="detail-stats-label"><span className="label-text">汇总</span></strong>
+                            <span>{hasData ? total.signals : "-"}</span>
+                            <span>{hasData ? formatSp100(total.signals, quality124LocalHistoryBenchmark?.bettingSpins ?? 0) : "-"}</span>
+                            <strong className="roi-value" style={{ color: hasData ? (total.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(total.roi) : "-"}</strong>
+                          </div>
+                        </div>
+                        );
+                      })()}
+                      {quality124LocalHistoryLoading ? (
+                        <div className="hot-recent10-loading" aria-live="polite" role="status">
+                          <div className="hot-recent10-loading-card">
+                            <span className="hot-recent10-spinner" aria-hidden="true" />
+                            <span>计算中</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {quality124LocalHistoryError ? <div className="hot-recent10-error">{quality124LocalHistoryError}</div> : null}
+                      <button
+                        className="primary-action hot-recent10-refresh"
+                        disabled={quality124LocalHistoryLoading}
+                        onClick={refreshQuality124LocalHistoryBenchmark}
+                        type="button"
+                      >
+                        {quality124LocalHistoryLoading ? "计算中" : "刷新"}
+                      </button>
                     </div>
                   ) : (
-                    <div className="prediction-roi-table">
-                      <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>命中</span><span>历史ROI</span></div>
-                      {QUALITY_124_HISTORY_BENCHMARK.rows.map((row) => {
-                        const meta = QUALITY_124_TIER_META[row.tier];
-                        const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
+                    <div className="hot-recent10-panel">
+                      {(() => {
+                        const hasData = Boolean(quality124Recent10Benchmark && quality124Recent10Benchmark.sessionCount > 0);
+                        const rows = quality124Recent10Benchmark?.rows ?? makeQuality124BenchmarkRows();
+                        const total = summarizeSelectedQuality124Rows(rows, quality124TierVisibility);
                         return (
-                          <div className="prediction-roi-row quality124-tier-row" key={row.tier}>
-                            <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
-                            <span>{row.signals}</span>
-                            <span>{row.sp100.toFixed(2)}</span>
-                            <span>{row.hits}</span>
-                            <strong className="roi-value" style={{ color: row.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{formatSignedPercent(row.roi)}</strong>
+                        <div className="prediction-roi-table">
+                          <div className="prediction-roi-row prediction-roi-header quality124-tier-row"><span>档位</span><span>信号</span><span>SP100</span><span>最近ROI</span></div>
+                          {rows.map((row) => {
+                            const meta = QUALITY_124_TIER_META[row.tier];
+                            const stars = ` ${Array.from({ length: 3 }, (_, i) => (i < meta.stars ? "★" : "☆")).join("")}`;
+                            return (
+                              <div className="prediction-roi-row quality124-tier-row" key={row.tier}>
+                                <strong className="detail-stats-label"><span className="label-text">{meta.label}</span><span className="label-stars">{stars}</span></strong>
+                                <span>{hasData ? row.stats.signals : "-"}</span>
+                                <span>{hasData ? formatSp100(row.stats.signals, quality124Recent10Benchmark?.bettingSpins ?? 0) : "-"}</span>
+                                <strong className="roi-value" style={{ color: hasData ? (row.stats.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(row.stats.roi) : "-"}</strong>
+                              </div>
+                            );
+                          })}
+                          <div className="prediction-roi-row quality124-tier-row hot-summary-row">
+                            <strong className="detail-stats-label"><span className="label-text">汇总</span></strong>
+                            <span>{hasData ? total.signals : "-"}</span>
+                            <span>{hasData ? formatSp100(total.signals, quality124Recent10Benchmark?.bettingSpins ?? 0) : "-"}</span>
+                            <strong className="roi-value" style={{ color: hasData ? (total.roi >= 0 ? "#b85a3a" : "#5f9a70") : "inherit" }}>{hasData ? formatSignedPercent(total.roi) : "-"}</strong>
                           </div>
+                        </div>
                         );
-                      })}
+                      })()}
+                      {quality124Recent10Loading ? (
+                        <div className="hot-recent10-loading" aria-live="polite" role="status">
+                          <div className="hot-recent10-loading-card">
+                            <span className="hot-recent10-spinner" aria-hidden="true" />
+                            <span>计算中</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {quality124Recent10Error ? <div className="hot-recent10-error">{quality124Recent10Error}</div> : null}
+                      <button
+                        className="primary-action hot-recent10-refresh"
+                        disabled={quality124Recent10Loading}
+                        onClick={refreshQuality124Recent10Benchmark}
+                        type="button"
+                      >
+                        {quality124Recent10Loading ? "计算中" : "刷新"}
+                      </button>
                     </div>
                   )}
+                  <div className="quality124-detail-tier-toggles">
+                    <span className="quality124-tier-filter-toggles">
+                      {QUALITY_124_TIER_ORDER.map((tier) => {
+                        const meta = QUALITY_124_TIER_META[tier];
+                        return (
+                          <button
+                            className={quality124TierVisibility[tier] ? "on" : ""}
+                            key={tier}
+                            onClick={() => {
+                              setQuality124TierVisibility((current) => {
+                                const next = { ...current, [tier]: !current[tier] };
+                                localStorage.setItem("londoner.quality124TierVisibility", JSON.stringify(next));
+                                return next;
+                              });
+                            }}
+                            type="button"
+                          >
+                            {meta.label}
+                          </button>
+                        );
+                      })}
+                    </span>
+                  </div>
                 </>
               ) : predictionTab === "preferredNumber" && canUsePreferredNumber ? (
                 <>
@@ -7718,6 +8013,73 @@ function compareSessionsChronologically(left: SavedSession, right: SavedSession)
 
 function emptyHotRoi(): HotNumberRoi {
   return { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+}
+
+function emptyQuality124Roi(): Quality124Roi {
+  return { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
+}
+
+function addQuality124RoiTotals(target: Quality124Roi, value: Quality124Roi): void {
+  target.signals += value.signals;
+  target.bet += value.bet;
+  target.win += value.win;
+  target.hits += value.hits;
+  target.roi = target.bet > 0 ? ((target.win - target.bet) / target.bet) * 100 : 0;
+}
+
+function makeQuality124BenchmarkRows(): Quality124BenchmarkRow[] {
+  return QUALITY_124_TIER_ORDER.map((tier) => ({ tier, stats: emptyQuality124Roi() }));
+}
+
+function summarizeSelectedQuality124Rows(
+  rows: readonly Quality124BenchmarkRow[],
+  visibility: Readonly<Record<Quality124Tier, boolean>>,
+): Quality124Roi {
+  const summary = emptyQuality124Roi();
+  for (const row of rows) {
+    if (visibility[row.tier]) addQuality124RoiTotals(summary, row.stats);
+  }
+  return summary;
+}
+
+function calculateQuality124SavedBenchmark(
+  savedSessions: readonly SavedSession[],
+  currentSessionId: string | null,
+  options: { maxSessions?: number; minSessionTime?: number } = {},
+): Quality124SavedBenchmark {
+  const sorted = savedSessions
+    .filter((session) => session.id !== currentSessionId)
+    .filter((session) => session.numbers.length > 0)
+    .filter((session) => {
+      if (typeof options.minSessionTime !== "number") return true;
+      const time = new Date(session.updatedAt).getTime();
+      return Number.isFinite(time) && time >= options.minSessionTime;
+    })
+    .sort(compareSessionsChronologically);
+  const recentStart = typeof options.maxSessions === "number" ? Math.max(0, sorted.length - options.maxSessions) : 0;
+  const rows = makeQuality124BenchmarkRows();
+  const byTier = new Map(rows.map((row) => [row.tier, row.stats]));
+  const total = emptyQuality124Roi();
+  let bettingSpins = 0;
+
+  for (let index = recentStart; index < sorted.length; index += 1) {
+    const session = sorted[index];
+    const analysis = analyzeQuality124(session.numbers, REPEAT_INITIAL_ROUNDS);
+    addQuality124RoiTotals(total, analysis.totalRoi);
+    for (const tier of QUALITY_124_TIER_ORDER) {
+      const stats = byTier.get(tier);
+      if (stats) addQuality124RoiTotals(stats, analysis.tierRois[tier]);
+    }
+    bettingSpins += Math.max(0, session.numbers.length - REPEAT_INITIAL_ROUNDS);
+  }
+
+  return {
+    rows,
+    total,
+    sessionCount: sorted.length - recentStart,
+    bettingSpins,
+    calculatedAt: new Date().toISOString(),
+  };
 }
 
 function emptyHotCalibrationBreakdown(): HotCalibrationBreakdownRow[] {
