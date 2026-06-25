@@ -6985,7 +6985,11 @@ export function App() {
               <strong>智能明细</strong>
               <button className="close-button" onClick={() => setPredictionWindowOpen(false)} type="button">x</button>
             </div>
-            <div className="tabs tabs-top tabs-solid">
+            <div className="repeat-filter-panel smart-entry-mode-toggle prediction-entry-mode-toggle">
+              <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
+              <span>前200个数字为历史号码</span>
+            </div>
+            <div className="tabs tabs-top tabs-solid prediction-tabs">
               <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUseQuality124 ? (
                 <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">124EXT</button>
@@ -6996,10 +7000,6 @@ export function App() {
               ) : null}
             </div>
             <div className="prediction-body">
-              <div className="repeat-filter-panel smart-entry-mode-toggle">
-                <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
-                <span>前200个数字为历史号码</span>
-              </div>
               {predictionTab === "quality124" && canUseQuality124 ? (
                 <>
                   <div className="prediction-roi-table">
@@ -7172,7 +7172,7 @@ export function App() {
                         const meta = QUALITY_124_TIER_META[tier];
                         return (
                           <button
-                            className={quality124TierVisibility[tier] ? "on" : ""}
+                            className={`${quality124TierVisibility[tier] ? "on" : ""} quality124-tier-${tier}`}
                             key={tier}
                             onClick={() => {
                               setQuality124TierVisibility((current) => {
