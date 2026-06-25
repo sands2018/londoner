@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { analyzeHotNumbers } from "../app/src/core/hotNumbers";
 import {
   assignSessionToAutoTableProfileState,
   buildAutoTableProfileState,
@@ -100,17 +101,45 @@ interface Strategy {
 interface Event {
   assignmentLevel: AutoTableMatchLevel;
   bet: number;
+  cardSessionCount: number;
+  cardTotalNumbers: number;
   candidates: RouletteNumber[];
   family: string;
   hit: boolean;
+  hotHit: boolean;
+  hotMode: string;
+  hotPick: RouletteNumber | null;
   net: number;
   position: number;
+  primaryStability: number;
+  recent160Z: number;
   result: RouletteNumber;
   sessionId: string;
+  sessionName: string;
+  sessionUpdatedAt: string;
+  sourceIndex: number;
   strategyId: string;
   tableId: string;
   tableType: TableType;
+  top1Z: number;
+  topGapZ: number;
   venueKey: string;
+}
+
+interface BetEvent {
+  bet: number;
+  hit: boolean;
+  net: number;
+  sessionId: string;
+}
+
+interface HotFilterEvent extends BetEvent {
+  intersectionOverlap: boolean;
+  mode: string;
+  number: RouletteNumber;
+  position: number;
+  sessionUpdatedAt: string;
+  stableOverlap: boolean;
 }
 
 interface Summary {
@@ -534,6 +563,8 @@ const STRATEGIES: Strategy[] = [
   },
 ];
 
+const FOCUS_STRATEGY_IDS = ["stable-exact160-recent3", "intersection160-zone"];
+
 function runDataset(filePath: string): DatasetResult {
   const sessions = loadSessions(filePath);
   const contexts = buildPriorContexts(sessions);
@@ -543,6 +574,7 @@ function runDataset(filePath: string): DatasetResult {
     const session = sessions[sessionIndex];
     const context = contexts[sessionIndex];
     const venueKey = inferSpatialVenueKey(session.name);
+    const hotEventsByPosition = new Map(analyzeHotNumbers(session.numbers, ROI_START).events.map((event) => [event.position, event]));
 
     for (let position = ROI_START; position < session.numbers.length; position += 1) {
       const prefix = session.numbers.slice(0, position);
@@ -576,19 +608,33 @@ function runDataset(filePath: string): DatasetResult {
         if (candidates.length === 0) continue;
         const hit = candidates.includes(ctx.result);
         const bet = candidates.length;
+        const recent160 = recentMap.get(160);
+        const hotEvent = hotEventsByPosition.get(position);
         events.push({
           assignmentLevel: ctx.assignmentLevel,
           bet,
+          cardSessionCount: card.sessionCount,
+          cardTotalNumbers: card.totalNumbers,
           candidates,
           family: strategy.family,
           hit,
+          hotHit: hotEvent?.hit ?? false,
+          hotMode: hotEvent?.signal.mode ?? "none",
+          hotPick: hotEvent?.signal.number ?? null,
           net: hit ? 36 - bet : -bet,
           position,
+          primaryStability: card.primaryStability,
+          recent160Z: recent160?.z ?? 0,
           result: ctx.result,
           sessionId: session.id,
+          sessionName: session.name,
+          sessionUpdatedAt: session.updatedAt,
+          sourceIndex: session.sourceIndex,
           strategyId: strategy.id,
           tableId: card.tableId,
           tableType: card.type,
+          top1Z: card.top1?.z ?? 0,
+          topGapZ: card.topGapZ,
           venueKey,
         });
       }
@@ -611,7 +657,7 @@ function groupBy<T>(items: readonly T[], keyFn: (item: T) => string): Map<string
   return map;
 }
 
-function summarize(events: readonly Event[]): Summary {
+function summarize(events: readonly BetEvent[]): Summary {
   let bet = 0;
   let hits = 0;
   let peak = 0;
@@ -697,6 +743,437 @@ function table(lines: string[], rows: Array<{ key: string; summary: Summary }>, 
   lines.push("|---|---:|");
   for (const row of rows.slice(0, limit)) {
     lines.push(`| ${row.key} | \`${fmt(row.summary)}\` |`);
+  }
+}
+
+function eligibleSpins(session: Session): number {
+  return Math.max(0, session.numbers.length - ROI_START);
+}
+
+function totalEligibleSpins(sessions: readonly Session[]): number {
+  return sessions.reduce((sum, session) => sum + eligibleSpins(session), 0);
+}
+
+function sp100(signals: number, spins: number): number {
+  return spins > 0 ? (signals / spins) * 100 : 0;
+}
+
+function sessionMap(sessions: readonly Session[]): Map<string, Session> {
+  return new Map(sessions.map((session) => [session.id, session]));
+}
+
+function activeEligibleSpins(events: readonly Event[], sessionsById: ReadonlyMap<string, Session>): number {
+  const ids = new Set(events.map((event) => event.sessionId));
+  let spins = 0;
+  for (const id of ids) {
+    const session = sessionsById.get(id);
+    if (session) spins += eligibleSpins(session);
+  }
+  return spins;
+}
+
+function yearOf(value: string): string {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? String(date.getFullYear()) : "unknown";
+}
+
+function metricBucket(value: number, buckets: readonly Array<{ label: string; max: number }>, fallback: string): string {
+  for (const bucket of buckets) {
+    if (value <= bucket.max) return bucket.label;
+  }
+  return fallback;
+}
+
+function sessionCountBucket(count: number): string {
+  if (count <= 1) return "01";
+  if (count === 2) return "02";
+  if (count <= 4) return "03-04";
+  if (count <= 8) return "05-08";
+  return "09+";
+}
+
+function cardNumbersBucket(count: number): string {
+  if (count < 500) return "<500";
+  if (count < 1000) return "500-999";
+  if (count < 2000) return "1000-1999";
+  return "2000+";
+}
+
+function stabilityBucket(value: number): string {
+  return metricBucket(value, [
+    { label: "<0.45", max: 0.449999 },
+    { label: "0.45-0.69", max: 0.699999 },
+  ], "0.70+");
+}
+
+function zBucket(value: number): string {
+  return metricBucket(value, [
+    { label: "<1.0", max: 0.999999 },
+    { label: "1.0-1.49", max: 1.499999 },
+    { label: "1.5-1.99", max: 1.999999 },
+  ], "2.0+");
+}
+
+function fmtDeep(summary: Summary, denominatorSpins: number): string {
+  return `${fmt(summary)} sp100=${sp100(summary.signals, denominatorSpins).toFixed(2)}`;
+}
+
+function focusRows(
+  events: readonly Event[],
+  keyFn: (event: Event) => string,
+  denominatorFn: (rows: readonly Event[]) => number,
+): Array<{ key: string; summary: Summary; denominatorSpins: number }> {
+  return [...groupBy(events, keyFn).entries()]
+    .map(([key, rows]) => ({ key, summary: summarize(rows), denominatorSpins: denominatorFn(rows) }))
+    .sort((left, right) => bigness(right) - bigness(left));
+}
+
+function bigness(row: { summary: Summary }): number {
+  return row.summary.net * 100000 + row.summary.bet;
+}
+
+function addFocusTable(
+  lines: string[],
+  title: string,
+  rows: Array<{ key: string; summary: Summary; denominatorSpins: number }>,
+  limit = 30,
+): void {
+  lines.push(`\n### ${title}`);
+  lines.push("| key | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const row of rows.slice(0, limit)) {
+    lines.push(`| ${row.key} | \`${fmtDeep(row.summary, row.denominatorSpins)}\` |`);
+  }
+}
+
+function addFocusStrategyOverview(lines: string[], result: DatasetResult): void {
+  const denominatorSpins = totalEligibleSpins(result.sessions);
+  lines.push("\n### Focus Strategy Overall");
+  lines.push("| strategy | summary + SP100 | no-future rule |");
+  lines.push("|---|---:|---|");
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const rows = result.events.filter((event) => event.strategyId === strategyId);
+    lines.push(`| ${strategyId} | \`${fmtDeep(summarize(rows), denominatorSpins)}\` | prior sessions + current prefix only |`);
+  }
+}
+
+function addFocusYearTables(lines: string[], result: DatasetResult): void {
+  const sessionsByYear = groupBy(result.sessions, (session) => yearOf(session.updatedAt));
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const events = result.events.filter((event) => event.strategyId === strategyId);
+    const rows = [...groupBy(events, (event) => yearOf(event.sessionUpdatedAt)).entries()]
+      .map(([year, yearEvents]) => ({
+        key: year,
+        summary: summarize(yearEvents),
+        denominatorSpins: totalEligibleSpins(sessionsByYear.get(year) ?? []),
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key));
+    addFocusTable(lines, `By Year: ${strategyId}`, rows, 20);
+  }
+}
+
+function addFocusBreakdowns(lines: string[], result: DatasetResult, sessionsById: ReadonlyMap<string, Session>): void {
+  const activeDenominator = (rows: readonly Event[]) => activeEligibleSpins(rows, sessionsById);
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const events = result.events.filter((event) => event.strategyId === strategyId);
+    lines.push(`\n## Deep Splits: ${path.basename(result.filePath)} / ${strategyId}`);
+    addFocusTable(lines, "By Table Type", focusRows(events, (event) => event.tableType, activeDenominator), 20);
+    addFocusTable(lines, "By Assignment Level", focusRows(events, (event) => event.assignmentLevel, activeDenominator), 20);
+    addFocusTable(lines, "By Prior Card Session Count", focusRows(events, (event) => sessionCountBucket(event.cardSessionCount), activeDenominator), 20);
+    addFocusTable(lines, "By Prior Card Total Numbers", focusRows(events, (event) => cardNumbersBucket(event.cardTotalNumbers), activeDenominator), 20);
+    addFocusTable(lines, "By Primary Stability", focusRows(events, (event) => stabilityBucket(event.primaryStability), activeDenominator), 20);
+    addFocusTable(lines, "By Table Top1 Z", focusRows(events, (event) => zBucket(event.top1Z), activeDenominator), 20);
+    addFocusTable(lines, "By Current 160-Window Z", focusRows(events, (event) => zBucket(event.recent160Z), activeDenominator), 20);
+    addFocusTable(lines, "By Candidate Count", focusRows(events, (event) => String(event.bet), activeDenominator), 20);
+    addFocusTable(lines, "By Venue", focusRows(events, (event) => event.venueKey, activeDenominator), 20);
+    addFocusTable(lines, "Top Evolving Table Cards", focusRows(events, (event) => `${event.tableId} / ${event.tableType}`, activeDenominator), 20);
+    addFocusTable(lines, "Per-Session Net", focusRows(events, (event) => `${event.sessionUpdatedAt.slice(0, 10)} / ${event.sessionName}`, activeDenominator), 20);
+  }
+}
+
+function addLatest10Focus(lines: string[], result: DatasetResult): void {
+  const latestSessions = result.sessions.slice(-10);
+  const latestIds = new Set(latestSessions.map((session) => session.id));
+  const denominatorSpins = totalEligibleSpins(latestSessions);
+  lines.push("\n### Latest 10 Sessions Summary");
+  lines.push("| strategy | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const rows = result.events.filter((event) => event.strategyId === strategyId && latestIds.has(event.sessionId));
+    lines.push(`| ${strategyId} | \`${fmtDeep(summarize(rows), denominatorSpins)}\` |`);
+  }
+}
+
+function fmtLatestSession(events: readonly Event[], denominatorSpins: number): string {
+  if (events.length === 0) return "-";
+  const summary = summarize(events);
+  return [
+    `sig=${summary.signals}`,
+    `bet=${summary.bet}`,
+    `hit=${summary.hits}`,
+    `net=${summary.net}`,
+    `roi=${summary.roi.toFixed(1)}%`,
+    `sp100=${sp100(summary.signals, denominatorSpins).toFixed(2)}`,
+    `dd=${summary.maxDrawdown}`,
+  ].join(" ");
+}
+
+function tableKeys(events: readonly Event[]): string {
+  const keys = [...new Set(events.map((event) => `${event.tableId}/${event.tableType}/${event.assignmentLevel}`))];
+  if (keys.length === 0) return "-";
+  return keys.slice(0, 4).join("<br>");
+}
+
+function addLatest10SessionDetails(lines: string[], result: DatasetResult): void {
+  const latestSessions = result.sessions.slice(-10);
+  const sessionIndexById = new Map(result.sessions.map((session, index) => [session.id, index]));
+  lines.push("\n### Latest 10 Sessions Detail");
+  lines.push("| # | date | session | prior sessions used | spins post-200 | stable summary | intersection summary | signal table snapshots |");
+  lines.push("|---:|---|---|---:|---:|---:|---:|---|");
+  latestSessions.forEach((session, index) => {
+    const spins = eligibleSpins(session);
+    const stableRows = result.events.filter((event) => event.sessionId === session.id && event.strategyId === "stable-exact160-recent3");
+    const intersectionRows = result.events.filter((event) => event.sessionId === session.id && event.strategyId === "intersection160-zone");
+    const stableTables = tableKeys(stableRows);
+    const intersectionTables = tableKeys(intersectionRows);
+    lines.push(`| ${index + 1} | ${session.updatedAt.slice(0, 10)} | ${session.name} | ${sessionIndexById.get(session.id) ?? 0} | ${spins} | \`${fmtLatestSession(stableRows, spins)}\` | \`${fmtLatestSession(intersectionRows, spins)}\` | stable: ${stableTables}<br>intersection: ${intersectionTables} |`);
+  });
+}
+
+function signalKey(event: Event): string {
+  return `${event.sessionId}:${event.position}:${event.tableId}`;
+}
+
+function spinKey(sessionId: string, position: number): string {
+  return `${sessionId}:${position}`;
+}
+
+function hotOverlapped(event: Event): boolean {
+  return event.hotPick !== null && event.candidates.includes(event.hotPick);
+}
+
+function cloneForHotSingle(event: Event, strategyId: string): Event {
+  const hit = event.hotHit;
+  return {
+    ...event,
+    bet: 1,
+    candidates: event.hotPick === null ? [] : [event.hotPick],
+    family: "hot-overlap-single",
+    hit,
+    net: hit ? 35 : -1,
+    strategyId,
+  };
+}
+
+function hotOverlapRows(
+  sourceEvents: readonly Event[],
+  denominatorSpins: number,
+): Array<{ key: string; summary: Summary; denominatorSpins: number }> {
+  const rows: Array<{ key: string; summary: Summary; denominatorSpins: number }> = [];
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const all = sourceEvents.filter((event) => event.strategyId === strategyId);
+    const overlapped = all.filter(hotOverlapped);
+    const notOverlapped = all.filter((event) => !hotOverlapped(event));
+    const hotSingle = overlapped.map((event) => cloneForHotSingle(event, `${strategyId}+hot-single`));
+    rows.push({ key: `${strategyId} / original strategy`, summary: summarize(all), denominatorSpins });
+    rows.push({ key: `${strategyId} / hot-overlap single number`, summary: summarize(hotSingle), denominatorSpins });
+    rows.push({ key: `${strategyId} / strategy zone when hot overlaps`, summary: summarize(overlapped), denominatorSpins });
+    rows.push({ key: `${strategyId} / strategy zone without hot overlap`, summary: summarize(notOverlapped), denominatorSpins });
+  }
+  return rows;
+}
+
+function addHotOverlapReport(lines: string[], result: DatasetResult, sessionsById: ReadonlyMap<string, Session>): void {
+  const denominatorSpins = totalEligibleSpins(result.sessions);
+  const latestSessions = result.sessions.slice(-10);
+  const latestIds = new Set(latestSessions.map((session) => session.id));
+  const latestDenominator = totalEligibleSpins(latestSessions);
+  lines.push("\n### Hot Number Overlap With Focus Strategies");
+  lines.push("| slice | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const row of hotOverlapRows(result.events, denominatorSpins)) {
+    lines.push(`| ${row.key} | \`${fmtDeep(row.summary, row.denominatorSpins)}\` |`);
+  }
+
+  lines.push("\n### Latest 10 Hot Overlap");
+  lines.push("| slice | summary + SP100 |");
+  lines.push("|---|---:|");
+  const latestEvents = result.events.filter((event) => latestIds.has(event.sessionId));
+  for (const row of hotOverlapRows(latestEvents, latestDenominator)) {
+    lines.push(`| ${row.key} | \`${fmtDeep(row.summary, row.denominatorSpins)}\` |`);
+  }
+
+  const activeDenominator = (rows: readonly Event[]) => activeEligibleSpins(rows, sessionsById);
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const overlapped = result.events.filter((event) => event.strategyId === strategyId && hotOverlapped(event));
+    const singleRows = overlapped.map((event) => cloneForHotSingle(event, `${strategyId}+hot-single`));
+    addFocusTable(lines, `Hot Overlap Single By Hot Mode: ${strategyId}`, focusRows(singleRows, (event) => event.hotMode, activeDenominator), 10);
+    addFocusTable(lines, `Hot Overlap Strategy Zone By Table Type: ${strategyId}`, focusRows(overlapped, (event) => event.tableType, activeDenominator), 20);
+  }
+}
+
+function buildHotFilterEvents(result: DatasetResult): HotFilterEvent[] {
+  const stableBySpin = new Map<string, Event>();
+  const intersectionBySpin = new Map<string, Event>();
+  for (const event of result.events) {
+    if (event.strategyId === "stable-exact160-recent3") {
+      stableBySpin.set(spinKey(event.sessionId, event.position), event);
+    } else if (event.strategyId === "intersection160-zone") {
+      intersectionBySpin.set(spinKey(event.sessionId, event.position), event);
+    }
+  }
+
+  const rows: HotFilterEvent[] = [];
+  for (const session of result.sessions) {
+    for (const event of analyzeHotNumbers(session.numbers, ROI_START).events) {
+      if (event.position < ROI_START) continue;
+      const key = spinKey(session.id, event.position);
+      const stable = stableBySpin.get(key);
+      const intersection = intersectionBySpin.get(key);
+      rows.push({
+        bet: 1,
+        hit: event.hit,
+        intersectionOverlap: Boolean(intersection && intersection.candidates.includes(event.signal.number)),
+        mode: event.signal.mode,
+        net: event.hit ? 35 : -1,
+        number: event.signal.number,
+        position: event.position,
+        sessionId: session.id,
+        sessionUpdatedAt: session.updatedAt,
+        stableOverlap: Boolean(stable && stable.candidates.includes(event.signal.number)),
+      });
+    }
+  }
+  return rows;
+}
+
+function hotFilterRows(
+  sourceEvents: readonly HotFilterEvent[],
+  denominatorSpins: number,
+): Array<{ key: string; summary: Summary; denominatorSpins: number }> {
+  const stableOverlap = sourceEvents.filter((event) => event.stableOverlap);
+  const intersectionOverlap = sourceEvents.filter((event) => event.intersectionOverlap);
+  const anyOverlap = sourceEvents.filter((event) => event.stableOverlap || event.intersectionOverlap);
+  return [
+    { key: "hot original", summary: summarize(sourceEvents), denominatorSpins },
+    { key: "hot excluding stable-overlap", summary: summarize(sourceEvents.filter((event) => !event.stableOverlap)), denominatorSpins },
+    { key: "hot stable-overlap only", summary: summarize(stableOverlap), denominatorSpins },
+    { key: "hot excluding intersection-overlap", summary: summarize(sourceEvents.filter((event) => !event.intersectionOverlap)), denominatorSpins },
+    { key: "hot intersection-overlap only", summary: summarize(intersectionOverlap), denominatorSpins },
+    { key: "hot excluding any focus-overlap", summary: summarize(sourceEvents.filter((event) => !event.stableOverlap && !event.intersectionOverlap)), denominatorSpins },
+    { key: "hot any focus-overlap only", summary: summarize(anyOverlap), denominatorSpins },
+  ];
+}
+
+function hotFilterRowsByMode(
+  sourceEvents: readonly HotFilterEvent[],
+  denominatorSpins: number,
+): Array<{ key: string; summary: Summary; denominatorSpins: number }> {
+  const slices: Array<{ key: string; rows: HotFilterEvent[] }> = [];
+  for (const [mode, rows] of groupBy(sourceEvents, (event) => event.mode).entries()) {
+    slices.push({ key: `original / ${mode}`, rows });
+    slices.push({ key: `exclude stable / ${mode}`, rows: rows.filter((event) => !event.stableOverlap) });
+    slices.push({ key: `exclude intersection / ${mode}`, rows: rows.filter((event) => !event.intersectionOverlap) });
+  }
+  return slices
+    .map((slice) => ({ key: slice.key, summary: summarize(slice.rows), denominatorSpins }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+}
+
+function addHotFilterReport(lines: string[], result: DatasetResult): void {
+  const denominatorSpins = totalEligibleSpins(result.sessions);
+  const hotEvents = buildHotFilterEvents(result);
+  lines.push("\n### Hot Number Reverse Filter View");
+  lines.push("| slice | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const row of hotFilterRows(hotEvents, denominatorSpins)) {
+    lines.push(`| ${row.key} | \`${fmtDeep(row.summary, row.denominatorSpins)}\` |`);
+  }
+
+  const latestSessions = result.sessions.slice(-10);
+  const latestIds = new Set(latestSessions.map((session) => session.id));
+  const latestDenominator = totalEligibleSpins(latestSessions);
+  const latestHotEvents = hotEvents.filter((event) => latestIds.has(event.sessionId));
+  lines.push("\n### Latest 10 Hot Reverse Filter View");
+  lines.push("| slice | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const row of hotFilterRows(latestHotEvents, latestDenominator)) {
+    lines.push(`| ${row.key} | \`${fmtDeep(row.summary, row.denominatorSpins)}\` |`);
+  }
+
+  lines.push("\n### Hot Reverse Filter By Mode");
+  lines.push("| slice | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const row of hotFilterRowsByMode(hotEvents, denominatorSpins)) {
+    lines.push(`| ${row.key} | \`${fmtDeep(row.summary, row.denominatorSpins)}\` |`);
+  }
+}
+
+function addFocusOverlap(lines: string[], result: DatasetResult, sessionsById: ReadonlyMap<string, Session>): void {
+  const stableEvents = result.events.filter((event) => event.strategyId === "stable-exact160-recent3");
+  const intersectionEvents = result.events.filter((event) => event.strategyId === "intersection160-zone");
+  const intersectionByKey = new Map(intersectionEvents.map((event) => [signalKey(event), event]));
+  const stableByKey = new Map(stableEvents.map((event) => [signalKey(event), event]));
+  const stableBoth = stableEvents.filter((event) => intersectionByKey.has(signalKey(event)));
+  const stableOnly = stableEvents.filter((event) => !intersectionByKey.has(signalKey(event)));
+  const intersectionBoth = intersectionEvents.filter((event) => stableByKey.has(signalKey(event)));
+  const intersectionOnly = intersectionEvents.filter((event) => !stableByKey.has(signalKey(event)));
+  const activeDenominator = (rows: readonly Event[]) => activeEligibleSpins(rows, sessionsById);
+  const extraRingHits = intersectionBoth.filter((event) => {
+    const stable = stableByKey.get(signalKey(event));
+    return stable && event.hit && !stable.hit;
+  }).length;
+
+  lines.push("\n### Stable vs Intersection Same-Spin Overlap");
+  lines.push("| slice | summary + SP100 |");
+  lines.push("|---|---:|");
+  for (const row of [
+    { key: "stable in both spins", rows: stableBoth },
+    { key: "stable only", rows: stableOnly },
+    { key: "intersection in both spins", rows: intersectionBoth },
+    { key: "intersection only", rows: intersectionOnly },
+  ]) {
+    lines.push(`| ${row.key} | \`${fmtDeep(summarize(row.rows), activeDenominator(row.rows))}\` |`);
+  }
+  lines.push(`\n- intersection extra-ring hits when stable missed on the same spin: ${extraRingHits}`);
+}
+
+function addFocusedDeepDiveReport(lines: string[], results: readonly DatasetResult[]): void {
+  lines.push("# Table Strategy Focused Deep Dive");
+  lines.push("");
+  lines.push("Focus strategies: `stable-exact160-recent3` and `intersection160-zone`.");
+  lines.push("");
+  lines.push("No-future rule: each session uses only prior sessions to build auto table state / TableProfile / table card; each signal uses only the current prefix before the result spin.");
+  lines.push("");
+  lines.push("SP100: overall/year/latest10 use all eligible post-200 spins in that scope. Other diagnostic splits use active-session eligible spins for that split.");
+
+  for (const result of results) {
+    const sessionsById = sessionMap(result.sessions);
+    lines.push(`\n## Dataset: ${path.basename(result.filePath)}`);
+    lines.push(`- sessions: ${result.sessions.length}`);
+    lines.push(`- eligible post-200 spins: ${totalEligibleSpins(result.sessions)}`);
+    addFocusStrategyOverview(lines, result);
+    addLatest10Focus(lines, result);
+    addLatest10SessionDetails(lines, result);
+    addFocusYearTables(lines, result);
+    addFocusOverlap(lines, result, sessionsById);
+    addHotOverlapReport(lines, result, sessionsById);
+    addHotFilterReport(lines, result);
+    addFocusBreakdowns(lines, result, sessionsById);
+  }
+
+  lines.push("\n## Cross-Dataset Focus Summary");
+  lines.push("| strategy | data_2026.6.11 | history_data | minROI | max top10 signal share |");
+  lines.push("|---|---:|---:|---:|---:|");
+  const [dataResult, historyResult] = results;
+  for (const strategyId of FOCUS_STRATEGY_IDS) {
+    const dataEvents = dataResult.events.filter((event) => event.strategyId === strategyId);
+    const historyEvents = historyResult.events.filter((event) => event.strategyId === strategyId);
+    const dataSummary = summarize(dataEvents);
+    const historySummary = summarize(historyEvents);
+    const dataDenom = totalEligibleSpins(dataResult.sessions);
+    const historyDenom = totalEligibleSpins(historyResult.sessions);
+    lines.push(`| ${strategyId} | \`${fmtDeep(dataSummary, dataDenom)}\` | \`${fmtDeep(historySummary, historyDenom)}\` | ${Math.min(dataSummary.roi, historySummary.roi).toFixed(1)}% | ${Math.max(dataSummary.top10SignalShare, historySummary.top10SignalShare).toFixed(1)}% |`);
   }
 }
 
@@ -796,6 +1273,12 @@ function main(): void {
   const outPath = path.join(OUT_DIR, "table-strategy-cards.md");
   fs.writeFileSync(outPath, `${lines.join("\n")}\n`, "utf8");
   console.log(`Wrote ${path.relative(ROOT, outPath)}`);
+
+  const focusLines: string[] = [];
+  addFocusedDeepDiveReport(focusLines, results);
+  const focusOutPath = path.join(OUT_DIR, "table-strategy-focused-deep-dive.md");
+  fs.writeFileSync(focusOutPath, `${focusLines.join("\n")}\n`, "utf8");
+  console.log(`Wrote ${path.relative(ROOT, focusOutPath)}`);
 }
 
 main();

@@ -49,7 +49,7 @@ const MISMATCH_TOLERANCE = 1;      // max 1 mismatch per 10 in overlap region
 const MIN_MATCH_RATE = 0.97;       // require 97% match rate overall
 
 /**
- * Check if two numbers match (fuzzy: allow off-by-1 for possible OCR errors).
+ * Check if two numbers match.
  */
 function fuzzyMatch(a: number, b: number): boolean {
   return a === b;
