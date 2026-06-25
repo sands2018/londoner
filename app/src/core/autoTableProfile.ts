@@ -88,8 +88,9 @@ function nextAutoTableId(index: number): string {
 }
 
 function autoTableName(tableId: string): string {
-  const suffix = tableId.slice(AUTO_TABLE_PREFIX.length).replace(/^0+/, "") || tableId.slice(AUTO_TABLE_PREFIX.length);
-  return `自动画像${suffix}`;
+  const suffix = tableId.slice(AUTO_TABLE_PREFIX.length).replace(/\D/g, "");
+  const index = Number.parseInt(suffix, 10);
+  return `自-${Number.isFinite(index) ? String(index).padStart(3, "0") : "000"}`;
 }
 
 function makeTables(

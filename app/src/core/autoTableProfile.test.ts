@@ -89,8 +89,8 @@ describe("auto table profile", () => {
     expect(state.assignmentsById.get("a")?.effectiveTableId).toBe("auto_01");
     expect(state.assignmentsById.get("b")?.effectiveTableId).toBe("auto_02");
     expect(state.tables.filter((table) => table.id.startsWith("auto_")).map((table) => table.name)).toEqual([
-      "自动画像1",
-      "自动画像2",
+      "自-001",
+      "自-002",
     ]);
   });
 

@@ -1558,8 +1558,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .prediction-desc { color: #8a8a8a; }
-.app-shell.theme-dark .prediction-body,
-.app-shell.theme-dark .overview-pane { background: #121212; align-content: start; }
+.app-shell.theme-dark .prediction-body { background: #121212; align-content: start; }
 .app-shell.theme-dark .prediction-empty { color: #5a5a5a; }
 
 .app-shell.theme-dark .prediction-roi-table { background: #1b1b1b; border-color: #38342e; }
@@ -1572,36 +1571,6 @@ body:has(.app-shell.theme-dark) {
   background: #24211d;
   border-top-color: #4a4034;
 }
-
-.app-shell.theme-dark .overview-card { background: #1b1b1b; border-color: #38342e; }
-.app-shell.theme-dark .overview-card:active { background: #252525; }
-.app-shell.theme-dark .overview-card-title { color: #d4d4d4; }
-
-/* overview card color variants — keep distinct hues, dim for dark */
-.app-shell.theme-dark .overview-rhythm .overview-card-title { color: #8aaa8a; }
-.app-shell.theme-dark .overview-rhythm .prediction-roi-table { border-color: #2a382a; }
-.app-shell.theme-dark .overview-rhythm .prediction-roi-row { border-bottom-color: #223022; }
-.app-shell.theme-dark .overview-rhythm .prediction-roi-row span { color: #7a8a7a; }
-
-.app-shell.theme-dark .overview-chase6 .overview-card-title { color: #b8a060; }
-.app-shell.theme-dark .overview-chase6 .prediction-roi-table { border-color: #38342e; }
-.app-shell.theme-dark .overview-chase6 .prediction-roi-row { border-bottom-color: #2a2822; }
-.app-shell.theme-dark .overview-chase6 .prediction-roi-row span { color: #8a8070; }
-
-.app-shell.theme-dark .overview-quality124 .overview-card-title { color: #b88a98; }
-.app-shell.theme-dark .overview-quality124 .prediction-roi-table { border-color: #382a30; }
-.app-shell.theme-dark .overview-quality124 .prediction-roi-row { border-bottom-color: #2a2226; }
-.app-shell.theme-dark .overview-quality124 .prediction-roi-row span { color: #8a7880; }
-
-.app-shell.theme-dark .overview-preferred .overview-card-title { color: #b89070; }
-.app-shell.theme-dark .overview-preferred .prediction-roi-table { border-color: #38322a; }
-.app-shell.theme-dark .overview-preferred .prediction-roi-row { border-bottom-color: #2a2620; }
-.app-shell.theme-dark .overview-preferred .prediction-roi-row span { color: #8a7a6a; }
-
-.app-shell.theme-dark .overview-repeat .overview-card-title { color: #9a8ab8; }
-.app-shell.theme-dark .overview-repeat .prediction-roi-table { border-color: #302a38; }
-.app-shell.theme-dark .overview-repeat .prediction-roi-row { border-bottom-color: #262230; }
-.app-shell.theme-dark .overview-repeat .prediction-roi-row span { color: #7a708a; }
 
 .app-shell.theme-dark .prediction-signal-item { border-color: #38342e; }
 .app-shell.theme-dark .prediction-signal-item .prediction-chase { background: #1e2224; }
@@ -5602,7 +5571,7 @@ body:has(.app-shell.theme-dark) {
 .simulator-chip-picker .simulator-chip {
   height: 36px;
   max-height: 36px;
-  min-height: 36px;
+  min-height: 32px;
   min-width: 36px;
   width: 36px;
 }
@@ -5901,7 +5870,7 @@ body:has(.app-shell.theme-dark) {
 .simulator-chip {
   font-size: 11px;
   max-height: 42px;
-  min-height: 36px;
+  min-height: 32px;
   min-width: 36px;
 }
 
@@ -8302,7 +8271,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   display: grid;
   gap: 4px;
   grid-template-columns: 21% 20% 20% 13% 26%;
-  min-height: 36px;
+  min-height: 32px;
   padding: 2px 10px;
   text-align: center;
 }
@@ -8326,7 +8295,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 .hot-benchmark-tabs,
 .quality124-benchmark-tabs,
 .chase6-benchmark-tabs {
-  margin-top: 0;
+  margin-top: 10px;
 }
 
 .hot-benchmark-tabs button,
@@ -8339,7 +8308,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .hot-recent10-panel {
   display: grid;
-  gap: 8px;
+  gap: 4px;
 }
 
 .hot-recent10-error {
@@ -8395,6 +8364,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .hot-recent10-refresh {
   justify-self: center;
+  margin: 5px 0;
   min-width: 96px;
 }
 
@@ -8406,15 +8376,48 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 .hot-detail-filter-toggles {
   align-items: center;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
   justify-content: center;
-  padding: 0 2px 4px;
+  padding: 0 2px;
 }
 
 .quality124-detail-tier-toggles {
   align-items: center;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
   justify-content: center;
-  padding: 0 2px 4px;
+  padding: 0 2px;
+}
+
+.detail-master-toggle-row {
+  align-items: center;
+  color: #6f5a45;
+  display: flex;
+  font-size: 13px;
+  font-weight: var(--weight-ui);
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0;
+  min-height: 24px;
+}
+
+.detail-master-toggle-row .signal-toggle {
+  flex: 0 0 auto;
+}
+
+.smart-entry-mode-toggle {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin: 0 0 6px;
+  padding: 6px 10px;
+}
+
+.app-shell.theme-dark .smart-entry-mode-toggle {
+  background: transparent;
+  border-color: transparent;
 }
 
 .quality124-tier-filter-toggles {
@@ -8453,19 +8456,20 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .prediction-roi-row.hot-table-feature-row {
-  grid-template-columns: 20% 14% 34% 32%;
+  grid-template-columns: 24% 34% 42%;
+}
+
+.prediction-roi-row.hot-table-feature-title-row {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.hot-table-feature-table {
+  margin-top: 7px;
 }
 
 .prediction-roi-row:last-child {
   border-bottom: 0;
-}
-
-.overview-card .prediction-roi-row {
-  grid-template-columns: 24% 22% 22% 32%;
-}
-
-.overview-card.overview-chase6 .prediction-roi-row {
-  grid-template-columns: 32% 22% 22% 24%;
 }
 
 .prediction-roi-row span {
@@ -8489,39 +8493,6 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   color: #8a6b5b;
   font-size: 14px;
   font-weight: var(--weight-ui);
-}
-
-.overview-cards {
-  display: grid;
-  gap: 6px;
-}
-
-.overview-pane-repeat .overview-other-card,
-.overview-pane-other .overview-repeat-card {
-  display: none;
-}
-
-.overview-card {
-  background: #ffffff;
-  border: 1px solid #d8d2c6;
-  border-radius: 8px;
-  cursor: pointer;
-  display: grid;
-  gap: 2px;
-  padding: 4px 10px 5px;
-  touch-action: manipulation;
-}
-
-.overview-card:active {
-  background: #f5f2ee;
-}
-
-.overview-card-title {
-  align-items: center;
-  display: flex;
-  font-size: 14px;
-  font-weight: var(--weight-emphasis);
-  justify-content: space-between;
 }
 
 .signal-toggle {
@@ -8674,69 +8645,6 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   font-weight: var(--weight-ui);
 }
 
-.overview-rhythm {
-  background: #eef4ea;
-  border-color: #e0e8dc;
-}
-.overview-rhythm .overview-card-title { color: #4a6040; }
-.overview-rhythm .prediction-roi-table { border-color: #e0e8dc; }
-.overview-rhythm .prediction-roi-row { border-bottom-color: #d8e4d4; }
-.overview-rhythm .prediction-roi-row span { color: #6b7a65; }
-
-.overview-chase6 {
-  background: #f8f4ea;
-  border-color: #f2e8da;
-}
-.overview-chase6 .overview-card-title { color: #6b5a38; }
-.overview-chase6 .prediction-roi-table { border-color: #f2e8da; }
-.overview-chase6 .prediction-roi-row { border-bottom-color: #eee4d4; }
-.overview-chase6 .prediction-roi-row span { color: #7a6b55; }
-
-.overview-chase3 {
-  background: #f4f2f2;
-  border-color: #ece4e4;
-}
-.overview-chase3 .overview-card-title { color: #7a4a48; }
-.overview-chase3 .prediction-roi-table { border-color: #ece4e4; }
-.overview-chase3 .prediction-roi-row { border-bottom-color: #e8e0e0; }
-.overview-chase3 .prediction-roi-row span { color: #7a6b65; }
-
-.overview-preferred {
-  background: #ede0d2;
-  border-color: #e3d4c2;
-}
-.overview-preferred .overview-card-title { color: #5c3a28; }
-.overview-preferred .prediction-roi-table { border-color: #e3d4c2; }
-.overview-preferred .prediction-roi-row { border-bottom-color: #ede0d2; }
-.overview-preferred .prediction-roi-row span { color: #7a6858; }
-
-.overview-quality124 {
-  background: #f8edf0;
-  border-color: #e5c7cf;
-}
-.overview-quality124 .overview-card-title { color: #744a55; }
-.overview-quality124 .prediction-roi-table { border-color: #e5c7cf; }
-.overview-quality124 .prediction-roi-row { border-bottom-color: #f1dce2; }
-.overview-quality124 .prediction-roi-row span { color: #7c6168; }
-
-.overview-repeat {
-  background: #e5dcec;
-  border-color: #d6cee0;
-}
-.overview-repeat .overview-card-title { color: #51406a; }
-.overview-repeat .prediction-roi-table { border-color: #d6cee0; }
-.overview-repeat .prediction-roi-row { border-bottom-color: #e5dcec; }
-.overview-repeat .prediction-roi-row span { color: #685a78; }
-
-.overview-short-repeat {
-  background: #eddce2;
-  border-color: #e4d3d9;
-}
-.overview-short-repeat .overview-card-title { color: #64425a; }
-.overview-short-repeat .prediction-roi-table { border-color: #e4d3d9; }
-.overview-short-repeat .prediction-roi-row { border-bottom-color: #eddce2; }
-.overview-short-repeat .prediction-roi-row span { color: #6e5e66; }
-
 .prediction-screen .modal-head {
   align-items: center;
   background: var(--window-title-background);
@@ -8761,7 +8669,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .prediction-body {
   display: grid;
-  gap: 10px;
+  gap: 3px;
   overflow: auto;
   padding: 14px 18px 24px;
 }
@@ -9864,16 +9772,6 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   color: #b89060;
 }
 
-/* Overview card: 热门 */
-.overview-card.overview-hot {
-  background: #f4ece0;
-  border-color: #e0c8b0;
-}
-
-.overview-hot .overview-card-title span:first-child {
-  color: #c07040;
-}
-
 .repeat-signal-item:active {
   background: #d8cde4;
 }
@@ -10028,7 +9926,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   display: grid;
   gap: 4px;
   grid-template-columns: repeat(5, 20%);
-  min-height: 32px;
+  min-height: 30px;
   padding: 3px 12px;
   text-align: center;
 }

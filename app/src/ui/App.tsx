@@ -835,8 +835,10 @@ export function App() {
   const [statsTab, setStatsTab] = useState("game");
   const [statsGroupTab, setStatsGroupTab] = useState(() => localStorage.getItem("londoner.statsGroupTab") || "colrow");
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
-  const [predictionTab, setPredictionTab] = useState(() => localStorage.getItem("londoner.predictionTab") || "overview");
-  const [predictionOverviewTab, setPredictionOverviewTab] = useState(() => localStorage.getItem("londoner.predictionOverviewTab") || "repeat");
+  const [predictionTab, setPredictionTab] = useState(() => {
+    const saved = localStorage.getItem("londoner.predictionTab");
+    return saved && saved !== "overview" ? saved : "hotNumber";
+  });
   const [hotBenchmarkTab, setHotBenchmarkTab] = useState<HotBenchmarkTab>(() => {
     const saved = localStorage.getItem("londoner.hotBenchmarkTab");
     return saved === "history" || saved === "recent10" ? saved : "current";
@@ -1184,6 +1186,7 @@ export function App() {
       : hotTableMatch.profile
         ? `${hotTableMatch.profile.tableName} · 实时匹配`
         : "未识别 · 实时匹配";
+  const hotTableFeatureShortLabel = hotTableFeatureLabel.split(" · ")[0] || hotTableFeatureLabel;
   const hotCalibrationVisibility = useMemo<Record<HotTableCalibrationAction, boolean>>(() => ({
     enhance: showHotCalibrationEnhance,
     baseline: showHotCalibrationBaseline,
@@ -1341,7 +1344,7 @@ export function App() {
   const shortRepeatRoi = disabledRoi;
   const shortRepeatRoiFrom201 = disabledRoi;
 
-  // 综合ROI: 按总览配置汇总所有已启用策略
+  // 综合ROI: 按智能开关配置汇总所有已启用策略
   const combinedRoi = useMemo(() => {
     if (!canUseSmartSignals) {
       return { bet: 0, win: 0, net: 0 };
@@ -1838,23 +1841,23 @@ export function App() {
   }, [numbers.length, simulatorBets.length, simulatorLog, simulatorTotalStake]);
 
   useEffect(() => {
-    if (predictionTab === "cold") {
-      setPredictionTab("overview");
-      localStorage.setItem("londoner.predictionTab", "overview");
+    if (predictionTab === "cold" || predictionTab === "overview") {
+      setPredictionTab("hotNumber");
+      localStorage.setItem("londoner.predictionTab", "hotNumber");
     }
   }, [predictionTab]);
 
   useEffect(() => {
     if (!canUsePreferredNumber && predictionTab === "preferredNumber") {
-      setPredictionTab("overview");
-      localStorage.setItem("londoner.predictionTab", "overview");
+      setPredictionTab("hotNumber");
+      localStorage.setItem("londoner.predictionTab", "hotNumber");
     }
   }, [canUsePreferredNumber, predictionTab]);
 
   useEffect(() => {
     if (!canUseQuality124 && predictionTab === "quality124") {
-      setPredictionTab("overview");
-      localStorage.setItem("londoner.predictionTab", "overview");
+      setPredictionTab("hotNumber");
+      localStorage.setItem("londoner.predictionTab", "hotNumber");
     }
   }, [canUseQuality124, predictionTab]);
 
@@ -1989,6 +1992,10 @@ export function App() {
 
   function openPredictionWindow() {
     if (!canUseSmartSignals) return;
+    if (predictionTab === "overview") {
+      setPredictionTab("hotNumber");
+      localStorage.setItem("londoner.predictionTab", "hotNumber");
+    }
     setPredictionWindowOpen(true);
   }
 
@@ -4862,8 +4869,7 @@ export function App() {
           <div
             className="hot-status-main"
             onClick={() => {
-              if (showHotNumber) { setPredictionTab("hotNumber"); }
-              else { setPredictionTab("overview"); }
+              setPredictionTab("hotNumber");
               openPredictionWindow();
             }}
             role="button"
@@ -6060,7 +6066,6 @@ export function App() {
               <button className="close-button" onClick={() => setPredictionWindowOpen(false)} type="button">x</button>
             </div>
             <div className="tabs tabs-top tabs-solid">
-              <button className={predictionTab === "overview" ? "selected" : ""} onClick={() => { setPredictionTab("overview"); localStorage.setItem("londoner.predictionTab", "overview"); }} type="button">总览</button>
               <button className={predictionTab === "hotNumber" ? "selected" : ""} onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} type="button">热门</button>
               {canUseQuality124 ? (
                 <button className={predictionTab === "quality124" ? "selected" : ""} onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} type="button">124EXT</button>
@@ -6071,143 +6076,11 @@ export function App() {
               ) : null}
             </div>
             <div className="prediction-body">
-              {predictionTab === "overview" ? (
-                <div className={`overview-pane overview-pane-${predictionOverviewTab}`}>
-                  <div className="tabs tabs-top tabs-solid tabs-full" aria-label="总览分类" role="tablist">
-                    {[
-                      ["repeat", "单号"],
-                      ["other", "行组"],
-                    ].map(([key, label]) => (
-                      <button
-                        aria-selected={predictionOverviewTab === key}
-                        className={predictionOverviewTab === key ? "selected" : ""}
-                        key={key}
-                        onClick={() => { setPredictionOverviewTab(key); localStorage.setItem("londoner.predictionOverviewTab", key); }}
-                        role="tab"
-                        type="button"
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="repeat-filter-panel" style={{ margin: "0 0 6px", padding: "6px 10px", fontSize: 13 }}>
-                    <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
-                    <span>前200个数字为历史号码</span>
-                  </div>
-                  <div className="overview-cards">
-                  {canUseQuality124 ? (
-                  <div className="overview-card overview-quality124 overview-other-card" onClick={() => { setPredictionTab("quality124"); localStorage.setItem("londoner.predictionTab", "quality124"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>124EXT</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{quality124Roi.signals}</strong><strong>{quality124Roi.bet}</strong><strong>{quality124Roi.win}</strong>
-                        <strong className="roi-value" style={{ color: quality124Roi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124Roi.roi >= 0 ? "+" : ""}{quality124Roi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">200后</span><span>{quality124RoiFrom201.bet}</span><span>{quality124RoiFrom201.win}</span>
-                        <strong className="roi-value" style={{ color: quality124RoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{quality124RoiFrom201.roi >= 0 ? "+" : ""}{quality124RoiFrom201.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
-                  ) : null}
-                  <div className="overview-card overview-chase6 overview-other-card" onClick={() => { setPredictionTab("chase6"); localStorage.setItem("londoner.predictionTab", "chase6"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>追6</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${chase6Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase6Filter === "全关" ? "全部" : "全关"; setChase6Filter(v); localStorage.setItem("londoner.chase6Filter", v); }} type="button" />
-                        {chase6Filter !== "全关" ? (
-                          <span className="signal-tier-opts">
-                            {[
-                              { value: "全部", label: "全部" },
-                              { value: "强", label: "强(包括波浪强)" },
-                              { value: "波浪强", label: "波浪强" },
-                            ].map((tier) => (
-                              <button
-                                className={`signal-tier-btn${chase6Filter === tier.value ? " active" : ""}`}
-                                key={tier.value}
-                                onClick={() => { setChase6Filter(tier.value); localStorage.setItem("londoner.chase6Filter", tier.value); }}
-                                type="button"
-                              >
-                                {tier.label}
-                              </button>
-                            ))}
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{chaseSixRoi.bet}</strong><strong>{chaseSixRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: chaseSixRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{chaseSixRoi.roi >= 0 ? "+" : ""}{chaseSixRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">强信号 ★</span><span>{cs.strongRoi.bet}</span><span>{cs.strongRoi.win}</span>
-                        <strong className="roi-value" style={{ color: cs.strongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.strongRoi.roi >= 0 ? "+" : ""}{cs.strongRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">波浪过滤 ★★</span><span>{cs.waveStrongRoi.bet}</span><span>{cs.waveStrongRoi.win}</span>
-                        <strong className="roi-value" style={{ color: cs.waveStrongRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{cs.waveStrongRoi.roi >= 0 ? "+" : ""}{cs.waveStrongRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="overview-card overview-hot overview-repeat-card" onClick={() => { setPredictionTab("hotNumber"); localStorage.setItem("londoner.predictionTab", "hotNumber"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>热门</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{hotNumberRoi.signals}</strong><strong>{hotNumberRoi.bet}</strong><strong>{hotNumberRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: hotNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoi.roi >= 0 ? "+" : ""}{hotNumberRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span>
-                        <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
-                      </div>
-                      {hotNumberSignal ? (
-                        <div className="prediction-roi-row">
-                          <span className="prediction-roi-subheader">当前({hotNumberSignal.mode === "short" ? "短热" : "长热"})</span><span>{hotNumberSignal.number}</span><span>148:{hotNumberSignal.count148}</span><span>{hotNumberSignal.seg1}/{hotNumberSignal.seg2}/{hotNumberSignal.seg3}</span>
-                        </div>
-                      ) : null}
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">校准</span><span>{formatHotTableBadge(hotTableCalibration)}</span><span>{formatHotTableName(hotTableSupport)}</span><span>{formatHotTableCalibrationMetric(hotTableCalibration, hotTableSupport)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {canUsePreferredNumber ? (
-                  <div className="overview-card overview-preferred overview-repeat-card" onClick={() => { setPredictionTab("preferredNumber"); localStorage.setItem("londoner.predictionTab", "preferredNumber"); }} role="button" tabIndex={0}>
-                    <div className="overview-card-title">
-                      <span>优选号</span>
-                      <span className="signal-tier-group" onClick={(e) => e.stopPropagation()}>
-                        <button className={`signal-toggle${showPreferredNumber ? " on" : ""}`} onClick={() => { const v = !showPreferredNumber; setShowPreferredNumber(v); localStorage.setItem("londoner.showPreferredNumber", v ? "1" : "0"); }} type="button" />
-                      </span>
-                    </div>
-                    <div className="prediction-roi-table" style={{ margin: 0 }}>
-                      <div className="prediction-roi-row prediction-roi-header"><span>数据量</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
-                      <div className="prediction-roi-row">
-                        <strong>{numbers.length}</strong><strong>{preferredNumberRoi.bet}</strong><strong>{preferredNumberRoi.win}</strong>
-                        <strong className="roi-value" style={{ color: preferredNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoi.roi >= 0 ? "+" : ""}{preferredNumberRoi.roi.toFixed(1)}%</strong>
-                      </div>
-                      <div className="prediction-roi-row">
-                        <span className="prediction-roi-subheader">200后</span><span>{preferredNumberRoiFrom201.bet}</span><span>{preferredNumberRoiFrom201.win}</span>
-                        <strong className="roi-value" style={{ color: preferredNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{preferredNumberRoiFrom201.roi >= 0 ? "+" : ""}{preferredNumberRoiFrom201.roi.toFixed(1)}%</strong>
-                      </div>
-                    </div>
-                  </div>
-                  ) : null}
-                  </div>
-                </div>
-              ) : predictionTab === "quality124" && canUseQuality124 ? (
+              <div className="repeat-filter-panel smart-entry-mode-toggle">
+                <button className={`signal-toggle${entryMode200 ? " on" : ""}`} onClick={() => { const v = !entryMode200; setEntryMode200(v); localStorage.setItem("londoner.entryMode200", v ? "1" : "0"); }} type="button" />
+                <span>前200个数字为历史号码</span>
+              </div>
+              {predictionTab === "quality124" && canUseQuality124 ? (
                 <>
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>ROI</span></div>
@@ -6370,6 +6243,10 @@ export function App() {
                     </div>
                   )}
                   <div className="quality124-detail-tier-toggles">
+                    <div className="detail-master-toggle-row">
+                      <span>124EXT</span>
+                      <button className={`signal-toggle${showQuality124 ? " on" : ""}`} onClick={() => { const v = !showQuality124; setShowQuality124(v); localStorage.setItem("londoner.showQuality124", v ? "1" : "0"); }} type="button" />
+                    </div>
                     <span className="quality124-tier-filter-toggles">
                       {QUALITY_124_TIER_ORDER.map((tier) => {
                         const meta = QUALITY_124_TIER_META[tier];
@@ -6418,6 +6295,12 @@ export function App() {
                       <strong className="detail-stats-label">优选号</strong>
                       <span>{preferredNumberRoi.signals}</span><span>{preferredNumberRoi.hits}</span><span>{preferredNumberRoi.signals - preferredNumberRoi.hits}</span>
                       <span>{preferredNumberRoi.signals > 0 ? `${(preferredNumberRoi.hits / preferredNumberRoi.signals * 100).toFixed(1)}%` : "0.0%"}</span>
+                    </div>
+                  </div>
+                  <div className="hot-detail-filter-toggles">
+                    <div className="detail-master-toggle-row">
+                      <span>优选号</span>
+                      <button className={`signal-toggle${showPreferredNumber ? " on" : ""}`} onClick={() => { const v = !showPreferredNumber; setShowPreferredNumber(v); localStorage.setItem("londoner.showPreferredNumber", v ? "1" : "0"); }} type="button" />
                     </div>
                   </div>
                 </>
@@ -6570,6 +6453,28 @@ export function App() {
                       </button>
                     </div>
                   )}
+                  <div className="hot-detail-filter-toggles">
+                    <div className="detail-master-toggle-row">
+                      <span>追6</span>
+                      <button className={`signal-toggle${chase6Filter !== "全关" ? " on" : ""}`} onClick={() => { const v = chase6Filter === "全关" ? "全部" : "全关"; setChase6Filter(v); localStorage.setItem("londoner.chase6Filter", v); }} type="button" />
+                    </div>
+                    <span className="hot-table-filter-toggles">
+                      {chase6Filter !== "全关" ? [
+                        { value: "全部", label: "全部" },
+                        { value: "强", label: "强(包括波浪强)" },
+                        { value: "波浪强", label: "波浪强" },
+                      ].map((tier) => (
+                        <button
+                          className={chase6Filter === tier.value ? "on" : ""}
+                          key={tier.value}
+                          onClick={() => { setChase6Filter(tier.value); localStorage.setItem("londoner.chase6Filter", tier.value); }}
+                          type="button"
+                        >
+                          {tier.label}
+                        </button>
+                      )) : null}
+                    </span>
+                  </div>
                 </>
               ) : predictionTab === "hotNumber" ? (
                 <>
@@ -6730,22 +6635,24 @@ export function App() {
                       </button>
                     </div>
                   )}
-                  <div className="prediction-roi-table">
-                    <div className="prediction-roi-row prediction-roi-header hot-table-feature-row"><span>本桌特征</span><span>匹配</span><span>桌号</span><span>数据</span></div>
+                  <div className="prediction-roi-table hot-table-feature-table">
+                    <div className="prediction-roi-row prediction-roi-header hot-table-feature-title-row"><span>本桌特征</span></div>
                     <div className="prediction-roi-row hot-table-feature-row">
-                      <span className="prediction-roi-subheader">桌面画像</span>
+                      <span>{hotTableFeatureShortLabel}</span>
                       <strong>{formatTableMatchLevel(hotTableMatch.level)}</strong>
-                      <span>{hotTableFeatureLabel}</span>
                       <span>{formatTableMatchMetric(hotTableMatch)}</span>
                     </div>
                     <div className="prediction-roi-row hot-table-feature-row">
                       <span className="prediction-roi-subheader">画像样本</span>
                       <span>{hotTableMatch.profile ? `${hotTableMatch.profile.sessionCount}局` : "-"}</span>
-                      <span>{hotTableMatch.profile?.tableName ?? "-"}</span>
                       <span>{hotTableMatch.profile ? `${hotTableMatch.profile.totalNumbers}口` : "-"}</span>
                     </div>
                   </div>
                   <div className="hot-detail-filter-toggles">
+                    <div className="detail-master-toggle-row">
+                      <span>热门</span>
+                      <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
+                    </div>
                     <span className="hot-table-filter-toggles">
                       <button className={showHotCalibrationEnhance ? "on" : ""} onClick={() => { const v = !showHotCalibrationEnhance; setShowHotCalibrationEnhance(v); localStorage.setItem("londoner.showHotCalibrationEnhance", v ? "1" : "0"); }} type="button">增强</button>
                       <button className={showHotCalibrationBaseline ? "on" : ""} onClick={() => { const v = !showHotCalibrationBaseline; setShowHotCalibrationBaseline(v); localStorage.setItem("londoner.showHotCalibrationBaseline", v ? "1" : "0"); }} type="button">原始</button>
@@ -8254,6 +8161,18 @@ function formatTableShortName(label: string | undefined): string {
   return parts[parts.length - 1] || label;
 }
 
+function formatAutoTableShortName(tableIdOrLabel: string | undefined): string {
+  if (!tableIdOrLabel) return "";
+  const label = formatTableShortName(tableIdOrLabel);
+  const autoIdMatch = label.match(/^auto_(\d+)$/i);
+  if (autoIdMatch) return `自-${autoIdMatch[1].padStart(3, "0")}`;
+  const shortMatch = label.match(/^自[-:：]?(\d+)$/);
+  if (shortMatch) return `自-${shortMatch[1].padStart(3, "0")}`;
+  const legacyMatch = label.match(/^自动画像(\d+)$/);
+  if (legacyMatch) return `自-${legacyMatch[1].padStart(3, "0")}`;
+  return label;
+}
+
 function formatSessionTableLabel(
   session: SavedSession,
   assignment: TableAssignment | undefined,
@@ -8264,7 +8183,8 @@ function formatSessionTableLabel(
     return `人:${formatTableShortName(manualLabelById.get(session.tableId)) || tableNameById.get(session.tableId) || "已归桌"}`;
   }
   if (assignment?.source === "auto" && assignment.effectiveTableId) {
-    return `自:${formatTableShortName(tableNameById.get(assignment.effectiveTableId)) || assignment.effectiveTableId}`;
+    return formatAutoTableShortName(tableNameById.get(assignment.effectiveTableId))
+      || formatAutoTableShortName(assignment.effectiveTableId);
   }
   return "";
 }
@@ -8552,7 +8472,7 @@ function formatHotTableSupportLevel(support: HotTableSupport): string {
 }
 
 function formatHotTableName(support: HotTableSupport): string {
-  return support.profile?.tableName ?? "未识别";
+  return formatAutoTableShortName(support.profile?.tableName) || "未识别";
 }
 
 function formatHotTableMetric(support: HotTableSupport): string {
