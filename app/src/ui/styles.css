@@ -2495,11 +2495,12 @@ body:has(.app-shell.theme-dark) {
 }
 
 .digit-entry-grid .home-game-return-key {
-  background: linear-gradient(180deg, rgb(28 38 31 / 0.98), rgb(9 16 12 / 0.98));
-  border: 1px solid rgb(244 215 157 / 0.28);
+  background: #151b18;
+  border: 1px solid rgb(244 215 157 / 0.16);
   border-radius: 999px;
-  color: #d9b56e;
+  color: #b99658;
   grid-column: span 3;
+  letter-spacing: 0.16em;
 }
 
 .digit-entry-grid .home-game-logo {
@@ -2543,9 +2544,9 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .digit-entry-grid .home-game-return-key {
-  background: linear-gradient(180deg, rgb(28 38 31 / 0.98), rgb(9 16 12 / 0.98));
-  border-color: rgb(244 215 157 / 0.28);
-  color: #d9b56e;
+  background: #151b18;
+  border-color: rgb(244 215 157 / 0.16);
+  color: #b99658;
 }
 
 .app-shell.theme-dark .digit-input-error {
@@ -7467,9 +7468,11 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen:not(.desktop-mode) .sim-table-side-action-return {
+  font-size: 15px;
   grid-column: 14;
   grid-row: 4 / span 2;
-  writing-mode: vertical-rl;
+  letter-spacing: 0;
+  writing-mode: horizontal-tb;
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-table-wrap {
