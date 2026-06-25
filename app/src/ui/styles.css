@@ -1920,8 +1920,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .state-table .state-score { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .state-table th:first-child,
 .app-shell.theme-dark .state-table td:first-child { color: var(--theme-dark-gold); }
-.app-shell.theme-dark .state-reading { border-top-color: #38342e; color: #b4b0aa; }
-.app-shell.theme-dark .state-reading strong { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .state-reading { color: #b4b0aa; }
 .app-shell.theme-dark .state-reading-label { color: var(--theme-dark-gold); }
 
 /* --- Wave --- */
@@ -3435,11 +3434,6 @@ html.android .state-reading p {
   font-size: 14px;
 }
 
-html.android .state-reading strong {
-  font-size: 14px;
-}
-
-html.iphone .state-reading strong,
 html.iphone .state-reading p {
   font-size: 16px;
 }
@@ -3455,18 +3449,12 @@ html.iphone .state-reading p {
 }
 
 .state-reading {
-  border-top: 1px solid #d8cbb7;
+  border-top: 0;
   color: #675a4b;
   display: grid;
   gap: 7px;
   margin-top: 10px;
   padding-top: 8px;
-}
-
-.state-reading strong {
-  color: #8d6428;
-  font-size: 15px;
-  font-weight: var(--weight-emphasis);
 }
 
 .state-reading p {
@@ -8456,6 +8444,16 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 @media (min-width: 760px) {
   :root {
     --app-content-max-width: 576px;
+  }
+
+  .state-table th,
+  .state-table td {
+    font-size: 16px;
+    height: 32px;
+  }
+
+  .state-reading p {
+    font-size: 16px;
   }
 
   .data-screen:not(.simulator-screen),

@@ -4703,7 +4703,6 @@ export function App() {
           </table>
         </div>
         <div className="state-reading">
-          <strong>状态解读</strong>
           {currentStateRows.length > 0 ? (
             currentStateRows.map((row) => {
               const reading = describeCurrentStateRow(row);
