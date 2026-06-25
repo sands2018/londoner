@@ -1087,8 +1087,8 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .top-stats-user.logged-in { color: #b88838; }
 
 /* --- Signal cells --- */
-.app-shell.theme-dark .signal-watch { background: #222222; border-color: transparent; }
-.app-shell.theme-dark .signal-strong { background: #222222; border-color: transparent; }
+.app-shell.theme-dark .signal-watch { background: rgba(34, 34, 34, 0.68); border-color: transparent; }
+.app-shell.theme-dark .signal-strong { background: rgba(34, 34, 34, 0.68); border-color: transparent; }
 .app-shell.theme-dark .signal-label span { color: #b3b3b3; }
 .app-shell.theme-dark .signal-label strong { color: #c8a958; }
 
@@ -1573,18 +1573,18 @@ body:has(.app-shell.theme-dark) {
 }
 
 .app-shell.theme-dark .prediction-signal-item { border-color: #38342e; }
-.app-shell.theme-dark .prediction-signal-item .prediction-chase { background: #1e2224; }
+.app-shell.theme-dark .prediction-signal-item .prediction-chase { background: rgba(30, 34, 36, 0.62); }
 .app-shell.theme-dark .prediction-signal-item:active .prediction-chase,
-.app-shell.theme-dark .prediction-signal-item.chase-active .prediction-chase { background: #252a2e; }
-.app-shell.theme-dark .prediction-signal-label { background: #252a2e; color: #88a8b8; }
-.app-shell.theme-dark .prediction-signal-item.chase-active .prediction-signal-label { background: #2a3238; }
+.app-shell.theme-dark .prediction-signal-item.chase-active .prediction-chase { background: rgba(37, 42, 46, 0.66); }
+.app-shell.theme-dark .prediction-signal-label { background: rgba(37, 42, 46, 0.66); color: #88a8b8; }
+.app-shell.theme-dark .prediction-signal-item.chase-active .prediction-signal-label { background: rgba(42, 50, 56, 0.7); }
 .app-shell.theme-dark .prediction-bet { color: #88a8b8; }
 
 /* rhythm / quality124 signal items */
-.app-shell.theme-dark .quality124-signal-item { border-color: #3a2a30; }
-.app-shell.theme-dark .quality124-signal-label { background: #33262c; color: #c596a2; }
-.app-shell.theme-dark .quality124-signal-chase { background: #221a1e; }
-.app-shell.theme-dark .quality124-signal-item:active .quality124-signal-chase { background: #2a2026; }
+.app-shell.theme-dark .quality124-signal-item { border-color: rgba(58, 42, 48, 0.68); }
+.app-shell.theme-dark .quality124-signal-label { background: rgba(51, 38, 44, 0.64); color: #c596a2; }
+.app-shell.theme-dark .quality124-signal-chase { background: rgba(34, 26, 30, 0.6); }
+.app-shell.theme-dark .quality124-signal-item:active .quality124-signal-chase { background: rgba(42, 32, 38, 0.66); }
 .app-shell.theme-dark .quality124-stars { color: #ad7a86; }
 .app-shell.theme-dark .quality124-star-empty { color: rgba(173, 122, 134, 0.28); }
 .app-shell.theme-dark .quality124-dot { background: transparent; border-color: #6a4a56; }
@@ -1593,7 +1593,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .quality124-tag { color: #b48a72; }
 
 .app-shell.theme-dark .quality124-signal-item.quality124-tier-3 .quality124-signal-label {
-  background: #442b34;
+  background: rgba(68, 43, 52, 0.68);
   color: #d8a5b2;
 }
 .app-shell.theme-dark .quality124-signal-item.quality124-tier-3 .quality124-stars,
@@ -1605,7 +1605,7 @@ body:has(.app-shell.theme-dark) {
   border-color: #b86f86;
 }
 .app-shell.theme-dark .quality124-signal-item.quality124-tier-2 .quality124-signal-label {
-  background: #42303a;
+  background: rgba(66, 48, 58, 0.66);
   color: #d2a2b0;
 }
 .app-shell.theme-dark .quality124-signal-item.quality124-tier-2 .quality124-stars,
@@ -1617,7 +1617,7 @@ body:has(.app-shell.theme-dark) {
   border-color: #b97f94;
 }
 .app-shell.theme-dark .quality124-signal-item.quality124-tier-1 .quality124-signal-label {
-  background: #2e252a;
+  background: rgba(46, 37, 42, 0.62);
   color: #a9828c;
 }
 .app-shell.theme-dark .quality124-signal-item.quality124-tier-1 .quality124-stars,
@@ -1641,11 +1641,11 @@ body:has(.app-shell.theme-dark) {
 }
 
 /* rhythm signal items (green tones in light → muted green in dark) */
-.app-shell.theme-dark .prediction-signal-item.rhythm-signal { border-color: #2a382a; }
-.app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-signal-label { background: #2a382a; color: #8aaa8a; }
-.app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-chase { background: #1e221e; }
-.app-shell.theme-dark .prediction-signal-item.rhythm-signal.chase-active .prediction-chase { background: #2a302a; }
-.app-shell.theme-dark .prediction-signal-item.rhythm-signal.chase-active .prediction-signal-label { background: #344034; }
+.app-shell.theme-dark .prediction-signal-item.rhythm-signal { border-color: rgba(42, 56, 42, 0.68); }
+.app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-signal-label { background: rgba(42, 56, 42, 0.64); color: #8aaa8a; }
+.app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-chase { background: rgba(30, 34, 30, 0.6); }
+.app-shell.theme-dark .prediction-signal-item.rhythm-signal.chase-active .prediction-chase { background: rgba(42, 48, 42, 0.66); }
+.app-shell.theme-dark .prediction-signal-item.rhythm-signal.chase-active .prediction-signal-label { background: rgba(52, 64, 52, 0.68); }
 .app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-dot { border-color: #6a8a6a; }
 .app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-dot.filled { background: #6aaa6a; border-color: #6aaa6a; }
 .app-shell.theme-dark .prediction-signal-item.rhythm-signal .prediction-bet { color: #8aaa8a; }
@@ -1655,14 +1655,14 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .rhythm-detail .prediction-dot.filled { background: #8aaa8a; border-color: #8aaa8a; }
 
 /* chase3 */
-.app-shell.theme-dark .chase3-signal-item { border-color: #38342e; }
-.app-shell.theme-dark .chase3-label { background: #2a1e1e; color: #b88078; }
-.app-shell.theme-dark .chase3-chase { background: #1e1818; }
+.app-shell.theme-dark .chase3-signal-item { border-color: rgba(56, 52, 46, 0.68); }
+.app-shell.theme-dark .chase3-label { background: rgba(42, 30, 30, 0.64); color: #b88078; }
+.app-shell.theme-dark .chase3-chase { background: rgba(30, 24, 24, 0.6); }
 .app-shell.theme-dark .chase3-gap { color: #a07068; }
 .app-shell.theme-dark .chase3-bet { color: #b88078; }
 .app-shell.theme-dark .chase3-stars { color: #b08070; }
-.app-shell.theme-dark .chase3-signal-item.chase3-active .chase3-chase { background: #282020; }
-.app-shell.theme-dark .chase3-signal-item.chase3-active .chase3-label { background: #342828; }
+.app-shell.theme-dark .chase3-signal-item.chase3-active .chase3-chase { background: rgba(40, 32, 32, 0.66); }
+.app-shell.theme-dark .chase3-signal-item.chase3-active .chase3-label { background: rgba(52, 40, 40, 0.68); }
 
 .app-shell.theme-dark .chase6-dot,
 .app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-dot,
@@ -1670,6 +1670,91 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .chase6-dot.filled { background: #9a8a50; border-color: #9a8a50; }
 .app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-dot.filled { background: #b89850; border-color: #b89850; }
 .app-shell.theme-dark .chase6-signal-item.chase6-wave .chase6-dot.filled { background: #a88030; border-color: #a88030; }
+.app-shell.theme-dark .chase6-signal-item {
+  border-color: rgba(56, 52, 46, 0.68);
+}
+.app-shell.theme-dark .chase6-label {
+  background: rgba(48, 40, 28, 0.64);
+  color: #b8a060;
+}
+.app-shell.theme-dark .chase6-chase {
+  background: rgba(30, 26, 20, 0.6);
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-active .chase6-chase {
+  background: rgba(42, 36, 26, 0.66);
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-active .chase6-label {
+  background: rgba(58, 48, 32, 0.68);
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-hq,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave {
+  border-color: rgba(112, 86, 48, 0.72);
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-label,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave .chase6-label {
+  background: rgba(70, 52, 28, 0.68);
+  color: #d0aa62;
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-chase,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave .chase6-chase {
+  background: rgba(42, 34, 22, 0.64);
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-hq.chase6-active .chase6-chase,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave.chase6-active .chase6-chase {
+  background: rgba(54, 42, 24, 0.68);
+}
+.app-shell.theme-dark .chase6-signal-item.chase6-hq.chase6-active .chase6-label,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave.chase6-active .chase6-label {
+  background: rgba(82, 60, 30, 0.72);
+}
+.app-shell.theme-dark .chase6-bet,
+.app-shell.theme-dark .chase6-signal-item.chase6-hq .chase6-bet,
+.app-shell.theme-dark .chase6-signal-item.chase6-wave .chase6-bet {
+  color: #d0aa62;
+}
+
+.app-shell.theme-dark .repeat-signal-item {
+  background: rgba(40, 37, 45, 0.6);
+  border-color: rgba(58, 52, 66, 0.68);
+  color: #b9a6d0;
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-preferred {
+  background: rgba(44, 40, 35, 0.6);
+  border-color: rgba(68, 57, 46, 0.68);
+  color: #c0a084;
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-hot {
+  background: rgba(44, 39, 33, 0.6);
+  border-color: rgba(74, 56, 40, 0.7);
+  color: #c6a070;
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-hot-table-strong {
+  background: rgba(58, 43, 32, 0.64);
+  border-color: rgba(122, 84, 52, 0.72);
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-hot-table-support {
+  background: rgba(50, 42, 32, 0.62);
+  border-color: rgba(90, 70, 48, 0.7);
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-hot-table-conflict {
+  background: rgba(36, 42, 34, 0.62);
+  border-color: rgba(70, 82, 62, 0.7);
+  color: #a8b49a;
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-short {
+  background: rgba(44, 37, 42, 0.6);
+  border-color: rgba(74, 54, 66, 0.68);
+  color: #c09ab2;
+}
+.app-shell.theme-dark .repeat-signal-item:active {
+  background: rgba(52, 47, 58, 0.68);
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-preferred:active {
+  background: rgba(56, 48, 38, 0.68);
+}
+.app-shell.theme-dark .repeat-signal-item.repeat-short:active {
+  background: rgba(58, 46, 54, 0.68);
+}
 
 .app-shell.theme-dark .prediction-stats-header { background: #1b1b1b; border-color: #38342e; color: #d4d4d4; }
 
@@ -9652,24 +9737,25 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   border-radius: 5px;
   color: #51406a;
   cursor: pointer;
-  display: flex;
+  display: grid;
   flex: 0 0 var(--signal-card-width);
-  gap: 20px;
-  justify-content: center;
+  gap: 4px;
+  grid-template-columns: minmax(42px, 0.8fr) minmax(34px, auto) minmax(42px, 0.8fr);
   min-height: 38px;
-  position: relative;
+  padding: 3px 7px;
   touch-action: manipulation;
 }
 
 .repeat-tier-badge {
+  align-self: center;
   color: #8a6aa8;
   font-size: 11px;
   font-weight: var(--weight-ui);
   line-height: 1;
   opacity: 0.75;
-  position: absolute;
-  right: 5px;
-  top: 2px;
+  position: static;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .repeat-signal-item.repeat-premium {
@@ -9688,6 +9774,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   background: #ede0d2;
   border-color: #e3d4c2;
   color: #5c3a28;
+  grid-template-columns: minmax(42px, 0.8fr) minmax(0, 1fr) minmax(42px, 0.8fr);
 }
 
 .repeat-signal-item.repeat-preferred .repeat-tier-badge {
@@ -9715,13 +9802,14 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .hot-table-badge {
+  align-self: center;
   color: #8a7a6a;
   font-size: 10px;
   font-weight: var(--weight-ui);
   line-height: 1;
-  position: absolute;
-  bottom: 3px;
-  right: 4px;
+  position: static;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .hot-table-badge-enhance {
@@ -9785,6 +9873,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .repeat-number {
+  justify-self: center;
   font-size: 24px;
   font-weight: var(--weight-strong);
   line-height: 1;
@@ -9799,8 +9888,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .preferred-number-picks {
   align-items: center;
+  grid-column: 2 / 4;
   display: flex;
   gap: 10px;
+  justify-content: center;
 }
 
 .short-repeat-chase {
