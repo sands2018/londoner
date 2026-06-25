@@ -2,6 +2,7 @@
 import { flushSync } from "react-dom";
 import {
   getNumberColor,
+  getNumberColRows,
   getRowIndex,
   isRouletteNumber,
   type RouletteNumber,
@@ -140,6 +141,7 @@ const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
 const windowModeKey = "londoner.windowMode";
 const frequencyDistanceTabKey = "londoner.frequencyDistanceNageTab";
+const stateDetailTabKey = "londoner.stateDetailTab";
 const repeatFilterOptions: RepeatTier[] = [REPEAT_TIER_CORE, REPEAT_TIER_AGGRESSIVE];
 
 function sanitizeManualTableId(tableId: string | undefined): string | undefined {
@@ -291,6 +293,7 @@ type DialogName = "connect" | "import" | "save" | null;
 type KeyboardMode = "keypad" | "board" | "digits";
 type DataTab = "local" | "shared" | "transfer";
 type FrequencyDistanceTab = "frequency" | "distance";
+type StateDetailTab = "current" | "condition";
 type DataSortField = "name" | "count" | "time" | "sharedUploader" | "table";
 type SortDirection = "asc" | "desc";
 type ColRowTab = "detail" | "chart" | "summary" | "compare";
@@ -371,6 +374,26 @@ interface CurrentStateRow {
   weak: boolean;
 }
 
+interface ConditionalStateHorizon {
+  bets: number;
+  hits: number;
+  horizon: number;
+  roi: number | null;
+}
+
+interface ConditionalStateRow {
+  conditionKey: string;
+  conditionLabel: string;
+  horizons: ConditionalStateHorizon[];
+  key: number;
+  label: string;
+  sampleCount: number;
+}
+
+interface StateMatchSnapshot extends ConditionalStateRow {
+  lockedAt: number;
+}
+
 type HotBenchmarkTab = "current" | "history" | "recent10";
 type Quality124BenchmarkTab = "current" | "history" | "recent10";
 type ChaseSixBenchmarkTab = "current" | "history" | "recent10";
@@ -381,6 +404,8 @@ const waveDensityBandwidth = 0.9;
 const waveDensityStep = 0.05;
 const waveTrendFastPoints = 5;
 const waveTrendSlowPoints = 18;
+const stateRowKeys = [0, 1, 2, 4, 5, 6] as const;
+const stateConditionalHorizons = [1, 2, 3, 5] as const;
 const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
 const chaseSixLocalHistoryBenchmarkKey = "londoner.chaseSixLocalHistoryBenchmark";
 const chaseSixRecent10BenchmarkKey = "londoner.chaseSixRecent10Benchmark";
@@ -517,6 +542,41 @@ function currentStateStatus(score: number) {
   return "暂不关注";
 }
 
+function rowKeyToBaseIndex(key: number) {
+  return key > 3 ? key - 1 : key;
+}
+
+function buildStateCondition(row: CurrentStateRow) {
+  const distance = row.distancePercentile === null
+    ? "距离样本少"
+    : row.distancePercentile >= 0.7
+      ? "距离偏高"
+      : row.distancePercentile <= 0.35
+        ? "距离偏低"
+        : "距离中位";
+  const temperature = row.frequencyDelta !== null && row.frequencyDelta >= 10
+    ? "短窗升温"
+    : row.frequencyDelta !== null && row.frequencyDelta <= -10
+      ? "短窗降温"
+      : row.shortFrequency !== null && row.shortFrequency >= 20
+        ? "短窗偏热"
+        : row.shortFrequency !== null && row.shortFrequency <= -20
+          ? "短窗偏冷"
+          : "频率平稳";
+  const trend = row.trend === null
+    ? "节奏样本少"
+    : row.trend >= 0.5
+      ? "节奏加快"
+      : row.trend <= -0.5
+        ? "节奏放缓"
+        : "节奏平稳";
+
+  return {
+    key: `${distance}|${temperature}|${trend}`,
+    label: `${distance}/${temperature}/${trend}`,
+  };
+}
+
 function describeCurrentStateRow(row: CurrentStateRow) {
   const frequencyText = row.shortFrequency === null
     ? "频率样本不足"
@@ -565,6 +625,188 @@ function describeCurrentStateRow(row: CurrentStateRow) {
     label: row.label,
     text: `（${row.status}，${row.score}分）：${frequencyText}${deltaText}；${distanceText}；${trendText}，${concentrationText}。`,
   };
+}
+
+function calculateWaveStateForNumbers(numbers: readonly RouletteNumber[], baseIndex: number, roundWindow: number) {
+  const visibleRounds = Math.min(numbers.length, Math.max(144, roundWindow * 2));
+  const recentNumbers = numbers.slice(-visibleRounds);
+  const pointCount = Math.max(0, recentNumbers.length - roundWindow + 1);
+  const rhythmPoints: WaveRhythmPoint[] = [];
+
+  for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
+    const end = pointIndex + roundWindow;
+    const stats = computeRoundWindowWavePoint(recentNumbers.slice(pointIndex, end), baseIndex);
+    rhythmPoints.push({
+      round: numbers.length - recentNumbers.length + end,
+      gapCount: stats?.gapCount ?? 0,
+      median: stats?.median ?? null,
+      q1: stats?.q1 ?? null,
+      q3: stats?.q3 ?? null,
+    });
+  }
+
+  const trendPoints = rhythmPoints.map((point, index): WaveTrendPoint => {
+    if (point.median === null) return { round: point.round, trend: null, weak: true };
+
+    const recent: WaveRhythmPoint[] = [];
+    for (let cursor = index; cursor >= 0 && recent.length < waveTrendSlowPoints; cursor -= 1) {
+      const candidate = rhythmPoints[cursor];
+      if (candidate.median !== null) recent.unshift(candidate);
+    }
+
+    const fast = recent.slice(-waveTrendFastPoints);
+    if (fast.length < 3 || recent.length < 8) return { round: point.round, trend: null, weak: true };
+
+    const fastAverage = fast.reduce((sum, item) => sum + (item.median ?? 0), 0) / fast.length;
+    const slowAverage = recent.reduce((sum, item) => sum + (item.median ?? 0), 0) / recent.length;
+    return {
+      round: point.round,
+      trend: slowAverage - fastAverage,
+      weak: point.gapCount < 3 || fast.some((item) => item.gapCount < 3),
+    };
+  });
+
+  const rhythmPoint = latestWaveRhythm(rhythmPoints);
+  const trendPoint = latestWaveTrend(trendPoints);
+  return {
+    iqr: rhythmPoint && rhythmPoint.q1 !== null && rhythmPoint.q3 !== null ? rhythmPoint.q3 - rhythmPoint.q1 : null,
+    trend: trendPoint?.trend ?? null,
+    weak: trendPoint?.weak ?? true,
+  };
+}
+
+function buildCurrentStateRowsFromNumbers(
+  numbers: readonly RouletteNumber[],
+  scopes: readonly FrequencyScope[],
+): CurrentStateRow[] {
+  const colRows = calculateColRowStats(numbers, 144);
+  const frequencies = calculateFrequencyStats(numbers, scopes);
+  const shortScopeIndex = scopes.reduce((bestIndex, scope, index) => {
+    const bestDistance = Math.abs(Number(scopes[bestIndex]) - 34);
+    const distance = Math.abs(Number(scope) - 34);
+    return distance < bestDistance ? index : bestIndex;
+  }, 0);
+  const longScopeIndex = scopes.reduce((bestIndex, scope, index) => {
+    const bestDistance = Math.abs(Number(scopes[bestIndex]) - 144);
+    const distance = Math.abs(Number(scope) - 144);
+    return distance < bestDistance ? index : bestIndex;
+  }, 0);
+
+  return stateRowKeys.map((key) => {
+    const row = colRows.rows.find((item) => item.key === key);
+    const rawDistances = (colRows.rawDistances[key] ?? []).map((distance) => Math.max(distance - 1, 0));
+    const distance = row?.current ?? 0;
+    const distancePercentile = rawDistances.length > 0
+      ? rawDistances.filter((item) => item <= distance).length / rawDistances.length
+      : null;
+    const shortFrequency = latestSeriesNumber(frequencies.frequencies[key]?.[shortScopeIndex]);
+    const longFrequency = latestSeriesNumber(frequencies.frequencies[key]?.[longScopeIndex]);
+    const frequencyDelta = shortFrequency !== null && longFrequency !== null ? shortFrequency - longFrequency : null;
+    const wave = calculateWaveStateForNumbers(numbers, rowKeyToBaseIndex(key), defaultWaveRoundWindow);
+
+    let score = 50;
+    if (distancePercentile !== null) score += clampNumber((distancePercentile - 0.5) * 30, -15, 15);
+    if (shortFrequency !== null) score += clampNumber(shortFrequency / 4, -12, 12);
+    if (frequencyDelta !== null) score += clampNumber(frequencyDelta / 3, -16, 16);
+    if (wave.trend !== null) score += clampNumber(wave.trend * 6, -18, 18);
+    if (wave.iqr !== null) score += clampNumber((4 - wave.iqr) * 3, -12, 12);
+    const roundedScore = Math.round(clampNumber(score, 0, 100));
+
+    return {
+      distance,
+      distancePercentile,
+      frequencyDelta,
+      iqr: wave.iqr,
+      key,
+      label: row?.label ?? frequencyBandLabels[key] ?? "",
+      longFrequency,
+      score: roundedScore,
+      shortFrequency,
+      status: currentStateStatus(roundedScore),
+      trend: wave.trend,
+      weak: wave.weak ?? rawDistances.length < 8,
+    };
+  });
+}
+
+function isColRowHit(value: RouletteNumber, key: number) {
+  if (value === 0) return false;
+  return getNumberColRows(value).some((hit) => hit === rowKeyToBaseIndex(key));
+}
+
+function calculateConditionalStateRows(
+  numbers: readonly RouletteNumber[],
+  currentRows: readonly CurrentStateRow[],
+  scopes: readonly FrequencyScope[],
+): ConditionalStateRow[] {
+  const currentConditions = new Map(currentRows.map((row) => {
+    const condition = buildStateCondition(row);
+    return [row.key, { row, condition }];
+  }));
+  const stats = new Map<number, { samples: number; hits: number[]; bets: number[]; net: number[] }>();
+  for (const row of currentRows) {
+    stats.set(row.key, {
+      samples: 0,
+      hits: Array(stateConditionalHorizons.length).fill(0),
+      bets: Array(stateConditionalHorizons.length).fill(0),
+      net: Array(stateConditionalHorizons.length).fill(0),
+    });
+  }
+
+  const minPrefix = 72;
+  const maxHorizon = Math.max(...stateConditionalHorizons);
+  for (let position = minPrefix; position <= numbers.length - maxHorizon; position += 1) {
+    const prefix = numbers.slice(0, position);
+    const rows = buildCurrentStateRowsFromNumbers(prefix, scopes);
+    for (const row of rows) {
+      const current = currentConditions.get(row.key);
+      const rowStats = stats.get(row.key);
+      if (!current || !rowStats) continue;
+      if (buildStateCondition(row).key !== current.condition.key) continue;
+
+      rowStats.samples += 1;
+      stateConditionalHorizons.forEach((horizon, horizonIndex) => {
+        let hitAt = -1;
+        for (let offset = 0; offset < horizon && position + offset < numbers.length; offset += 1) {
+          if (isColRowHit(numbers[position + offset], row.key)) {
+            hitAt = offset;
+            break;
+          }
+        }
+
+        if (hitAt >= 0) {
+          rowStats.hits[horizonIndex] += 1;
+          rowStats.bets[horizonIndex] += hitAt + 1;
+          rowStats.net[horizonIndex] += 2 - hitAt;
+        } else {
+          const bets = Math.min(horizon, numbers.length - position);
+          rowStats.bets[horizonIndex] += bets;
+          rowStats.net[horizonIndex] -= bets;
+        }
+      });
+    }
+  }
+
+  return currentRows.map((row) => {
+    const condition = buildStateCondition(row);
+    const rowStats = stats.get(row.key);
+    return {
+      conditionKey: condition.key,
+      conditionLabel: condition.label,
+      horizons: stateConditionalHorizons.map((horizon, horizonIndex) => {
+        const bets = rowStats?.bets[horizonIndex] ?? 0;
+        return {
+          bets,
+          hits: rowStats?.hits[horizonIndex] ?? 0,
+          horizon,
+          roi: bets > 0 ? ((rowStats?.net[horizonIndex] ?? 0) / bets) * 100 : null,
+        };
+      }),
+      key: row.key,
+      label: row.label,
+      sampleCount: rowStats?.samples ?? 0,
+    };
+  });
 }
 
 const emptyFrequencyStats: FrequencyStats = { frequencies: [], nonZeroCount: 0 };
@@ -1059,6 +1301,10 @@ export function App() {
   const [frequencyDistanceTab, setFrequencyDistanceTab] = useState<FrequencyDistanceTab>(() =>
     localStorage.getItem(frequencyDistanceTabKey) === "distance" ? "distance" : "frequency",
   );
+  const [stateDetailTab, setStateDetailTab] = useState<StateDetailTab>(() =>
+    localStorage.getItem(stateDetailTabKey) === "condition" ? "condition" : "current",
+  );
+  const [stateMatchSnapshot, setStateMatchSnapshot] = useState<StateMatchSnapshot | null>(null);
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => {
     const saved = localStorage.getItem("londoner.predictionTab");
@@ -2222,10 +2468,6 @@ export function App() {
   }
 
   function openSnapshotFromDock() {
-    if (canUseSimulator) {
-      setSimulatorOpen(true);
-      return;
-    }
     setStatsTab("numberZone");
     setNumberZoneSubTab("snapshot");
     setStatsViewOpen(true);
@@ -4062,7 +4304,6 @@ export function App() {
   const currentStateRows = useMemo<CurrentStateRow[]>(() => {
     if (!(statsViewOpen && statsTab === "state")) return [];
 
-    const rowKeys = [0, 1, 2, 4, 5, 6];
     const shortScopeIndex = frequencyScopes.reduce((bestIndex, scope, index) => {
       const bestDistance = Math.abs(Number(frequencyScopes[bestIndex]) - 34);
       const distance = Math.abs(Number(scope) - 34);
@@ -4074,7 +4315,7 @@ export function App() {
       return distance < bestDistance ? index : bestIndex;
     }, 0);
 
-    return rowKeys
+    return stateRowKeys
       .map((key, orderIndex) => {
         const row = colRowStats.rows.find((item) => item.key === key);
         const rawDistances = (colRowStats.rawDistances[key] ?? []).map((distance) => Math.max(distance - 1, 0));
@@ -4117,6 +4358,10 @@ export function App() {
       })
       .sort((left, right) => right.score - left.score);
   }, [colRowStats.rawDistances, colRowStats.rows, frequencyScopes, frequencyStats.frequencies, statsTab, statsViewOpen, waveRhythmData, waveTrendData]);
+  const conditionalStateRows = useMemo<ConditionalStateRow[]>(() => {
+    if (!(statsViewOpen && statsTab === "state" && stateDetailTab === "condition")) return [];
+    return calculateConditionalStateRows(numbers, currentStateRows, frequencyScopes);
+  }, [currentStateRows, frequencyScopes, numbers, stateDetailTab, statsTab, statsViewOpen]);
   const colRowCompareRows = useMemo(() => {
     if (!shouldComputeColRowStats) return [];
     return buildColRowCompareRows(
@@ -4657,9 +4902,22 @@ export function App() {
     );
   }
 
-  function StatsStateTab() {
+  function selectStateDetailTab(tab: StateDetailTab) {
+    setStateDetailTab(tab);
+    localStorage.setItem(stateDetailTabKey, tab);
+  }
+
+  function lockStateMatchSnapshot(row: ConditionalStateRow) {
+    setStateMatchSnapshot({
+      ...row,
+      horizons: row.horizons.map((horizon) => ({ ...horizon })),
+      lockedAt: numbers.length,
+    });
+  }
+
+  function StateCurrentPanel() {
     return (
-      <div className="state-body">
+      <>
         <div className="data-table-wrap">
           <table className="data-table state-table">
             <colgroup>
@@ -4717,6 +4975,84 @@ export function App() {
             <p>暂无可解读的数据。</p>
           )}
         </div>
+      </>
+    );
+  }
+
+  function StateConditionPanel() {
+    const matchedSnapshotRow = stateMatchSnapshot
+      ? conditionalStateRows.find((row) => row.key === stateMatchSnapshot.key)
+      : null;
+    const snapshotStateText = stateMatchSnapshot
+      ? matchedSnapshotRow?.conditionKey === stateMatchSnapshot.conditionKey
+        ? "仍一致"
+        : "已变化"
+      : "";
+
+    return (
+      <div className="state-condition-list">
+        {stateMatchSnapshot ? (
+          <div className="state-match-snapshot">
+            <span>
+              锁定 {stateMatchSnapshot.lockedAt}口 · {stateMatchSnapshot.label} {stateMatchSnapshot.conditionLabel}
+            </span>
+            <strong>{snapshotStateText}</strong>
+            <button onClick={() => setStateMatchSnapshot(null)} type="button">清</button>
+          </div>
+        ) : null}
+        {conditionalStateRows.length === 0 ? (
+          <div className="state-condition-empty">暂无可统计的数据</div>
+        ) : conditionalStateRows.map((row) => (
+          <section className="state-condition-card" key={row.key}>
+            <header>
+              <strong>{row.label}</strong>
+              <span>{row.conditionLabel}</span>
+              <em>样本 {row.sampleCount}</em>
+              <button
+                className="state-condition-lock"
+                onClick={() => lockStateMatchSnapshot(row)}
+                type="button"
+              >
+                锁
+              </button>
+            </header>
+            <div className="state-condition-metrics">
+              {row.horizons.map((horizon) => (
+                <div className="state-condition-metric" key={horizon.horizon}>
+                  <span>{horizon.horizon}口</span>
+                  <div className="state-condition-metric-values">
+                    <strong>{row.sampleCount > 0 ? `${((horizon.hits / row.sampleCount) * 100).toFixed(0)}%` : "-"}</strong>
+                    <em>{horizon.roi === null ? "-" : `${horizon.roi >= 0 ? "+" : ""}${horizon.roi.toFixed(0)}%`}</em>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
+  function StatsStateTab() {
+    return (
+      <div className="state-body">
+        <div className="tabs tabs-top state-detail-tabs">
+          <button
+            className={stateDetailTab === "current" ? "selected" : ""}
+            onClick={() => selectStateDetailTab("current")}
+            type="button"
+          >
+            当前
+          </button>
+          <button
+            className={stateDetailTab === "condition" ? "selected" : ""}
+            onClick={() => selectStateDetailTab("condition")}
+            type="button"
+          >
+            匹配
+          </button>
+        </div>
+        {stateDetailTab === "current" ? <StateCurrentPanel /> : <StateConditionPanel />}
       </div>
     );
   }
@@ -5684,12 +6020,19 @@ export function App() {
           </div>
         ) : (
           <div className="digit-entry-grid">
-            <button className="control-button" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+            <button className="control-button digit-back-all" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
               <SkipBack size={16} />
             </button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(7)} type="button">7</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(8)} type="button">8</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(9)} type="button">9</button>
+            <button className="control-button digit-key digit-key-7" onClick={() => appendDigitInput(7)} type="button">7</button>
+            <button className="control-button digit-key digit-key-8" onClick={() => appendDigitInput(8)} type="button">8</button>
+            <button className="control-button digit-key digit-key-9" onClick={() => appendDigitInput(9)} type="button">9</button>
+            {canUseSimulator ? (
+              <button className="control-button home-game-return-key" onClick={() => setSimulatorOpen(true)} type="button">返回游戏</button>
+            ) : (
+              <div className="home-game-logo" aria-label="Las Vegas">
+                <span>Las </span><strong>V</strong><span>egas</span>
+              </div>
+            )}
             <input
               aria-label="输入 0-36 号码"
               className={`digit-entry-input${digitInputInvalid ? " digit-input-error" : ""}`}
@@ -5705,26 +6048,36 @@ export function App() {
               value={digitInput}
             />
             <button className="control-button digit-clear" onClick={() => setDigitInput("")} type="button">AC</button>
-            <button className="control-button" onClick={undo} disabled={numbers.length === 0}>
+            <button className="control-button digit-undo" onClick={undo} disabled={numbers.length === 0}>
               ←
             </button>
-            <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+            <button className="control-button digit-redo-all" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
               <SkipForward size={16} />
             </button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(4)} type="button">4</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(5)} type="button">5</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(6)} type="button">6</button>
+            <button className="control-button digit-key digit-key-4" onClick={() => appendDigitInput(4)} type="button">4</button>
+            <button className="control-button digit-key digit-key-5" onClick={() => appendDigitInput(5)} type="button">5</button>
+            <button className="control-button digit-key digit-key-6" onClick={() => appendDigitInput(6)} type="button">6</button>
             <button className="control-button digit-send" onClick={submitDigitInput} type="button">Enter</button>
-            <button className="control-button" onClick={redo} disabled={redoNumbers.length === 0}>
+            <button className="control-button digit-redo" onClick={redo} disabled={redoNumbers.length === 0}>
               →
             </button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(0)} type="button">0</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(1)} type="button">1</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(2)} type="button">2</button>
-            <button className="control-button digit-key" onClick={() => appendDigitInput(3)} type="button">3</button>
-            <button className="control-button" onClick={openPredictionWindow} type="button">智能</button>
-            <button className="control-button" onClick={openDataDialog} type="button">数据</button>
-            <button className="control-button" onClick={openConfigView} type="button">配置</button>
+            <button className="control-button digit-key digit-key-0" onClick={() => appendDigitInput(0)} type="button">0</button>
+            <button className="control-button digit-key digit-key-1" onClick={() => appendDigitInput(1)} type="button">1</button>
+            <button className="control-button digit-key digit-key-2" onClick={() => appendDigitInput(2)} type="button">2</button>
+            <button className="control-button digit-key digit-key-3" onClick={() => appendDigitInput(3)} type="button">3</button>
+            <button className="control-button digit-smart" onClick={openPredictionWindow} type="button">智能</button>
+            <button className="control-button digit-data" onClick={openDataDialog} type="button">数据</button>
+            <button className="control-button digit-config" onClick={openConfigView} type="button">配置</button>
+            {Array.from({ length: 4 }, (_, index) => (
+              <button
+                aria-hidden="true"
+                className="control-button digit-empty"
+                disabled
+                key={`digit-empty-${index}`}
+                tabIndex={-1}
+                type="button"
+              />
+            ))}
           </div>
         )}
         <div className="dock-actions">
@@ -7392,7 +7745,7 @@ export function App() {
                   ) : (
                     <>
                       <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
-                      <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-return" onClick={() => setSimulatorOpen(false)} type="button">返回</button>
+                      <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-return" onClick={() => setSimulatorOpen(false)} type="button">分析</button>
                     </>
                   )}
                   <div className="simulator-table">
@@ -7669,7 +8022,7 @@ export function App() {
                       </button>
                     ) : null}
                     {simulatorDesktopMode ? <button aria-label="跳到第200个号码" className="sim-feed-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} title="跳到第200个号码" type="button">200</button> : null}
-                    {simulatorDesktopMode ? <button aria-label="返回程序" className="sim-feed-return" onClick={() => setSimulatorOpen(false)} title="返回程序" type="button">返回</button> : null}
+                    {simulatorDesktopMode ? <button aria-label="返回分析" className="sim-feed-return" onClick={() => setSimulatorOpen(false)} title="返回分析" type="button">分析</button> : null}
                   </div>
                 </div>
                 <div className="simulator-bottom-status" aria-label="模拟进度和胜负">

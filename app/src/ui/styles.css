@@ -1920,6 +1920,28 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .state-table .state-score { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .state-table th:first-child,
 .app-shell.theme-dark .state-table td:first-child { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .state-condition-card { background: #1b1b1b; border-color: #38342e; }
+.app-shell.theme-dark .state-condition-card header { border-bottom-color: #2a2a2a; }
+.app-shell.theme-dark .state-condition-card header strong,
+.app-shell.theme-dark .state-condition-metric span { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .state-condition-card header span,
+.app-shell.theme-dark .state-condition-metric strong { color: #d4d4d4; }
+.app-shell.theme-dark .state-condition-card header em,
+.app-shell.theme-dark .state-condition-metric em,
+.app-shell.theme-dark .state-condition-empty { color: #8a8a8a; }
+.app-shell.theme-dark .state-condition-metric { background: #202020; border-color: #2a2a2a; }
+.app-shell.theme-dark .state-condition-lock,
+.app-shell.theme-dark .state-match-snapshot button {
+  background: #24221f;
+  border-color: #4a4030;
+  color: var(--theme-dark-gold);
+}
+.app-shell.theme-dark .state-match-snapshot {
+  background: #1b1b1b;
+  border-color: #38342e;
+}
+.app-shell.theme-dark .state-match-snapshot span { color: #b4b0aa; }
+.app-shell.theme-dark .state-match-snapshot strong { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .state-reading { color: #b4b0aa; }
 .app-shell.theme-dark .state-reading-label { color: var(--theme-dark-gold); }
 
@@ -2328,6 +2350,11 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid {
   display: grid;
   gap: var(--key-gap);
+  grid-template-areas:
+    "backAll n7 n8 n9 game game game"
+    "redoAll n4 n5 n6 input clear undo"
+    "n0 n1 n2 n3 enter enter redo"
+    "empty1 empty2 empty3 empty4 smart data config";
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
@@ -2433,6 +2460,66 @@ body:has(.app-shell.theme-dark) {
   grid-column: span 2;
 }
 
+.digit-entry-grid .digit-back-all { grid-area: backAll; }
+.digit-entry-grid .digit-key-7 { grid-area: n7; }
+.digit-entry-grid .digit-key-8 { grid-area: n8; }
+.digit-entry-grid .digit-key-9 { grid-area: n9; }
+.digit-entry-grid .home-game-return-key,
+.digit-entry-grid .home-game-logo { grid-area: game; }
+.digit-entry-grid .digit-entry-input { grid-area: input; }
+.digit-entry-grid .digit-clear { grid-area: clear; }
+.digit-entry-grid .digit-undo { grid-area: undo; }
+.digit-entry-grid .digit-redo-all { grid-area: redoAll; }
+.digit-entry-grid .digit-key-4 { grid-area: n4; }
+.digit-entry-grid .digit-key-5 { grid-area: n5; }
+.digit-entry-grid .digit-key-6 { grid-area: n6; }
+.digit-entry-grid .digit-send { grid-area: enter; }
+.digit-entry-grid .digit-redo { grid-area: redo; }
+.digit-entry-grid .digit-key-0 { grid-area: n0; }
+.digit-entry-grid .digit-key-1 { grid-area: n1; }
+.digit-entry-grid .digit-key-2 { grid-area: n2; }
+.digit-entry-grid .digit-key-3 { grid-area: n3; }
+.digit-entry-grid .digit-smart { grid-area: smart; }
+.digit-entry-grid .digit-data { grid-area: data; }
+.digit-entry-grid .digit-config { grid-area: config; }
+
+.digit-entry-grid .digit-empty:nth-last-child(4) { grid-area: empty1; }
+.digit-entry-grid .digit-empty:nth-last-child(3) { grid-area: empty2; }
+.digit-entry-grid .digit-empty:nth-last-child(2) { grid-area: empty3; }
+.digit-entry-grid .digit-empty:nth-last-child(1) { grid-area: empty4; }
+
+.digit-entry-grid .digit-empty {
+  color: transparent;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.digit-entry-grid .home-game-return-key {
+  background: linear-gradient(180deg, rgb(28 38 31 / 0.98), rgb(9 16 12 / 0.98));
+  border: 1px solid rgb(244 215 157 / 0.28);
+  border-radius: 999px;
+  color: #d9b56e;
+  grid-column: span 3;
+}
+
+.digit-entry-grid .home-game-logo {
+  align-items: center;
+  color: #f4f4f4;
+  display: flex;
+  font-size: calc(var(--menu-font-size) + 3px);
+  font-weight: var(--weight-strong);
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  min-width: 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+.digit-entry-grid .home-game-logo strong {
+  color: #c93636;
+  font: inherit;
+}
+
 /* Dark */
 .app-shell.theme-dark .digit-entry-grid .control-button {
   background: rgba(255, 255, 255, 0.08);
@@ -2450,6 +2537,16 @@ body:has(.app-shell.theme-dark) {
   color: #6aa6d8;
 }
 
+.app-shell.theme-dark .digit-entry-grid .digit-empty {
+  color: transparent;
+  opacity: 1;
+}
+
+.app-shell.theme-dark .digit-entry-grid .home-game-return-key {
+  background: linear-gradient(180deg, rgb(28 38 31 / 0.98), rgb(9 16 12 / 0.98));
+  border-color: rgb(244 215 157 / 0.28);
+  color: #d9b56e;
+}
 
 .app-shell.theme-dark .digit-input-error {
   background: rgba(140, 30, 30, 0.25) !important;
@@ -3353,6 +3450,11 @@ body:has(.app-shell.theme-dark) {
   padding-right: 0;
 }
 
+.state-detail-tabs {
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
 .state-table {
   border-left: 1px solid #e0d8ca;
   width: 100%;
@@ -3430,6 +3532,16 @@ html.android .state-table td {
   font-size: 14px;
 }
 
+html.android .state-condition-card header strong,
+html.android .state-condition-card header span,
+html.android .state-condition-card header em,
+html.android .state-condition-metric span,
+html.android .state-condition-metric strong,
+html.android .state-condition-metric em,
+html.android .state-match-snapshot {
+  font-size: 14px;
+}
+
 html.android .state-reading p {
   font-size: 14px;
 }
@@ -3446,6 +3558,138 @@ html.iphone .state-reading p {
 .state-table tr.state-weak td,
 .state-table tr.state-weak th {
   opacity: 0.68;
+}
+
+.state-condition-list {
+  display: grid;
+  gap: 8px;
+}
+
+.state-match-snapshot {
+  align-items: center;
+  background: #fffdf9;
+  border: 1px solid #e0d8ca;
+  border-radius: 6px;
+  color: #675a4b;
+  display: grid;
+  font-size: 15px;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 5px 8px;
+}
+
+.state-match-snapshot span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-match-snapshot strong {
+  color: #8d6428;
+  font-weight: var(--weight-emphasis);
+  white-space: nowrap;
+}
+
+.state-match-snapshot button,
+.state-condition-lock {
+  background: #f8f5f0;
+  border: 1px solid #e0d8ca;
+  border-radius: 4px;
+  color: #8d6428;
+  font: inherit;
+  line-height: 1;
+  padding: 3px 5px;
+}
+
+.state-condition-card {
+  background: #fffdf9;
+  border: 1px solid #e0d8ca;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.state-condition-card header {
+  align-items: baseline;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  padding: 6px 8px 2px;
+}
+
+.state-condition-card header strong {
+  color: #8d6428;
+  font-size: 16px;
+  font-weight: var(--weight-emphasis);
+}
+
+.state-condition-card header span {
+  color: #5f5548;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-condition-card header em {
+  color: #8b7d6c;
+  font-size: 14px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.state-condition-metrics {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 3px 8px 6px;
+}
+
+.state-condition-metric {
+  align-items: center;
+  background: #f8f5f0;
+  border: 1px solid #eee9df;
+  border-radius: 5px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 4px 5px;
+  text-align: left;
+}
+
+.state-condition-metric span {
+  color: #8d6428;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.state-condition-metric-values {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  text-align: right;
+}
+
+.state-condition-metric strong {
+  color: #4f4a43;
+  font-size: 16px;
+  font-weight: var(--weight-emphasis);
+  white-space: nowrap;
+}
+
+.state-condition-metric em {
+  color: #8b7d6c;
+  font-size: 14px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.state-condition-empty {
+  color: #8b7d6c;
+  font-size: 15px;
+  padding: 10px;
+  text-align: center;
 }
 
 .state-reading {
@@ -8450,6 +8694,16 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   .state-table td {
     font-size: 16px;
     height: 32px;
+  }
+
+  .state-condition-card header strong,
+  .state-condition-card header span,
+  .state-condition-card header em,
+  .state-condition-metric strong,
+  .state-condition-metric em,
+  .state-condition-metric span,
+  .state-match-snapshot {
+    font-size: 17px;
   }
 
   .state-reading p {
