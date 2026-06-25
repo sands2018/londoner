@@ -139,6 +139,7 @@ const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
 const windowModeKey = "londoner.windowMode";
+const frequencyDistanceTabKey = "londoner.frequencyDistanceNageTab";
 const repeatFilterOptions: RepeatTier[] = [REPEAT_TIER_CORE, REPEAT_TIER_AGGRESSIVE];
 
 function sanitizeManualTableId(tableId: string | undefined): string | undefined {
@@ -289,6 +290,7 @@ const simulatorCornerBets = [0, 1].flatMap((rowIndex) =>
 type DialogName = "connect" | "import" | "save" | null;
 type KeyboardMode = "keypad" | "board" | "digits";
 type DataTab = "local" | "shared" | "transfer";
+type FrequencyDistanceTab = "frequency" | "distance";
 type DataSortField = "name" | "count" | "time" | "sharedUploader" | "table";
 type SortDirection = "asc" | "desc";
 type ColRowTab = "detail" | "chart" | "summary" | "compare";
@@ -352,6 +354,21 @@ interface WaveTrendSeries {
   label: string;
   points: WaveTrendPoint[];
   hasData: boolean;
+}
+
+interface CurrentStateRow {
+  distance: number;
+  distancePercentile: number | null;
+  frequencyDelta: number | null;
+  iqr: number | null;
+  key: number;
+  label: string;
+  longFrequency: number | null;
+  score: number;
+  shortFrequency: number | null;
+  status: string;
+  trend: number | null;
+  weak: boolean;
 }
 
 type HotBenchmarkTab = "current" | "history" | "recent10";
@@ -454,6 +471,102 @@ function computeRoundWindowWavePoint(windowNumbers: readonly RouletteNumber[], c
     q3: densityQuantile(cleanSorted, 0.75),
   };
 }
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function latestSeriesNumber(values: readonly number[] | undefined): number | null {
+  if (!values || values.length === 0) return null;
+  const value = values[values.length - 1];
+  return Number.isFinite(value) ? value : null;
+}
+
+function latestWaveTrend(points: readonly WaveTrendPoint[]): WaveTrendPoint | null {
+  for (let index = points.length - 1; index >= 0; index -= 1) {
+    if (points[index].trend !== null) return points[index];
+  }
+  return null;
+}
+
+function latestWaveRhythm(points: readonly WaveRhythmPoint[]): WaveRhythmPoint | null {
+  for (let index = points.length - 1; index >= 0; index -= 1) {
+    if (points[index].q1 !== null && points[index].q3 !== null) return points[index];
+  }
+  return null;
+}
+
+function formatNullablePercent(value: number | null, digits = 0) {
+  return value === null ? "-" : `${(value * 100).toFixed(digits)}%`;
+}
+
+function formatNullableSignedPercent(value: number | null) {
+  return value === null ? "-" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+}
+
+function formatNullableNumber(value: number | null, digits = 1) {
+  return value === null ? "-" : value.toFixed(digits);
+}
+
+function currentStateStatus(score: number) {
+  if (score >= 72) return "重点观察";
+  if (score >= 62) return "偏强";
+  if (score >= 52) return "普通偏热";
+  if (score >= 42) return "中性";
+  if (score >= 32) return "偏弱";
+  return "暂不关注";
+}
+
+function describeCurrentStateRow(row: CurrentStateRow) {
+  const frequencyText = row.shortFrequency === null
+    ? "频率样本不足"
+    : row.shortFrequency >= 20
+      ? "短窗明显偏热"
+      : row.shortFrequency >= 5
+        ? "短窗略热"
+        : row.shortFrequency <= -20
+          ? "短窗明显偏冷"
+          : row.shortFrequency <= -5
+            ? "短窗略冷"
+            : "短窗接近均衡";
+  const deltaText = row.frequencyDelta === null
+    ? ""
+    : row.frequencyDelta >= 20
+      ? "，而且比长窗明显升温"
+      : row.frequencyDelta >= 5
+        ? "，比长窗略有升温"
+        : row.frequencyDelta <= -20
+          ? "，并且比长窗明显转冷"
+          : row.frequencyDelta <= -5
+            ? "，比长窗略有降温"
+            : "，短长变化不大";
+  const distanceText = row.distancePercentile === null
+    ? `当前距离 ${row.distance}，历史分位不足`
+    : row.distancePercentile >= 0.7
+      ? `当前距离 ${row.distance}，处在偏高分位`
+      : row.distancePercentile <= 0.35
+        ? `当前距离 ${row.distance}，距离位置偏低`
+        : `当前距离 ${row.distance}，距离位置中等`;
+  const trendText = row.trend === null
+    ? "节奏趋势样本不足"
+    : row.trend >= 0.5
+      ? "节奏正在变快"
+      : row.trend <= -0.5
+        ? "节奏正在变慢"
+        : "节奏变化不明显";
+  const concentrationText = row.iqr === null
+    ? "集中度样本不足"
+    : row.iqr <= 2.5
+      ? "集中度较好"
+      : row.iqr >= 4
+        ? "集中度偏散"
+        : "集中度普通";
+  return {
+    label: row.label,
+    text: `（${row.status}，${row.score}分）：${frequencyText}${deltaText}；${distanceText}；${trendText}，${concentrationText}。`,
+  };
+}
+
 const emptyFrequencyStats: FrequencyStats = { frequencies: [], nonZeroCount: 0 };
 const emptyOtherNumberStats: ReturnType<typeof calculateOtherNumberStats> = { maxDistances: [], rows: [] };
 const emptyOtherLongStats: ReturnType<typeof calculateOtherLongStats> = { misses: 0, percentages: [], rounds: [], total: 0, wins: [] };
@@ -939,7 +1052,13 @@ export function App() {
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [hotStatusCollapsed, setHotStatusCollapsed] = useState(() => localStorage.getItem("londoner.hotStatusCollapsed") === "1");
   const [statsTab, setStatsTab] = useState("game");
-  const [statsGroupTab, setStatsGroupTab] = useState(() => localStorage.getItem("londoner.statsGroupTab") || "colrow");
+  const [statsGroupTab, setStatsGroupTab] = useState(() => {
+    const saved = localStorage.getItem("londoner.statsGroupTab");
+    return saved === "dist" ? "freq" : saved || "colrow";
+  });
+  const [frequencyDistanceTab, setFrequencyDistanceTab] = useState<FrequencyDistanceTab>(() =>
+    localStorage.getItem(frequencyDistanceTabKey) === "distance" ? "distance" : "frequency",
+  );
   const [predictionWindowOpen, setPredictionWindowOpen] = useState(false);
   const [predictionTab, setPredictionTab] = useState(() => {
     const saved = localStorage.getItem("londoner.predictionTab");
@@ -1350,7 +1469,7 @@ export function App() {
     return "";
   }, [currentSessionId, allSavedSessions]);
 
-  const shouldComputeWaveStats = statsViewOpen && statsTab === "wave";
+  const shouldComputeWaveStats = statsViewOpen && (statsTab === "wave" || statsTab === "state");
   const waveRhythmData = useMemo<WaveRhythmSeries[]>(() => {
     if (!shouldComputeWaveStats) return [];
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
@@ -1404,7 +1523,6 @@ export function App() {
       return { label: series.label, points, hasData: points.some((point) => point.trend !== null) };
     });
   }, [shouldComputeWaveStats, waveRhythmData]);
-
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
   const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
   const chaseSixFrom201 = useMemo(() => analyzeChaseSixRolling(numbers, 200, REPEAT_INITIAL_ROUNDS), [numbers]);
@@ -3925,8 +4043,8 @@ export function App() {
     colRowViewOpen ||
     distanceViewOpen ||
     refineViewOpen ||
-    (statsViewOpen && (statsTab === "colrow" || statsTab === "dist" || statsTab === "refine"));
-  const shouldComputeFrequencyStats = frequencyViewOpen || (statsViewOpen && statsTab === "freq");
+    (statsViewOpen && (statsTab === "colrow" || statsTab === "state" || statsTab === "dist" || statsTab === "refine" || (statsTab === "freq" && frequencyDistanceTab === "distance")));
+  const shouldComputeFrequencyStats = frequencyViewOpen || (statsViewOpen && (statsTab === "state" || (statsTab === "freq" && frequencyDistanceTab === "frequency")));
   const shouldComputeOtherStats = otherViewOpen || (statsViewOpen && statsTab === "other");
   const gameStats = useMemo(
     () => shouldComputeGameStats ? calculateGameStats(numbers, effectiveStatsScope, gameSortField, gameSortDirection) : [],
@@ -3941,6 +4059,64 @@ export function App() {
     [frequencyScopes, numbers, shouldComputeFrequencyStats],
   );
   const distanceStats = colRowStats.rawDistances;
+  const currentStateRows = useMemo<CurrentStateRow[]>(() => {
+    if (!(statsViewOpen && statsTab === "state")) return [];
+
+    const rowKeys = [0, 1, 2, 4, 5, 6];
+    const shortScopeIndex = frequencyScopes.reduce((bestIndex, scope, index) => {
+      const bestDistance = Math.abs(Number(frequencyScopes[bestIndex]) - 34);
+      const distance = Math.abs(Number(scope) - 34);
+      return distance < bestDistance ? index : bestIndex;
+    }, 0);
+    const longScopeIndex = frequencyScopes.reduce((bestIndex, scope, index) => {
+      const bestDistance = Math.abs(Number(frequencyScopes[bestIndex]) - 144);
+      const distance = Math.abs(Number(scope) - 144);
+      return distance < bestDistance ? index : bestIndex;
+    }, 0);
+
+    return rowKeys
+      .map((key, orderIndex) => {
+        const row = colRowStats.rows.find((item) => item.key === key);
+        const rawDistances = (colRowStats.rawDistances[key] ?? []).map((distance) => Math.max(distance - 1, 0));
+        const distance = row?.current ?? 0;
+        const distancePercentile = rawDistances.length > 0
+          ? rawDistances.filter((item) => item <= distance).length / rawDistances.length
+          : null;
+        const shortFrequency = latestSeriesNumber(frequencyStats.frequencies[key]?.[shortScopeIndex]);
+        const longFrequency = latestSeriesNumber(frequencyStats.frequencies[key]?.[longScopeIndex]);
+        const frequencyDelta = shortFrequency !== null && longFrequency !== null ? shortFrequency - longFrequency : null;
+        const trendPoint = latestWaveTrend(waveTrendData[orderIndex]?.points ?? []);
+        const trend = trendPoint?.trend ?? null;
+        const rhythmPoint = latestWaveRhythm(waveRhythmData[orderIndex]?.points ?? []);
+        const iqr = rhythmPoint && rhythmPoint.q1 !== null && rhythmPoint.q3 !== null
+          ? rhythmPoint.q3 - rhythmPoint.q1
+          : null;
+
+        let score = 50;
+        if (distancePercentile !== null) score += clampNumber((distancePercentile - 0.5) * 30, -15, 15);
+        if (shortFrequency !== null) score += clampNumber(shortFrequency / 4, -12, 12);
+        if (frequencyDelta !== null) score += clampNumber(frequencyDelta / 3, -16, 16);
+        if (trend !== null) score += clampNumber(trend * 6, -18, 18);
+        if (iqr !== null) score += clampNumber((4 - iqr) * 3, -12, 12);
+        const roundedScore = Math.round(clampNumber(score, 0, 100));
+
+        return {
+          distance,
+          distancePercentile,
+          frequencyDelta,
+          iqr,
+          key,
+          label: row?.label ?? frequencyBandLabels[key] ?? "",
+          longFrequency,
+          score: roundedScore,
+          shortFrequency,
+          status: currentStateStatus(roundedScore),
+          trend,
+          weak: trendPoint?.weak ?? rawDistances.length < 8,
+        };
+      })
+      .sort((left, right) => right.score - left.score);
+  }, [colRowStats.rawDistances, colRowStats.rows, frequencyScopes, frequencyStats.frequencies, statsTab, statsViewOpen, waveRhythmData, waveTrendData]);
   const colRowCompareRows = useMemo(() => {
     if (!shouldComputeColRowStats) return [];
     return buildColRowCompareRows(
@@ -4087,7 +4263,9 @@ export function App() {
     setDistanceViewOpen(false);
     setRefineViewOpen(false);
     setOtherViewOpen(false);
-    setFrequencyViewOpen(true);
+    setFrequencyViewOpen(false);
+    setStatsTab("freq");
+    setStatsViewOpen(true);
   }
 
   function openDistanceView() {
@@ -4097,7 +4275,22 @@ export function App() {
     setRefineViewOpen(false);
     setOtherViewOpen(false);
     setDistanceDetailKey(null);
-    setDistanceViewOpen(true);
+    setDistanceViewOpen(false);
+    setFrequencyDistanceTab("distance");
+    localStorage.setItem(frequencyDistanceTabKey, "distance");
+    setStatsTab("freq");
+    setStatsViewOpen(true);
+  }
+
+  function openStateView() {
+    setGameViewOpen(false);
+    setColRowViewOpen(false);
+    setFrequencyViewOpen(false);
+    setDistanceViewOpen(false);
+    setRefineViewOpen(false);
+    setOtherViewOpen(false);
+    setStatsTab("state");
+    setStatsViewOpen(true);
   }
 
   function openRefineView() {
@@ -4431,6 +4624,100 @@ export function App() {
             <DistanceSingleChart distances={distanceStats} selectedKey={distanceDetailKey} />
           </div>
         ) : null}
+      </div>
+    );
+  }
+
+  function selectFrequencyDistanceTab(tab: FrequencyDistanceTab) {
+    setFrequencyDistanceTab(tab);
+    localStorage.setItem(frequencyDistanceTabKey, tab);
+  }
+
+  function StatsFrequencyDistanceTab() {
+    return (
+      <div className="frequency-distance-body">
+        <div className="tabs tabs-top">
+          <button
+            className={frequencyDistanceTab === "frequency" ? "selected" : ""}
+            onClick={() => selectFrequencyDistanceTab("frequency")}
+            type="button"
+          >
+            频率
+          </button>
+          <button
+            className={frequencyDistanceTab === "distance" ? "selected" : ""}
+            onClick={() => selectFrequencyDistanceTab("distance")}
+            type="button"
+          >
+            距离
+          </button>
+        </div>
+        {frequencyDistanceTab === "frequency" ? <StatsFrequencyTab /> : <StatsDistanceTab />}
+      </div>
+    );
+  }
+
+  function StatsStateTab() {
+    return (
+      <div className="state-body">
+        <div className="data-table-wrap">
+          <table className="data-table state-table">
+            <colgroup>
+              <col className="state-col-label" />
+              <col className="state-col-score" />
+              <col className="state-col-distance" />
+              <col className="state-col-percentile" />
+              <col className="state-col-frequency" />
+              <col className="state-col-delta" />
+              <col className="state-col-trend" />
+              <col className="state-col-iqr" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>行组</th>
+                <th>评分</th>
+                <th>距</th>
+                <th>分位</th>
+                <th>短频</th>
+                <th>短长</th>
+                <th>节奏</th>
+                <th>集中</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentStateRows.length === 0 ? (
+                <tr><td className="data-empty" colSpan={8}>暂无可统计的数据</td></tr>
+              ) : currentStateRows.map((row) => (
+                <tr className={row.weak ? "state-weak" : ""} key={row.key}>
+                  <th>{row.label}</th>
+                  <td className="state-score">{row.score}</td>
+                  <td>{row.distance}</td>
+                  <td>{formatNullablePercent(row.distancePercentile)}</td>
+                  <td>{formatNullableSignedPercent(row.shortFrequency)}</td>
+                  <td>{formatNullableSignedPercent(row.frequencyDelta)}</td>
+                  <td>{formatNullableNumber(row.trend)}</td>
+                  <td>{formatNullableNumber(row.iqr)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="state-reading">
+          <strong>状态解读</strong>
+          {currentStateRows.length > 0 ? (
+            currentStateRows.map((row) => {
+              const reading = describeCurrentStateRow(row);
+              return (
+                <p key={row.key}>
+                  <span className="state-reading-label">{reading.label}</span>
+                  {reading.text}
+                </p>
+              );
+            })
+          ) : (
+            <p>暂无可解读的数据。</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -5452,9 +5739,9 @@ export function App() {
         </div>
         <div className="dock-actions dock-actions-primary">
           <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
-          <button onClick={() => { setStatsTab(statsGroupTab); setStatsViewOpen(true); }} type="button">行组</button>
+          <button onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
           <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
-          <button onClick={() => { setStatsTab("dist"); setStatsViewOpen(true); }} type="button">距离</button>
+          <button onClick={() => { setStatsTab("state"); setStatsViewOpen(true); }} type="button">状态</button>
           <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
           <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
           <button onClick={openSnapshotFromDock} type="button">快照</button>
@@ -5879,7 +6166,7 @@ export function App() {
               >
                 频率
               </button>
-              <button onClick={openDistanceView} type="button">距离</button>
+              <button onClick={openStateView} type="button">状态</button>
               <button onClick={openRefineView} type="button">细化</button>
               <button onClick={openPredictionWindow} type="button">智能</button>
               <button onClick={openOtherView} type="button">其它</button>
@@ -5953,7 +6240,7 @@ export function App() {
                 行组
               </button>
               <button className="selected" type="button">频率</button>
-              <button onClick={openDistanceView} type="button">距离</button>
+              <button onClick={openStateView} type="button">状态</button>
               <button onClick={openRefineView} type="button">细化</button>
               <button onClick={openPredictionWindow} type="button">智能</button>
               <button onClick={openOtherView} type="button">其它</button>
@@ -5976,7 +6263,7 @@ export function App() {
               <button onClick={openGameView} type="button">打法</button>
               <button onClick={openColRowView} type="button">行组</button>
               <button onClick={openFrequencyView} type="button">频率</button>
-              <button className="selected" type="button">距离</button>
+              <button onClick={openStateView} type="button">状态</button>
               <button onClick={openRefineView} type="button">细化</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
@@ -6092,7 +6379,7 @@ export function App() {
               <button onClick={openGameView} type="button">打法</button>
               <button onClick={openColRowView} type="button">行组</button>
               <button onClick={openFrequencyView} type="button">频率</button>
-              <button onClick={openDistanceView} type="button">距离</button>
+              <button onClick={openStateView} type="button">状态</button>
               <button className="selected" type="button">细化</button>
               <button onClick={openOtherView} type="button">其它</button>
             </div>
@@ -6332,7 +6619,7 @@ export function App() {
               <button onClick={openGameView} type="button">打法</button>
               <button onClick={openColRowView} type="button">行组</button>
               <button onClick={openFrequencyView} type="button">频率</button>
-              <button onClick={openDistanceView} type="button">距离</button>
+              <button onClick={openStateView} type="button">状态</button>
               <button onClick={openRefineView} type="button">细化</button>
               <button className="selected" type="button">其它</button>
             </div>
@@ -6953,7 +7240,7 @@ export function App() {
       {statsViewOpen ? (
         <section className="data-screen" aria-label="统计数据">
           <header className="data-screen-head">
-            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率统计图":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="numberZone"?"快照":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
+            <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率 / 距离":statsTab==="state"?"当前状态评分":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="numberZone"?"快照":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
             <button className="close-button title-close-button" onClick={() => setStatsViewOpen(false)} type="button">x</button>
           </header>
           <div className="stats-tab-body">
@@ -6975,7 +7262,8 @@ export function App() {
               </div>
             )}
             {statsTab === "colrow" && <StatsColRowTab />}
-            {statsTab === "freq" && <StatsFrequencyTab />}
+            {statsTab === "freq" && <StatsFrequencyDistanceTab />}
+            {statsTab === "state" && <StatsStateTab />}
             {statsTab === "dist" && <StatsDistanceTab />}
             {statsTab === "wave" && <StatsWaveTab />}
             {statsTab === "numberZone" && <StatsNumberZoneTab />}
@@ -6986,7 +7274,7 @@ export function App() {
               {colRowScopes.map((value) => (<button className={value===colRowScope?"selected":""} key={value} onClick={()=>setColRowScope(value)} type="button">{value<0?"全部":value}</button>))}
             </div>
           ) : null}
-          {statsTab === "freq" && frequencyDetailKey === null ? (
+          {statsTab === "freq" && frequencyDistanceTab === "frequency" && frequencyDetailKey === null ? (
             <div className="data-screen-actions frequency-scope-actions" aria-label="频率统计范围" style={{borderTop:0,padding:"0 0 8px"}}>
               {frequencyScopes.map((value, index) => (<button className={index === frequencyScopeIndex ? "selected" : ""} key={value} onClick={() => setFrequencyScopeIndex(index)} type="button">{value}</button>))}
             </div>
@@ -7000,7 +7288,7 @@ export function App() {
             <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
             <button className={statsTab==="colrow"?"selected":""} onClick={()=>{ setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab","colrow"); }} type="button">行组</button>
             <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
-            <button className={statsTab==="dist"?"selected":""} onClick={()=>{ setStatsTab("dist"); setStatsGroupTab("dist"); localStorage.setItem("londoner.statsGroupTab","dist"); }} type="button">距离</button>
+            <button className={statsTab==="state"?"selected":""} onClick={()=>setStatsTab("state")} type="button">状态</button>
             <button className={statsTab==="wave"?"selected":""} onClick={()=>{ setStatsTab("wave"); setStatsGroupTab("wave"); localStorage.setItem("londoner.statsGroupTab","wave"); }} type="button">波浪</button>
             <button className={statsTab==="numberZone"?"selected":""} onClick={()=>setStatsTab("numberZone")} type="button">快照</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
