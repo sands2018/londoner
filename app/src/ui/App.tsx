@@ -328,10 +328,28 @@ interface ChaseSixSavedBenchmark {
   calculatedAt: string;
 }
 
+interface WaveRhythmPoint {
+  round: number;
+  gapCount: number;
+  q1: number | null;
+  median: number | null;
+  q3: number | null;
+}
+
+interface WaveRhythmSeries {
+  label: string;
+  points: WaveRhythmPoint[];
+  hasData: boolean;
+}
+
 type HotBenchmarkTab = "current" | "history" | "recent10";
 type Quality124BenchmarkTab = "current" | "history" | "recent10";
 type ChaseSixBenchmarkTab = "current" | "history" | "recent10";
 
+const waveRoundWindowOptions = [21, 34, 55, 89, 144] as const;
+const defaultWaveRoundWindow = 34;
+const waveDensityBandwidth = 0.9;
+const waveDensityStep = 0.05;
 const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
 const chaseSixLocalHistoryBenchmarkKey = "londoner.chaseSixLocalHistoryBenchmark";
 const chaseSixRecent10BenchmarkKey = "londoner.chaseSixRecent10Benchmark";
@@ -348,6 +366,80 @@ const emptyColRowStats = {
   rawDistances: Array.from({ length: 8 }, () => [] as number[]),
   rows: [] as ColRowWave[],
 };
+
+function normalizeWaveRoundWindow(value: number) {
+  return waveRoundWindowOptions.includes(value as (typeof waveRoundWindowOptions)[number])
+    ? value
+    : defaultWaveRoundWindow;
+}
+
+function densityQuantile(values: readonly number[], percentile: number) {
+  if (values.length === 0) return 0;
+
+  const min = Math.max(0, Math.min(...values) - waveDensityBandwidth);
+  const max = Math.max(...values) + waveDensityBandwidth;
+  let totalDensity = 0;
+  const samples: Array<{ y: number; density: number }> = [];
+
+  for (let y = min; y <= max + 1e-9; y += waveDensityStep) {
+    let density = 0;
+    for (const value of values) {
+      const distance = Math.abs(y - value) / waveDensityBandwidth;
+      if (distance < 1) density += 1 - distance;
+    }
+    samples.push({ y, density });
+    totalDensity += density;
+  }
+
+  if (totalDensity <= 0) return values[Math.floor((values.length - 1) * percentile)] ?? 0;
+
+  const target = totalDensity * percentile;
+  let cumulative = 0;
+  for (const sample of samples) {
+    cumulative += sample.density;
+    if (cumulative >= target) return sample.y;
+  }
+  return max;
+}
+
+function computeRoundWindowWavePoint(windowNumbers: readonly RouletteNumber[], ci: number) {
+  const rawGaps = extractGaps(windowNumbers, ci);
+  if (rawGaps.length === 0) return null;
+
+  const sorted = [...rawGaps].sort((a, b) => a - b);
+  const q1 = densityQuantile(sorted, 0.25);
+  const median = densityQuantile(sorted, 0.5);
+  const q3 = densityQuantile(sorted, 0.75);
+
+  if (rawGaps.length < 3) {
+    return {
+      gapCount: rawGaps.length,
+      median,
+      q1,
+      q3,
+    };
+  }
+
+  const iqr = q3 - q1;
+  const upper = q3 + 1.5 * iqr;
+  const clean = rawGaps.filter((gap) => gap <= upper);
+  if (clean.length < 3) {
+    return {
+      gapCount: rawGaps.length,
+      median,
+      q1,
+      q3,
+    };
+  }
+
+  const cleanSorted = [...clean].sort((a, b) => a - b);
+  return {
+    gapCount: rawGaps.length,
+    median: densityQuantile(cleanSorted, 0.5),
+    q1: densityQuantile(cleanSorted, 0.25),
+    q3: densityQuantile(cleanSorted, 0.75),
+  };
+}
 const emptyFrequencyStats: FrequencyStats = { frequencies: [], nonZeroCount: 0 };
 const emptyOtherNumberStats: ReturnType<typeof calculateOtherNumberStats> = { maxDistances: [], rows: [] };
 const emptyOtherLongStats: ReturnType<typeof calculateOtherLongStats> = { misses: 0, percentages: [], rounds: [], total: 0, wins: [] };
@@ -887,7 +979,7 @@ export function App() {
   const [showShortRepeat, setShowShortRepeat] = useState(() => localStorage.getItem("londoner.showShortRepeat") !== "0");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
   const [waveTab, setWaveTab] = useState<"rhythm" | "trend">("rhythm");
-  const [waveWindow, setWaveWindow] = useState(() => Number(localStorage.getItem("londoner.waveWindow")) || 13);
+  const [waveWindow, setWaveWindow] = useState(() => normalizeWaveRoundWindow(Number(localStorage.getItem("londoner.waveWindow")) || defaultWaveRoundWindow));
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
   const [otherRoundTab, setOtherRoundTab] = useState<OtherRoundTab>("bet");
@@ -1245,30 +1337,28 @@ export function App() {
   }, [currentSessionId, allSavedSessions]);
 
   const shouldComputeWaveStats = statsViewOpen && statsTab === "wave";
-  const waveRhythmData = useMemo(() => {
+  const waveRhythmData = useMemo<WaveRhythmSeries[]>(() => {
     if (!shouldComputeWaveStats) return [];
     const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
+    const roundWindow = normalizeWaveRoundWindow(waveWindow);
+    const visibleRounds = Math.min(numbers.length, Math.max(144, roundWindow * 2));
+    const recentNumbers = numbers.slice(-visibleRounds);
+    const pointCount = Math.max(0, recentNumbers.length - roundWindow + 1);
+
     return labels.map((label, ci) => {
-      const rawGaps = extractGaps(numbers.slice(-144), ci);
-      const pts: { median: number; q1: number; q3: number }[] = [];
-      const W = Math.max(5, Math.min(waveWindow, rawGaps.length));
-      for (let i = W; i <= rawGaps.length; i++) {
-        const window = rawGaps.slice(i - W, i);
-        const sorted = [...window].sort((a, b) => a - b);
-        const q1 = sorted[Math.floor(sorted.length * 0.25)];
-        const q3 = sorted[Math.floor(sorted.length * 0.75)];
-        const iqr = q3 - q1;
-        const upper = q3 + 1.5 * iqr;
-        const clean = window.filter(g => g <= upper);
-        if (clean.length < 3) continue;
-        const cs = [...clean].sort((a, b) => a - b);
-        pts.push({
-          median: cs[Math.floor(cs.length * 0.5)],
-          q1: cs[Math.floor(cs.length * 0.25)],
-          q3: cs[Math.floor(cs.length * 0.75)],
+      const points: WaveRhythmPoint[] = [];
+      for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
+        const end = pointIndex + roundWindow;
+        const stats = computeRoundWindowWavePoint(recentNumbers.slice(pointIndex, end), ci);
+        points.push({
+          round: numbers.length - recentNumbers.length + end,
+          gapCount: stats?.gapCount ?? 0,
+          median: stats?.median ?? null,
+          q1: stats?.q1 ?? null,
+          q3: stats?.q3 ?? null,
         });
       }
-      return { label, pts, hasData: pts.length >= 1 };
+      return { label, points, hasData: points.some((point) => point.median !== null) };
     });
   }, [numbers, shouldComputeWaveStats, waveWindow]);
 
@@ -4374,11 +4464,21 @@ export function App() {
 
   function StatsWaveTab() {
     const w = 360, h = 100, padX = 4, padR = 4, padY = 8;
-    const MAX_SLOTS = 60;
-    const BASIS = 144;
-    const maxSlots = Math.round(BASIS / 7);
+    const maxSlots = 64;
     const chartW = w - padX - padR;
     const slotW = chartW / maxSlots;
+    const rhythmQ3Values = waveRhythmData.flatMap((item) =>
+      item.points.map((point) => point.q3).filter((value): value is number => value !== null),
+    );
+    const yMax = rhythmQ3Values.length > 0 ? Math.min(10, Math.max(4, ...rhythmQ3Values) + 1) : 6;
+    const yVal = (v: number) => {
+      const visibleValue = yMax >= 10 && v > 10 ? 10.8 : v;
+      return padY + ((yMax - visibleValue) / yMax) * (h - padY * 2);
+    };
+    const rhythmClipTop = yMax >= 10 ? yVal(10.8) : padY;
+    const rhythmClipBottom = yVal(0);
+    const gridLines = Array.from({ length: yMax }, (_, index) => index + 1);
+    const selectedWaveWindow = normalizeWaveRoundWindow(waveWindow);
     return (
       <div className="prediction-body" style={{padding:0}}>
         <div className="tabs tabs-top">
@@ -4389,14 +4489,130 @@ export function App() {
           <>
             <div className="wave-grid" style={{padding:"0 10px"}}>
               {waveRhythmData.map((wd) => {
-                const allQ3 = waveRhythmData.flatMap(x => x.pts.map(p => p.q3));
-                const yMax = allQ3.length > 0 ? Math.max(4, ...allQ3) + 1 : 6;
-                const yVal = (v: number) => padY + ((yMax - v) / yMax) * (h - padY * 2);
-                const gridLines = (() => { const g: number[] = []; for (let n = 1; n <= yMax; n++) g.push(n); return g; })();
-                const overflow = wd.pts.length > maxSlots;
-                const stepX = overflow ? slotW : (wd.pts.length > 1 ? chartW / (wd.pts.length - 1) : chartW);
-                const svgW = overflow ? padX + (wd.pts.length - 1) * slotW + padR : w;
-                const lineEnd = overflow ? padX + (wd.pts.length - 1) * slotW : w - padR;
+                const pointCount = wd.points.length;
+                const overflow = pointCount > maxSlots;
+                const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
+                const svgW = overflow ? padX + Math.max(0, pointCount - 1) * slotW + padR : w;
+                const lineEnd = pointCount > 1
+                  ? (overflow ? padX + (pointCount - 1) * slotW : w - padR)
+                  : w - padR;
+                const clipId = `wave-rhythm-clip-${wd.label}`;
+                const bandPaths: Array<{ path: string; weak: boolean }> = [];
+                const lineSegments: Array<{ points: string; weak: boolean }> = [];
+                const overLimitBandPaths: Array<{ path: string; weak: boolean }> = [];
+                const overLimitLineSegments: Array<{ points: string; weak: boolean }> = [];
+                const overLimitLineDots: Array<{ x: number; y: number }> = [];
+                let bandRun: Array<{ index: number; q1: number; q3: number; weak: boolean }> = [];
+                let lineRun: Array<{ index: number; median: number; weak: boolean }> = [];
+                let overLimitBandRun: Array<{ index: number; q3: number; weak: boolean }> = [];
+
+                const flushBandRun = (weak: boolean) => {
+                  if (bandRun.length < 2) {
+                    bandRun = [];
+                    return;
+                  }
+                  let path = "";
+                  for (let j = 0; j < bandRun.length; j += 1) {
+                    const point = bandRun[j];
+                    const x = padX + point.index * stepX;
+                    path += `${j === 0 ? "M" : "L"}${x.toFixed(1)},${yVal(point.q3).toFixed(1)} `;
+                  }
+                  for (let j = bandRun.length - 1; j >= 0; j -= 1) {
+                    const point = bandRun[j];
+                    const x = padX + point.index * stepX;
+                    path += `L${x.toFixed(1)},${yVal(point.q1).toFixed(1)} `;
+                  }
+                  bandPaths.push({ path: `${path}Z`, weak });
+                  bandRun = [];
+                };
+
+                const flushOverLimitBandRun = (weak: boolean) => {
+                  if (overLimitBandRun.length < 2) {
+                    overLimitBandRun = [];
+                    return;
+                  }
+                  let path = "";
+                  for (let j = 0; j < overLimitBandRun.length; j += 1) {
+                    const point = overLimitBandRun[j];
+                    const x = padX + point.index * stepX;
+                    path += `${j === 0 ? "M" : "L"}${x.toFixed(1)},${yVal(point.q3).toFixed(1)} `;
+                  }
+                  for (let j = overLimitBandRun.length - 1; j >= 0; j -= 1) {
+                    const point = overLimitBandRun[j];
+                    const x = padX + point.index * stepX;
+                    path += `L${x.toFixed(1)},${yVal(10).toFixed(1)} `;
+                  }
+                  overLimitBandPaths.push({ path: `${path}Z`, weak });
+                  overLimitBandRun = [];
+                };
+
+                const flushLineRun = (weak: boolean) => {
+                  if (lineRun.length >= 2) {
+                    lineSegments.push({ weak, points: lineRun.map((point) => {
+                      const x = padX + point.index * stepX;
+                      return `${x.toFixed(1)},${yVal(point.median).toFixed(1)}`;
+                    }).join(" ") });
+                  }
+                  lineRun = [];
+                };
+
+                const flushOverLimitLineRun = (run: Array<{ index: number; median: number; weak: boolean }>, weak: boolean) => {
+                  if (run.length >= 2) {
+                    overLimitLineSegments.push({ weak, points: run.map((point) => {
+                      const x = padX + point.index * stepX;
+                      return `${x.toFixed(1)},${yVal(point.median).toFixed(1)}`;
+                    }).join(" ") });
+                  } else if (run.length === 1) {
+                    const point = run[0];
+                    overLimitLineDots.push({
+                      x: padX + point.index * stepX,
+                      y: yVal(point.median),
+                    });
+                  }
+                };
+
+                wd.points.forEach((point, index) => {
+                  if (point.q1 === null || point.q3 === null || point.median === null) {
+                    flushBandRun(bandRun[0]?.weak ?? false);
+                    flushOverLimitBandRun(overLimitBandRun[0]?.weak ?? false);
+                    flushLineRun(lineRun[0]?.weak ?? false);
+                    return;
+                  }
+                  const weak = point.gapCount < 3;
+                  if (bandRun.length > 0 && bandRun[0].weak !== weak) flushBandRun(bandRun[0].weak);
+                  if (lineRun.length > 0 && lineRun[0].weak !== weak) flushLineRun(lineRun[0].weak);
+
+                  bandRun.push({ index, q1: point.q1, q3: point.q3, weak });
+                  lineRun.push({ index, median: point.median, weak });
+                  if (point.q3 > 10) {
+                    if (overLimitBandRun.length > 0 && overLimitBandRun[0].weak !== weak) {
+                      flushOverLimitBandRun(overLimitBandRun[0].weak);
+                    }
+                    overLimitBandRun.push({ index, q3: point.q3, weak });
+                  } else {
+                    flushOverLimitBandRun(overLimitBandRun[0]?.weak ?? false);
+                  }
+                });
+                flushBandRun(bandRun[0]?.weak ?? false);
+                flushOverLimitBandRun(overLimitBandRun[0]?.weak ?? false);
+                flushLineRun(lineRun[0]?.weak ?? false);
+
+                let overLimitRun: Array<{ index: number; median: number; weak: boolean }> = [];
+                wd.points.forEach((point, index) => {
+                  if (point.median !== null && point.median > 10) {
+                    const weak = point.gapCount < 3;
+                    if (overLimitRun.length > 0 && overLimitRun[0].weak !== weak) {
+                      flushOverLimitLineRun(overLimitRun, overLimitRun[0].weak);
+                      overLimitRun = [];
+                    }
+                    overLimitRun.push({ index, median: point.median, weak });
+                    return;
+                  }
+                  flushOverLimitLineRun(overLimitRun, overLimitRun[0]?.weak ?? false);
+                  overLimitRun = [];
+                });
+                flushOverLimitLineRun(overLimitRun, overLimitRun[0]?.weak ?? false);
+
                 return (
                   <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
                     <div className="wave-card-label-sidebar">
@@ -4404,28 +4620,33 @@ export function App() {
                     </div>
                     <div className="wave-scroll" style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
                     <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
+                      <defs>
+                        <clipPath id={clipId}>
+                          <rect x={padX} y={rhythmClipTop} width={lineEnd - padX} height={rhythmClipBottom - rhythmClipTop} />
+                        </clipPath>
+                      </defs>
                       <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
                       <line x1={padX} x2={lineEnd} y1={yVal(0)} y2={yVal(0)} stroke="#9a7a5a" strokeWidth="1" />
                       {gridLines.map((g) => (
                         <line key={"g" + g} x1={padX} x2={lineEnd} y1={yVal(g)} y2={yVal(g)} stroke={g % 5 === 0 ? "#c0ae98" : "#e0d8cc"} strokeWidth={g % 5 === 0 ? "0.7" : "0.5"} />
                       ))}
-                      {wd.pts.length >= 2 && (() => {
-                        let bandPath = "";
-                        for (let j = 0; j < wd.pts.length; j++) {
-                          const x = padX + j * stepX;
-                          bandPath += (j === 0 ? "M" : "L") + x.toFixed(1) + "," + yVal(wd.pts[j].q3).toFixed(1) + " ";
-                        }
-                        for (let j = wd.pts.length - 1; j >= 0; j--) {
-                          const x = padX + j * stepX;
-                          bandPath += "L" + x.toFixed(1) + "," + yVal(wd.pts[j].q1).toFixed(1) + " ";
-                        }
-                        bandPath += "Z";
-                        return <path d={bandPath} fill="#c8b898aa" stroke="none" />;
-                      })()}
-                      {wd.pts.length >= 2 && (() => {
-                        const pts = wd.pts.map((p, j) => (padX + j * stepX).toFixed(1) + "," + yVal(p.median).toFixed(1)).join(" ");
-                        return <polyline points={pts} fill="none" stroke="#c0a860" strokeWidth="1.5" />;
-                      })()}
+                      <g clipPath={`url(#${clipId})`}>
+                        {bandPaths.map((item, index) => (
+                          <path d={item.path} fill={item.weak ? "#463f3080" : "#c8b898aa"} key={`band-${index}`} stroke="none" />
+                        ))}
+                        {lineSegments.map((item, index) => (
+                          <polyline fill="none" key={`line-${index}`} points={item.points} stroke={item.weak ? "#5c5134" : "#c0a860"} strokeWidth={item.weak ? "1.3" : "1.5"} />
+                        ))}
+                        {overLimitBandPaths.map((item, index) => (
+                          <path d={item.path} fill={item.weak ? "#5f3a1a88" : "#8f5a20aa"} key={`over-band-${index}`} stroke="none" />
+                        ))}
+                        {overLimitLineSegments.map((item, index) => (
+                          <polyline fill="none" key={`over-line-${index}`} points={item.points} stroke={item.weak ? "#6a411e" : "#a96a2a"} strokeLinecap="round" strokeWidth={item.weak ? "1.6" : "2"} />
+                        ))}
+                        {overLimitLineDots.map((point, index) => (
+                          <circle cx={point.x.toFixed(1)} cy={point.y.toFixed(1)} fill="#a96a2a" key={`over-dot-${index}`} r="1.6" />
+                        ))}
+                      </g>
                     </svg>
                     </div>
                   </div>
@@ -4433,8 +4654,8 @@ export function App() {
               })}
             </div>
             <div className="scope-row" style={{marginTop:6, paddingLeft:8}}>
-              {[5, 8, 13, 21, 34].map(n => (
-                <button key={n} className={waveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
+              {waveRoundWindowOptions.map(n => (
+                <button key={n} className={selectedWaveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
               ))}
             </div>
           </>
