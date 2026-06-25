@@ -75,7 +75,7 @@ import {
 } from "../storage/sharedStorage";
 import type { CasinoTable, SavedSession } from "../storage/storage";
 import { analyzePreferredNumber } from "../core/preferredNumber";
-import { computePeakSma, computePeakStats, extractGaps } from "../core/wave";
+import { extractGaps } from "../core/wave";
 import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow, type ChaseSixBenchmarkRow, type ChaseSixBenchmarkRowId } from "../core/chaseSix";
 import { CHASE6_HISTORY_BENCHMARK } from "../core/chaseSixHistoryBenchmark";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
@@ -342,6 +342,18 @@ interface WaveRhythmSeries {
   hasData: boolean;
 }
 
+interface WaveTrendPoint {
+  round: number;
+  trend: number | null;
+  weak: boolean;
+}
+
+interface WaveTrendSeries {
+  label: string;
+  points: WaveTrendPoint[];
+  hasData: boolean;
+}
+
 type HotBenchmarkTab = "current" | "history" | "recent10";
 type Quality124BenchmarkTab = "current" | "history" | "recent10";
 type ChaseSixBenchmarkTab = "current" | "history" | "recent10";
@@ -350,6 +362,8 @@ const waveRoundWindowOptions = [21, 34, 55, 89, 144] as const;
 const defaultWaveRoundWindow = 34;
 const waveDensityBandwidth = 0.9;
 const waveDensityStep = 0.05;
+const waveTrendFastPoints = 5;
+const waveTrendSlowPoints = 18;
 const hotCalibrationActionOrder: HotTableCalibrationAction[] = ["enhance", "baseline", "observe", "hint", "block"];
 const chaseSixLocalHistoryBenchmarkKey = "londoner.chaseSixLocalHistoryBenchmark";
 const chaseSixRecent10BenchmarkKey = "londoner.chaseSixRecent10Benchmark";
@@ -1362,34 +1376,34 @@ export function App() {
     });
   }, [numbers, shouldComputeWaveStats, waveWindow]);
 
-  const waveHistory = useMemo(() => {
+  const waveTrendData = useMemo<WaveTrendSeries[]>(() => {
     if (!shouldComputeWaveStats) return [];
-    const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
-    return labels.map((label, ci) => {
-      const gaps = extractGaps(numbers, ci);
-      const points: number[] = [];
-      for (let i = Math.max(8, gaps.length - 60); i <= gaps.length; i += 3) {
-        if (i < 8) continue;
-        points.push(computePeakSma(gaps.slice(0, i)));
-      }
-      return { label, points: points.slice(-60), hasData: points.length >= 3 };
-    });
-  }, [numbers, shouldComputeWaveStats]);
+    return waveRhythmData.map((series) => {
+      const points = series.points.map((point, index): WaveTrendPoint => {
+        if (point.median === null) return { round: point.round, trend: null, weak: true };
 
-  const waveSnapshot = useMemo(() => {
-    if (!shouldComputeWaveStats) return [];
-    const labels = ["一组", "二组", "三组", "1行", "2行", "3行"];
-    return labels.map((label, ci) => {
-      const gaps = extractGaps(numbers, ci);
-      const stats = computePeakStats(gaps);
-      if (!stats) return { label, peak: 0, conc: 0, sma: 0, trend: "flat" as const, hasData: false };
-      const prevGaps = gaps.slice(0, -3);
-      const prevStats = prevGaps.length >= 8 ? computePeakStats(prevGaps) : null;
-      const prevSma = prevStats ? prevStats.sma : stats.sma;
-      const trend = stats.sma > prevSma + 0.1 ? "up" : stats.sma < prevSma - 0.1 ? "down" : "flat";
-      return { label, peak: stats.peak, conc: stats.conc, sma: stats.sma, trend, hasData: true };
+        const recent: WaveRhythmPoint[] = [];
+        for (let cursor = index; cursor >= 0 && recent.length < waveTrendSlowPoints; cursor -= 1) {
+          const candidate = series.points[cursor];
+          if (candidate.median !== null) recent.unshift(candidate);
+        }
+
+        const fast = recent.slice(-waveTrendFastPoints);
+        if (fast.length < 3 || recent.length < 8) {
+          return { round: point.round, trend: null, weak: true };
+        }
+
+        const fastAverage = fast.reduce((sum, item) => sum + (item.median ?? 0), 0) / fast.length;
+        const slowAverage = recent.reduce((sum, item) => sum + (item.median ?? 0), 0) / recent.length;
+        return {
+          round: point.round,
+          trend: slowAverage - fastAverage,
+          weak: point.gapCount < 3 || fast.some((item) => item.gapCount < 3),
+        };
+      });
+      return { label: series.label, points, hasData: points.some((point) => point.trend !== null) };
     });
-  }, [numbers, shouldComputeWaveStats]);
+  }, [shouldComputeWaveStats, waveRhythmData]);
 
   // 追6 分析（信号 + ROI + 波浪特征），单次遍历替代原 computeChaseSixRoi + chaseSixSignals
   const cs = useMemo(() => analyzeChaseSixRolling(numbers, 200), [numbers]);
@@ -4479,6 +4493,18 @@ export function App() {
     const rhythmClipBottom = yVal(0);
     const gridLines = Array.from({ length: yMax }, (_, index) => index + 1);
     const selectedWaveWindow = normalizeWaveRoundWindow(waveWindow);
+    const trendValues = waveTrendData.flatMap((item) =>
+      item.points.map((point) => point.trend).filter((value): value is number => value !== null),
+    );
+    const trendMax = trendValues.length > 0
+      ? Math.max(0.6, Math.min(4, Math.max(...trendValues.map((value) => Math.abs(value))) + 0.15))
+      : 1;
+    const trendBaseline = h / 2;
+    const trendAmplitude = trendBaseline - padY;
+    const trendY = (value: number) => {
+      const capped = Math.max(-trendMax, Math.min(trendMax, value));
+      return trendBaseline - (capped / trendMax) * trendAmplitude;
+    };
     return (
       <div className="prediction-body" style={{padding:0}}>
         <div className="tabs tabs-top">
@@ -4661,44 +4687,78 @@ export function App() {
           </>
         ) : (
           <>
-            <p className="prediction-desc" style={{padding:"0 18px"}}>峰值间隔的移动平均趋势。下降(绿)=节奏加快，上升(红)=节奏变慢，走平=稳定</p>
             <div className="wave-grid" style={{padding:"0 10px"}}>
-              {waveHistory.map((wh, i) => {
-                const ws = waveSnapshot[i];
-                if (!wh.hasData) return null;
-                const maxSma = Math.max(...wh.points, 3);
-                const minSma = Math.min(...wh.points, 1);
-                const range = Math.max(maxSma - minSma, 0.5);
-                const w2 = 360, h2 = 64, padX2 = 0, padY2 = 4;
-                const baseline = h2 - padY2;
-                const maxSlots = 59;
-                const stepX = w2 / maxSlots;
-                const yVal2 = (v: number) => padY2 + ((maxSma - v) / range) * (h2 - padY2 * 2);
-                const segments: { x1: number; y1: number; x2: number; y2: number; up: boolean }[] = [];
-                for (let j = 1; j < wh.points.length; j++) {
-                  segments.push({ x1: padX2 + (j - 1) * stepX, y1: yVal2(wh.points[j - 1]), x2: padX2 + j * stepX, y2: yVal2(wh.points[j]), up: wh.points[j] <= wh.points[j - 1] });
+              {waveTrendData.map((wd) => {
+                const pointCount = wd.points.length;
+                const overflow = pointCount > maxSlots;
+                const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
+                const svgW = overflow ? padX + Math.max(0, pointCount - 1) * slotW + padR : w;
+                const lineEnd = pointCount > 1
+                  ? (overflow ? padX + (pointCount - 1) * slotW : w - padR)
+                  : w - padR;
+                const segments: Array<{
+                  area: string;
+                  line: string;
+                  faster: boolean;
+                  weak: boolean;
+                }> = [];
+
+                for (let index = 1; index < wd.points.length; index += 1) {
+                  const prev = wd.points[index - 1];
+                  const current = wd.points[index];
+                  if (prev.trend === null || current.trend === null) continue;
+                  const x1 = padX + (index - 1) * stepX;
+                  const x2 = padX + index * stepX;
+                  const y1 = trendY(prev.trend);
+                  const y2 = trendY(current.trend);
+                  const faster = (prev.trend + current.trend) / 2 >= 0;
+                  const weak = prev.weak || current.weak;
+                  segments.push({
+                    area: `${x1.toFixed(1)},${trendBaseline.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${trendBaseline.toFixed(1)}`,
+                    line: `${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`,
+                    faster,
+                    weak,
+                  });
                 }
+
                 return (
-                  <div className="wave-card" key={wh.label}>
-                    <div className="wave-card-head">
-                      <strong className="wave-card-label">{wh.label}</strong>
-                      <span className="wave-card-info">k={ws.peak} {(ws.conc*100).toFixed(0)}% SMA {ws.sma.toFixed(1)}</span>
+                  <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
+                    <div className="wave-card-label-sidebar">
+                      <span className="wave-card-label-text">{wd.label}</span>
                     </div>
-                    <svg className="wave-sparkline" viewBox={"0 0 " + w2 + " " + h2} preserveAspectRatio="none" role="img">
-                      <line x1={padX2} x2={w2 - padX2} y1={baseline} y2={baseline} stroke="#e8e4e0" strokeWidth="1" />
-                      {segments.map((seg, j) => {
-                        const color = seg.up ? "#5f9a7088" : "#b85a3a88";
-                        const pts = seg.x1.toFixed(1) + "," + seg.y1.toFixed(1) + " " + seg.x2.toFixed(1) + "," + seg.y2.toFixed(1) + " " + seg.x2.toFixed(1) + "," + baseline + " " + seg.x1.toFixed(1) + "," + baseline;
-                        return <polygon key={j} points={pts} fill={color} />;
-                      })}
-                      <polyline
-                        points={wh.points.map((v, j) => (padX2 + j * stepX).toFixed(1) + "," + yVal2(v).toFixed(1)).join(" ")}
-                        fill="none" stroke="#5a4a38" strokeWidth="1.5"
-                      />
+                    <div className="wave-scroll" style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+                    <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
+                      <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
+                      <line x1={padX} x2={lineEnd} y1={trendY(trendMax / 2)} y2={trendY(trendMax / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
+                      <line x1={padX} x2={lineEnd} y1={trendBaseline} y2={trendBaseline} stroke="#9a7a5a" strokeWidth="1" />
+                      <line x1={padX} x2={lineEnd} y1={trendY(-trendMax / 2)} y2={trendY(-trendMax / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
+                      {segments.map((segment, index) => (
+                        <polygon
+                          fill={segment.faster ? (segment.weak ? "#2f4c3670" : "#4f8f5f88") : (segment.weak ? "#4c2e1c70" : "#8f4d247f")}
+                          key={`area-${index}`}
+                          points={segment.area}
+                        />
+                      ))}
+                      {segments.map((segment, index) => (
+                        <polyline
+                          fill="none"
+                          key={`line-${index}`}
+                          points={segment.line}
+                          stroke={segment.faster ? (segment.weak ? "#496a4e" : "#78ad78") : (segment.weak ? "#6a411e" : "#b76a32")}
+                          strokeLinecap="round"
+                          strokeWidth={segment.weak ? "1.3" : "1.7"}
+                        />
+                      ))}
                     </svg>
+                    </div>
                   </div>
                 );
               })}
+            </div>
+            <div className="scope-row" style={{marginTop:6, paddingLeft:8}}>
+              {waveRoundWindowOptions.map(n => (
+                <button key={n} className={selectedWaveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
+              ))}
             </div>
           </>
         )}
