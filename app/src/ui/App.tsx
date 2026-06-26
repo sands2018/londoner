@@ -1263,6 +1263,7 @@ export function App() {
   const [digitInput, setDigitInput] = useState("");
   const [themeMode, setThemeMode] = useState<"soft" | "color" | "dark">("dark");
   const [keyboardVisible, setKeyboardVisible] = useState(true);
+  const [utilityRow, setUtilityRow] = useState<"dock" | "digit">("dock");
   const [separateColRows, setSeparateColRows] = useState(() => localStorage.getItem("londoner.separateColRows") !== "0");
   const [queueExpanded, setQueueExpanded] = useState(false);
   const [windowMode, setWindowMode] = useState<WindowMode>(() =>
@@ -6065,37 +6066,47 @@ export function App() {
             <button className="control-button digit-key digit-key-1" onClick={() => appendDigitInput(1)} type="button">1</button>
             <button className="control-button digit-key digit-key-2" onClick={() => appendDigitInput(2)} type="button">2</button>
             <button className="control-button digit-key digit-key-3" onClick={() => appendDigitInput(3)} type="button">3</button>
-            <button className="control-button digit-smart" onClick={openPredictionWindow} type="button">智能</button>
-            <button className="control-button digit-data" onClick={openDataDialog} type="button">数据</button>
-            <button className="control-button digit-config" onClick={openConfigView} type="button">配置</button>
-            {Array.from({ length: 4 }, (_, index) => (
-              <button
-                aria-hidden="true"
-                className="control-button digit-empty"
-                disabled
-                key={`digit-empty-${index}`}
-                tabIndex={-1}
-                type="button"
-              />
-            ))}
+            {utilityRow === "dock" ? (
+              <>
+                <button className="control-button digit-transfer" disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
+                <button className="control-button digit-connect" disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
+                <button className="control-button digit-import" onClick={openImportDialog} type="button">输入</button>
+                <button className="control-button digit-game" onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
+                <button className="control-button digit-colrow" onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
+                <button className="control-button digit-frequency" onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+                <button aria-label="切换到更多操作" className="control-button digit-row-switch digit-row-switch-default" onClick={() => setUtilityRow("digit")} title="默认操作" type="button">⬌</button>
+              </>
+            ) : (
+              <>
+                <button className="control-button digit-table" disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
+                <button className="control-button digit-save" disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
+                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">输出</button>
+                <button className="control-button digit-number-zone" onClick={openDataDialog} type="button">数据</button>
+                <button className="control-button digit-config" onClick={openConfigView} type="button">配置</button>
+                <button className="control-button digit-other" onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
+                <button aria-label="切换到默认操作" className="control-button digit-row-switch digit-row-switch-more" onClick={() => setUtilityRow("dock")} title="更多操作" type="button">⇔</button>
+              </>
+            )}
           </div>
         )}
-        <div className="dock-actions">
-          <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
-          <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
-          <button onClick={openImportDialog} type="button">输入</button>
-          <button disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
-          <button disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
-          <button disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">输出</button>
-          <button onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
-        </div>
+        {keyboardMode !== "digits" ? (
+          <div className="dock-actions">
+            <button disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
+            <button disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
+            <button onClick={openImportDialog} type="button">输入</button>
+            <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
+            <button onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
+            <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+            <button aria-hidden="true" className="dock-empty" disabled tabIndex={-1} type="button" />
+          </div>
+        ) : null}
         <div className="dock-actions dock-actions-primary">
-          <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
-          <button onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
-          <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
-          <button onClick={() => { setStatsTab("state"); setStatsViewOpen(true); }} type="button">状态</button>
-          <button onClick={() => { setStatsTab("wave"); setStatsViewOpen(true); }} type="button">波浪</button>
-          <button onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
+          <button onClick={openPredictionWindow} type="button">智能</button>
+          <button onClick={() => { setWaveTab("rhythm"); setStatsTab("wave"); setStatsViewOpen(true); }} type="button">节奏</button>
+          <button onClick={() => { setWaveTab("trend"); setStatsTab("wave"); setStatsViewOpen(true); }} type="button">趋势</button>
+          <button onClick={() => { selectStateDetailTab("current"); setStatsTab("state"); setStatsViewOpen(true); }} type="button">状态</button>
+          <button onClick={() => { selectStateDetailTab("condition"); setStatsTab("state"); setStatsViewOpen(true); }} type="button">匹配</button>
+          <button onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
           <button onClick={openSnapshotFromDock} type="button">快照</button>
         </div>
       </section>
@@ -7640,8 +7651,8 @@ export function App() {
             <button className={statsTab==="game"?"selected":""} onClick={()=>setStatsTab("game")} type="button">打法</button>
             <button className={statsTab==="colrow"?"selected":""} onClick={()=>{ setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab","colrow"); }} type="button">行组</button>
             <button className={statsTab==="freq"?"selected":""} onClick={()=>{ setStatsTab("freq"); setStatsGroupTab("freq"); localStorage.setItem("londoner.statsGroupTab","freq"); }} type="button">频率</button>
-            <button className={statsTab==="state"?"selected":""} onClick={()=>setStatsTab("state")} type="button">状态</button>
             <button className={statsTab==="wave"?"selected":""} onClick={()=>{ setStatsTab("wave"); setStatsGroupTab("wave"); localStorage.setItem("londoner.statsGroupTab","wave"); }} type="button">波浪</button>
+            <button className={statsTab==="state"?"selected":""} onClick={()=>setStatsTab("state")} type="button">状态</button>
             <button className={statsTab==="numberZone"?"selected":""} onClick={()=>setStatsTab("numberZone")} type="button">快照</button>
             <button className={statsTab==="other"?"selected":""} onClick={()=>setStatsTab("other")} type="button">其它</button>
           </footer>

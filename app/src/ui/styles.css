@@ -2230,6 +2230,10 @@ body:has(.app-shell.theme-dark) {
   margin-top: 6px;
 }
 
+.digit-entry-grid + .dock-actions-primary {
+  margin-top: var(--key-gap);
+}
+
 .dock-actions button,
 .control-button {
   align-items: center;
@@ -2354,7 +2358,7 @@ body:has(.app-shell.theme-dark) {
     "backAll n7 n8 n9 game game game"
     "redoAll n4 n5 n6 input clear undo"
     "n0 n1 n2 n3 enter enter redo"
-    "empty1 empty2 empty3 empty4 smart data config";
+    "table save export numberZone config other emptyTail";
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
@@ -2391,6 +2395,7 @@ body:has(.app-shell.theme-dark) {
   font-size: var(--control-font-size);
 }
 
+.digit-entry-grid .control-button,
 .digit-entry-grid .digit-key,
 .digit-entry-input,
 .digit-entry-grid .digit-send {
@@ -2479,16 +2484,33 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid .digit-key-1 { grid-area: n1; }
 .digit-entry-grid .digit-key-2 { grid-area: n2; }
 .digit-entry-grid .digit-key-3 { grid-area: n3; }
-.digit-entry-grid .digit-smart { grid-area: smart; }
-.digit-entry-grid .digit-data { grid-area: data; }
+.digit-entry-grid .digit-transfer { grid-area: table; }
+.digit-entry-grid .digit-connect { grid-area: save; }
+.digit-entry-grid .digit-import { grid-area: export; }
+.digit-entry-grid .digit-game { grid-area: numberZone; }
+.digit-entry-grid .digit-colrow { grid-area: config; }
+.digit-entry-grid .digit-frequency { grid-area: other; }
+.digit-entry-grid .digit-table { grid-area: table; }
+.digit-entry-grid .digit-save { grid-area: save; }
+.digit-entry-grid .digit-export { grid-area: export; }
+.digit-entry-grid .digit-number-zone { grid-area: numberZone; }
 .digit-entry-grid .digit-config { grid-area: config; }
+.digit-entry-grid .digit-other { grid-area: other; }
+.digit-entry-grid .digit-empty-tail { grid-area: emptyTail; }
+.digit-entry-grid .digit-row-switch { grid-area: emptyTail; }
 
-.digit-entry-grid .digit-empty:nth-last-child(4) { grid-area: empty1; }
-.digit-entry-grid .digit-empty:nth-last-child(3) { grid-area: empty2; }
-.digit-entry-grid .digit-empty:nth-last-child(2) { grid-area: empty3; }
-.digit-entry-grid .digit-empty:nth-last-child(1) { grid-area: empty4; }
+.digit-entry-grid .digit-row-switch {
+  color: #b99658;
+  font-size: calc(var(--control-font-size) + 10px);
+  line-height: 1;
+}
 
-.digit-entry-grid .digit-empty {
+.digit-entry-grid .digit-row-switch-default {
+  font-size: calc(var(--control-font-size) + 16px);
+}
+
+.digit-entry-grid .digit-empty,
+.dock-actions .dock-empty {
   color: transparent;
   opacity: 1;
   pointer-events: none;
@@ -2531,6 +2553,10 @@ body:has(.app-shell.theme-dark) {
   min-height: unset;
 }
 
+.app-shell.theme-dark .digit-entry-grid .digit-row-switch {
+  color: #cfcfcf;
+}
+
 .app-shell.theme-dark .digit-entry-input {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.08);
@@ -2538,7 +2564,8 @@ body:has(.app-shell.theme-dark) {
   color: #6aa6d8;
 }
 
-.app-shell.theme-dark .digit-entry-grid .digit-empty {
+.app-shell.theme-dark .digit-entry-grid .digit-empty,
+.app-shell.theme-dark .dock-actions .dock-empty {
   color: transparent;
   opacity: 1;
 }
