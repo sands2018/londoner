@@ -358,6 +358,12 @@ interface WaveTrendSeries {
   hasData: boolean;
 }
 
+interface WaveConcentrationSeries {
+  label: string;
+  points: WaveTrendPoint[];
+  hasData: boolean;
+}
+
 interface CurrentStateRow {
   distance: number;
   distancePercentile: number | null;
@@ -1355,7 +1361,8 @@ export function App() {
   const [entryMode200, setEntryMode200] = useState(() => localStorage.getItem("londoner.entryMode200") !== "0");
   const [showShortRepeat, setShowShortRepeat] = useState(() => localStorage.getItem("londoner.showShortRepeat") !== "0");
   const [colRowTab, setColRowTab] = useState<ColRowTab>("detail");
-  const [waveTab, setWaveTab] = useState<"rhythm" | "trend">("rhythm");
+  const [waveTab, setWaveTab] = useState<"rhythm" | "trend" | "concentration">("rhythm");
+  const [waveDetailLabel, setWaveDetailLabel] = useState<string | null>(null);
   const [waveWindow, setWaveWindow] = useState(() => normalizeWaveRoundWindow(Number(localStorage.getItem("londoner.waveWindow")) || defaultWaveRoundWindow));
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
@@ -1758,6 +1765,35 @@ export function App() {
 
         const fastAverage = fast.reduce((sum, item) => sum + (item.median ?? 0), 0) / fast.length;
         const slowAverage = recent.reduce((sum, item) => sum + (item.median ?? 0), 0) / recent.length;
+        return {
+          round: point.round,
+          trend: slowAverage - fastAverage,
+          weak: point.gapCount < 3 || fast.some((item) => item.gapCount < 3),
+        };
+      });
+      return { label: series.label, points, hasData: points.some((point) => point.trend !== null) };
+    });
+  }, [shouldComputeWaveStats, waveRhythmData]);
+  const waveConcentrationData = useMemo<WaveConcentrationSeries[]>(() => {
+    if (!shouldComputeWaveStats) return [];
+    return waveRhythmData.map((series) => {
+      const points = series.points.map((point, index): WaveTrendPoint => {
+        if (point.q1 === null || point.q3 === null) return { round: point.round, trend: null, weak: true };
+
+        const recent: WaveRhythmPoint[] = [];
+        for (let cursor = index; cursor >= 0 && recent.length < waveTrendSlowPoints; cursor -= 1) {
+          const candidate = series.points[cursor];
+          if (candidate.q1 !== null && candidate.q3 !== null) recent.unshift(candidate);
+        }
+
+        const fast = recent.slice(-waveTrendFastPoints);
+        if (fast.length < 3 || recent.length < 8) {
+          return { round: point.round, trend: null, weak: true };
+        }
+
+        const iqrOf = (item: WaveRhythmPoint) => (item.q3 ?? 0) - (item.q1 ?? 0);
+        const fastAverage = fast.reduce((sum, item) => sum + iqrOf(item), 0) / fast.length;
+        const slowAverage = recent.reduce((sum, item) => sum + iqrOf(item), 0) / recent.length;
         return {
           round: point.round,
           trend: slowAverage - fastAverage,
@@ -4935,7 +4971,7 @@ export function App() {
                 <th>短频</th>
                 <th>短长</th>
                 <th>节奏</th>
-                <th>集中</th>
+                <th>集中度</th>
               </tr>
             </thead>
             <tbody>
@@ -5096,6 +5132,7 @@ export function App() {
 
   function StatsWaveTab() {
     const w = 360, h = 100, padX = 4, padR = 4, padY = 8;
+    const detailChartHeight = h * 1.5;
     const maxSlots = 64;
     const chartW = w - padX - padR;
     const slotW = chartW / maxSlots;
@@ -5123,11 +5160,239 @@ export function App() {
       const capped = Math.max(-trendMax, Math.min(trendMax, value));
       return trendBaseline - (capped / trendMax) * trendAmplitude;
     };
+    const concentrationValues = waveConcentrationData.flatMap((item) =>
+      item.points.map((point) => point.trend).filter((value): value is number => value !== null),
+    );
+    const concentrationMax = concentrationValues.length > 0
+      ? Math.max(0.6, Math.min(4, Math.max(...concentrationValues.map((value) => Math.abs(value))) + 0.15))
+      : 1;
+    const concentrationY = (value: number) => {
+      const capped = Math.max(-concentrationMax, Math.min(concentrationMax, value));
+      return trendBaseline - (capped / concentrationMax) * trendAmplitude;
+    };
+    const selectedWaveRhythm = waveDetailLabel ? waveRhythmData.find((item) => item.label === waveDetailLabel) : null;
+    const selectedWaveTrend = waveDetailLabel ? waveTrendData.find((item) => item.label === waveDetailLabel) : null;
+    const selectedWaveConcentration = waveDetailLabel ? waveConcentrationData.find((item) => item.label === waveDetailLabel) : null;
+    const renderWaveScopeButtons = (className = "") => (
+      <div className={`scope-row${className ? ` ${className}` : ""}`} style={{marginTop:6, paddingLeft:8}}>
+        {waveRoundWindowOptions.map(n => (
+          <button key={n} className={selectedWaveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
+        ))}
+      </div>
+    );
+    const openWaveDetail = (label: string) => setWaveDetailLabel(label);
+    const returnToWaveTab = (tab: "rhythm" | "trend" | "concentration") => {
+      setWaveTab(tab);
+      setWaveDetailLabel(null);
+    };
+    const renderWaveLabelButton = (label: string) => (
+      <button className="wave-card-label-sidebar wave-card-label-button" onClick={() => openWaveDetail(label)} type="button">
+        <span className="wave-card-label-text">{label}</span>
+      </button>
+    );
+    const renderRhythmDetailChart = (wd: WaveRhythmSeries) => {
+      const pointCount = wd.points.length;
+      const overflow = pointCount > maxSlots;
+      const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
+      const svgW = overflow ? padX + Math.max(0, pointCount - 1) * slotW + padR : w;
+      const lineEnd = pointCount > 1
+        ? (overflow ? padX + (pointCount - 1) * slotW : w - padR)
+        : w - padR;
+      const clipId = `wave-rhythm-detail-clip-${wd.label}`;
+      const bandPaths: Array<{ path: string; weak: boolean }> = [];
+      const lineSegments: Array<{ points: string; weak: boolean }> = [];
+      const overLimitBandPaths: Array<{ path: string; weak: boolean }> = [];
+      let bandRun: Array<{ index: number; q1: number; q3: number; weak: boolean }> = [];
+      let lineRun: Array<{ index: number; median: number; weak: boolean }> = [];
+      let overLimitBandRun: Array<{ index: number; q3: number; weak: boolean }> = [];
+
+      const flushBandRun = (weak: boolean) => {
+        if (bandRun.length < 2) {
+          bandRun = [];
+          return;
+        }
+        let path = "";
+        for (let j = 0; j < bandRun.length; j += 1) {
+          const point = bandRun[j];
+          const x = padX + point.index * stepX;
+          path += `${j === 0 ? "M" : "L"}${x.toFixed(1)},${yVal(point.q3).toFixed(1)} `;
+        }
+        for (let j = bandRun.length - 1; j >= 0; j -= 1) {
+          const point = bandRun[j];
+          const x = padX + point.index * stepX;
+          path += `L${x.toFixed(1)},${yVal(point.q1).toFixed(1)} `;
+        }
+        bandPaths.push({ path: `${path}Z`, weak });
+        bandRun = [];
+      };
+
+      const flushOverLimitBandRun = (weak: boolean) => {
+        if (overLimitBandRun.length < 2) {
+          overLimitBandRun = [];
+          return;
+        }
+        let path = "";
+        for (let j = 0; j < overLimitBandRun.length; j += 1) {
+          const point = overLimitBandRun[j];
+          const x = padX + point.index * stepX;
+          path += `${j === 0 ? "M" : "L"}${x.toFixed(1)},${yVal(point.q3).toFixed(1)} `;
+        }
+        for (let j = overLimitBandRun.length - 1; j >= 0; j -= 1) {
+          const point = overLimitBandRun[j];
+          const x = padX + point.index * stepX;
+          path += `L${x.toFixed(1)},${yVal(10).toFixed(1)} `;
+        }
+        overLimitBandPaths.push({ path: `${path}Z`, weak });
+        overLimitBandRun = [];
+      };
+
+      const flushLineRun = (weak: boolean) => {
+        if (lineRun.length >= 2) {
+          lineSegments.push({ weak, points: lineRun.map((point) => {
+            const x = padX + point.index * stepX;
+            return `${x.toFixed(1)},${yVal(point.median).toFixed(1)}`;
+          }).join(" ") });
+        }
+        lineRun = [];
+      };
+
+      wd.points.forEach((point, index) => {
+        if (point.q1 === null || point.q3 === null || point.median === null) {
+          flushBandRun(bandRun[0]?.weak ?? false);
+          flushOverLimitBandRun(overLimitBandRun[0]?.weak ?? false);
+          flushLineRun(lineRun[0]?.weak ?? false);
+          return;
+        }
+        const weak = point.gapCount < 3;
+        if (bandRun.length > 0 && bandRun[0].weak !== weak) flushBandRun(bandRun[0].weak);
+        if (lineRun.length > 0 && lineRun[0].weak !== weak) flushLineRun(lineRun[0].weak);
+        bandRun.push({ index, q1: point.q1, q3: point.q3, weak });
+        lineRun.push({ index, median: point.median, weak });
+        if (point.q3 > 10) {
+          if (overLimitBandRun.length > 0 && overLimitBandRun[0].weak !== weak) {
+            flushOverLimitBandRun(overLimitBandRun[0].weak);
+          }
+          overLimitBandRun.push({ index, q3: point.q3, weak });
+        } else {
+          flushOverLimitBandRun(overLimitBandRun[0]?.weak ?? false);
+        }
+      });
+      flushBandRun(bandRun[0]?.weak ?? false);
+      flushOverLimitBandRun(overLimitBandRun[0]?.weak ?? false);
+      flushLineRun(lineRun[0]?.weak ?? false);
+
+      return (
+        <div className="wave-detail-chart">
+          <div className="wave-scroll" style={{overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+            <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: detailChartHeight}}>
+              <defs>
+                <clipPath id={clipId}>
+                  <rect x={padX} y={rhythmClipTop} width={lineEnd - padX} height={rhythmClipBottom - rhythmClipTop} />
+                </clipPath>
+              </defs>
+              <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
+              <line x1={padX} x2={lineEnd} y1={yVal(0)} y2={yVal(0)} stroke="#9a7a5a" strokeWidth="1" />
+              {gridLines.map((g) => (
+                <line key={"g" + g} x1={padX} x2={lineEnd} y1={yVal(g)} y2={yVal(g)} stroke={g % 5 === 0 ? "#c0ae98" : "#e0d8cc"} strokeWidth={g % 5 === 0 ? "0.7" : "0.5"} />
+              ))}
+              <g clipPath={`url(#${clipId})`}>
+                {bandPaths.map((item, index) => (
+                  <path d={item.path} fill={item.weak ? "#463f3080" : "#c8b898aa"} key={`band-${index}`} stroke="none" />
+                ))}
+                {lineSegments.map((item, index) => (
+                  <polyline fill="none" key={`line-${index}`} points={item.points} stroke={item.weak ? "#5c5134" : "#c0a860"} strokeWidth={item.weak ? "1.3" : "1.5"} />
+                ))}
+                {overLimitBandPaths.map((item, index) => (
+                  <path d={item.path} fill={item.weak ? "#5f3a1a88" : "#8f5a20aa"} key={`over-band-${index}`} stroke="none" />
+                ))}
+              </g>
+            </svg>
+          </div>
+        </div>
+      );
+    };
+    const renderDeltaDetailChart = (
+      wd: WaveTrendSeries | WaveConcentrationSeries,
+      yOf: (value: number) => number,
+      maxValue: number,
+      positiveColors: { area: string; weakArea: string; line: string; weakLine: string },
+      negativeColors: { area: string; weakArea: string; line: string; weakLine: string },
+    ) => {
+      const pointCount = wd.points.length;
+      const overflow = pointCount > maxSlots;
+      const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
+      const svgW = overflow ? padX + Math.max(0, pointCount - 1) * slotW + padR : w;
+      const lineEnd = pointCount > 1
+        ? (overflow ? padX + (pointCount - 1) * slotW : w - padR)
+        : w - padR;
+      const segments: Array<{
+        area: string;
+        line: string;
+        positive: boolean;
+        weak: boolean;
+      }> = [];
+
+      for (let index = 1; index < wd.points.length; index += 1) {
+        const prev = wd.points[index - 1];
+        const current = wd.points[index];
+        if (prev.trend === null || current.trend === null) continue;
+        const x1 = padX + (index - 1) * stepX;
+        const x2 = padX + index * stepX;
+        const y1 = yOf(prev.trend);
+        const y2 = yOf(current.trend);
+        const positive = (prev.trend + current.trend) / 2 >= 0;
+        const weak = prev.weak || current.weak;
+        segments.push({
+          area: `${x1.toFixed(1)},${trendBaseline.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${trendBaseline.toFixed(1)}`,
+          line: `${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`,
+          positive,
+          weak,
+        });
+      }
+
+      return (
+        <div className="wave-detail-chart">
+          <div className="wave-scroll" style={{overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+            <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: detailChartHeight}}>
+              <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
+              <line x1={padX} x2={lineEnd} y1={yOf(maxValue / 2)} y2={yOf(maxValue / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
+              <line x1={padX} x2={lineEnd} y1={trendBaseline} y2={trendBaseline} stroke="#9a7a5a" strokeWidth="1" />
+              <line x1={padX} x2={lineEnd} y1={yOf(-maxValue / 2)} y2={yOf(-maxValue / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
+              {segments.map((segment, index) => {
+                const colors = segment.positive ? positiveColors : negativeColors;
+                return (
+                  <polygon
+                    fill={segment.weak ? colors.weakArea : colors.area}
+                    key={`area-${index}`}
+                    points={segment.area}
+                  />
+                );
+              })}
+              {segments.map((segment, index) => {
+                const colors = segment.positive ? positiveColors : negativeColors;
+                return (
+                  <polyline
+                    fill="none"
+                    key={`line-${index}`}
+                    points={segment.line}
+                    stroke={segment.weak ? colors.weakLine : colors.line}
+                    strokeLinecap="round"
+                    strokeWidth={segment.weak ? "1.3" : "1.7"}
+                  />
+                );
+              })}
+            </svg>
+          </div>
+        </div>
+      );
+    };
     return (
+      <>
       <div className="prediction-body" style={{padding:0}}>
         <div className="tabs tabs-top">
           <button className={waveTab === "rhythm" ? "selected" : ""} onClick={() => setWaveTab("rhythm")} type="button">节奏</button>
           <button className={waveTab === "trend" ? "selected" : ""} onClick={() => setWaveTab("trend")} type="button">趋势</button>
+          <button className={waveTab === "concentration" ? "selected" : ""} onClick={() => setWaveTab("concentration")} type="button">集中度</button>
         </div>
         {waveTab === "rhythm" ? (
           <>
@@ -5259,10 +5524,8 @@ export function App() {
 
                 return (
                   <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
-                    <div className="wave-card-label-sidebar">
-                      <span className="wave-card-label-text">{wd.label}</span>
-                    </div>
-                    <div className="wave-scroll" style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+                    {renderWaveLabelButton(wd.label)}
+                    <div className="wave-scroll wave-chart-trigger" onClick={() => openWaveDetail(wd.label)} style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
                     <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
                       <defs>
                         <clipPath id={clipId}>
@@ -5297,13 +5560,9 @@ export function App() {
                 );
               })}
             </div>
-            <div className="scope-row" style={{marginTop:6, paddingLeft:8}}>
-              {waveRoundWindowOptions.map(n => (
-                <button key={n} className={selectedWaveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
-              ))}
-            </div>
+            {renderWaveScopeButtons()}
           </>
-        ) : (
+        ) : waveTab === "trend" ? (
           <>
             <div className="wave-grid" style={{padding:"0 10px"}}>
               {waveTrendData.map((wd) => {
@@ -5341,10 +5600,8 @@ export function App() {
 
                 return (
                   <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
-                    <div className="wave-card-label-sidebar">
-                      <span className="wave-card-label-text">{wd.label}</span>
-                    </div>
-                    <div className="wave-scroll" style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+                    {renderWaveLabelButton(wd.label)}
+                    <div className="wave-scroll wave-chart-trigger" onClick={() => openWaveDetail(wd.label)} style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
                     <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
                       <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
                       <line x1={padX} x2={lineEnd} y1={trendY(trendMax / 2)} y2={trendY(trendMax / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
@@ -5352,7 +5609,7 @@ export function App() {
                       <line x1={padX} x2={lineEnd} y1={trendY(-trendMax / 2)} y2={trendY(-trendMax / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
                       {segments.map((segment, index) => (
                         <polygon
-                          fill={segment.faster ? (segment.weak ? "#2f4c3670" : "#4f8f5f88") : (segment.weak ? "#4c2e1c70" : "#8f4d247f")}
+                          fill={segment.faster ? (segment.weak ? "#4f2d2b70" : "#9449417f") : (segment.weak ? "#334a3970" : "#588a6188")}
                           key={`area-${index}`}
                           points={segment.area}
                         />
@@ -5362,7 +5619,7 @@ export function App() {
                           fill="none"
                           key={`line-${index}`}
                           points={segment.line}
-                          stroke={segment.faster ? (segment.weak ? "#496a4e" : "#78ad78") : (segment.weak ? "#6a411e" : "#b76a32")}
+                          stroke={segment.faster ? (segment.weak ? "#70433f" : "#bc6258") : (segment.weak ? "#4d6751" : "#7aab7a")}
                           strokeLinecap="round"
                           strokeWidth={segment.weak ? "1.3" : "1.7"}
                         />
@@ -5373,14 +5630,116 @@ export function App() {
                 );
               })}
             </div>
-            <div className="scope-row" style={{marginTop:6, paddingLeft:8}}>
-              {waveRoundWindowOptions.map(n => (
-                <button key={n} className={selectedWaveWindow === n ? "selected" : ""} onClick={() => { setWaveWindow(n); localStorage.setItem("londoner.waveWindow", String(n)); }} type="button">{n}</button>
-              ))}
+            {renderWaveScopeButtons()}
+          </>
+        ) : (
+          <>
+            <div className="wave-grid" style={{padding:"0 10px"}}>
+              {waveConcentrationData.map((wd) => {
+                const pointCount = wd.points.length;
+                const overflow = pointCount > maxSlots;
+                const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
+                const svgW = overflow ? padX + Math.max(0, pointCount - 1) * slotW + padR : w;
+                const lineEnd = pointCount > 1
+                  ? (overflow ? padX + (pointCount - 1) * slotW : w - padR)
+                  : w - padR;
+                const segments: Array<{
+                  area: string;
+                  line: string;
+                  concentrated: boolean;
+                  weak: boolean;
+                }> = [];
+
+                for (let index = 1; index < wd.points.length; index += 1) {
+                  const prev = wd.points[index - 1];
+                  const current = wd.points[index];
+                  if (prev.trend === null || current.trend === null) continue;
+                  const x1 = padX + (index - 1) * stepX;
+                  const x2 = padX + index * stepX;
+                  const y1 = concentrationY(prev.trend);
+                  const y2 = concentrationY(current.trend);
+                  const concentrated = (prev.trend + current.trend) / 2 >= 0;
+                  const weak = prev.weak || current.weak;
+                  segments.push({
+                    area: `${x1.toFixed(1)},${trendBaseline.toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${trendBaseline.toFixed(1)}`,
+                    line: `${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`,
+                    concentrated,
+                    weak,
+                  });
+                }
+
+                return (
+                  <div className="wave-card" key={wd.label} style={{display:"flex", flexDirection:"row", alignItems:"stretch"}}>
+                    {renderWaveLabelButton(wd.label)}
+                    <div className="wave-scroll wave-chart-trigger" onClick={() => openWaveDetail(wd.label)} style={{flex:1, minWidth:0, overflowX: overflow ? "auto" : "hidden", WebkitOverflowScrolling:"touch"}} ref={(el) => { if (el && overflow) el.scrollLeft = el.scrollWidth; }}>
+                    <svg className="wave-sparkline" viewBox={"0 0 " + svgW + " " + h} preserveAspectRatio="none" role="img" style={{width: overflow ? svgW : "100%", height: h}}>
+                      <rect x={padX} y={padY} width={lineEnd - padX} height={h - padY * 2} fill="#fafaf7" rx="2" />
+                      <line x1={padX} x2={lineEnd} y1={concentrationY(concentrationMax / 2)} y2={concentrationY(concentrationMax / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
+                      <line x1={padX} x2={lineEnd} y1={trendBaseline} y2={trendBaseline} stroke="#9a7a5a" strokeWidth="1" />
+                      <line x1={padX} x2={lineEnd} y1={concentrationY(-concentrationMax / 2)} y2={concentrationY(-concentrationMax / 2)} stroke="#e0d8cc" strokeWidth="0.5" />
+                      {segments.map((segment, index) => (
+                        <polygon
+                          fill={segment.concentrated ? (segment.weak ? "#3f315970" : "#755da088") : (segment.weak ? "#2b435b70" : "#527eae88")}
+                          key={`area-${index}`}
+                          points={segment.area}
+                        />
+                      ))}
+                      {segments.map((segment, index) => (
+                        <polyline
+                          fill="none"
+                          key={`line-${index}`}
+                          points={segment.line}
+                          stroke={segment.concentrated ? (segment.weak ? "#50416b" : "#9b82c8") : (segment.weak ? "#38516a" : "#75a3d0")}
+                          strokeLinecap="round"
+                          strokeWidth={segment.weak ? "1.3" : "1.7"}
+                        />
+                      ))}
+                    </svg>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+            {renderWaveScopeButtons()}
           </>
         )}
       </div>
+      {selectedWaveRhythm && selectedWaveTrend && selectedWaveConcentration ? (
+        <section className="data-screen wave-detail-screen" aria-label={`${selectedWaveRhythm.label}波浪对照`}>
+          <header className="data-screen-head">
+            <strong>{selectedWaveRhythm.label}</strong>
+            <button className="close-button title-close-button" onClick={() => setWaveDetailLabel(null)} type="button">x</button>
+          </header>
+          <div className="wave-detail-body">
+            <section className="wave-detail-panel wave-detail-panel-trigger" onClick={() => returnToWaveTab("rhythm")}>
+              <h2>节奏</h2>
+              {renderRhythmDetailChart(selectedWaveRhythm)}
+            </section>
+            <section className="wave-detail-panel wave-detail-panel-trigger" onClick={() => returnToWaveTab("trend")}>
+              <h2>趋势</h2>
+              {renderDeltaDetailChart(
+                selectedWaveTrend,
+                trendY,
+                trendMax,
+                { area: "#9449417f", weakArea: "#4f2d2b70", line: "#bc6258", weakLine: "#70433f" },
+                { area: "#588a6188", weakArea: "#334a3970", line: "#7aab7a", weakLine: "#4d6751" },
+              )}
+            </section>
+            <section className="wave-detail-panel wave-detail-panel-trigger" onClick={() => returnToWaveTab("concentration")}>
+              <h2>集中度</h2>
+              {renderDeltaDetailChart(
+                selectedWaveConcentration,
+                concentrationY,
+                concentrationMax,
+                { area: "#755da088", weakArea: "#3f315970", line: "#9b82c8", weakLine: "#50416b" },
+                { area: "#527eae88", weakArea: "#2b435b70", line: "#75a3d0", weakLine: "#38516a" },
+              )}
+            </section>
+            {renderWaveScopeButtons("wave-detail-scope-row")}
+          </div>
+        </section>
+      ) : null}
+      </>
     );
   }
 
@@ -6076,10 +6435,10 @@ export function App() {
               <>
                 <button className="control-button digit-table" disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
                 <button className="control-button digit-save" disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
-                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">output</button>
                 <button className="control-button digit-number-zone" onClick={openDataDialog} type="button">数据</button>
                 <button className="control-button digit-config" onClick={openConfigView} type="button">配置</button>
-                <button className="control-button digit-other" onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
+                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">output</button>
+                <button className="control-button digit-other" onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
                 <button aria-label="切换到默认操作" className="control-button digit-row-switch digit-row-switch-more" onClick={() => setUtilityRow("dock")} title="更多操作" type="button">⇔</button>
               </>
             )}
@@ -6097,13 +6456,13 @@ export function App() {
           </div>
         ) : null}
         <div className="dock-actions dock-actions-primary">
-          <button onClick={openPredictionWindow} type="button">智能</button>
           <button onClick={() => { setWaveTab("rhythm"); setStatsTab("wave"); setStatsViewOpen(true); }} type="button">节奏</button>
           <button onClick={() => { setWaveTab("trend"); setStatsTab("wave"); setStatsViewOpen(true); }} type="button">趋势</button>
+          <button onClick={() => { setWaveTab("concentration"); setStatsTab("wave"); setStatsViewOpen(true); }} type="button">集中</button>
           <button onClick={() => { selectStateDetailTab("current"); setStatsTab("state"); setStatsViewOpen(true); }} type="button">状态</button>
           <button onClick={() => { selectStateDetailTab("condition"); setStatsTab("state"); setStatsViewOpen(true); }} type="button">匹配</button>
-          <button onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
           <button onClick={openSnapshotFromDock} type="button">快照</button>
+          <button onClick={openPredictionWindow} type="button">智能</button>
         </div>
       </section>
       ) : (
@@ -7601,7 +7960,7 @@ export function App() {
         <section className="data-screen" aria-label="统计数据">
           <header className="data-screen-head">
             <strong>{statsTab==="game"?"打法统计":statsTab==="colrow"?"行组距离数据":statsTab==="freq"?"频率 / 距离":statsTab==="state"?"当前状态评分":statsTab==="dist"?"距离统计图":statsTab==="wave"?"波浪数据":statsTab==="numberZone"?"快照":statsTab==="refine"?"行组细化数据":"其它统计数据"}</strong>
-            <button className="close-button title-close-button" onClick={() => setStatsViewOpen(false)} type="button">x</button>
+            <button className="close-button title-close-button" onClick={() => { setWaveDetailLabel(null); setStatsViewOpen(false); }} type="button">x</button>
           </header>
           <div className="stats-tab-body">
             {statsTab === "game" && (
