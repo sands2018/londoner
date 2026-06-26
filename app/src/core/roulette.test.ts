@@ -79,6 +79,10 @@ describe("roulette rules", () => {
     expect(stats.frequencies[0]).toHaveLength(2);
     expect(stats.frequencies[0][0]).toHaveLength(7);
     expect(stats.frequencies[0][1]).toHaveLength(5);
+    expect(stats.zScores).toHaveLength(8);
+    expect(stats.zScores[0]).toHaveLength(2);
+    expect(stats.zScores[0][0]).toHaveLength(stats.frequencies[0][0].length);
+    expect(Number.isFinite(stats.zScores[0][0][0])).toBe(true);
   });
 
   it("limits col-row compare results by scope", () => {

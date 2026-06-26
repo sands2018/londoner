@@ -808,7 +808,7 @@ function calculateConditionalStateRows(
   });
 }
 
-const emptyFrequencyStats: FrequencyStats = { frequencies: [], nonZeroCount: 0 };
+const emptyFrequencyStats: FrequencyStats = { frequencies: [], nonZeroCount: 0, zScores: [] };
 const emptyOtherNumberStats: ReturnType<typeof calculateOtherNumberStats> = { maxDistances: [], rows: [] };
 const emptyOtherLongStats: ReturnType<typeof calculateOtherLongStats> = { misses: 0, percentages: [], rounds: [], total: 0, wins: [] };
 const emptyNumberZoneData: Record<number, { value: number; isLatest: boolean; prevDistance: number | null }> = {};
@@ -4836,7 +4836,7 @@ export function App() {
       <div className={`frequency-body ${frequencyDetailKey === null ? "frequency-overview-body" : "frequency-detail-body"}`}>
         {frequencyDetailKey === null ? (
           <>
-            <FrequencyOverviewChart frequencyStats={frequencyStats} onSelect={(key:number) => setFrequencyDetailKey(key)} scopeIndex={frequencyScopeIndex} />
+            <FrequencyOverviewChart frequencyScopes={frequencyScopes} frequencyStats={frequencyStats} onSelect={(key:number) => setFrequencyDetailKey(key)} scopeIndex={frequencyScopeIndex} />
           </>
         ) : (
           <>
@@ -6543,6 +6543,7 @@ export function App() {
           <div className={`frequency-body ${frequencyDetailKey === null ? "frequency-overview-body" : "frequency-detail-body"}`}>
             {frequencyDetailKey === null ? (
               <FrequencyOverviewChart
+                frequencyScopes={frequencyScopes}
                 frequencyStats={frequencyStats}
                 onSelect={(key) => setFrequencyDetailKey(key)}
                 scopeIndex={frequencyScopeIndex}
@@ -9900,6 +9901,7 @@ function ColRowSummaryView({
 }
 
 interface FrequencyOverviewChartProps {
+  frequencyScopes: readonly FrequencyScope[];
   frequencyStats: FrequencyStats;
   onSelect: (key: number) => void;
   scopeIndex: number;
@@ -10012,7 +10014,81 @@ function DistanceChart({ detail, distances, selectedKey }: DistanceChartProps) {
   );
 }
 
-function FrequencyOverviewChart({ frequencyStats, onSelect, scopeIndex }: FrequencyOverviewChartProps) {
+function getFrequencyComparisonScopeIndex(scopeIndex: number, frequencyScopes: readonly FrequencyScope[]) {
+  const comparisonIndex = scopeIndex + 2;
+  return comparisonIndex < frequencyScopes.length ? comparisonIndex : -1;
+}
+
+function formatFrequencySignedValue(value: number | null) {
+  return value === null ? "-" : `${value >= 0 ? "+" : ""}${value.toFixed(1)}`;
+}
+
+function getFrequencyCurrentLabelData(
+  frequencyStats: FrequencyStats,
+  bandIndex: number,
+  scopeIndex: number,
+  frequencyScopes: readonly FrequencyScope[],
+) {
+  const zScore = latestSeriesNumber(frequencyStats.zScores[bandIndex]?.[scopeIndex]);
+  if (zScore === null) return null;
+  const longScopeIndex = getFrequencyComparisonScopeIndex(scopeIndex, frequencyScopes);
+  if (longScopeIndex < 0) {
+    return { comparisonScope: null, delta: null, zScore };
+  }
+  const longZScore = latestSeriesNumber(frequencyStats.zScores[bandIndex]?.[longScopeIndex]);
+  const delta = longZScore === null ? null : zScore - longZScore;
+  return { comparisonScope: frequencyScopes[longScopeIndex] ?? null, delta, zScore };
+}
+
+function frequencyValueClass(value: number | null) {
+  if (value === null) return "neutral";
+  if (value > 0.05) return "positive";
+  if (value < -0.05) return "negative";
+  return "neutral";
+}
+
+function FrequencyCurrentLabel({
+  comparisonScope,
+  delta,
+  x,
+  y,
+  zScore,
+}: {
+  comparisonScope: FrequencyScope | null;
+  delta: number | null;
+  x: number;
+  y: number;
+  zScore: number;
+}) {
+  return (
+    <text className="frequency-current-label" textAnchor="end" x={x} y={y}>
+      <tspan className="frequency-current-title frequency-current-title-z">z</tspan>
+      <tspan className={`frequency-current-value frequency-current-value-z ${frequencyValueClass(zScore)}`}>
+        {formatFrequencySignedValue(zScore)}
+      </tspan>
+      {comparisonScope !== null ? (
+        <>
+          <tspan dx="12" className="frequency-current-title frequency-current-title-delta">{`Δ${comparisonScope}`}</tspan>
+          <tspan className={`frequency-current-value frequency-current-value-delta ${frequencyValueClass(delta)}`}>
+            {formatFrequencySignedValue(delta)}
+          </tspan>
+        </>
+      ) : null}
+    </text>
+  );
+}
+
+function getFrequencyLineColor(colorMode: "aggregate" | "signed", value: number) {
+  if (colorMode === "aggregate") {
+    return "#747474";
+  }
+  if (value >= 0) {
+    return "#9f827b";
+  }
+  return "#80947b";
+}
+
+function FrequencyOverviewChart({ frequencyScopes, frequencyStats, onSelect, scopeIndex }: FrequencyOverviewChartProps) {
   const chart = {
     height: 1900,
     maxPoints: 180,
@@ -10041,6 +10117,7 @@ function FrequencyOverviewChart({ frequencyStats, onSelect, scopeIndex }: Freque
         const isAggregate = bandIndex === 3 || bandIndex === 7;
         const base = bases[bandIndex];
         const values = item[scopeIndex] ?? [];
+        const labelData = getFrequencyCurrentLabelData(frequencyStats, bandIndex, scopeIndex, frequencyScopes);
         return (
           <g key={bandIndex}>
             <FrequencySeries
@@ -10050,10 +10127,20 @@ function FrequencyOverviewChart({ frequencyStats, onSelect, scopeIndex }: Freque
               maxPoints={chart.maxPoints}
               startIndex={startIndex}
               values={values}
+              zValues={frequencyStats.zScores[bandIndex]?.[scopeIndex]}
             />
             <text className="frequency-band-label" x="25" y={base - height50 - 5}>
               {frequencyBandLabels[bandIndex]}
             </text>
+            {labelData !== null && values.length > 0 ? (
+              <FrequencyCurrentLabel
+                comparisonScope={labelData.comparisonScope}
+                delta={labelData.delta}
+                x={chart.x1 - 8}
+                y={base - height50 - 5}
+                zScore={labelData.zScore}
+              />
+            ) : null}
             {!isAggregate ? (
               <rect
                 aria-label={`${frequencyBandLabels[bandIndex]}明细`}
@@ -10112,6 +10199,8 @@ function FrequencyDetailChart({ frequencyScopes, frequencyStats, onBack, selecte
       />
       {frequencyScopes.map((scope, scopeIndex) => {
         const values = frequencyStats.frequencies[selectedKey]?.[scopeIndex] ?? [];
+        const zValues = frequencyStats.zScores[selectedKey]?.[scopeIndex] ?? [];
+        const zScore = latestSeriesNumber(zValues);
         const startIndex = Math.max(0, values.length - chart.maxPoints);
         const base = bases[scopeIndex];
         return (
@@ -10123,10 +10212,14 @@ function FrequencyDetailChart({ frequencyScopes, frequencyStats, onBack, selecte
               maxPoints={chart.maxPoints}
               startIndex={startIndex}
               values={values}
+              zValues={zValues}
             />
             <text className="frequency-band-label" x="25" y={base - height50 - 5}>
               {scope}
             </text>
+            {zScore !== null ? (
+              <FrequencyCurrentLabel comparisonScope={null} delta={null} x={chart.x1 - 8} y={base - height50 - 5} zScore={zScore} />
+            ) : null}
           </g>
         );
       })}
@@ -10165,15 +10258,16 @@ interface FrequencySeriesProps {
   maxPoints: number;
   startIndex: number;
   values: readonly number[];
+  zValues?: readonly number[];
 }
 
-function FrequencySeries({ base, colorMode, height100, maxPoints, startIndex, values }: FrequencySeriesProps) {
+function FrequencySeries({ base, colorMode, height100, maxPoints, startIndex, values, zValues }: FrequencySeriesProps) {
   const padLeft = values.length < maxPoints ? maxPoints - values.length : 0;
   return (
     <g>
       {values.slice(startIndex).map((value, index) => {
         const x = 20 + (padLeft + index) * 5;
-        const color = colorMode === "aggregate" ? "#999999" : value >= 0 ? "#a9cf99" : "#eeaf9f";
+        const color = getFrequencyLineColor(colorMode, value);
         return (
           <line
             className="frequency-line"

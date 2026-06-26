@@ -9,6 +9,7 @@ export const frequencyBandLabels = colRowLabels.slice(0, 8);
 export interface FrequencyStats {
   frequencies: number[][][];
   nonZeroCount: number;
+  zScores: number[][][];
 }
 
 export function calculateFrequencyStats(
@@ -17,6 +18,9 @@ export function calculateFrequencyStats(
 ): FrequencyStats {
   const nonZeroNumbers = numbers.filter((value) => value !== 0);
   const frequencies = Array.from({ length: 8 }, () =>
+    Array.from({ length: scopes.length }, () => [] as number[]),
+  );
+  const zScores = Array.from({ length: 8 }, () =>
     Array.from({ length: scopes.length }, () => [] as number[]),
   );
 
@@ -34,19 +38,26 @@ export function calculateFrequencyStats(
       }
 
       const average = scope / 3;
+      const standardDeviation = Math.sqrt((scope * 2) / 9);
       let maxOffset = 0;
+      let maxZScore = 0;
       for (let index = 0; index < 6; index += 1) {
         const waveIndex = index >= 3 ? index + 1 : index;
         const offset = ((counts[index] - average) * 100) / average;
+        const zScore = standardDeviation > 0 ? (counts[index] - average) / standardDeviation : 0;
         frequencies[waveIndex][scopeIndex].push(offset);
+        zScores[waveIndex][scopeIndex].push(zScore);
 
         if (index % 3 === 0) {
           maxOffset = 0;
+          maxZScore = 0;
         }
 
         maxOffset = Math.max(maxOffset, Math.abs(offset));
+        maxZScore = Math.max(maxZScore, Math.abs(zScore));
         if (index % 3 === 2) {
           frequencies[waveIndex + 1][scopeIndex].push(maxOffset);
+          zScores[waveIndex + 1][scopeIndex].push(maxZScore);
         }
       }
     }
@@ -55,5 +66,6 @@ export function calculateFrequencyStats(
   return {
     frequencies,
     nonZeroCount: nonZeroNumbers.length,
+    zScores,
   };
 }

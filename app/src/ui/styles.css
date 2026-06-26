@@ -1905,6 +1905,14 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .frequency-grid line { stroke: #3a3a3a; }
 .app-shell.theme-dark .frequency-line { opacity: 0.65; }
 .app-shell.theme-dark .frequency-band-label { fill: var(--theme-dark-gold); }
+.app-shell.theme-dark .frequency-current-title-z { fill: #7f90aa; }
+.app-shell.theme-dark .frequency-current-title-delta { fill: #7f90aa; }
+.app-shell.theme-dark .frequency-current-value-z.positive,
+.app-shell.theme-dark .frequency-current-value-delta.positive { fill: #d99889; }
+.app-shell.theme-dark .frequency-current-value-z.negative,
+.app-shell.theme-dark .frequency-current-value-delta.negative { fill: #8fc99d; }
+.app-shell.theme-dark .frequency-current-value-z.neutral,
+.app-shell.theme-dark .frequency-current-value-delta.neutral { fill: #b8b0a6; }
 
 /* --- Distance --- */
 .app-shell.theme-dark .distance-screen { background: #121212; }
@@ -3778,6 +3786,52 @@ html.iphone .state-reading p {
   font-family: var(--ui-font-family);
   font-size: 30px;
   font-weight: var(--weight-ui);
+}
+
+.frequency-current-label {
+  font-family: var(--ui-font-family);
+  font-size: 43px;
+  font-weight: var(--weight-ui);
+  pointer-events: none;
+}
+
+.frequency-current-title {
+  font-size: 0.86em;
+}
+
+.frequency-current-title-z {
+  fill: #6d7f95;
+}
+
+.frequency-current-title-delta {
+  fill: #6d7f95;
+}
+
+.frequency-current-value-z.positive,
+.frequency-current-value-delta.positive {
+  fill: #b16a5d;
+}
+
+.frequency-current-value-z.negative,
+.frequency-current-value-delta.negative {
+  fill: #4f8f64;
+}
+
+.frequency-current-value-z.neutral,
+.frequency-current-value-delta.neutral {
+  fill: #746b60;
+}
+
+.frequency-current-value-delta {
+  font-size: 0.94em;
+}
+
+.frequency-current-value-z,
+.frequency-current-value-delta {
+  font-weight: var(--weight-strong);
+  paint-order: stroke fill;
+  stroke: currentColor;
+  stroke-width: 0.95px;
 }
 
 .frequency-hit-area {
