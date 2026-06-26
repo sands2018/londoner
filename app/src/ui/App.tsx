@@ -140,7 +140,6 @@ const colRowScopeKey = "londoner.colRowScope";
 const refineScopeKey = "londoner.refineScope";
 const otherScopeKey = "londoner.otherScope";
 const windowModeKey = "londoner.windowMode";
-const frequencyDistanceTabKey = "londoner.frequencyDistanceNageTab";
 const stateDetailTabKey = "londoner.stateDetailTab";
 const repeatFilterOptions: RepeatTier[] = [REPEAT_TIER_CORE, REPEAT_TIER_AGGRESSIVE];
 
@@ -1299,9 +1298,7 @@ export function App() {
     const saved = localStorage.getItem("londoner.statsGroupTab");
     return saved === "dist" ? "freq" : saved || "colrow";
   });
-  const [frequencyDistanceTab, setFrequencyDistanceTab] = useState<FrequencyDistanceTab>(() =>
-    localStorage.getItem(frequencyDistanceTabKey) === "distance" ? "distance" : "frequency",
-  );
+  const [frequencyDistanceTab, setFrequencyDistanceTab] = useState<FrequencyDistanceTab>("frequency");
   const [stateDetailTab, setStateDetailTab] = useState<StateDetailTab>(() =>
     localStorage.getItem(stateDetailTabKey) === "condition" ? "condition" : "current",
   );
@@ -4523,7 +4520,6 @@ export function App() {
     setDistanceDetailKey(null);
     setDistanceViewOpen(false);
     setFrequencyDistanceTab("distance");
-    localStorage.setItem(frequencyDistanceTabKey, "distance");
     setStatsTab("freq");
     setStatsViewOpen(true);
   }
@@ -4876,7 +4872,6 @@ export function App() {
 
   function selectFrequencyDistanceTab(tab: FrequencyDistanceTab) {
     setFrequencyDistanceTab(tab);
-    localStorage.setItem(frequencyDistanceTabKey, tab);
   }
 
   function StatsFrequencyDistanceTab() {
@@ -6027,6 +6022,7 @@ export function App() {
             <button className="control-button digit-key digit-key-7" onClick={() => appendDigitInput(7)} type="button">7</button>
             <button className="control-button digit-key digit-key-8" onClick={() => appendDigitInput(8)} type="button">8</button>
             <button className="control-button digit-key digit-key-9" onClick={() => appendDigitInput(9)} type="button">9</button>
+            <button className="control-button digit-top-import" onClick={openImportDialog} type="button">input</button>
             {canUseSimulator ? (
               <button className="control-button home-game-return-key" onClick={() => setSimulatorOpen(true)} type="button">返回游戏</button>
             ) : (
@@ -6070,17 +6066,17 @@ export function App() {
               <>
                 <button className="control-button digit-transfer" disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
                 <button className="control-button digit-connect" disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
-                <button className="control-button digit-import" onClick={openImportDialog} type="button">输入</button>
                 <button className="control-button digit-game" onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
                 <button className="control-button digit-colrow" onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
-                <button className="control-button digit-frequency" onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+                <button className="control-button digit-frequency" onClick={() => { setFrequencyDistanceTab("frequency"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+                <button className="control-button digit-distance" onClick={() => { setFrequencyDistanceTab("distance"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">距离</button>
                 <button aria-label="切换到更多操作" className="control-button digit-row-switch digit-row-switch-default" onClick={() => setUtilityRow("digit")} title="默认操作" type="button">⬌</button>
               </>
             ) : (
               <>
                 <button className="control-button digit-table" disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
                 <button className="control-button digit-save" disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
-                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">输出</button>
+                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">output</button>
                 <button className="control-button digit-number-zone" onClick={openDataDialog} type="button">数据</button>
                 <button className="control-button digit-config" onClick={openConfigView} type="button">配置</button>
                 <button className="control-button digit-other" onClick={() => { setStatsTab("other"); setStatsViewOpen(true); }} type="button">其它</button>
@@ -6096,8 +6092,8 @@ export function App() {
             <button onClick={openImportDialog} type="button">输入</button>
             <button onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
             <button onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
-            <button onClick={() => { setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
-            <button aria-hidden="true" className="dock-empty" disabled tabIndex={-1} type="button" />
+            <button onClick={() => { setFrequencyDistanceTab("frequency"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
+            <button onClick={() => { setFrequencyDistanceTab("distance"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">距离</button>
           </div>
         ) : null}
         <div className="dock-actions dock-actions-primary">

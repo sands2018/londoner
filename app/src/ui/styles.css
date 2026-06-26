@@ -2355,9 +2355,9 @@ body:has(.app-shell.theme-dark) {
   display: grid;
   gap: var(--key-gap);
   grid-template-areas:
-    "backAll n7 n8 n9 game game game"
-    "redoAll n4 n5 n6 input clear undo"
-    "n0 n1 n2 n3 enter enter redo"
+    "backAll n7 n8 n9 undo game game"
+    "redoAll n4 n5 n6 redo input clear"
+    "n0 n1 n2 n3 topImport enter enter"
     "table save export numberZone config other emptyTail";
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
@@ -2405,7 +2405,6 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid .digit-key {
   font-size: calc(var(--number-font-size) + 2px);
 }
-
 
 .digit-entry-input {
   background: #fffdf9;
@@ -2469,6 +2468,7 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid .digit-key-7 { grid-area: n7; }
 .digit-entry-grid .digit-key-8 { grid-area: n8; }
 .digit-entry-grid .digit-key-9 { grid-area: n9; }
+.digit-entry-grid .digit-top-import { grid-area: topImport; }
 .digit-entry-grid .home-game-return-key,
 .digit-entry-grid .home-game-logo { grid-area: game; }
 .digit-entry-grid .digit-entry-input { grid-area: input; }
@@ -2487,9 +2487,10 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid .digit-transfer { grid-area: table; }
 .digit-entry-grid .digit-connect { grid-area: save; }
 .digit-entry-grid .digit-import { grid-area: export; }
-.digit-entry-grid .digit-game { grid-area: numberZone; }
-.digit-entry-grid .digit-colrow { grid-area: config; }
-.digit-entry-grid .digit-frequency { grid-area: other; }
+.digit-entry-grid .digit-game { grid-area: export; }
+.digit-entry-grid .digit-colrow { grid-area: numberZone; }
+.digit-entry-grid .digit-frequency { grid-area: config; }
+.digit-entry-grid .digit-distance { grid-area: other; }
 .digit-entry-grid .digit-table { grid-area: table; }
 .digit-entry-grid .digit-save { grid-area: save; }
 .digit-entry-grid .digit-export { grid-area: export; }
@@ -2521,8 +2522,7 @@ body:has(.app-shell.theme-dark) {
   border: 1px solid rgb(244 215 157 / 0.16);
   border-radius: 999px;
   color: #b99658;
-  grid-column: span 3;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
 }
 
 .digit-entry-grid .home-game-logo {
