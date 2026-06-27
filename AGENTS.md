@@ -159,9 +159,9 @@ Bottom action buttons layout:
 
 ## Agent dialog channel
 
-- Project root is `W:\VibeCoding\Projects\Sands2018`.
-- The project-local comms folder is `W:\VibeCoding\Projects\Sands2018\comms`.
-- Cross-agent dialog files live in `W:\VibeCoding\Projects\Sands2018\comms\dialog`.
+- Project root means the current repository root, not a machine-specific absolute path.
+- The project-local comms folder is `comms/` relative to the repository root.
+- Cross-agent dialog files live in `comms/dialog/` relative to the repository root.
 - Dialog files: `comms/dialog/gpt.txt` (GPT→DeepSeek) and `comms/dialog/deepseek.txt` (DeepSeek→GPT).
 - Every message must include a timestamp header: `[YYYY-MM-DD] AgentName -> OtherAgent`.
 - Treat cross-agent feedback as review input, not automatic truth. Verify against code and backtests.

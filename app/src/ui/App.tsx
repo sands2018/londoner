@@ -1256,6 +1256,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 }
 
 const savedLoginKey = "londoner.sharedLogin";
+const onlySupportedKeyboardMode: KeyboardMode = "digits";
 
 export function App() {
   const [numbers, setNumbers] = useState<RouletteNumber[]>([]);
@@ -1263,7 +1264,10 @@ export function App() {
   const [lastSavedNumbers, setLastSavedNumbers] = useState<RouletteNumber[]>([]);
   const [keyboardMode, setKeyboardMode] = useState<KeyboardMode>(() => {
     const stored = localStorage.getItem(keyboardModeKey);
-    return stored === "keypad" || stored === "digits" ? stored : "board";
+    if (stored !== onlySupportedKeyboardMode) {
+      localStorage.setItem(keyboardModeKey, onlySupportedKeyboardMode);
+    }
+    return onlySupportedKeyboardMode;
   });
   const [digitInput, setDigitInput] = useState("");
   const [themeMode, setThemeMode] = useState<"soft" | "color" | "dark">("dark");
@@ -2283,6 +2287,10 @@ export function App() {
   }, [simulatorDesktopMode, simulatorOpen]);
 
   useEffect(() => {
+    if (keyboardMode !== onlySupportedKeyboardMode) {
+      setKeyboardMode(onlySupportedKeyboardMode);
+      return;
+    }
     localStorage.setItem(keyboardModeKey, keyboardMode);
   }, [keyboardMode]);
 
@@ -2995,7 +3003,7 @@ export function App() {
   }
 
   function switchKeyboardMode() {
-    setKeyboardMode((mode) => (mode === "board" ? "keypad" : mode === "keypad" ? "digits" : "board"));
+    setKeyboardMode(onlySupportedKeyboardMode);
   }
 
   function undo() {
@@ -6433,12 +6441,12 @@ export function App() {
               </>
             ) : (
               <>
-                <button className="control-button digit-table" disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">桌号</button>
-                <button className="control-button digit-save" disabled={numbers.length === 0} onClick={openSaveDialog} type="button">保存</button>
-                <button className="control-button digit-number-zone" onClick={openDataDialog} type="button">数据</button>
-                <button className="control-button digit-config" onClick={openConfigView} type="button">配置</button>
-                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => void exportCurrentData()} type="button">output</button>
-                <button className="control-button digit-other" onClick={() => { setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
+                <button className="control-button digit-table" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); openTableCalibrationDialog(); }} type="button">桌号</button>
+                <button className="control-button digit-save" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); openSaveDialog(); }} type="button">保存</button>
+                <button className="control-button digit-number-zone" onClick={() => { setUtilityRow("dock"); void openDataDialog(); }} type="button">数据</button>
+                <button className="control-button digit-config" onClick={() => { setUtilityRow("dock"); openConfigView(); }} type="button">配置</button>
+                <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); void exportCurrentData(); }} type="button">output</button>
+                <button className="control-button digit-other" onClick={() => { setUtilityRow("dock"); setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
                 <button aria-label="切换到默认操作" className="control-button digit-row-switch digit-row-switch-more" onClick={() => setUtilityRow("dock")} title="更多操作" type="button">⇔</button>
               </>
             )}
