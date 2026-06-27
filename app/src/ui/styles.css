@@ -10715,6 +10715,40 @@ strong.roi-value {
   overflow: hidden;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .app-shell,
+  .app-shell *:not(.hot-status-history) {
+    scrollbar-color: rgba(126, 112, 88, 0.34) transparent;
+    scrollbar-width: thin;
+  }
+
+  .app-shell::-webkit-scrollbar,
+  .app-shell *:not(.hot-status-history)::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .app-shell::-webkit-scrollbar-track,
+  .app-shell *:not(.hot-status-history)::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 999px;
+  }
+
+  .app-shell::-webkit-scrollbar-thumb,
+  .app-shell *:not(.hot-status-history)::-webkit-scrollbar-thumb {
+    background: rgba(126, 112, 88, 0.42);
+    background-clip: content-box;
+    border: 3px solid transparent;
+    border-radius: 999px;
+  }
+
+  .app-shell::-webkit-scrollbar-thumb:hover,
+  .app-shell *:not(.hot-status-history)::-webkit-scrollbar-thumb:hover {
+    background: rgba(126, 112, 88, 0.62);
+    background-clip: content-box;
+  }
+}
+
 .wave-detail-actions {
   padding: 0 10px max(8px, env(safe-area-inset-bottom));
 }
