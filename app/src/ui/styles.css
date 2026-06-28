@@ -4473,8 +4473,36 @@ html.iphone .state-reading p {
   width: 54%;
 }
 
+.transfer-table-data-wrap {
+  margin-top: 4px;
+}
+
+.transfer-table-data-table th:nth-child(1),
+.transfer-table-data-table td:nth-child(1) {
+  text-align: center;
+  width: 34%;
+}
+
+.transfer-table-data-table th:nth-child(2),
+.transfer-table-data-table td:nth-child(2) {
+  text-align: center;
+  width: 24%;
+}
+
+.transfer-table-data-table th:nth-child(3),
+.transfer-table-data-table td:nth-child(3) {
+  text-align: right;
+  width: 42%;
+}
+
 .data-screen-actions.transfer-data-actions {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.data-screen-actions.transfer-table-actions {
+  border-top: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 0;
 }
 
 .sort-mark {
@@ -4966,7 +4994,33 @@ html.iphone .state-reading p {
   flex: 0 0 auto;
   gap: 6px;
   grid-template-columns: repeat(6, minmax(0, 1fr));
+  padding: 6px max(7px, env(safe-area-inset-right)) 0 max(7px, env(safe-area-inset-left));
+}
+
+.config-table-export-actions {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(112px, 0.38fr);
+  justify-content: center;
   padding: 6px max(7px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+}
+
+.config-table-tabs {
+  flex: 0 0 auto;
+}
+
+.config-table-shared-body {
+  align-content: start;
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
+}
+
+.config-table-shared-actions {
+  flex: 0 0 auto;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 .config-actions {

@@ -142,6 +142,65 @@ const otherScopeKey = "londoner.otherScope";
 const windowModeKey = "londoner.windowMode";
 const stateDetailTabKey = "londoner.stateDetailTab";
 const repeatFilterOptions: RepeatTier[] = [REPEAT_TIER_CORE, REPEAT_TIER_AGGRESSIVE];
+const tableTransferMagic = [36, 36, 35, 35, 34, 34, 33, 33] as const;
+
+function encodeBase37(value: number, digits: number): RouletteNumber[] {
+  const result: RouletteNumber[] = [];
+  let rest = Math.max(0, Math.floor(value));
+  for (let index = 0; index < digits; index += 1) {
+    result.unshift((rest % 37) as RouletteNumber);
+    rest = Math.floor(rest / 37);
+  }
+  return result;
+}
+
+function decodeBase37(values: readonly RouletteNumber[]): number {
+  return values.reduce((sum, value) => sum * 37 + value, 0);
+}
+
+function normalizeCasinoTablePayload(items: unknown): CasinoTable[] | null {
+  if (!Array.isArray(items)) return null;
+  const result: CasinoTable[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (!item || typeof item !== "object") return null;
+    const id = String((item as CasinoTable).id ?? "").trim();
+    const name = String((item as CasinoTable).name ?? "").trim();
+    const parentId = String((item as CasinoTable).parentId ?? "").trim();
+    if (!id || !name || !parentId || seen.has(id)) return null;
+    seen.add(id);
+    result.push({ id, name, parentId });
+  }
+  return result;
+}
+
+function encodeTableTransferNumbers(tables: readonly CasinoTable[]): RouletteNumber[] {
+  const bytes = Array.from(new TextEncoder().encode(JSON.stringify(tables)));
+  const payload: RouletteNumber[] = [];
+  for (const byte of bytes) {
+    payload.push(Math.floor(byte / 37) as RouletteNumber, (byte % 37) as RouletteNumber);
+  }
+  return [...tableTransferMagic, ...encodeBase37(bytes.length, 4), ...payload];
+}
+
+function decodeTableTransferNumbers(numbers: readonly RouletteNumber[]): CasinoTable[] | null {
+  if (numbers.length < tableTransferMagic.length + 4) return null;
+  if (!tableTransferMagic.every((value, index) => numbers[index] === value)) return null;
+  const byteLength = decodeBase37(numbers.slice(tableTransferMagic.length, tableTransferMagic.length + 4));
+  const payload = numbers.slice(tableTransferMagic.length + 4);
+  if (byteLength <= 0 || payload.length !== byteLength * 2) return null;
+  const bytes: number[] = [];
+  for (let index = 0; index < payload.length; index += 2) {
+    const byte = payload[index] * 37 + payload[index + 1];
+    if (byte < 0 || byte > 255) return null;
+    bytes.push(byte);
+  }
+  try {
+    return normalizeCasinoTablePayload(JSON.parse(new TextDecoder().decode(new Uint8Array(bytes))));
+  } catch {
+    return null;
+  }
+}
 
 function sanitizeManualTableId(tableId: string | undefined): string | undefined {
   const trimmed = tableId?.trim();
@@ -291,6 +350,7 @@ const simulatorCornerBets = [0, 1].flatMap((rowIndex) =>
 type DialogName = "connect" | "import" | "save" | null;
 type KeyboardMode = "keypad" | "board" | "digits";
 type DataTab = "local" | "shared" | "transfer";
+type TableTransferSession = TransferSession & { tables: CasinoTable[] };
 type FrequencyDistanceTab = "frequency" | "distance";
 type StateDetailTab = "current" | "condition";
 type DataSortField = "name" | "count" | "time" | "sharedUploader" | "table";
@@ -1433,6 +1493,7 @@ export function App() {
   const shotVideoRef = useRef<HTMLVideoElement>(null);
   const shotStreamRef = useRef<MediaStream | null>(null);
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
+  const [configTableTab, setConfigTableTab] = useState<"local" | "shared">("local");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
   const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
@@ -1452,6 +1513,8 @@ export function App() {
   const [sharedSessions, setSharedSessions] = useState<SharedSession[]>([]);
   const [selectedSharedSessionIds, setSelectedSharedSessionIds] = useState<string[]>([]);
   const [transferSessions, setTransferSessions] = useState<TransferSession[]>([]);
+  const [tableTransferSession, setTableTransferSession] = useState<TableTransferSession | null>(null);
+  const [tableTransferSelected, setTableTransferSelected] = useState(false);
   const [selectedTransferIds, setSelectedTransferIds] = useState<string[]>([]);
   const [sharedSortField, setSharedSortField] = useState<"name" | "count" | "user" | "time">("time");
   const [sharedSortDirection, setSharedSortDirection] = useState<SortDirection>("desc");
@@ -3255,8 +3318,21 @@ export function App() {
   async function refreshTransferSessions(username = sharedUsername, password = sharedPassword) {
     const list = await listTransferSessions(username.trim(), password);
     list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    setTransferSessions(list);
-    setSelectedTransferIds((current) => current.filter((id) => list.some((item) => item.id === id)));
+    const tableItems: TableTransferSession[] = [];
+    const numberItems: TransferSession[] = [];
+    for (const item of list) {
+      const tables = decodeTableTransferNumbers(item.numbers);
+      if (tables) {
+        tableItems.push({ ...item, tables });
+      } else {
+        numberItems.push(item);
+      }
+    }
+    const nextTableTransfer = tableItems[0] ?? null;
+    setTransferSessions(numberItems);
+    setTableTransferSession(nextTableTransfer);
+    setSelectedTransferIds((current) => current.filter((id) => numberItems.some((item) => item.id === id)));
+    setTableTransferSelected((current) => Boolean(current && nextTableTransfer));
   }
 
   function clearCurrentSession() {
@@ -3812,6 +3888,109 @@ export function App() {
           setNoticeDialog({ title: "传输数据", message: "已删除选中的传输数据。" });
         } catch (error) {
           setNoticeDialog({ title: "传输数据", message: formatSharedError(error) });
+        } finally {
+          setSharedLoading(false);
+        }
+      },
+    });
+  }
+
+  async function replaceLocalCasinoTables(nextTables: readonly CasinoTable[]) {
+    const current = await storage.listCasinoTables();
+    for (const casino of current.filter((item) => item.parentId === "0")) {
+      await storage.deleteCasinoTable(casino.id);
+    }
+    const remaining = await storage.listCasinoTables();
+    for (const item of remaining) {
+      await storage.deleteCasinoTable(item.id);
+    }
+    for (const item of nextTables) {
+      await storage.saveCasinoTable(item);
+    }
+    const refreshed = await refreshCasinoTables();
+    setDraftCasinoTables(refreshed);
+    setDraftSelectedCasinoId("");
+    setDraftSelectedTableId("");
+  }
+
+  async function exportTablesToTransfer(username?: string, password?: string) {
+    const u = (username ?? sharedUsername).trim();
+    const p = password ?? sharedPassword;
+    if (!u || !p) return;
+    if (userCasinos().length === 0) {
+      setNoticeDialog({ title: "桌子数据", message: "当前没有可导出的桌子数据。" });
+      return;
+    }
+
+    setSharedLoading(true);
+    try {
+      const tables = await storage.listCasinoTables();
+      const existing = await listTransferSessions(u, p);
+      for (const item of existing) {
+        if (decodeTableTransferNumbers(item.numbers)) {
+          await deleteTransferSession(u, p, item.id);
+        }
+      }
+      await uploadTransferSession({
+        numbers: encodeTableTransferNumbers(tables),
+        password: p,
+        username: u,
+      });
+      await refreshTransferSessions(u, p);
+      setConfigTableTab("shared");
+      setNoticeDialog({ title: "桌子数据", message: "桌子数据已导出到共享桌子数据。" });
+    } catch (error) {
+      setNoticeDialog({ title: "桌子数据", message: formatSharedError(error) });
+    } finally {
+      setSharedLoading(false);
+    }
+  }
+
+  function importTableTransferData() {
+    const selected = tableTransferSession;
+    if (!selected) return;
+    setConfirmDialog({
+      title: "导入桌子数据",
+      message: "导入将覆盖当前本地桌子信息！确定要导入吗？",
+      confirmText: "导入",
+      onConfirm: async () => {
+        setSharedLoading(true);
+        try {
+          await replaceLocalCasinoTables(selected.tables);
+          setTableTransferSelected(false);
+          setNoticeDialog({ title: "导入桌子数据", message: `已导入 ${selected.tables.length} 条桌子配置。` });
+        } catch (error) {
+          setNoticeDialog({ title: "导入桌子数据", message: formatSharedError(error) });
+        } finally {
+          setSharedLoading(false);
+        }
+      },
+    });
+  }
+
+  function removeTableTransferData() {
+    const selected = tableTransferSession;
+    if (!selected) return;
+    setConfirmDialog({
+      title: "桌子数据",
+      message: "确定要删除共享桌子数据吗？",
+      confirmText: "删除",
+      onConfirm: async () => {
+        setSharedLoading(true);
+        try {
+          const u = sharedUsername.trim();
+          const p = sharedPassword;
+          const existing = await listTransferSessions(u, p);
+          for (const item of existing) {
+            if (decodeTableTransferNumbers(item.numbers)) {
+              await deleteTransferSession(u, p, item.id);
+            }
+          }
+          await refreshTransferSessions();
+          setTableTransferSelected(false);
+          setNoticeDialog({ title: "桌子数据", message: "已删除共享桌子数据。" });
+        } catch (error) {
+          setNoticeDialog({ title: "桌子数据", message: formatSharedError(error) });
         } finally {
           setSharedLoading(false);
         }
@@ -4721,7 +4900,7 @@ export function App() {
 
   async function deleteCasino(casino: CasinoTable) {
     const tableCount = userTables(casino.id).length;
-    const extraMsg = tableCount > 0 ? `其下 ${tableCount} 个赌桌也将被删除。` : "";
+    const extraMsg = tableCount > 0 ? `其下 ${tableCount} 个桌子也将被删除。` : "";
     setConfirmDialog({
       title: "请确认",
       message: `确定要删除赌场"${casino.name}"吗？${extraMsg}`,
@@ -4743,8 +4922,8 @@ export function App() {
     }
     setPromptValue("");
     setPromptDialog({
-      title: "添加赌桌",
-      message: "请输入赌桌名称：",
+      title: "添加桌子",
+      message: "请输入桌子名称：",
       defaultValue: "",
       confirmText: "添加",
       onConfirm: async (value) => {
@@ -4761,7 +4940,7 @@ export function App() {
   async function renameTable(table: CasinoTable) {
     setPromptValue(table.name);
     setPromptDialog({
-      title: "重命名赌桌",
+      title: "重命名桌子",
       message: "请输入新名称：",
       defaultValue: table.name,
       confirmText: "确定",
@@ -4778,13 +4957,13 @@ export function App() {
   async function deleteTable(table: CasinoTable) {
     setConfirmDialog({
       title: "请确认",
-      message: `确定要删除赌桌"${table.name}"吗？`,
+      message: `确定要删除桌子"${table.name}"吗？`,
       confirmText: "删除",
       onConfirm: async () => {
         await storage.deleteCasinoTable(table.id);
         setDraftCasinoTables(await refreshCasinoTables());
         setDraftSelectedTableId("");
-        setNoticeDialog({ title: "删除成功", message: `赌桌"${table.name}"已删除。` });
+        setNoticeDialog({ title: "删除成功", message: `桌子"${table.name}"已删除。` });
       },
     });
   }
@@ -6748,7 +6927,7 @@ export function App() {
                 <div className="data-actions-shared-row">
                   <button disabled={!sharedConnected || sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => void uploadSharedData(undefined, u, p)); }} type="button">上传当前</button>
                   <button disabled={!sharedConnected || sharedLoading || selectedSharedSessionIds.length === 0} onClick={() => void importSharedToLocal()} type="button">导入本地</button>
-                  <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
+                  <button disabled={!sharedConnected || sharedLoading} onClick={() => { setSharedConnected(false); setSharedSessions([]); setTransferSessions([]); setTableTransferSession(null); setTableTransferSelected(false); setSelectedSharedSessionIds([]); setSelectedTransferIds([]); localStorage.removeItem(savedLoginKey); }} type="button">退出登录</button>
                 </div>
               </footer>
             </>
@@ -8496,7 +8675,7 @@ export function App() {
             <div className={`config-screen-main ${configTab !== "table" ? "config-screen-main-actions" : ""}`}>
               <div className="tabs tabs-top">
                 <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
-                <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">赌桌</button>
+                <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">桌子</button>
                 <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
               </div>
               {configTab === "other" ? (
@@ -8541,60 +8720,115 @@ export function App() {
               </div>
             ) : configTab === "table" ? (
             <>
-              <div className="config-body config-body-table" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", flex: 1, overflow: "hidden" }}>
-                <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-                  <h2><span>赌场</span></h2>
-                  <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-                    <div className="location-list">
-                      {userCasinos().length === 0 ? (
-                        <div className="config-empty">暂无赌场</div>
-                      ) : (
-                        userCasinos().map((casino) => (
-                          <button
-                            key={casino.id}
-                            className={draftSelectedCasinoId === casino.id ? "selected" : ""}
-                            onClick={() => { setDraftSelectedCasinoId(casino.id); setDraftSelectedTableId(""); }}
-                            type="button"
-                          >
-                            <span>{casino.name}</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </section>
-                <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-                  <h2><span>赌桌</span></h2>
-                  <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-                    <div className="location-list">
-                      {!draftSelectedCasinoId ? (
-                        <div className="config-empty">请先选择赌场</div>
-                      ) : userTables(draftSelectedCasinoId).length === 0 ? (
-                        <div className="config-empty">暂无赌桌</div>
-                      ) : (
-                        userTables(draftSelectedCasinoId).map((table) => (
-                          <button
-                            key={table.id}
-                            className={draftSelectedTableId === table.id ? "selected" : ""}
-                            onClick={() => setDraftSelectedTableId(table.id)}
-                            type="button"
-                          >
-                            <span>{table.name}</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </section>
+              <div className="tabs tabs-top config-table-tabs">
+                <button className={configTableTab === "local" ? "selected" : ""} onClick={() => setConfigTableTab("local")} type="button">本地</button>
+                <button className={configTableTab === "shared" ? "selected" : ""} onClick={() => { setConfigTableTab("shared"); ensureSharedConnected((u, p) => void reloadTransferData(u, p)); }} type="button">共享</button>
               </div>
-              <div className="config-table-actions">
-                <button onClick={addCasino} type="button" className="table-action">添加</button>
-                <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) renameCasino(c); }} type="button" className="table-action">更名</button>
-                <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) deleteCasino(c); }} type="button" className="table-action">删除</button>
-                <button disabled={!draftSelectedCasinoId} onClick={addTable} type="button" className="table-action">添加</button>
-                <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) renameTable(t); }} type="button" className="table-action">更名</button>
-                <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) deleteTable(t); }} type="button" className="table-action">删除</button>
-              </div>
+              {configTableTab === "local" ? (
+                <>
+                  <div className="config-body config-body-table" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", flex: 1, overflow: "hidden" }}>
+                    <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+                      <h2><span>赌场</span></h2>
+                      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                        <div className="location-list">
+                          {userCasinos().length === 0 ? (
+                            <div className="config-empty">暂无赌场</div>
+                          ) : (
+                            userCasinos().map((casino) => (
+                              <button
+                                key={casino.id}
+                                className={draftSelectedCasinoId === casino.id ? "selected" : ""}
+                                onClick={() => { setDraftSelectedCasinoId(casino.id); setDraftSelectedTableId(""); }}
+                                type="button"
+                              >
+                                <span>{casino.name}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </section>
+                    <section className="config-card" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+                      <h2><span>桌子</span></h2>
+                      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                        <div className="location-list">
+                          {!draftSelectedCasinoId ? (
+                            <div className="config-empty">请先选择赌场</div>
+                          ) : userTables(draftSelectedCasinoId).length === 0 ? (
+                            <div className="config-empty">暂无桌子</div>
+                          ) : (
+                            userTables(draftSelectedCasinoId).map((table) => (
+                              <button
+                                key={table.id}
+                                className={draftSelectedTableId === table.id ? "selected" : ""}
+                                onClick={() => setDraftSelectedTableId(table.id)}
+                                type="button"
+                              >
+                                <span>{table.name}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                  <div className="config-table-actions">
+                    <button onClick={addCasino} type="button" className="table-action">添加</button>
+                    <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) renameCasino(c); }} type="button" className="table-action">更名</button>
+                    <button disabled={!draftSelectedCasinoId} onClick={() => { const c = userCasinos().find((x) => x.id === draftSelectedCasinoId); if (c) deleteCasino(c); }} type="button" className="table-action">删除</button>
+                    <button disabled={!draftSelectedCasinoId} onClick={addTable} type="button" className="table-action">添加</button>
+                    <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) renameTable(t); }} type="button" className="table-action">更名</button>
+                    <button disabled={!draftSelectedTableId} onClick={() => { const t = userTables(draftSelectedCasinoId).find((x) => x.id === draftSelectedTableId); if (t) deleteTable(t); }} type="button" className="table-action">删除</button>
+                  </div>
+                  <div className="config-table-export-actions">
+                    <button disabled={sharedLoading || userCasinos().length === 0} onClick={() => { ensureSharedConnected((u, p) => void exportTablesToTransfer(u, p)); }} type="button" className="table-action">导出</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="config-table-shared-body">
+                    {sharedConnected ? (
+                      <div className="data-table-wrap shared-data-table-wrap transfer-table-data-wrap">
+                        <table className="data-table transfer-table-data-table">
+                          <thead>
+                            <tr>
+                              <th>名称</th>
+                              <th>上传者</th>
+                              <th>上传时间</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tableTransferSession ? (
+                              <tr
+                                className={tableTransferSelected ? "selected" : ""}
+                                onClick={() => setTableTransferSelected((value) => !value)}
+                              >
+                                <td>桌子数据</td>
+                                <td>{tableTransferSession.uploader}</td>
+                                <td>{formatSessionTime(tableTransferSession.createdAt)}</td>
+                              </tr>
+                            ) : (
+                              <tr>
+                                <td className="data-empty" colSpan={3}>暂无桌子数据</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="shared-data-empty">
+                        <strong>共享桌子尚未连接</strong>
+                        <span>连接后可以查看云端桌子数据。</span>
+                        <button onClick={() => setSharedLoginOpen(true)} type="button">连接共享库</button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="data-screen-actions transfer-table-actions config-table-shared-actions">
+                    <button disabled={!sharedConnected || sharedLoading || !tableTransferSelected || !tableTransferSession} onClick={removeTableTransferData} type="button">删除</button>
+                    <button disabled={!sharedConnected || sharedLoading || !tableTransferSelected || !tableTransferSession} onClick={importTableTransferData} type="button">导入本地</button>
+                  </div>
+                </>
+              )}
             </>
             ) : (
             <div className="config-body">
@@ -9254,7 +9488,7 @@ export function App() {
             <input type="datetime-local" value={editTime} onChange={(event) => setEditTime(event.target.value)} />
           </label>
           <label className="field-label">
-            赌桌
+            桌子
             <select value={editTableId} onChange={(event) => setEditTableId(event.target.value)}>
               <option value="">未归属</option>
               {tableSelectOptions.map((option) => (
