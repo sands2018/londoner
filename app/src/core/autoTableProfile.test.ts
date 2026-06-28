@@ -46,7 +46,7 @@ describe("auto table profile", () => {
     ]);
 
     expect(state.assignmentsById.get("a")?.source).toBe("auto");
-    expect(state.assignmentsById.get("a")?.autoMatchLevel).toBe("confirmed");
+    expect(state.assignmentsById.get("a")?.autoMatchLevel).toBe("new");
     expect(state.assignmentsById.get("b")?.source).toBe("auto");
     expect(state.assignmentsById.get("b")?.effectiveTableId).toBe(state.assignmentsById.get("a")?.effectiveTableId);
   });
@@ -92,6 +92,17 @@ describe("auto table profile", () => {
       "自-001",
       "自-002",
     ]);
+  });
+
+  it("does not confirm a saved auto table by matching a session only to itself", () => {
+    const state = buildAutoTableProfileState([
+      { id: "single", name: "Single", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers },
+    ]);
+
+    const assignment = state.assignmentsById.get("single");
+    expect(assignment?.source).toBe("auto");
+    expect(assignment?.effectiveTableId).toBe("auto_01");
+    expect(assignment?.autoMatchLevel).toBe("new");
   });
 
   it("uses batch spatial clustering to split same-venue history into table-like groups", () => {

@@ -3,6 +3,7 @@ import {
   buildTableProfiles,
   matchTableProfile,
   type TableMatchLevel,
+  type TableProfile,
   type TableProfileSession,
   type TableProfileTable,
 } from "./tableHotProfile";
@@ -61,6 +62,10 @@ export const AUTO_TABLE_PARENT_ID = "auto";
 
 const MISSING_MANUAL_TABLE_PARENT_ID = "manual_missing";
 const MIN_MANUAL_SESSIONS_FOR_PROBABLE_AUTO_MATCH = 3;
+const STRONG_PROFILE_CONFLICT_MIN_SIMILARITY = 0.6;
+const STRONG_PROFILE_CONFLICT_MIN_ADVANTAGE = 0.05;
+
+type AutoTableMatchCandidate = Pick<TableAssignment, "autoTableId" | "autoMatchLevel" | "autoSimilarity" | "autoGap">;
 
 function isKnownManualTableId(tableId: string | undefined): tableId is string {
   return Boolean(tableId && !tableId.startsWith("t_unknown_") && !isAutoTableId(tableId));
@@ -129,6 +134,77 @@ function autoMatchLevelFromSpatialCluster(cluster: SpatialTableCluster): AutoTab
   return "probable";
 }
 
+function makeUnassignedTableAssignment(sessionId: string, manualTableId?: string): TableAssignment {
+  return {
+    sessionId,
+    manualTableId,
+    effectiveTableId: manualTableId,
+    source: manualTableId ? "manual" : "none",
+    autoMatchLevel: "none",
+    autoSimilarity: 0,
+    autoGap: 0,
+  };
+}
+
+function representativeCenter(centers: readonly RouletteNumber[]): RouletteNumber {
+  let best = centers[0] ?? 0;
+  let bestCost = Number.POSITIVE_INFINITY;
+  for (const candidate of centers) {
+    const cost = centers.reduce((sum, center) => sum + spatialCenterDistance(candidate, center), 0);
+    if (cost < bestCost) {
+      best = candidate;
+      bestCost = cost;
+    }
+  }
+  return best;
+}
+
+function spatialModelSilhouette(centers: readonly RouletteNumber[]): number {
+  if (centers.length <= 1) return 1;
+  const representative = representativeCenter(centers);
+  const averageDistance = centers.reduce((sum, center) => sum + spatialCenterDistance(representative, center), 0) / centers.length;
+  return Math.max(0, Math.min(1, 1 - averageDistance / 18));
+}
+
+function buildSpatialModelsFromAssignedSessions(
+  sessions: readonly AutoTableInputSession[],
+  assignmentsById: ReadonlyMap<string, TableAssignment>,
+): AutoTableSpatialModel[] {
+  const grouped = new Map<string, {
+    tableId: string;
+    venueKey: string;
+    primaryCenters: RouletteNumber[];
+    fingerprints: SpatialTableFingerprint[];
+  }>();
+
+  for (const session of sortSessionsChronologically(sessions)) {
+    const tableId = assignmentsById.get(session.id)?.effectiveTableId;
+    if (!tableId) continue;
+    const fingerprint = makeSpatialTableFingerprint(session);
+    if (!fingerprint) continue;
+    const key = `${tableId}\u0000${fingerprint.venueKey}`;
+    const group = grouped.get(key) ?? {
+      tableId,
+      venueKey: fingerprint.venueKey,
+      primaryCenters: [],
+      fingerprints: [],
+    };
+    group.primaryCenters.push(fingerprint.primaryCenter);
+    group.fingerprints.push(fingerprint);
+    grouped.set(key, group);
+  }
+
+  return [...grouped.values()].map((group) => ({
+    tableId: group.tableId,
+    venueKey: group.venueKey,
+    sessionCount: group.fingerprints.length,
+    primaryCenters: group.primaryCenters,
+    fingerprints: group.fingerprints,
+    representativeCenter: representativeCenter(group.primaryCenters),
+    silhouette: spatialModelSilhouette(group.primaryCenters),
+  }));
+}
+
 function makeSpatialModels(
   clusters: readonly SpatialTableCluster[],
   tableIdByClusterId: ReadonlyMap<string, string>,
@@ -150,22 +226,10 @@ function makeSpatialModels(
   return models;
 }
 
-function makeUnassignedTableAssignment(sessionId: string, manualTableId?: string): TableAssignment {
-  return {
-    sessionId,
-    manualTableId,
-    effectiveTableId: manualTableId,
-    source: manualTableId ? "manual" : "none",
-    autoMatchLevel: "none",
-    autoSimilarity: 0,
-    autoGap: 0,
-  };
-}
-
 function matchSpatialAutoTableModel(
   session: AutoTableInputSession,
   models: readonly AutoTableSpatialModel[],
-): Pick<TableAssignment, "autoTableId" | "autoMatchLevel" | "autoSimilarity" | "autoGap"> | null {
+): AutoTableMatchCandidate | null {
   const fingerprint = makeSpatialTableFingerprint(session);
   if (!fingerprint || models.length === 0) return null;
 
@@ -209,27 +273,87 @@ function matchSpatialAutoTableModel(
   };
 }
 
+function makeProfileMatchCandidate(
+  profileMatch: ReturnType<typeof matchTableProfile>,
+): AutoTableMatchCandidate | null {
+  if (!profileMatch.profile) return null;
+  return {
+    autoTableId: profileMatch.profile.tableId,
+    autoMatchLevel: profileMatch.level,
+    autoSimilarity: profileMatch.similarity,
+    autoGap: profileMatch.gap,
+  };
+}
+
+function profileSimilarityForTable(
+  numbers: readonly RouletteNumber[],
+  profiles: readonly TableProfile[],
+  tableId: string | undefined,
+): number {
+  if (!tableId) return 0;
+  const profile = profiles.find((item) => item.tableId === tableId);
+  return profile ? matchTableProfile(numbers, [profile]).similarity : 0;
+}
+
+function shouldProtectStrongProfileMatch(
+  numbers: readonly RouletteNumber[],
+  profiles: readonly TableProfile[],
+  profileMatch: ReturnType<typeof matchTableProfile>,
+  spatialMatch: AutoTableMatchCandidate | null,
+): boolean {
+  if (!profileMatch.profile || !spatialMatch?.autoTableId) return false;
+  if (spatialMatch.autoMatchLevel !== "probable") return false;
+  if (profileMatch.profile.tableId === spatialMatch.autoTableId) return false;
+  if (profileMatch.similarity < STRONG_PROFILE_CONFLICT_MIN_SIMILARITY) return false;
+
+  const spatialProfileSimilarity = profileSimilarityForTable(numbers, profiles, spatialMatch.autoTableId);
+  return profileMatch.similarity - spatialProfileSimilarity >= STRONG_PROFILE_CONFLICT_MIN_ADVANTAGE;
+}
+
+function makeRetainedAutoTableCandidate(
+  session: AutoTableInputSession,
+  state: AutoTableProfileState,
+): AutoTableMatchCandidate | null {
+  const existing = state.assignmentsById.get(session.id);
+  const tableId = existing?.source === "auto"
+    ? existing.autoTableId ?? existing.effectiveTableId
+    : undefined;
+  if (!tableId) return null;
+  return {
+    autoTableId: tableId,
+    autoMatchLevel: "new",
+    autoSimilarity: 0,
+    autoGap: 0,
+  };
+}
+
 export function assignSessionToAutoTableProfileState(
   session: AutoTableInputSession,
   state: AutoTableProfileState,
 ): TableAssignment {
   const manualTableId = isKnownManualTableId(session.tableId) ? session.tableId : undefined;
   const spatialMatch = matchSpatialAutoTableModel(session, state.spatialModels);
-  const profiles = buildTableProfiles(state.profileSessions, state.tables);
+  const profileSessions = state.profileSessions.filter((profileSession) => profileSession.id !== session.id);
+  const profiles = buildTableProfiles(profileSessions, state.tables);
   const profileMatch = matchTableProfile(session.numbers, profiles);
   const profileAssignment = profileMatch.profile && shouldAcceptAutoMatch(profileMatch.level, profileMatch.profile.sessionCount)
-    ? {
-      autoTableId: profileMatch.profile.tableId,
-      autoMatchLevel: profileMatch.level,
-      autoSimilarity: profileMatch.similarity,
-      autoGap: profileMatch.gap,
-    }
+    ? makeProfileMatchCandidate(profileMatch)
+    : null;
+  const protectedProfileAssignment = shouldProtectStrongProfileMatch(
+    session.numbers,
+    profiles,
+    profileMatch,
+    spatialMatch,
+  )
+    ? makeProfileMatchCandidate(profileMatch)
     : null;
   const chosenMatch = profileAssignment?.autoMatchLevel === "confirmed"
     ? profileAssignment
-    : spatialMatch?.autoMatchLevel === "confirmed"
+    : protectedProfileAssignment
+      ? protectedProfileAssignment
+      : spatialMatch?.autoMatchLevel === "confirmed"
       ? spatialMatch
-      : profileAssignment ?? spatialMatch;
+      : profileAssignment ?? spatialMatch ?? makeRetainedAutoTableCandidate(session, state);
   const autoTableId = chosenMatch?.autoTableId;
   const autoMatchLevel: AutoTableMatchLevel = chosenMatch?.autoMatchLevel ?? "none";
   const autoSimilarity = chosenMatch?.autoSimilarity ?? 0;
@@ -289,22 +413,46 @@ function rebuildAutoTableStateFromAssignments(
   };
 }
 
-function haveSameAutoTableAssignments(
-  left: AutoTableProfileState,
-  right: AutoTableProfileState,
-): boolean {
-  if (left.assignments.length !== right.assignments.length) return false;
-  for (const assignment of left.assignments) {
-    const next = right.assignmentsById.get(assignment.sessionId);
-    if (!next) return false;
-    if (assignment.effectiveTableId !== next.effectiveTableId) return false;
-    if (assignment.source !== next.source) return false;
-    if (assignment.autoMatchLevel !== next.autoMatchLevel) return false;
-  }
-  return true;
+function makeNewAutoTableAssignment(sessionId: string, tableId: string): TableAssignment {
+  return {
+    sessionId,
+    autoTableId: tableId,
+    effectiveTableId: tableId,
+    source: "auto",
+    autoMatchLevel: "new",
+    autoSimilarity: 0,
+    autoGap: 0,
+  };
 }
 
-function buildSeedAutoTableProfileState(
+function makeManualTableAssignment(sessionId: string, tableId: string): TableAssignment {
+  return {
+    sessionId,
+    manualTableId: tableId,
+    autoTableId: tableId,
+    effectiveTableId: tableId,
+    source: "manual",
+    autoMatchLevel: "confirmed",
+    autoSimilarity: 1,
+    autoGap: 1,
+  };
+}
+
+function buildPriorAutoTableState(
+  sessions: readonly AutoTableInputSession[],
+  assignments: readonly TableAssignment[],
+  manualTables: readonly TableProfileTable[],
+): AutoTableProfileState {
+  const assignmentsById = new Map(assignments.map((assignment) => [assignment.sessionId, assignment]));
+  return rebuildAutoTableStateFromAssignments(
+    sessions,
+    assignments,
+    manualTables,
+    buildSpatialModelsFromAssignedSessions(sessions, assignmentsById),
+  );
+}
+
+function buildFullSpaceSeedAutoTableProfileState(
   sessions: readonly AutoTableInputSession[],
   manualTables: readonly TableProfileTable[] = [],
 ): AutoTableProfileState {
@@ -395,7 +543,7 @@ function buildSeedAutoTableProfileState(
     const assignment: TableAssignment = {
       sessionId: session.id,
       manualTableId,
-      autoTableId,
+      autoTableId: manualTableId ?? autoTableId,
       effectiveTableId,
       source,
       autoMatchLevel,
@@ -433,19 +581,69 @@ function buildSeedAutoTableProfileState(
   };
 }
 
+function buildFullSpaceAutoTableProfileState(
+  sessions: readonly AutoTableInputSession[],
+  manualTables: readonly TableProfileTable[] = [],
+): AutoTableProfileState {
+  // Full-history classification should keep the spatial cluster structure stable.
+  // Profile matching still handles non-clustered rows here and realtime current-session matching below.
+  return buildFullSpaceSeedAutoTableProfileState(sessions, manualTables);
+}
+
+export function buildWalkForwardAutoTableProfileState(
+  sessions: readonly AutoTableInputSession[],
+  manualTables: readonly TableProfileTable[] = [],
+): AutoTableProfileState {
+  const assignments: TableAssignment[] = [];
+  const assignmentsById = new Map<string, TableAssignment>();
+  const autoTableIds: string[] = [];
+  const sortedSessions = sortSessionsChronologically(sessions);
+  let autoTableIndex = 1;
+
+  const addAutoTableId = (tableId: string): void => {
+    if (isAutoTableId(tableId) && !autoTableIds.includes(tableId)) {
+      autoTableIds.push(tableId);
+    }
+  };
+
+  for (let index = 0; index < sortedSessions.length; index += 1) {
+    const session = sortedSessions[index];
+    const manualTableId = isKnownManualTableId(session.tableId) ? session.tableId : undefined;
+    const priorSessions = sortedSessions.slice(0, index);
+    const priorState = buildPriorAutoTableState(priorSessions, assignments, manualTables);
+    const matched = manualTableId
+      ? makeManualTableAssignment(session.id, manualTableId)
+      : assignSessionToAutoTableProfileState(session, priorState);
+    let assignment = matched.effectiveTableId
+      ? matched
+      : null;
+
+    if (!assignment) {
+      const autoTableId = nextAutoTableId(autoTableIndex);
+      autoTableIndex += 1;
+      addAutoTableId(autoTableId);
+      assignment = makeNewAutoTableAssignment(session.id, autoTableId);
+    } else if (assignment.autoTableId && isAutoTableId(assignment.autoTableId)) {
+      addAutoTableId(assignment.autoTableId);
+    } else if (assignment.effectiveTableId && isAutoTableId(assignment.effectiveTableId)) {
+      addAutoTableId(assignment.effectiveTableId);
+    }
+
+    assignments.push(assignment);
+    assignmentsById.set(session.id, assignment);
+  }
+
+  return rebuildAutoTableStateFromAssignments(
+    sortedSessions,
+    assignments,
+    manualTables,
+    buildSpatialModelsFromAssignedSessions(sortedSessions, assignmentsById),
+  );
+}
+
 export function buildAutoTableProfileState(
   sessions: readonly AutoTableInputSession[],
   manualTables: readonly TableProfileTable[] = [],
 ): AutoTableProfileState {
-  let state = buildSeedAutoTableProfileState(sessions, manualTables);
-  const sortedSessions = sortSessionsChronologically(sessions);
-
-  for (let iteration = 0; iteration < 5; iteration += 1) {
-    const assignments = sortedSessions.map((session) => assignSessionToAutoTableProfileState(session, state));
-    const nextState = rebuildAutoTableStateFromAssignments(sessions, assignments, manualTables, state.spatialModels);
-    if (haveSameAutoTableAssignments(state, nextState)) return nextState;
-    state = nextState;
-  }
-
-  return state;
+  return buildFullSpaceAutoTableProfileState(sessions, manualTables);
 }
