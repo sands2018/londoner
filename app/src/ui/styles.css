@@ -1959,6 +1959,17 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .wave-card-label { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .wave-card-label-text { color: var(--theme-dark-gold); }
 .app-shell.theme-dark .wave-card-label-button { background: transparent; }
+.app-shell.theme-dark .wave-visibility-row button {
+  background: rgba(36, 36, 36, 0.72);
+  border-color: rgba(74, 66, 48, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  color: #8a8a8a;
+}
+.app-shell.theme-dark .wave-visibility-row button.selected {
+  background: rgba(58, 53, 42, 0.9);
+  border-color: rgba(138, 112, 60, 0.72);
+  color: var(--theme-dark-gold);
+}
 .app-shell.theme-dark .wave-detail-panel {
   background: rgba(255, 255, 255, 0.025);
   border-color: rgba(224, 184, 112, 0.16);
@@ -10606,6 +10617,37 @@ strong.roi-value {
 .wave-grid {
   display: grid;
   gap: 4px;
+}
+
+.wave-visibility-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  padding: 7px 10px 6px;
+}
+
+.wave-visibility-row button {
+  align-items: center;
+  background: rgba(251, 250, 246, 0.72);
+  border: 1px solid rgba(184, 169, 143, 0.42);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  color: #8a806f;
+  display: flex;
+  font-size: var(--control-font-size);
+  font-weight: var(--weight-ui);
+  justify-content: center;
+  line-height: 1;
+  min-height: 28px;
+  min-width: 135px;
+  padding: 0 14px;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.wave-visibility-row button.selected {
+  background: rgba(235, 229, 218, 0.96);
+  border-color: rgba(159, 133, 96, 0.72);
+  color: #5e4a2c;
 }
 
 

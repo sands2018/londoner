@@ -1368,6 +1368,20 @@ export function App() {
   const [waveTab, setWaveTab] = useState<"rhythm" | "trend" | "concentration">("rhythm");
   const [waveDetailLabel, setWaveDetailLabel] = useState<string | null>(null);
   const [waveWindow, setWaveWindow] = useState(() => normalizeWaveRoundWindow(Number(localStorage.getItem("londoner.waveWindow")) || defaultWaveRoundWindow));
+  const [waveVisibility, setWaveVisibility] = useState<Record<"rhythm" | "trend" | "concentration", { groups: boolean; rows: boolean }>>(() => ({
+    rhythm: {
+      groups: localStorage.getItem("londoner.wave.rhythm.groups") !== "0",
+      rows: localStorage.getItem("londoner.wave.rhythm.rows") !== "0",
+    },
+    trend: {
+      groups: localStorage.getItem("londoner.wave.trend.groups") !== "0",
+      rows: localStorage.getItem("londoner.wave.trend.rows") !== "0",
+    },
+    concentration: {
+      groups: localStorage.getItem("londoner.wave.concentration.groups") !== "0",
+      rows: localStorage.getItem("londoner.wave.concentration.rows") !== "0",
+    },
+  }));
   const [refineTab, setRefineTab] = useState<RefineTab>("compare");
   const [otherTab, setOtherTab] = useState<OtherTab>("longs");
   const [otherRoundTab, setOtherRoundTab] = useState<OtherRoundTab>("bet");
@@ -5181,6 +5195,33 @@ export function App() {
     const selectedWaveRhythm = waveDetailLabel ? waveRhythmData.find((item) => item.label === waveDetailLabel) : null;
     const selectedWaveTrend = waveDetailLabel ? waveTrendData.find((item) => item.label === waveDetailLabel) : null;
     const selectedWaveConcentration = waveDetailLabel ? waveConcentrationData.find((item) => item.label === waveDetailLabel) : null;
+    const currentWaveVisibility = waveVisibility[waveTab];
+    const shouldShowWaveSeries = (label: string, tab: "rhythm" | "trend" | "concentration") => {
+      const visibility = waveVisibility[tab];
+      if (label.endsWith("组")) return visibility.groups;
+      if (label.endsWith("行")) return visibility.rows;
+      return true;
+    };
+    const visibleWaveRhythmData = waveRhythmData.filter((item) => shouldShowWaveSeries(item.label, "rhythm"));
+    const visibleWaveTrendData = waveTrendData.filter((item) => shouldShowWaveSeries(item.label, "trend"));
+    const visibleWaveConcentrationData = waveConcentrationData.filter((item) => shouldShowWaveSeries(item.label, "concentration"));
+    const toggleWaveVisibility = (kind: "groups" | "rows") => {
+      const next = !waveVisibility[waveTab][kind];
+      setWaveVisibility((current) => ({
+        ...current,
+        [waveTab]: {
+          ...current[waveTab],
+          [kind]: next,
+        },
+      }));
+      localStorage.setItem(`londoner.wave.${waveTab}.${kind}`, next ? "1" : "0");
+    };
+    const renderWaveVisibilityButtons = () => (
+      <div className="wave-visibility-row" aria-label="波浪显示范围">
+        <button className={currentWaveVisibility.groups ? "selected" : ""} onClick={() => toggleWaveVisibility("groups")} type="button">组</button>
+        <button className={currentWaveVisibility.rows ? "selected" : ""} onClick={() => toggleWaveVisibility("rows")} type="button">行</button>
+      </div>
+    );
     const renderWaveScopeButtons = (className = "") => (
       <div className={`scope-row${className ? ` ${className}` : ""}`} style={{marginTop:6, paddingLeft:8}}>
         {waveRoundWindowOptions.map(n => (
@@ -5402,10 +5443,11 @@ export function App() {
           <button className={waveTab === "trend" ? "selected" : ""} onClick={() => setWaveTab("trend")} type="button">趋势</button>
           <button className={waveTab === "concentration" ? "selected" : ""} onClick={() => setWaveTab("concentration")} type="button">集中度</button>
         </div>
+        {renderWaveVisibilityButtons()}
         {waveTab === "rhythm" ? (
           <>
             <div className="wave-grid" style={{padding:"0 10px"}}>
-              {waveRhythmData.map((wd) => {
+              {visibleWaveRhythmData.map((wd) => {
                 const pointCount = wd.points.length;
                 const overflow = pointCount > maxSlots;
                 const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
@@ -5573,7 +5615,7 @@ export function App() {
         ) : waveTab === "trend" ? (
           <>
             <div className="wave-grid" style={{padding:"0 10px"}}>
-              {waveTrendData.map((wd) => {
+              {visibleWaveTrendData.map((wd) => {
                 const pointCount = wd.points.length;
                 const overflow = pointCount > maxSlots;
                 const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
@@ -5643,7 +5685,7 @@ export function App() {
         ) : (
           <>
             <div className="wave-grid" style={{padding:"0 10px"}}>
-              {waveConcentrationData.map((wd) => {
+              {visibleWaveConcentrationData.map((wd) => {
                 const pointCount = wd.points.length;
                 const overflow = pointCount > maxSlots;
                 const stepX = overflow ? slotW : (pointCount > 1 ? chartW / (pointCount - 1) : chartW);
