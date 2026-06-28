@@ -370,6 +370,7 @@ interface HotRecent10Benchmark {
   sessionCount: number;
   bettingSpins: number;
   calculatedAt: string;
+  requirePaperHitAfterRoiStart: boolean;
 }
 
 interface Quality124BenchmarkRow {
@@ -478,9 +479,11 @@ const chaseSixHistoryDataBenchmarkArchiveKey = "londoner.chaseSixHistoryDataBenc
 const quality124LocalHistoryBenchmarkKey = "londoner.quality124LocalHistoryBenchmark";
 const quality124Recent10BenchmarkKey = "londoner.quality124Recent10Benchmark";
 const quality124HistoryDataBenchmarkArchiveKey = "londoner.quality124HistoryDataBenchmarkArchive";
-const hotLocalHistoryBenchmarkKey = "londoner.hotLocalHistoryBenchmark";
-const hotRecent10BenchmarkKey = "londoner.hotRecent10Benchmark";
-const hotHistoryDataBenchmarkArchiveKey = "londoner.hotHistoryDataBenchmarkArchive";
+const hotAlgorithmCacheVersion = "rawSafeOrCool7";
+const hotLocalHistoryBenchmarkKey = `londoner.hotLocalHistoryBenchmark.${hotAlgorithmCacheVersion}`;
+const hotRecent10BenchmarkKey = `londoner.hotRecent10Benchmark.${hotAlgorithmCacheVersion}`;
+const hotHistoryDataBenchmarkArchiveKey = `londoner.hotHistoryDataBenchmarkArchive.${hotAlgorithmCacheVersion}`;
+const hotRequirePaperHitKey = "londoner.hotRequirePaperHit";
 const hotLocalHistoryStartTime = Date.parse("2021-01-01T00:00:00.000+08:00");
 const disabledRoi = { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 };
 const emptyColRowStats = {
@@ -980,13 +983,29 @@ function loadCurrentRedoNumbers(): RouletteNumber[] {
   }
 }
 
-function normalizeHotRecent10Benchmark(value: unknown): HotRecent10Benchmark | null {
+function loadRequireHotPaperHit(): boolean {
+  return localStorage.getItem(hotRequirePaperHitKey) === "1";
+}
+
+function normalizeHotRecent10Benchmark(
+  value: unknown,
+  expectedRequirePaperHitAfterRoiStart?: boolean,
+): HotRecent10Benchmark | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
   const sessionCount = typeof item.sessionCount === "number" && Number.isFinite(item.sessionCount) ? item.sessionCount : null;
   const bettingSpins = typeof item.bettingSpins === "number" && Number.isFinite(item.bettingSpins) ? item.bettingSpins : null;
   const calculatedAt = typeof item.calculatedAt === "string" ? item.calculatedAt : "";
+  const requirePaperHitAfterRoiStart = typeof item.requirePaperHitAfterRoiStart === "boolean"
+    ? item.requirePaperHitAfterRoiStart
+    : false;
   if (sessionCount === null || bettingSpins === null || !calculatedAt || !Array.isArray(item.rows)) return null;
+  if (
+    typeof expectedRequirePaperHitAfterRoiStart === "boolean"
+    && requirePaperHitAfterRoiStart !== expectedRequirePaperHitAfterRoiStart
+  ) {
+    return null;
+  }
 
   const statsByAction = new Map<HotTableCalibrationAction, HotNumberRoi>();
   for (const row of item.rows) {
@@ -1010,25 +1029,26 @@ function normalizeHotRecent10Benchmark(value: unknown): HotRecent10Benchmark | n
     sessionCount,
     bettingSpins,
     calculatedAt,
+    requirePaperHitAfterRoiStart,
   };
 }
 
-function loadHotBenchmark(key: string): HotRecent10Benchmark | null {
+function loadHotBenchmark(key: string, expectedRequirePaperHitAfterRoiStart = loadRequireHotPaperHit()): HotRecent10Benchmark | null {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
   try {
-    return normalizeHotRecent10Benchmark(JSON.parse(raw));
+    return normalizeHotRecent10Benchmark(JSON.parse(raw), expectedRequirePaperHitAfterRoiStart);
   } catch {
     return null;
   }
 }
 
-function loadHotRecent10Benchmark(): HotRecent10Benchmark | null {
-  return loadHotBenchmark(hotRecent10BenchmarkKey);
+function loadHotRecent10Benchmark(expectedRequirePaperHitAfterRoiStart = loadRequireHotPaperHit()): HotRecent10Benchmark | null {
+  return loadHotBenchmark(hotRecent10BenchmarkKey, expectedRequirePaperHitAfterRoiStart);
 }
 
-function loadHotLocalHistoryBenchmark(): HotRecent10Benchmark | null {
-  return loadHotBenchmark(hotLocalHistoryBenchmarkKey);
+function loadHotLocalHistoryBenchmark(expectedRequirePaperHitAfterRoiStart = loadRequireHotPaperHit()): HotRecent10Benchmark | null {
+  return loadHotBenchmark(hotLocalHistoryBenchmarkKey, expectedRequirePaperHitAfterRoiStart);
 }
 
 function hotHistoryDataArchiveBenchmark(): HotRecent10Benchmark {
@@ -1045,7 +1065,8 @@ function hotHistoryDataArchiveBenchmark(): HotRecent10Benchmark {
     })),
     sessionCount: HOT_HISTORY_BENCHMARK.sessions,
     bettingSpins: HOT_HISTORY_BENCHMARK.bettingSpins,
-    calculatedAt: "2026-06-24T00:00:00.000+08:00",
+    calculatedAt: "2026-06-29T00:00:00.000+08:00",
+    requirePaperHitAfterRoiStart: false,
   };
 }
 
@@ -1394,6 +1415,7 @@ export function App() {
   const [showQuality124, setShowQuality124] = useState(() => localStorage.getItem("londoner.showQuality124") !== "0");
   const [quality124TierVisibility, setQuality124TierVisibility] = useState<Record<Quality124Tier, boolean>>(() => loadQuality124TierVisibility());
   const [showHotNumber, setShowHotNumber] = useState(() => localStorage.getItem("londoner.showHotNumber") !== "0");
+  const [requireHotPaperHit, setRequireHotPaperHit] = useState(() => loadRequireHotPaperHit());
   const [showHotCalibrationEnhance, setShowHotCalibrationEnhance] = useState(() => localStorage.getItem("londoner.showHotCalibrationEnhance") !== "0");
   const [showHotCalibrationBaseline, setShowHotCalibrationBaseline] = useState(() => localStorage.getItem("londoner.showHotCalibrationBaseline") !== "0");
   const [showHotCalibrationObserve, setShowHotCalibrationObserve] = useState(() => localStorage.getItem("londoner.showHotCalibrationObserve") !== "0");
@@ -1411,10 +1433,10 @@ export function App() {
   const [chaseSixRecent10Benchmark, setChaseSixRecent10Benchmark] = useState<ChaseSixSavedBenchmark | null>(() => loadChaseSixBenchmark(chaseSixRecent10BenchmarkKey));
   const [chaseSixRecent10Loading, setChaseSixRecent10Loading] = useState(false);
   const [chaseSixRecent10Error, setChaseSixRecent10Error] = useState("");
-  const [hotLocalHistoryBenchmark, setHotLocalHistoryBenchmark] = useState<HotRecent10Benchmark | null>(() => loadHotLocalHistoryBenchmark());
+  const [hotLocalHistoryBenchmark, setHotLocalHistoryBenchmark] = useState<HotRecent10Benchmark | null>(() => loadHotLocalHistoryBenchmark(requireHotPaperHit));
   const [hotLocalHistoryLoading, setHotLocalHistoryLoading] = useState(false);
   const [hotLocalHistoryError, setHotLocalHistoryError] = useState("");
-  const [hotRecent10Benchmark, setHotRecent10Benchmark] = useState<HotRecent10Benchmark | null>(() => loadHotRecent10Benchmark());
+  const [hotRecent10Benchmark, setHotRecent10Benchmark] = useState<HotRecent10Benchmark | null>(() => loadHotRecent10Benchmark(requireHotPaperHit));
   const [hotRecent10Loading, setHotRecent10Loading] = useState(false);
   const [hotRecent10Error, setHotRecent10Error] = useState("");
   const [chase6Filter, setChase6Filter] = useState(() => normalizeChaseSixFilter(localStorage.getItem("londoner.chase6Filter")));
@@ -1629,8 +1651,12 @@ export function App() {
     [allSavedSessions, autoTableState.assignmentsById, currentSessionId],
   );
   const hotTableCalibrationState = useMemo(
-    () => buildHotTableCalibrationState(hotTableCalibrationSessions, autoTableState.tables),
-    [hotTableCalibrationSessions, autoTableState.tables],
+    () => buildHotTableCalibrationState(
+      hotTableCalibrationSessions,
+      autoTableState.tables,
+      { requirePaperHitAfterRoiStart: requireHotPaperHit },
+    ),
+    [hotTableCalibrationSessions, autoTableState.tables, requireHotPaperHit],
   );
   const currentSessionAssignment = useMemo(
     () => {
@@ -1696,12 +1722,30 @@ export function App() {
     ),
     [quality124From201.tierRois, quality124TierVisibility],
   );
-  const hotNumber = useMemo(() => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS), [numbers]);
+  const hotNumber = useMemo(
+    () => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS, { requirePaperHitAfterRoiStart: requireHotPaperHit }),
+    [numbers, requireHotPaperHit],
+  );
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
   const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
   const hotCurrentBettingSpins = Math.max(0, numbers.length - REPEAT_INITIAL_ROUNDS);
   const hotEnvironmentHistory = [...hotNumber.environmentHistory].reverse();
+  const hotSignalStatusClass = !showHotNumber
+    ? "off"
+    : hotNumber.paperHitPending
+      ? "pending"
+      : hotNumber.environmentOpen
+      ? "open"
+      : "closed";
+  const hotSignalStatusLabel = !showHotNumber
+    ? "热门关闭"
+    : hotNumber.paperHitPending
+      ? "热门等待命中确认"
+      : hotNumber.environmentOpen
+      ? "热门开启"
+      : "热门关闭";
+  const hotStatusPanelClass = hotSignalStatusClass === "off" ? "manual-off" : hotSignalStatusClass;
   const autoHotTableSupport = useMemo(
     () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles),
     [hotNumberSignal?.number, numbers, tableProfiles],
@@ -3261,6 +3305,7 @@ export function App() {
       setAllSavedSessions(savedSessions);
       const benchmark = calculateHotSavedBenchmark(savedSessions, casinoTables, currentSessionId, {
         minSessionTime: hotLocalHistoryStartTime,
+        requirePaperHitAfterRoiStart: requireHotPaperHit,
       });
       const elapsed = performance.now() - startedAt;
       if (elapsed < 350) {
@@ -3289,6 +3334,7 @@ export function App() {
       setAllSavedSessions(savedSessions);
       const benchmark = calculateHotSavedBenchmark(savedSessions, casinoTables, currentSessionId, {
         maxSessions: 10,
+        requirePaperHitAfterRoiStart: requireHotPaperHit,
       });
       const elapsed = performance.now() - startedAt;
       if (elapsed < 350) {
@@ -6116,7 +6162,7 @@ export function App() {
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
           {canUseSmartSignals ? (
-            <i className={`top-stats-hot-dot ${!showHotNumber ? "off" : hotNumber.environmentOpen ? "open" : "closed"}`} aria-label={!showHotNumber ? "热门关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
+            <i className={`top-stats-hot-dot ${hotSignalStatusClass}`} aria-label={hotSignalStatusLabel} />
           ) : null}
           <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
           <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
@@ -6352,7 +6398,7 @@ export function App() {
       </div>
 
       {canUseSmartSignals && !hotStatusCollapsed ? (
-        <section className={`hot-status-panel ${!showHotNumber ? "manual-off" : hotNumber.environmentOpen ? "open" : "closed"}`}>
+        <section className={`hot-status-panel ${hotStatusPanelClass}`}>
           <div
             className="hot-status-main"
             onClick={() => {
@@ -6363,7 +6409,7 @@ export function App() {
             tabIndex={0}
           >
             <span>热门</span>
-            <i className="hot-status-dot" aria-label={!showHotNumber ? "手工关闭" : hotNumber.environmentOpen ? "热门开启" : "热门关闭"} />
+            <i className="hot-status-dot" aria-label={hotSignalStatusLabel} />
           </div>
           {showHotNumber ? (
             <div
@@ -8165,9 +8211,26 @@ export function App() {
                     </div>
                   </div>
                   <div className="hot-detail-filter-toggles">
-                    <div className="detail-master-toggle-row">
-                      <span>热门</span>
-                      <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
+                    <div className="detail-master-toggle-row hot-master-toggle-row">
+                      <span className="hot-master-toggle-item">
+                        <span>热门</span>
+                        <button className={`signal-toggle${showHotNumber ? " on" : ""}`} onClick={() => { const v = !showHotNumber; setShowHotNumber(v); localStorage.setItem("londoner.showHotNumber", v ? "1" : "0"); }} type="button" />
+                      </span>
+                      <span className="hot-master-toggle-item">
+                        <span>命中确认</span>
+                        <button
+                          aria-label="热门命中确认"
+                          className={`signal-toggle${requireHotPaperHit ? " on" : ""}`}
+                          onClick={() => {
+                            const v = !requireHotPaperHit;
+                            setRequireHotPaperHit(v);
+                            localStorage.setItem(hotRequirePaperHitKey, v ? "1" : "0");
+                            setHotLocalHistoryBenchmark(loadHotLocalHistoryBenchmark(v));
+                            setHotRecent10Benchmark(loadHotRecent10Benchmark(v));
+                          }}
+                          type="button"
+                        />
+                      </span>
                     </div>
                     <span className="hot-table-filter-toggles">
                       <button className={showHotCalibrationEnhance ? "on" : ""} onClick={() => { const v = !showHotCalibrationEnhance; setShowHotCalibrationEnhance(v); localStorage.setItem("londoner.showHotCalibrationEnhance", v ? "1" : "0"); }} type="button">增强</button>
@@ -9977,7 +10040,7 @@ function calculateHotSavedBenchmark(
   savedSessions: readonly SavedSession[],
   casinoTables: readonly CasinoTable[],
   currentSessionId: string | null,
-  options: { maxSessions?: number; minSessionTime?: number } = {},
+  options: { maxSessions?: number; minSessionTime?: number; requirePaperHitAfterRoiStart?: boolean } = {},
 ): HotRecent10Benchmark {
   const sorted = savedSessions
     .filter((session) => session.id !== currentSessionId)
@@ -10005,9 +10068,15 @@ function calculateHotSavedBenchmark(
       importIndex: prior.importIndex,
       tableId: priorAutoTableState.assignmentsById.get(prior.id)?.effectiveTableId ?? prior.tableId,
     }));
-    const calibrationState = buildHotTableCalibrationState(calibrationSessions, priorAutoTableState.tables);
+    const calibrationState = buildHotTableCalibrationState(
+      calibrationSessions,
+      priorAutoTableState.tables,
+      { requirePaperHitAfterRoiStart: options.requirePaperHitAfterRoiStart ?? false },
+    );
     const forcedTableId = session.tableId;
-    const hot = analyzeHotNumbers(session.numbers, REPEAT_INITIAL_ROUNDS);
+    const hot = analyzeHotNumbers(session.numbers, REPEAT_INITIAL_ROUNDS, {
+      requirePaperHitAfterRoiStart: options.requirePaperHitAfterRoiStart ?? false,
+    });
     const breakdown = summarizeHotCalibrationEvents(
       session,
       session.numbers,
@@ -10027,6 +10096,7 @@ function calculateHotSavedBenchmark(
     sessionCount: sorted.length - recentStart,
     bettingSpins,
     calculatedAt: new Date().toISOString(),
+    requirePaperHitAfterRoiStart: options.requirePaperHitAfterRoiStart ?? false,
   };
 }
 

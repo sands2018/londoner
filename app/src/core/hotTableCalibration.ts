@@ -1,4 +1,4 @@
-import { analyzeHotNumbers } from "./hotNumbers";
+import { analyzeHotNumbers, type HotNumberOptions } from "./hotNumbers";
 import type { RouletteNumber } from "./roulette";
 import { inferSpatialVenueKey } from "./spatialTableClustering";
 import {
@@ -176,6 +176,7 @@ function record(bucket: HotTableCalibrationBucket, level: HotTableSupportLevel, 
 export function buildHotTableCalibrationState(
   sessions: readonly HotTableCalibrationSession[],
   tables: readonly TableProfileTable[] = [],
+  hotOptions: HotNumberOptions = {},
 ): HotTableCalibrationState {
   const sortedSessions = sortSessionsChronologically(sessions);
   const tableVenueById = inferVenueMap(sortedSessions);
@@ -187,7 +188,7 @@ export function buildHotTableCalibrationState(
     const sessionVenueKey = inferSpatialVenueKey(session.name);
     const venueKey = tableId ? tableVenueById.get(tableId) ?? sessionVenueKey : sessionVenueKey;
     const profiles = buildTableProfiles(priorProfileSessions, tables);
-    const analysis = analyzeHotNumbers(session.numbers, ROI_START_INDEX);
+    const analysis = analyzeHotNumbers(session.numbers, ROI_START_INDEX, hotOptions);
 
     for (const event of analysis.events) {
       if (event.position < ROI_START_INDEX) continue;

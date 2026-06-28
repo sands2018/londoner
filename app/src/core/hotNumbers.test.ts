@@ -57,12 +57,12 @@ describe("analyzeHotNumbers", () => {
     expect(analysis.environmentOpen).toBe(true);
     expect(analysis.environmentHistory.some((event) => event.open)).toBe(true);
     expect(analysis.totalRoiFrom201).toMatchObject({
-      signals: 61,
-      bet: 61,
-      win: 72,
-      hits: 2,
+      signals: 71,
+      bet: 71,
+      win: 108,
+      hits: 3,
     });
-    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(18.0328, 4);
+    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(52.1127, 4);
   });
 
   it("can close the current signal after earlier betting-area signals", () => {
@@ -73,11 +73,43 @@ describe("analyzeHotNumbers", () => {
     expect(analysis.environmentOpen).toBe(false);
     expect(analysis.environmentHistory.at(-1)?.open).toBe(false);
     expect(analysis.totalRoiFrom201).toMatchObject({
-      signals: 229,
-      bet: 229,
-      win: 252,
-      hits: 7,
+      signals: 283,
+      bet: 283,
+      win: 144,
+      hits: 4,
     });
-    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(10.0437, 4);
+    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(-49.1166, 4);
+  });
+
+  it("can wait for one betting-area paper hit before recording hot-number bets", () => {
+    const numbers = makeNumbers(520, 2);
+    const baseline = analyzeHotNumbers(numbers, 200);
+    const confirmed = analyzeHotNumbers(numbers, 200, { requirePaperHitAfterRoiStart: true });
+    const baselineBettingEvents = baseline.events.filter((event) => event.position >= 200);
+    const firstPaperHit = baselineBettingEvents.find((event) => event.hit);
+    const expectedBettingEvents = firstPaperHit
+      ? baselineBettingEvents.filter((event) => event.position > firstPaperHit.position)
+      : [];
+    const confirmedBettingEvents = confirmed.events.filter((event) => event.position >= 200);
+
+    expect(firstPaperHit).toBeDefined();
+    expect(confirmedBettingEvents.map((event) => event.position)).toEqual(
+      expectedBettingEvents.map((event) => event.position),
+    );
+    expect(confirmed.totalRoiFrom201.signals).toBe(expectedBettingEvents.length);
+  });
+
+  it("marks the hot signal as pending before the first betting-area paper hit", () => {
+    const source = makeNumbers(520, 2);
+    const firstPaperHit = analyzeHotNumbers(source, 200).events.find((event) => event.position >= 200 && event.hit);
+    expect(firstPaperHit).toBeDefined();
+    if (!firstPaperHit) return;
+
+    const numbers = source.slice(0, firstPaperHit.position);
+    const confirmed = analyzeHotNumbers(numbers, 200, { requirePaperHitAfterRoiStart: true });
+
+    expect(confirmed.paperHitPending).toBe(true);
+    expect(confirmed.activeNumber).toBeNull();
+    expect(confirmed.totalRoiFrom201.signals).toBe(0);
   });
 });

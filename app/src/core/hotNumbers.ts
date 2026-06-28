@@ -1,20 +1,13 @@
 /**
- * Hot Number Prediction — Adaptive Dual-Mode
- * ============================================
- * Two strategies run in parallel with paper P&L tracking:
+ * Hot Number Prediction - rawSafeOrCool@7
+ * =======================================
+ * The hot-number engine keeps LONG/SHORT candidate lists, then:
+ * - tries the adaptive LONG/SHORT order first;
+ * - skips a raw candidate after seven consecutive paper misses;
+ * - falls back to a broader cooling-but-warming candidate when needed.
  *
- * LONG (default): 148-window acceleration, Top10, strict seg3>seg2>seg1, burst<4
- * SHORT: DS three-window consensus (37/74/111), Top5 no-ties, half-up trend, burst<4
- *
- * Adaptive switching (every 90-spin paper review):
- *   If short signals >= 5 AND short ROI >= -40% AND short ROI >= long ROI - 60%
- *   → prefer SHORT, fall back to LONG
- *   Otherwise → prefer LONG, fall back to SHORT
- *
- * Signal never decreases — if preferred mode has no pick, use the other.
- *
- * Based on GPT's adaptive research. Baseline: LONG +19.60%, adaptive: +11.98%
- * but saves extreme sessions (user live: -45.73% → +13.83%).
+ * The UI may optionally wait for one betting-area paper hit before showing
+ * real hot-number bets, but the core algorithm does not require that gate.
  */
 import type { RouletteNumber } from "./roulette";
 
@@ -51,11 +44,25 @@ export interface HotNumberEnvironmentEvent {
 export interface HotNumberAnalysis {
   activeNumber: HotNumberSignal | null;
   environmentOpen: boolean;
+  paperHitPending: boolean;
   environmentHistory: HotNumberEnvironmentEvent[];
   totalRoi: HotNumberRoi;
   totalRoiFrom201: HotNumberRoi;
   /** Per-signal event log for downstream tier/detail breakdown. */
   events: HotNumberSignalEvent[];
+}
+
+export interface HotNumberOptions {
+  /** In the betting area, wait for one paper hit before recording real hot-number bets. */
+  requirePaperHitAfterRoiStart?: boolean;
+}
+
+interface HotNumberCandidate extends HotNumberSignal {
+  count74: number;
+  count37: number;
+  count20: number;
+  lastGap: number;
+  order: number;
 }
 
 // ---- Shared helpers ----
@@ -72,29 +79,6 @@ function countInWindow(
     if (numbers[i] === num) count++;
   }
   return count;
-}
-
-function getTopN(
-  numbers: readonly RouletteNumber[],
-  window: number,
-  n: number,
-  ties = false,
-  end = numbers.length,
-): RouletteNumber[] {
-  const start = Math.max(0, end - window);
-  const counts = new Map<RouletteNumber, number>();
-  for (let i = start; i < end; i++) {
-    const val = numbers[i];
-    if (val === 0) continue;
-    counts.set(val, (counts.get(val) ?? 0) + 1);
-  }
-  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
-  if (sorted.length <= n) return sorted.map(([num]) => num);
-  if (ties) {
-    const cutoff = sorted[n - 1][1];
-    return sorted.filter(([, cnt]) => cnt >= cutoff).map(([num]) => num);
-  }
-  return sorted.slice(0, n).map(([num]) => num);
 }
 
 function topNFromCounts(counts: ArrayLike<number>, n: number): RouletteNumber[] {
@@ -116,17 +100,40 @@ function topNFromCounts(counts: ArrayLike<number>, n: number): RouletteNumber[] 
   return top;
 }
 
+function lastGap(
+  numbers: readonly RouletteNumber[],
+  num: RouletteNumber,
+  end = numbers.length,
+): number {
+  for (let i = end - 1; i >= 0; i--) {
+    if (numbers[i] === num) return end - i;
+  }
+  return 999;
+}
+
+function toSignal(candidate: HotNumberCandidate): HotNumberSignal {
+  return {
+    number: candidate.number,
+    mode: candidate.mode,
+    count148: candidate.count148,
+    seg1: candidate.seg1,
+    seg2: candidate.seg2,
+    seg3: candidate.seg3,
+  };
+}
+
 // ---- LONG strategy (148 acceleration) ----
 
 const LONG_WARMUP = 148;
 const ACCEL_WINDOW = 148;
 const SEG_SIZE = 49;
 
-function selectLong(numbers: readonly RouletteNumber[], end = numbers.length): RouletteNumber | null {
-  if (end < LONG_WARMUP) return null;
+function selectLongCandidates(numbers: readonly RouletteNumber[], end = numbers.length): HotNumberCandidate[] {
+  if (end < LONG_WARMUP) return [];
   const start = end - ACCEL_WINDOW;
   const count148 = new Uint8Array(37);
   const count74 = new Uint8Array(37);
+  const count37 = new Uint8Array(37);
   const count20 = new Uint8Array(37);
   const seg1Counts = new Uint8Array(37);
   const seg2Counts = new Uint8Array(37);
@@ -137,6 +144,7 @@ function selectLong(numbers: readonly RouletteNumber[], end = numbers.length): R
     if (num === 0) continue;
     count148[num]++;
     if (i >= end - 74) count74[num]++;
+    if (i >= end - 37) count37[num]++;
     if (i >= end - 20) count20[num]++;
     if (i < start + SEG_SIZE) {
       seg1Counts[num]++;
@@ -147,56 +155,54 @@ function selectLong(numbers: readonly RouletteNumber[], end = numbers.length): R
     }
   }
 
-  const top10 = topNFromCounts(count148, 10);
-  let bestNum: RouletteNumber | null = null;
-  let bestCount = 0;
-  let bestDiff = 0;
-
-  for (const num of top10) {
-    const seg1 = seg1Counts[num];
-    const seg2 = seg2Counts[num];
-    const seg3 = seg3Counts[num];
-    if (!(seg3 > seg2 && seg2 > seg1)) continue;
-    if (count20[num] >= 4) continue;
-    const cnt = count74[num];
-    const diff = seg3 - seg1;
-    if (cnt > bestCount || (cnt === bestCount && diff > bestDiff)) {
-      bestNum = num; bestCount = cnt; bestDiff = diff;
-    }
-  }
-  return bestNum;
-}
-
-function longSignalFields(numbers: readonly RouletteNumber[], num: number): Pick<HotNumberSignal, "count148" | "seg1" | "seg2" | "seg3"> {
-  const start = numbers.length - ACCEL_WINDOW;
-  let seg1 = 0, seg2 = 0, seg3 = 0;
-  for (let i = start; i < start + SEG_SIZE; i++) { if (numbers[i] === num) seg1++; }
-  for (let i = start + SEG_SIZE; i < start + SEG_SIZE * 2; i++) { if (numbers[i] === num) seg2++; }
-  for (let i = start + SEG_SIZE * 2; i < numbers.length; i++) { if (numbers[i] === num) seg3++; }
-  return { count148: countInWindow(numbers, num, 148), seg1, seg2, seg3 };
+  return topNFromCounts(count148, 10)
+    .map((num, order) => ({ num, order }))
+    .filter(({ num }) => seg3Counts[num] > seg2Counts[num] && seg2Counts[num] > seg1Counts[num])
+    .filter(({ num }) => count20[num] < 4)
+    .map(({ num, order }) => ({
+      number: num,
+      mode: "long" as const,
+      count148: count148[num],
+      count74: count74[num],
+      count37: count37[num],
+      count20: count20[num],
+      seg1: seg1Counts[num],
+      seg2: seg2Counts[num],
+      seg3: seg3Counts[num],
+      lastGap: lastGap(numbers, num, end),
+      order,
+    }))
+    .sort((left, right) => (
+      right.count74 - left.count74
+      || (right.seg3 - right.seg1) - (left.seg3 - left.seg1)
+      || left.order - right.order
+    ));
 }
 
 // ---- SHORT strategy (DS three-window) ----
 
 const SHORT_WARMUP = 111;
 
-function selectShort(numbers: readonly RouletteNumber[], end = numbers.length): RouletteNumber | null {
-  if (end < SHORT_WARMUP) return null;
+function selectShortCandidates(numbers: readonly RouletteNumber[], end = numbers.length): HotNumberCandidate[] {
+  if (end < SHORT_WARMUP) return [];
   const count37 = new Uint8Array(37);
   const count74 = new Uint8Array(37);
   const count111 = new Uint8Array(37);
+  const count148 = new Uint8Array(37);
   const count20 = new Uint8Array(37);
   const firstHalf37 = new Uint8Array(37);
   const secondHalf37 = new Uint8Array(37);
   const start111 = end - 111;
   const start74 = end - 74;
   const start37 = end - 37;
+  const start148 = Math.max(0, end - 148);
   const mid37 = start37 + 18;
 
-  for (let i = start111; i < end; i++) {
+  for (let i = start148; i < end; i++) {
     const num = numbers[i];
     if (num === 0) continue;
-    count111[num]++;
+    count148[num]++;
+    if (i >= start111) count111[num]++;
     if (i >= start74) count74[num]++;
     if (i >= start37) {
       count37[num]++;
@@ -212,16 +218,25 @@ function selectShort(numbers: readonly RouletteNumber[], end = numbers.length): 
   const h37 = new Set(topNFromCounts(count37, 5));
   const h74 = new Set(topNFromCounts(count74, 5));
   const h111 = new Set(topNFromCounts(count111, 5));
-  const candidates = [...h37].filter(n => h74.has(n) && h111.has(n));
-  if (candidates.length === 0) return null;
-  // Half-up trend in 37
-  const trending = candidates.filter(n => secondHalf37[n] > firstHalf37[n]);
-  if (trending.length === 0) return null;
-  // Burst filter
-  const filtered = trending.filter(n => count20[n] < 4);
-  if (filtered.length === 0) return null;
-  // Pick #1 by 37-spin count
-  return filtered.sort((a, b) => count37[b] - count37[a])[0];
+  return [...h37]
+    .map((num, order) => ({ num, order }))
+    .filter(({ num }) => h74.has(num) && h111.has(num))
+    .filter(({ num }) => secondHalf37[num] > firstHalf37[num])
+    .filter(({ num }) => count20[num] < 4)
+    .map(({ num, order }) => ({
+      number: num,
+      mode: "short" as const,
+      count148: count148[num],
+      count74: count74[num],
+      count37: count37[num],
+      count20: count20[num],
+      seg1: 0,
+      seg2: 0,
+      seg3: 0,
+      lastGap: lastGap(numbers, num, end),
+      order,
+    }))
+    .sort((left, right) => right.count37 - left.count37 || left.order - right.order);
 }
 
 function shortSignalFields(numbers: readonly RouletteNumber[], num: number): Pick<HotNumberSignal, "count148" | "seg1" | "seg2" | "seg3"> {
@@ -292,67 +307,101 @@ function updateHotEnvironmentState(
   };
 }
 
-interface CachedPicks {
-  longPicks: Array<RouletteNumber | null>;
-  shortPicks: Array<RouletteNumber | null>;
+interface CachedCandidates {
+  longCandidates: HotNumberCandidate[][];
+  shortCandidates: HotNumberCandidate[][];
 }
 
 /**
- * Pre-compute selectLong/selectShort results for every position once.
+ * Pre-compute selectLong/selectShort candidates for every position once.
  * These are pure functions of numbers[0..i], so caching is equivalent to recomputing.
  */
-function precomputePicks(numbers: readonly RouletteNumber[]): CachedPicks {
+function precomputeCandidates(numbers: readonly RouletteNumber[]): CachedCandidates {
   const n = numbers.length;
-  const longPicks: Array<RouletteNumber | null> = new Array(n + 1).fill(null);
-  const shortPicks: Array<RouletteNumber | null> = new Array(n + 1).fill(null);
+  const longCandidates: HotNumberCandidate[][] = Array.from({ length: n + 1 }, () => []);
+  const shortCandidates: HotNumberCandidate[][] = Array.from({ length: n + 1 }, () => []);
 
   for (let i = LONG_WARMUP; i <= n; i++) {
-    longPicks[i] = selectLong(numbers, i);
+    longCandidates[i] = selectLongCandidates(numbers, i);
   }
   for (let i = SHORT_WARMUP; i <= n; i++) {
-    shortPicks[i] = selectShort(numbers, i);
+    shortCandidates[i] = selectShortCandidates(numbers, i);
   }
 
-  return { longPicks, shortPicks };
+  return { longCandidates, shortCandidates };
 }
 
-/**
- * Determine adaptive pick at a given position using pre-computed strategy picks
- * and a pre-built paper P&L snapshot.
- */
-function adaptivePick(
-  numbers: readonly RouletteNumber[],
-  longPick: RouletteNumber | null,
-  shortPick: RouletteNumber | null,
+function shouldPreferShort(
   longCnt: number, longNet: number,
   shortCnt: number, shortNet: number,
-): HotNumberSignal | null {
-  if (longPick === null && shortPick === null) return null;
-
+): boolean {
   const shortRoi = shortCnt > 0 ? (shortNet / shortCnt) * 100 : -999;
   const longRoi = longCnt > 0 ? (longNet / longCnt) * 100 : -999;
 
-  const preferShort = shortCnt >= ADAPTIVE_MIN_SHORT_SIGNALS
+  return shortCnt >= ADAPTIVE_MIN_SHORT_SIGNALS
     && shortRoi >= ADAPTIVE_MIN_SHORT_ROI
     && shortRoi >= longRoi + ADAPTIVE_SHORT_EDGE;
+}
 
-  if (preferShort) {
-    if (shortPick !== null) {
-      return { number: shortPick, mode: "short", ...shortSignalFields(numbers, shortPick) };
-    }
-    if (longPick !== null) {
-      return { number: longPick, mode: "long", ...longSignalFields(numbers, longPick) };
-    }
-  } else {
-    if (longPick !== null) {
-      return { number: longPick, mode: "long", ...longSignalFields(numbers, longPick) };
-    }
-    if (shortPick !== null) {
-      return { number: shortPick, mode: "short", ...shortSignalFields(numbers, shortPick) };
+function orderedCandidates(
+  longCandidates: readonly HotNumberCandidate[],
+  shortCandidates: readonly HotNumberCandidate[],
+  preferShort: boolean,
+): HotNumberCandidate[] {
+  return preferShort ? [...shortCandidates, ...longCandidates] : [...longCandidates, ...shortCandidates];
+}
+
+const RAW_SAFE_MISS_LIMIT = 7;
+
+function broadCoolCandidate(numbers: readonly RouletteNumber[], end: number): HotNumberCandidate | null {
+  let best: RouletteNumber | null = null;
+  let bestScore = -Infinity;
+
+  for (let num = 1; num <= 36; num++) {
+    const n = num as RouletteNumber;
+    const recentHalf = countInWindow(numbers, n, 18, end);
+    const priorHalf = countInWindow(numbers, n, 19, end - 18);
+    const count20 = countInWindow(numbers, n, 20, end);
+    const count37 = recentHalf + priorHalf;
+    const count74 = countInWindow(numbers, n, 74, end);
+    const count111 = countInWindow(numbers, n, 111, end);
+    const gap = lastGap(numbers, n, end);
+
+    if (count37 < 2 || count74 < 3 || count111 < 4 || count20 > 3) continue;
+    if (recentHalf <= priorHalf) continue;
+
+    const score = count111 * 30 + count74 * 25 - count20 * 30 + Math.min(gap, 60);
+    if (score > bestScore || (score === bestScore && n < (best ?? 37))) {
+      best = n;
+      bestScore = score;
     }
   }
 
-  return null;
+  if (best === null) return null;
+
+  return {
+    number: best,
+    mode: "long",
+    count148: countInWindow(numbers, best, 148, end),
+    count74: countInWindow(numbers, best, 74, end),
+    count37: countInWindow(numbers, best, 37, end),
+    count20: countInWindow(numbers, best, 20, end),
+    seg1: 0,
+    seg2: 0,
+    seg3: 0,
+    lastGap: lastGap(numbers, best, end),
+    order: 0,
+  };
+}
+
+function chooseHotCandidate(
+  numbers: readonly RouletteNumber[],
+  end: number,
+  candidates: readonly HotNumberCandidate[],
+  rawMissStreak: ArrayLike<number>,
+): HotNumberCandidate | null {
+  return candidates.find((candidate) => rawMissStreak[candidate.number] < RAW_SAFE_MISS_LIMIT)
+    ?? broadCoolCandidate(numbers, end);
 }
 
 // ---- Public API ----
@@ -360,13 +409,16 @@ function adaptivePick(
 export function analyzeHotNumbers(
   numbers: readonly RouletteNumber[],
   roiStartIndex = 0,
+  options: HotNumberOptions = {},
 ): HotNumberAnalysis {
   const n = numbers.length;
+  const requirePaperHitAfterRoiStart = options.requirePaperHitAfterRoiStart ?? false;
 
   if (n < LONG_WARMUP) {
     return {
       activeNumber: null,
       environmentOpen: true,
+      paperHitPending: false,
       environmentHistory: [],
       totalRoi: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
       totalRoiFrom201: { signals: 0, bet: 0, win: 0, hits: 0, roi: 0 },
@@ -375,7 +427,7 @@ export function analyzeHotNumbers(
   }
 
   // Step 1: Pre-compute all historical strategy picks (O(N × WINDOW), once)
-  const { longPicks, shortPicks } = precomputePicks(numbers);
+  const { longCandidates, shortCandidates } = precomputeCandidates(numbers);
 
   // Step 2: Compute both ROIs in a single pass with incremental paper P&L
   let sigAll = 0, betAll = 0, winAll = 0, hitsAll = 0;
@@ -386,6 +438,8 @@ export function analyzeHotNumbers(
   let environmentAllowsSignals = true;
   let allowConfirmCount = 0;
   let blockConfirmCount = 0;
+  let paperHitConfirmed = !requirePaperHitAfterRoiStart;
+  const rawMissStreak = new Uint16Array(37);
 
   // Running paper P&L (sliding ADAPTIVE_LOOKBACK window, pointer-based for O(1) trim)
   let longCnt = 0, longNet = 0;
@@ -395,15 +449,15 @@ export function analyzeHotNumbers(
   let longQueueStart = 0;
   let shortQueueStart = 0;
 
-  function pushPaper(longN: number | null, shortN: number | null, outcomeIdx: number) {
+  function pushPaper(longN: HotNumberCandidate | null, shortN: HotNumberCandidate | null, outcomeIdx: number) {
     if (longN !== null) {
-      const net = numbers[outcomeIdx] === longN ? 35 : -1;
+      const net = numbers[outcomeIdx] === longN.number ? 35 : -1;
       longQueue.push({ index: outcomeIdx, net });
       longNet += net;
       longCnt++;
     }
     if (shortN !== null && outcomeIdx >= SHORT_WARMUP) {
-      const net = numbers[outcomeIdx] === shortN ? 35 : -1;
+      const net = numbers[outcomeIdx] === shortN.number ? 35 : -1;
       shortQueue.push({ index: outcomeIdx, net });
       shortNet += net;
       shortCnt++;
@@ -423,9 +477,9 @@ export function analyzeHotNumbers(
     }
   }
 
-  function pushShortEnvironmentNet(shortN: number | null, outcomeIdx: number) {
+  function pushShortEnvironmentNet(shortN: HotNumberCandidate | null, outcomeIdx: number) {
     if (shortN === null) return;
-    recentShortEnvironmentNets.push(numbers[outcomeIdx] === shortN ? 35 : -1);
+    recentShortEnvironmentNets.push(numbers[outcomeIdx] === shortN.number ? 35 : -1);
     if (recentShortEnvironmentNets.length > HOT_ENVIRONMENT_WINDOW) {
       recentShortEnvironmentNets.shift();
     }
@@ -433,7 +487,7 @@ export function analyzeHotNumbers(
 
   for (let i = LONG_WARMUP; i < n; i++) {
     if (i > LONG_WARMUP) {
-      pushPaper(longPicks[i - 1], shortPicks[i - 1], i - 1);
+      pushPaper(longCandidates[i - 1][0] ?? null, shortCandidates[i - 1][0] ?? null, i - 1);
     }
     trimPaper(Math.max(LONG_WARMUP, i - ADAPTIVE_LOOKBACK));
 
@@ -450,33 +504,40 @@ export function analyzeHotNumbers(
     allowConfirmCount = environmentState.allowConfirmCount;
     blockConfirmCount = environmentState.blockConfirmCount;
 
-    const pick = adaptivePick(
-      numbers, longPicks[i], shortPicks[i],
-      longCnt, longNet, shortCnt, shortNet,
+    const candidates = orderedCandidates(
+      longCandidates[i],
+      shortCandidates[i],
+      shouldPreferShort(longCnt, longNet, shortCnt, shortNet),
     );
+    const rawPick = candidates[0] ?? null;
+    const pick = environmentAllowsSignals
+      ? chooseHotCandidate(numbers, i, candidates, rawMissStreak)
+      : null;
     if (pick !== null) {
       const hit = numbers[i] === pick.number;
-      if (!environmentAllowsSignals) {
-        pushShortEnvironmentNet(shortPicks[i], i);
-        continue;
+      if (i >= roiStartIndex && !paperHitConfirmed) {
+        if (hit) paperHitConfirmed = true;
+      } else {
+        // All-data ROI
+        sigAll++; betAll++;
+        if (hit) { winAll += 36; hitsAll++; }
+        // From-201 ROI
+        if (i >= roiStartIndex) {
+          sig201++; bet201++;
+          if (hit) { win201 += 36; hits201++; }
+        }
+        // Record event for downstream tier analysis
+        events.push({ position: i, signal: toSignal(pick), hit });
       }
-
-      // All-data ROI
-      sigAll++; betAll++;
-      if (hit) { winAll += 36; hitsAll++; }
-      // From-201 ROI
-      if (i >= roiStartIndex) {
-        sig201++; bet201++;
-        if (hit) { win201 += 36; hits201++; }
-      }
-      // Record event for downstream tier analysis
-      events.push({ position: i, signal: pick, hit });
     }
-    pushShortEnvironmentNet(shortPicks[i], i);
+    if (rawPick !== null) {
+      rawMissStreak[rawPick.number] = numbers[i] === rawPick.number ? 0 : rawMissStreak[rawPick.number] + 1;
+    }
+    pushShortEnvironmentNet(shortCandidates[i][0] ?? null, i);
   }
 
   // Step 3: Current adaptive pick (at position n, using full paper P&L window)
-  pushPaper(longPicks[n - 1], shortPicks[n - 1], n - 1);
+  pushPaper(longCandidates[n - 1][0] ?? null, shortCandidates[n - 1][0] ?? null, n - 1);
   trimPaper(Math.max(LONG_WARMUP, n - ADAPTIVE_LOOKBACK));
   const environmentState = updateHotEnvironmentState(
     recentShortEnvironmentNets,
@@ -490,15 +551,21 @@ export function analyzeHotNumbers(
   environmentAllowsSignals = environmentState.allowsSignals;
   allowConfirmCount = environmentState.allowConfirmCount;
   blockConfirmCount = environmentState.blockConfirmCount;
-  const rawCurrentPick = adaptivePick(
-    numbers, longPicks[n], shortPicks[n],
-    longCnt, longNet, shortCnt, shortNet,
+  const currentCandidates = orderedCandidates(
+    longCandidates[n],
+    shortCandidates[n],
+    shouldPreferShort(longCnt, longNet, shortCnt, shortNet),
   );
-  const currentPick = environmentAllowsSignals ? rawCurrentPick : null;
+  const rawCurrentPick = chooseHotCandidate(numbers, n, currentCandidates, rawMissStreak);
+  const currentPick = environmentAllowsSignals
+    && (n < roiStartIndex || paperHitConfirmed)
+    ? rawCurrentPick
+    : null;
 
   return {
-    activeNumber: currentPick,
+    activeNumber: currentPick ? toSignal(currentPick) : null,
     environmentOpen: environmentAllowsSignals,
+    paperHitPending: requirePaperHitAfterRoiStart && n >= roiStartIndex && !paperHitConfirmed,
     environmentHistory,
     totalRoi: {
       signals: sigAll, bet: betAll, win: winAll, hits: hitsAll,

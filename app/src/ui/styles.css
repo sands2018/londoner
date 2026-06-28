@@ -82,6 +82,7 @@
   --hot-dot-size: 16px;
   --hot-dot-open: #b79763;
   --hot-dot-closed: #5e5850;
+  --hot-dot-pending: #7f2f2a;
   --hot-dot-slash-color: #b0a098;
   --hot-dot-slash-width: 14px;
   --hot-dot-slash-height: 1.5px;
@@ -262,6 +263,10 @@ button:disabled {
 
 .top-stats-hot-dot.closed {
   background: var(--hot-dot-closed);
+}
+
+.top-stats-hot-dot.pending {
+  background: var(--hot-dot-pending);
 }
 
 .top-stats-hot-dot.off {
@@ -595,9 +600,17 @@ button:disabled {
   background: #f2ead8;
 }
 
+.hot-status-panel.pending .hot-status-main {
+  background: #f1e4df;
+}
+
 .hot-status-panel.closed .hot-status-main,
 .hot-status-panel.manual-off .hot-status-main {
   background: #eee9e2;
+}
+
+.hot-status-panel.pending .hot-status-dot {
+  background: var(--hot-dot-pending);
 }
 
 .hot-status-panel.closed .hot-status-dot {
@@ -992,6 +1005,7 @@ button:disabled {
   --weight-strong: 400;
   --hot-dot-open: #b69254;
   --hot-dot-closed: #3f3a36;
+  --hot-dot-pending: #7a2e28;
   --hot-dot-slash-color: #55504c;
   background: #121212;
   color: #e0e0e0;
@@ -1107,6 +1121,9 @@ body:has(.app-shell.theme-dark) {
 }
 .app-shell.theme-dark .hot-status-panel.open .hot-status-main {
   background: #2a261c;
+}
+.app-shell.theme-dark .hot-status-panel.pending .hot-status-main {
+  background: #2a201f;
 }
 .app-shell.theme-dark .hot-status-panel.closed .hot-status-main,
 .app-shell.theme-dark .hot-status-panel.manual-off .hot-status-main {
@@ -9053,6 +9070,17 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .detail-master-toggle-row .signal-toggle {
   flex: 0 0 auto;
+}
+
+.hot-master-toggle-row {
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+
+.hot-master-toggle-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
 }
 
 .smart-entry-mode-toggle {
