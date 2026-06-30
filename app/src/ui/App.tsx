@@ -74,7 +74,7 @@ import {
   uploadTransferSession,
   upsertSharedSession,
 } from "../storage/sharedStorage";
-import type { CasinoTable, SavedSession } from "../storage/storage";
+import { getSessionDataTime, type CasinoTable, type SavedSession } from "../storage/storage";
 import { analyzePreferredNumber } from "../core/preferredNumber";
 import { extractGaps } from "../core/wave";
 import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow, type ChaseSixBenchmarkRow, type ChaseSixBenchmarkRowId } from "../core/chaseSix";
@@ -1645,6 +1645,7 @@ export function App() {
         name: session.name,
         numbers: session.numbers,
         updatedAt: session.updatedAt,
+        dataTime: getSessionDataTime(session),
         importIndex: session.importIndex,
         tableId: autoTableState.assignmentsById.get(session.id)?.effectiveTableId ?? session.tableId,
       })),
@@ -1814,6 +1815,9 @@ export function App() {
           name: "current",
           numbers,
           updatedAt: new Date().toISOString(),
+          dataTime: currentSessionId
+            ? getSessionDataTime(sessions.find((session) => session.id === currentSessionId) ?? { updatedAt: new Date().toISOString() })
+            : new Date().toISOString(),
         },
         numbers,
         hotNumber.events,
@@ -3410,11 +3414,14 @@ export function App() {
     const id = existingId ?? crypto.randomUUID?.() ?? `${Date.now()}`;
     const existing = existingId ? (await storage.listSessions()).find((s) => s.id === existingId) : undefined;
     const tableIdToPersist = sanitizeManualTableId(currentManualTableId ?? existing?.tableId);
+    const now = new Date().toISOString();
+    const inferredDataTime = inferSessionDataTimeFromName(name);
     await storage.saveSession({
       id,
       name,
       numbers,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
+      dataTime: inferredDataTime ?? existing?.dataTime,
       importIndex: existing?.importIndex,
       tableId: tableIdToPersist,
     });
@@ -3583,11 +3590,13 @@ export function App() {
           if (nums.numbers.length === 0) continue;
           const name = String((item as any).Name ?? (item as any).name ?? `导入-${imported.length + 1}`);
           const tms = (item as any).tms ?? (item as any).SaveTime ?? undefined;
+          const updatedAt = tms ? parseLooseDateTimeToIso(tms) ?? new Date().toISOString() : new Date().toISOString();
           imported.push({
             id: (item as any).id ?? crypto.randomUUID?.() ?? `${Date.now()}-${imported.length}`,
             name,
             numbers: nums.numbers,
-            updatedAt: tms ? new Date(tms).toISOString() : new Date().toISOString(),
+            updatedAt,
+            dataTime: getImportedDataTime(item),
             importIndex: (item as any).ImportIndex ?? imported.length,
             sharedUploader: (item as any).SharedUploader ?? (item as any).sharedUploader ?? "",
             tableId: (item as any).TableId ?? (item as any).tableId ?? undefined,
@@ -4134,6 +4143,7 @@ export function App() {
         name: shared.name,
         numbers: shared.numbers,
         updatedAt: shared.updatedAt,
+        dataTime: shared.updatedAt,
         sharedUploader: shared.uploader === sharedUsername.trim() ? "" : shared.uploader,
       };
       await storage.saveSession(session);
@@ -4297,34 +4307,11 @@ export function App() {
     }
   }
 
-  function renameSession(session: SavedSession) {
-    setPromptValue(session.name);
-    setPromptDialog({
-      title: "重命名数据",
-      message: "请输入该数据的新名称：",
-      defaultValue: session.name,
-      confirmText: "确定",
-      onConfirm: async (value) => {
-        const name = value.trim();
-        const error = validateSessionName(name, sessions, session.id);
-        if (error) {
-          setNoticeDialog({ title: "重命名失败", message: error });
-          return;
-        }
-
-        await storage.renameSession(session.id, name);
-        await refreshSessions();
-        setSelectedSessionIds([session.id]);
-        setNoticeDialog({ title: "重命名成功", message: `"${session.name}"重命名为"${name}"成功。` });
-      },
-    });
-  }
-
   function editSession(session: SavedSession) {
     setEditSessionId(session.id);
     setEditName(session.name);
     setEditUploader(session.sharedUploader ?? "");
-    setEditTime(isoToDatetimeLocal(session.updatedAt));
+    setEditTime(isoToDatetimeLocal(getEditableSessionDataTime(session)));
     setEditTableId(session.tableId ?? "");
     setEditDialogOpen(true);
   }
@@ -4342,22 +4329,18 @@ export function App() {
     }
 
     const timeString = editTime.trim();
-    let updatedAt = session.updatedAt;
-    if (timeString) {
-      const parsedDate = new Date(timeString);
-      if (Number.isNaN(parsedDate.getTime())) {
-        setNoticeDialog({ title: "编辑失败", message: "保存时间格式无效，请输入正确的日期时间。" });
-        return;
-      }
-      updatedAt = parsedDate.toISOString();
+    const dataTime = timeString ? parseLooseDateTimeToIso(timeString) : getSessionDataTime(session);
+    if (!dataTime) {
+      setNoticeDialog({ title: "编辑失败", message: "数据时间格式无效，请输入正确的日期时间。" });
+      return;
     }
 
     const updated: SavedSession = {
       ...session,
       name,
+      dataTime,
       sharedUploader: editUploader.trim(),
       tableId: sanitizeManualTableId(editTableId),
-      updatedAt,
     };
 
     await storage.saveSession(updated);
@@ -4415,6 +4398,8 @@ export function App() {
         Numbers: formatNumbers(session.numbers),
         SaveTime: formatSessionTime(session.updatedAt),
         tms: new Date(session.updatedAt).getTime(),
+        DataTime: formatSessionTime(getSessionDataTime(session)),
+        DataTms: new Date(getSessionDataTime(session)).getTime(),
         ImportIndex: session.importIndex,
         SharedUploader: session.sharedUploader || "",
         TableId: session.tableId || "",
@@ -4454,6 +4439,8 @@ export function App() {
       Numbers: formatNumbers(session.numbers),
       SaveTime: formatSessionTime(session.updatedAt),
       tms: new Date(session.updatedAt).getTime(),
+      DataTime: formatSessionTime(getSessionDataTime(session)),
+      DataTms: new Date(getSessionDataTime(session)).getTime(),
       ImportIndex: session.importIndex,
       SharedUploader: session.sharedUploader || "",
       TableId: session.tableId || "",
@@ -6781,7 +6768,7 @@ export function App() {
                     桌 <SortMark active={sessionSortField === "table"} direction={sessionSortDirection} />
                   </th>
                   <th onClick={() => sortDataView("time")}>
-                    时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
+                    数据时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
                   </th>
                 </tr>
               </thead>
@@ -6801,7 +6788,7 @@ export function App() {
                     <td>{session.numbers.length}</td>
                     <td>{session.sharedUploader ?? ""}</td>
                     <td>{formatSessionTableLabel(session, autoTableState.assignmentsById.get(session.id), tableLabelById, tableNameById)}</td>
-                    <td>{formatSessionTime(session.updatedAt)}</td>
+                    <td>{formatSessionTime(getSessionDataTime(session))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -6814,7 +6801,7 @@ export function App() {
             const yearCounts: Record<number, { sessions: number; numbers: number }> = {};
             for (const y of years) yearCounts[y] = { sessions: 0, numbers: 0 };
             for (const s of sortedSessions) {
-              const t = s.updatedAt ? new Date(s.updatedAt).getFullYear() : null;
+              const t = getSessionDataTime(s) ? new Date(getSessionDataTime(s)).getFullYear() : null;
               if (t && yearCounts[t]) {
                 yearCounts[t].sessions += 1;
                 yearCounts[t].numbers += s.numbers.length;
@@ -6848,9 +6835,6 @@ export function App() {
               </button>
               <button disabled={selectedSessionIds.length !== 1} onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) openSession(s); }} type="button">
                 打开
-              </button>
-              <button disabled={selectedSessionIds.length !== 1} onClick={() => { const s = sortedSessions.find((x) => x.id === selectedSessionIds[0]); if (s) renameSession(s); }} type="button">
-                更名
               </button>
               <button
                 disabled={selectedSessionIds.length !== 1}
@@ -9529,7 +9513,7 @@ export function App() {
             <>
               <button
                 className="primary-action"
-                onClick={() => { setEditDialogOpen(false); void saveEditSession(); }}
+                onClick={() => { void saveEditSession(); }}
                 type="button"
               >
                 确定
@@ -9547,7 +9531,7 @@ export function App() {
             <input value={editUploader} onChange={(event) => setEditUploader(event.target.value)} />
           </label>
           <label className="field-label">
-            保存时间
+            数据时间
             <input type="datetime-local" value={editTime} onChange={(event) => setEditTime(event.target.value)} />
           </label>
           <label className="field-label">
@@ -9825,8 +9809,8 @@ function formatSessionTableLabel(
 }
 
 function compareSessionsChronologically(left: SavedSession, right: SavedSession): number {
-  const leftTime = new Date(left.updatedAt).getTime();
-  const rightTime = new Date(right.updatedAt).getTime();
+  const leftTime = getSessionDataTimeMs(left);
+  const rightTime = getSessionDataTimeMs(right);
   const timeDiff = (Number.isFinite(leftTime) ? leftTime : 0) - (Number.isFinite(rightTime) ? rightTime : 0);
   if (timeDiff !== 0) return timeDiff;
   const leftIndex = left.importIndex ?? Number.MAX_SAFE_INTEGER;
@@ -9878,7 +9862,7 @@ function calculateQuality124SavedBenchmark(
     .filter((session) => session.numbers.length > 0)
     .filter((session) => {
       if (typeof options.minSessionTime !== "number") return true;
-      const time = new Date(session.updatedAt).getTime();
+      const time = getSessionDataTimeMs(session);
       return Number.isFinite(time) && time >= options.minSessionTime;
     })
     .sort(compareSessionsChronologically);
@@ -9930,7 +9914,7 @@ function calculateChaseSixSavedBenchmark(
     .filter((session) => session.numbers.length > 0)
     .filter((session) => {
       if (typeof options.minSessionTime !== "number") return true;
-      const time = new Date(session.updatedAt).getTime();
+      const time = getSessionDataTimeMs(session);
       return Number.isFinite(time) && time >= options.minSessionTime;
     })
     .sort(compareSessionsChronologically);
@@ -10047,7 +10031,7 @@ function calculateHotSavedBenchmark(
     .filter((session) => session.numbers.length > 0)
     .filter((session) => {
       if (typeof options.minSessionTime !== "number") return true;
-      const time = new Date(session.updatedAt).getTime();
+      const time = getSessionDataTimeMs(session);
       return Number.isFinite(time) && time >= options.minSessionTime;
     })
     .sort(compareSessionsChronologically);
@@ -10065,6 +10049,7 @@ function calculateHotSavedBenchmark(
       name: prior.name,
       numbers: prior.numbers,
       updatedAt: prior.updatedAt,
+      dataTime: getSessionDataTime(prior),
       importIndex: prior.importIndex,
       tableId: priorAutoTableState.assignmentsById.get(prior.id)?.effectiveTableId ?? prior.tableId,
     }));
@@ -10211,7 +10196,7 @@ function sortSessions(
     if (field === "count") {
       result = left.numbers.length - right.numbers.length;
     } else if (field === "time") {
-      result = new Date(left.updatedAt).getTime() - new Date(right.updatedAt).getTime();
+      result = getSessionDataTimeMs(left) - getSessionDataTimeMs(right);
     } else if (field === "sharedUploader") {
       result = (left.sharedUploader ?? "").localeCompare(right.sharedUploader ?? "");
     } else if (field === "table") {
@@ -10292,6 +10277,90 @@ function buildColRowCompareRows(
   return sortRefineRows(rows, sortField, sortDirection);
 }
 
+function makeLocalDateIso(year: number, month: number, day: number, hour = 0, minute = 0): string | null {
+  const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() !== month - 1
+    || date.getDate() !== day
+    || date.getHours() !== hour
+    || date.getMinutes() !== minute
+  ) {
+    return null;
+  }
+  return date.toISOString();
+}
+
+function inferSessionDataTimeFromName(name: string): string | null {
+  const match = name.match(/(?:^|[^\d])(\d{4})(\d{2})(\d{2})[-_ ]?(\d{2})(\d{2})(?:[^\d]|$)/u);
+  if (!match) return null;
+  return makeLocalDateIso(
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+  );
+}
+
+function parseLooseDateTimeToIso(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const compact = trimmed.match(/^(\d{4})(\d{2})(\d{2})[-_ ]?(\d{2})(\d{2})$/u);
+  if (compact) {
+    return makeLocalDateIso(
+      Number(compact[1]),
+      Number(compact[2]),
+      Number(compact[3]),
+      Number(compact[4]),
+      Number(compact[5]),
+    );
+  }
+  if (/^\d+$/u.test(trimmed)) return parseLooseDateTimeToIso(Number(trimmed));
+
+  const normalized = trimmed
+    .replace(/^(\d{4})[.](\d{1,2})[.](\d{1,2})/u, (_all, year, month, day) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`)
+    .replace(/^(\d{4})-(\d{1,2})-(\d{1,2})/u, (_all, year, month, day) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`)
+    .replace(" ", "T");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function getImportedDataTime(item: unknown): string | undefined {
+  if (typeof item !== "object" || item === null) return undefined;
+  const record = item as Record<string, unknown>;
+  const inferredFromName = typeof record.Name === "string"
+    ? inferSessionDataTimeFromName(record.Name)
+    : typeof record.name === "string"
+      ? inferSessionDataTimeFromName(record.name)
+      : null;
+  return parseLooseDateTimeToIso(record.DataTms)
+    ?? parseLooseDateTimeToIso(record.dataTms)
+    ?? parseLooseDateTimeToIso(record.DataTime)
+    ?? parseLooseDateTimeToIso(record.dataTime)
+    ?? inferredFromName
+    ?? undefined;
+}
+
+function getEditableSessionDataTime(session: SavedSession): string {
+  const explicitDataTime = Object.prototype.hasOwnProperty.call(session, "dataTime") && session.dataTime
+    ? session.dataTime
+    : undefined;
+  return explicitDataTime
+    ?? inferSessionDataTimeFromName(session.name)
+    ?? session.updatedAt;
+}
+
+function getSessionDataTimeMs(session: SavedSession): number {
+  return new Date(getSessionDataTime(session)).getTime();
+}
+
 function validateSessionName(name: string, sessions: SavedSession[], currentId?: string): string | null {
   const trimmed = name.trim();
   if (!trimmed) return "名称不能为空";
@@ -10346,6 +10415,7 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
     }
 
     const time = typeof item.tms === "number" && Number.isFinite(item.tms) ? item.tms : Date.now() + index;
+    const updatedAt = new Date(time).toISOString();
     const importIdx = typeof (item as { ImportIndex?: number }).ImportIndex === "number"
       ? (item as { ImportIndex?: number }).ImportIndex : index;
     const sharedUploader = typeof (item as { SharedUploader?: string }).SharedUploader === "string"
@@ -10362,7 +10432,8 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
       numbers: parsed.numbers,
-      updatedAt: new Date(time).toISOString(),
+      updatedAt,
+      dataTime: getImportedDataTime(item),
       importIndex: importIdx,
       sharedUploader,
       tableId,

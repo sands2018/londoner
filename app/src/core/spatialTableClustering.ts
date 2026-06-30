@@ -5,6 +5,7 @@ export interface SpatialTableInputSession {
   name: string;
   numbers: readonly RouletteNumber[];
   updatedAt: string;
+  dataTime?: string;
   importIndex?: number;
   tableId?: string;
 }
@@ -102,8 +103,8 @@ export function spatialFingerprintDistance(
 }
 
 function compareSessionsChronologically(left: SpatialTableInputSession, right: SpatialTableInputSession): number {
-  const leftTime = new Date(left.updatedAt).getTime();
-  const rightTime = new Date(right.updatedAt).getTime();
+  const leftTime = new Date(left.dataTime || left.updatedAt).getTime();
+  const rightTime = new Date(right.dataTime || right.updatedAt).getTime();
   const safeLeftTime = Number.isFinite(leftTime) ? leftTime : Number.MAX_SAFE_INTEGER;
   const safeRightTime = Number.isFinite(rightTime) ? rightTime : Number.MAX_SAFE_INTEGER;
   return safeLeftTime - safeRightTime

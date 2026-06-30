@@ -82,6 +82,7 @@ comms/dialog/         # GPT <-> DeepSeek dialog files
 - **Button typography**: Always use shared action/control tokens for dialog buttons, data-list buttons, and modal buttons.
 - **Cross-platform consistency** is a baseline requirement across iPhone, Android, Chrome, Edge, Firefox, Safari, and PWA.
 - **Storage keys** used by `LocalStorageAdapter`: `londoner.currentNumbers`, `londoner.sessions`, plus legacy `FILE_INDEX_DATA` and `F_*` keys.
+- **Session data time / 数据时间**: Local saved sessions may have `dataTime` as the time the roulette data actually belongs to. New saves should infer `dataTime` from any embedded timestamp in the name such as `20260630-1330`; if no timestamp is found, leave `dataTime` unset. Display/sort/stat/auto-table code should use explicit `dataTime`, then a parsable timestamp embedded anywhere in the session name, then `updatedAt`. The data edit dialog uses the same default priority.
 
 ## UI Layout
 
@@ -195,7 +196,7 @@ Bottom action buttons layout:
 ## Key UI changes (2026-06-05 to 2026-06-07)
 
 - **Prediction detail**: Fullscreen (was modal with max-height:640px). `position:fixed;inset:0` like data-screen.
-- **Data page buttons**: Two-row layout via `data-actions-stack`. Row1: 全选/打开/更名/删除/合并. Row2: 导入/导出/上传/工具.
+- **Data page buttons**: Two-row layout via `data-actions-stack`. Row1: 全选/打开/编辑/删除/合并. Row2: 导入/导出/上传/工具.
 - **Shared data page buttons**: Two rows via `data-actions-shared-row`. Row1: 全选/删除/刷新. Row2: 上传当前/导入本地/退出登录.
 - **追3 overview card**: Removed from 总览→行组 tab.
 - **热门 overview card**: Moved to first in 单号 tab. Background `#f4ece0`, border `#e0c8b0`.

@@ -50,6 +50,7 @@ interface LegacyFileIndex {
 }
 
 interface SessionMetadata {
+  dataTime?: string;
   sharedUploader?: string;
   tableId?: string;
 }
@@ -70,14 +71,19 @@ function readLegacySessions(): SavedSession[] {
 
   return legacyIndex.rows
     .filter((row) => row.p && row.n)
-    .map((row) => ({
-      id: row.p as string,
-      name: row.n as string,
-      numbers: parseNumbers(localStorage.getItem(row.p as string)),
-      updatedAt: new Date(row.t ?? Date.now()).toISOString(),
-      sharedUploader: metadata[row.p as string]?.sharedUploader ?? "",
-      tableId: metadata[row.p as string]?.tableId,
-    }));
+    .map((row) => {
+      const id = row.p as string;
+      const updatedAt = new Date(row.t ?? Date.now()).toISOString();
+      return {
+        id,
+        name: row.n as string,
+        numbers: parseNumbers(localStorage.getItem(id)),
+        updatedAt,
+        dataTime: metadata[id]?.dataTime,
+        sharedUploader: metadata[id]?.sharedUploader ?? "",
+        tableId: metadata[id]?.tableId,
+      };
+    });
 }
 
 function saveLegacyRows(rows: LegacyFileIndex["rows"]): void {
@@ -101,38 +107,48 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async listSessions(): Promise<SavedSession[]> {
     const raw = parseJson<Array<Record<string, unknown>>>(localStorage.getItem(sessionsKey), []);
-    const sessions: SavedSession[] = raw.map((s) => ({
-      ...(s as unknown as SavedSession),
-      sharedUploader: (s.sharedUploader as string) ?? (s.sharedId as string) ?? "",
-    }));
+    const sessions: SavedSession[] = raw.map((s) => {
+      const updatedAt = typeof s.updatedAt === "string" ? s.updatedAt : new Date().toISOString();
+      return {
+        ...(s as unknown as SavedSession),
+        updatedAt,
+        dataTime: typeof s.dataTime === "string" && s.dataTime ? s.dataTime : undefined,
+        sharedUploader: (s.sharedUploader as string) ?? (s.sharedId as string) ?? "",
+      };
+    });
     const seenIds = new Set(sessions.map((session) => session.id));
     const legacySessions = readLegacySessions().filter((session) => !seenIds.has(session.id));
     return [...sessions, ...legacySessions];
   }
 
   async saveSession(session: SavedSession): Promise<void> {
+    const normalizedSession: SavedSession = {
+      ...session,
+      dataTime: session.dataTime || undefined,
+    };
     if (isLegacyId(session.id)) {
       const legacyIndex = parseJson<LegacyFileIndex>(localStorage.getItem(legacyFileIndexKey), {});
       const rows = Array.isArray(legacyIndex.rows) ? legacyIndex.rows : [];
       const metadata = parseJson<Record<string, SessionMetadata>>(localStorage.getItem(sessionMetadataKey), {});
-      const time = new Date(session.updatedAt).getTime();
+      const time = new Date(normalizedSession.updatedAt).getTime();
       saveLegacyRows(
         rows.map((row) =>
-          row.p === session.id ? { ...row, c: session.numbers.length, n: session.name, t: time } : row,
+          row.p === normalizedSession.id ? { ...row, c: normalizedSession.numbers.length, n: normalizedSession.name, t: time } : row,
         ),
       );
-      metadata[session.id] = {
-        sharedUploader: session.sharedUploader ?? "",
-        tableId: session.tableId,
+      metadata[normalizedSession.id] = {
+        dataTime: normalizedSession.dataTime,
+        sharedUploader: normalizedSession.sharedUploader ?? "",
+        tableId: normalizedSession.tableId,
       };
       localStorage.setItem(sessionMetadataKey, JSON.stringify(metadata));
-      localStorage.setItem(session.id, session.numbers.join(","));
+      localStorage.setItem(normalizedSession.id, normalizedSession.numbers.join(","));
       return;
     }
 
     const sessions = await this.listSessions();
-    const next = sessions.filter((item) => item.id !== session.id && !isLegacyId(item.id));
-    next.unshift(session);
+    const next = sessions.filter((item) => item.id !== normalizedSession.id && !isLegacyId(item.id));
+    next.unshift(normalizedSession);
     localStorage.setItem(sessionsKey, JSON.stringify(next));
   }
 
