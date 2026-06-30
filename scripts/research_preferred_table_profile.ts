@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getHistorySortInfo } from "./historyTime";
 import { buildAutoTableProfileState } from "../app/src/core/autoTableProfile";
 import {
   buildTableProfiles,
@@ -41,6 +42,7 @@ interface Session {
   name: string;
   numbers: RouletteNumber[];
   updatedAt: string;
+  updatedTms: number;
   importIndex: number;
   sortDate: string;
   sortMinute: number;
@@ -273,12 +275,13 @@ function loadSessions(): Session[] {
   return rows
     .map((row, sourceIndex) => {
       const name = String(row.Name ?? `session-${sourceIndex + 1}`);
-      const { date, minute } = parseSortInfo(name, row.SaveTime, sourceIndex);
+      const { date, minute, tms } = getHistorySortInfo(row, sourceIndex);
       return {
         id: `s${sourceIndex}`,
         name,
         numbers: parseNumbers(row.Numbers),
         updatedAt: makeUpdatedAt(date, minute, sourceIndex),
+        updatedTms: tms,
         importIndex: sourceIndex,
         sortDate: date,
         sortMinute: minute,
@@ -393,7 +396,7 @@ function makeProfileContext(priorSessions: readonly Session[], mode: ProfileMode
       id: session.id,
       name: session.name,
       numbers: session.numbers,
-      updatedAt: session.updatedAt,
+      updatedTms: session.updatedTms,
       importIndex: session.importIndex,
     })));
     profileSessions = state.profileSessions;

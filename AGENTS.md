@@ -82,7 +82,7 @@ comms/dialog/         # GPT <-> DeepSeek dialog files
 - **Button typography**: Always use shared action/control tokens for dialog buttons, data-list buttons, and modal buttons.
 - **Cross-platform consistency** is a baseline requirement across iPhone, Android, Chrome, Edge, Firefox, Safari, and PWA.
 - **Storage keys** used by `LocalStorageAdapter`: `londoner.currentNumbers`, `londoner.sessions`, plus legacy `FILE_INDEX_DATA` and `F_*` keys.
-- **Session data time / 数据时间**: Local saved sessions may have `dataTime` as the time the roulette data actually belongs to. New saves should infer `dataTime` from any embedded timestamp in the name such as `20260630-1330`; if no timestamp is found, leave `dataTime` unset. Display/sort/stat/auto-table code should use explicit `dataTime`, then a parsable timestamp embedded anywhere in the session name, then `updatedAt`. The data edit dialog uses the same default priority.
+- **Session time fields / 数据时间**: Local saved sessions use numeric timestamps. `updatedTms` is the save/update time; `dataTms` is the time the roulette data actually belongs to. New saves should infer `dataTms` from any embedded timestamp in the name such as `20260630-1330`; if no timestamp is found, leave `dataTms` unset. Display/sort/stat/auto-table code should use explicit `dataTms`, then a parsable timestamp embedded anywhere in the session name, then `updatedTms`. Old import fields such as `updatedAt`, `SaveTime`, `DataTime`, and `dataTime` are compatibility inputs only and should be normalized to milliseconds.
 
 ## UI Layout
 

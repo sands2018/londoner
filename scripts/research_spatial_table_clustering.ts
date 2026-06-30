@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getHistoryDataIso } from "./historyTime";
 
 type RouletteNumber = number;
 
@@ -402,7 +403,7 @@ function loadSessions(): Session[] {
         id: `${name}#${row.ImportIndex ?? ""}#${sourceIndex}`,
         sourceIndex,
         name,
-        saveTime: String(row.SaveTime ?? row.tms ?? ""),
+        saveTime: getHistoryDataIso(row, sourceIndex),
         count: typeof row.Count === "number" ? row.Count : numbers.length,
         numbers,
         venueKey: inferVenueKey(name),

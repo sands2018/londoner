@@ -33,7 +33,7 @@ function makeSession(
   return {
     id,
     name: `${id}-wynn`,
-    updatedAt,
+    updatedTms: Date.parse(updatedAt),
     numbers,
   };
 }
@@ -41,8 +41,8 @@ function makeSession(
 describe("auto table profile", () => {
   it("creates an automatic profile for unassigned sessions and reuses it for similar sessions", () => {
     const state = buildAutoTableProfileState([
-      { id: "a", name: "A", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers },
-      { id: "b", name: "B", updatedAt: "2026-01-02T00:00:00.000Z", numbers: tableOneNumbers },
+      { id: "a", name: "A", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers },
+      { id: "b", name: "B", updatedTms: Date.parse("2026-01-02T00:00:00.000Z"), numbers: tableOneNumbers },
     ]);
 
     expect(state.assignmentsById.get("a")?.source).toBe("auto");
@@ -53,8 +53,8 @@ describe("auto table profile", () => {
 
   it("uses manual table assignments as the effective table when present", () => {
     const state = buildAutoTableProfileState([
-      { id: "a", name: "A", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers },
-      { id: "b", name: "B", updatedAt: "2026-01-02T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_manual" },
+      { id: "a", name: "A", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers },
+      { id: "b", name: "B", updatedTms: Date.parse("2026-01-02T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_manual" },
     ], [
       { id: "t_manual", name: "澳门永利_01", parentId: "c_1" },
     ]);
@@ -68,8 +68,8 @@ describe("auto table profile", () => {
 
   it("can automatically match an unassigned session to a manually seeded table profile", () => {
     const state = buildAutoTableProfileState([
-      { id: "seed", name: "Seed", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_1" },
-      { id: "next", name: "Next", updatedAt: "2026-01-02T00:00:00.000Z", numbers: tableOneNumbers },
+      { id: "seed", name: "Seed", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_1" },
+      { id: "next", name: "Next", updatedTms: Date.parse("2026-01-02T00:00:00.000Z"), numbers: tableOneNumbers },
     ], [
       { id: "t_1", name: "澳门永利_01", parentId: "c_1" },
     ]);
@@ -82,8 +82,8 @@ describe("auto table profile", () => {
 
   it("creates a new automatic profile when previous profiles are too weak", () => {
     const state = buildAutoTableProfileState([
-      { id: "a", name: "A", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers },
-      { id: "b", name: "B", updatedAt: "2026-01-02T00:00:00.000Z", numbers: tableTwoNumbers },
+      { id: "a", name: "A", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers },
+      { id: "b", name: "B", updatedTms: Date.parse("2026-01-02T00:00:00.000Z"), numbers: tableTwoNumbers },
     ]);
 
     expect(state.assignmentsById.get("a")?.effectiveTableId).toBe("auto_01");
@@ -96,7 +96,7 @@ describe("auto table profile", () => {
 
   it("does not confirm a saved auto table by matching a session only to itself", () => {
     const state = buildAutoTableProfileState([
-      { id: "single", name: "Single", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers },
+      { id: "single", name: "Single", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers },
     ]);
 
     const assignment = state.assignmentsById.get("single");
@@ -149,7 +149,7 @@ describe("auto table profile", () => {
     const assignment = assignSessionToAutoTableProfileState({
       id: "current",
       name: "current-auto-table",
-      updatedAt: "9999-12-31T23:59:59.999Z",
+      updatedTms: Date.parse("9999-12-31T23:59:59.999Z"),
       numbers: wynnTableTwoNumbers,
     }, state);
 
@@ -160,7 +160,7 @@ describe("auto table profile", () => {
 
   it("treats the default unknown manual table as unassigned", () => {
     const state = buildAutoTableProfileState([
-      { id: "unknown", name: "Unknown", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_unknown_c_1" },
+      { id: "unknown", name: "Unknown", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_unknown_c_1" },
     ]);
 
     const assignment = state.assignmentsById.get("unknown");
@@ -171,7 +171,7 @@ describe("auto table profile", () => {
 
   it("treats persisted auto table ids as unassigned rather than manual", () => {
     const state = buildAutoTableProfileState([
-      { id: "auto", name: "Auto", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "auto_99" },
+      { id: "auto", name: "Auto", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "auto_99" },
     ]);
 
     const assignment = state.assignmentsById.get("auto");
@@ -182,8 +182,8 @@ describe("auto table profile", () => {
 
   it("requires confirmed matching before auto-joining a small manual table profile", () => {
     const state = buildAutoTableProfileState([
-      { id: "seed", name: "Seed", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_1" },
-      { id: "probable", name: "Probable", updatedAt: "2026-01-02T00:00:00.000Z", numbers: probableTableOneNumbers },
+      { id: "seed", name: "Seed", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_1" },
+      { id: "probable", name: "Probable", updatedTms: Date.parse("2026-01-02T00:00:00.000Z"), numbers: probableTableOneNumbers },
     ], [
       { id: "t_1", name: "澳门永利_01", parentId: "c_1" },
     ]);
@@ -195,10 +195,10 @@ describe("auto table profile", () => {
 
   it("allows probable auto-joining after a manual table profile has enough manual samples", () => {
     const state = buildAutoTableProfileState([
-      { id: "seed1", name: "Seed 1", updatedAt: "2026-01-01T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_1" },
-      { id: "seed2", name: "Seed 2", updatedAt: "2026-01-02T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_1" },
-      { id: "seed3", name: "Seed 3", updatedAt: "2026-01-03T00:00:00.000Z", numbers: tableOneNumbers, tableId: "t_1" },
-      { id: "probable", name: "Probable", updatedAt: "2026-01-04T00:00:00.000Z", numbers: probableTableOneNumbers },
+      { id: "seed1", name: "Seed 1", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_1" },
+      { id: "seed2", name: "Seed 2", updatedTms: Date.parse("2026-01-02T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_1" },
+      { id: "seed3", name: "Seed 3", updatedTms: Date.parse("2026-01-03T00:00:00.000Z"), numbers: tableOneNumbers, tableId: "t_1" },
+      { id: "probable", name: "Probable", updatedTms: Date.parse("2026-01-04T00:00:00.000Z"), numbers: probableTableOneNumbers },
     ], [
       { id: "t_1", name: "澳门永利_01", parentId: "c_1" },
     ]);
@@ -210,8 +210,8 @@ describe("auto table profile", () => {
 
   it("uses importIndex as a stable chronological tie breaker", () => {
     const state = buildAutoTableProfileState([
-      { id: "second", name: "Second", updatedAt: "2026-01-01T00:00:00.000Z", importIndex: 2, numbers: tableOneNumbers },
-      { id: "first", name: "First", updatedAt: "2026-01-01T00:00:00.000Z", importIndex: 1, numbers: tableTwoNumbers },
+      { id: "second", name: "Second", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), importIndex: 2, numbers: tableOneNumbers },
+      { id: "first", name: "First", updatedTms: Date.parse("2026-01-01T00:00:00.000Z"), importIndex: 1, numbers: tableTwoNumbers },
     ]);
 
     expect(state.assignmentsById.get("first")?.effectiveTableId).toBe("auto_01");

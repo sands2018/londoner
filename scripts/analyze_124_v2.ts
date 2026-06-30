@@ -12,6 +12,7 @@
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { getHistoryDataTms } from "./historyTime";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,7 +47,7 @@ function loadSessions(path: string): Session[] {
       numbers: typeof e.Numbers === "string"
         ? e.Numbers.split(",").map((s: string) => Number(s.trim())).filter((n: number) => !isNaN(n))
         : e.Numbers,
-      tms: e.tms || 0,
+      tms: getHistoryDataTms(e, e.tms || 0),
     }))
     .filter((s: Session) => s.numbers.length > 0);
 }

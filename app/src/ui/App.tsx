@@ -74,7 +74,7 @@ import {
   uploadTransferSession,
   upsertSharedSession,
 } from "../storage/sharedStorage";
-import { getSessionDataTime, type CasinoTable, type SavedSession } from "../storage/storage";
+import { getSessionDataTms, getSessionUpdatedTms, type CasinoTable, type SavedSession } from "../storage/storage";
 import { analyzePreferredNumber } from "../core/preferredNumber";
 import { extractGaps } from "../core/wave";
 import { analyzeChaseSixRolling, analyzeChaseSixSignalBreakdown, chaseSixWindowEnd, chaseSixWindowStart, isInChaseSixWindow, type ChaseSixBenchmarkRow, type ChaseSixBenchmarkRowId } from "../core/chaseSix";
@@ -1644,8 +1644,8 @@ export function App() {
         id: session.id,
         name: session.name,
         numbers: session.numbers,
-        updatedAt: session.updatedAt,
-        dataTime: getSessionDataTime(session),
+        updatedTms: session.updatedTms,
+        dataTms: getSessionDataTms(session),
         importIndex: session.importIndex,
         tableId: autoTableState.assignmentsById.get(session.id)?.effectiveTableId ?? session.tableId,
       })),
@@ -1667,7 +1667,7 @@ export function App() {
         id: currentAutoTableSessionId,
         name: currentSourceName || "current-auto-table",
         numbers,
-        updatedAt: "9999-12-31T23:59:59.999Z",
+        updatedTms: 253402300799999,
       }, autoTableState);
     },
     [autoTableState, currentSessionId, currentSourceName, numbers],
@@ -1814,10 +1814,10 @@ export function App() {
           id: currentSessionId ?? "current",
           name: "current",
           numbers,
-          updatedAt: new Date().toISOString(),
-          dataTime: currentSessionId
-            ? getSessionDataTime(sessions.find((session) => session.id === currentSessionId) ?? { updatedAt: new Date().toISOString() })
-            : new Date().toISOString(),
+          updatedTms: Date.now(),
+          dataTms: currentSessionId
+            ? getSessionDataTms(sessions.find((session) => session.id === currentSessionId) ?? { updatedTms: Date.now() })
+            : Date.now(),
         },
         numbers,
         hotNumber.events,
@@ -3414,14 +3414,14 @@ export function App() {
     const id = existingId ?? crypto.randomUUID?.() ?? `${Date.now()}`;
     const existing = existingId ? (await storage.listSessions()).find((s) => s.id === existingId) : undefined;
     const tableIdToPersist = sanitizeManualTableId(currentManualTableId ?? existing?.tableId);
-    const now = new Date().toISOString();
-    const inferredDataTime = inferSessionDataTimeFromName(name);
+    const now = Date.now();
+    const inferredDataTms = inferSessionDataTmsFromName(name);
     await storage.saveSession({
       id,
       name,
       numbers,
-      updatedAt: now,
-      dataTime: inferredDataTime ?? existing?.dataTime,
+      updatedTms: now,
+      dataTms: inferredDataTms ?? existing?.dataTms,
       importIndex: existing?.importIndex,
       tableId: tableIdToPersist,
     });
@@ -3589,14 +3589,18 @@ export function App() {
             : parseNumbersText(Array.isArray(numsStr) ? numsStr.join(",") : "");
           if (nums.numbers.length === 0) continue;
           const name = String((item as any).Name ?? (item as any).name ?? `导入-${imported.length + 1}`);
-          const tms = (item as any).tms ?? (item as any).SaveTime ?? undefined;
-          const updatedAt = tms ? parseLooseDateTimeToIso(tms) ?? new Date().toISOString() : new Date().toISOString();
+          const tms = (item as any).updatedTms
+            ?? (item as any).tms
+            ?? (item as any).updatedAt
+            ?? (item as any).SaveTime
+            ?? undefined;
+          const updatedTms = parseLooseDateTimeToTms(tms) ?? Date.now();
           imported.push({
             id: (item as any).id ?? crypto.randomUUID?.() ?? `${Date.now()}-${imported.length}`,
             name,
             numbers: nums.numbers,
-            updatedAt,
-            dataTime: getImportedDataTime(item),
+            updatedTms,
+            dataTms: getImportedDataTms(item),
             importIndex: (item as any).ImportIndex ?? imported.length,
             sharedUploader: (item as any).SharedUploader ?? (item as any).sharedUploader ?? "",
             tableId: (item as any).TableId ?? (item as any).tableId ?? undefined,
@@ -4075,7 +4079,7 @@ export function App() {
         name,
         numbers,
         password: p,
-        updatedAt: currentSession?.updatedAt ?? new Date().toISOString(),
+        updatedAt: new Date(currentSession?.updatedTms ?? Date.now()).toISOString(),
         username: u,
       });
       await refreshSharedSessions(u, p);
@@ -4106,7 +4110,7 @@ export function App() {
           name: session.name,
           numbers: session.numbers,
           password: p,
-          updatedAt: session.updatedAt,
+          updatedAt: new Date(session.updatedTms).toISOString(),
           username: u,
         });
         existingNames.add(session.name.toLowerCase());
@@ -4142,8 +4146,8 @@ export function App() {
         id: crypto.randomUUID?.() ?? `${Date.now()}`,
         name: shared.name,
         numbers: shared.numbers,
-        updatedAt: shared.updatedAt,
-        dataTime: shared.updatedAt,
+        updatedTms: parseLooseDateTimeToTms(shared.updatedAt) ?? Date.now(),
+        dataTms: parseLooseDateTimeToTms(shared.updatedAt) ?? undefined,
         sharedUploader: shared.uploader === sharedUsername.trim() ? "" : shared.uploader,
       };
       await storage.saveSession(session);
@@ -4311,7 +4315,7 @@ export function App() {
     setEditSessionId(session.id);
     setEditName(session.name);
     setEditUploader(session.sharedUploader ?? "");
-    setEditTime(isoToDatetimeLocal(getEditableSessionDataTime(session)));
+    setEditTime(tmsToDatetimeLocal(getEditableSessionDataTms(session)));
     setEditTableId(session.tableId ?? "");
     setEditDialogOpen(true);
   }
@@ -4329,8 +4333,8 @@ export function App() {
     }
 
     const timeString = editTime.trim();
-    const dataTime = timeString ? parseLooseDateTimeToIso(timeString) : getSessionDataTime(session);
-    if (!dataTime) {
+    const dataTms = timeString ? parseLooseDateTimeToTms(timeString) : getSessionDataTms(session);
+    if (dataTms === null || !Number.isFinite(dataTms)) {
       setNoticeDialog({ title: "编辑失败", message: "数据时间格式无效，请输入正确的日期时间。" });
       return;
     }
@@ -4338,7 +4342,7 @@ export function App() {
     const updated: SavedSession = {
       ...session,
       name,
-      dataTime,
+      dataTms,
       sharedUploader: editUploader.trim(),
       tableId: sanitizeManualTableId(editTableId),
     };
@@ -4396,10 +4400,8 @@ export function App() {
         Count: session.numbers.length,
         Name: session.name,
         Numbers: formatNumbers(session.numbers),
-        SaveTime: formatSessionTime(session.updatedAt),
-        tms: new Date(session.updatedAt).getTime(),
-        DataTime: formatSessionTime(getSessionDataTime(session)),
-        DataTms: new Date(getSessionDataTime(session)).getTime(),
+        tms: getSessionUpdatedTms(session),
+        DataTms: getSessionDataTms(session),
         ImportIndex: session.importIndex,
         SharedUploader: session.sharedUploader || "",
         TableId: session.tableId || "",
@@ -4437,10 +4439,8 @@ export function App() {
       Count: session.numbers.length,
       Name: session.name,
       Numbers: formatNumbers(session.numbers),
-      SaveTime: formatSessionTime(session.updatedAt),
-      tms: new Date(session.updatedAt).getTime(),
-      DataTime: formatSessionTime(getSessionDataTime(session)),
-      DataTms: new Date(getSessionDataTime(session)).getTime(),
+      tms: getSessionUpdatedTms(session),
+      DataTms: getSessionDataTms(session),
       ImportIndex: session.importIndex,
       SharedUploader: session.sharedUploader || "",
       TableId: session.tableId || "",
@@ -6788,7 +6788,7 @@ export function App() {
                     <td>{session.numbers.length}</td>
                     <td>{session.sharedUploader ?? ""}</td>
                     <td>{formatSessionTableLabel(session, autoTableState.assignmentsById.get(session.id), tableLabelById, tableNameById)}</td>
-                    <td>{formatSessionTime(getSessionDataTime(session))}</td>
+                    <td>{formatSessionTime(getSessionDataTms(session))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -6801,7 +6801,8 @@ export function App() {
             const yearCounts: Record<number, { sessions: number; numbers: number }> = {};
             for (const y of years) yearCounts[y] = { sessions: 0, numbers: 0 };
             for (const s of sortedSessions) {
-              const t = getSessionDataTime(s) ? new Date(getSessionDataTime(s)).getFullYear() : null;
+              const tms = getSessionDataTms(s);
+              const t = Number.isFinite(tms) ? new Date(tms).getFullYear() : null;
               if (t && yearCounts[t]) {
                 yearCounts[t].sessions += 1;
                 yearCounts[t].numbers += s.numbers.length;
@@ -10048,8 +10049,8 @@ function calculateHotSavedBenchmark(
       id: prior.id,
       name: prior.name,
       numbers: prior.numbers,
-      updatedAt: prior.updatedAt,
-      dataTime: getSessionDataTime(prior),
+      updatedTms: prior.updatedTms,
+      dataTms: getSessionDataTms(prior),
       importIndex: prior.importIndex,
       tableId: priorAutoTableState.assignmentsById.get(prior.id)?.effectiveTableId ?? prior.tableId,
     }));
@@ -10277,7 +10278,7 @@ function buildColRowCompareRows(
   return sortRefineRows(rows, sortField, sortDirection);
 }
 
-function makeLocalDateIso(year: number, month: number, day: number, hour = 0, minute = 0): string | null {
+function makeLocalDateTms(year: number, month: number, day: number, hour = 0, minute = 0): number | null {
   const date = new Date(year, month - 1, day, hour, minute, 0, 0);
   if (
     date.getFullYear() !== year
@@ -10288,13 +10289,13 @@ function makeLocalDateIso(year: number, month: number, day: number, hour = 0, mi
   ) {
     return null;
   }
-  return date.toISOString();
+  return date.getTime();
 }
 
-function inferSessionDataTimeFromName(name: string): string | null {
+function inferSessionDataTmsFromName(name: string): number | null {
   const match = name.match(/(?:^|[^\d])(\d{4})(\d{2})(\d{2})[-_ ]?(\d{2})(\d{2})(?:[^\d]|$)/u);
   if (!match) return null;
-  return makeLocalDateIso(
+  return makeLocalDateTms(
     Number(match[1]),
     Number(match[2]),
     Number(match[3]),
@@ -10303,10 +10304,10 @@ function inferSessionDataTimeFromName(name: string): string | null {
   );
 }
 
-function parseLooseDateTimeToIso(value: unknown): string | null {
+function parseLooseDateTimeToTms(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    return Number.isNaN(date.getTime()) ? null : value;
   }
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -10314,7 +10315,7 @@ function parseLooseDateTimeToIso(value: unknown): string | null {
 
   const compact = trimmed.match(/^(\d{4})(\d{2})(\d{2})[-_ ]?(\d{2})(\d{2})$/u);
   if (compact) {
-    return makeLocalDateIso(
+    return makeLocalDateTms(
       Number(compact[1]),
       Number(compact[2]),
       Number(compact[3]),
@@ -10322,43 +10323,38 @@ function parseLooseDateTimeToIso(value: unknown): string | null {
       Number(compact[5]),
     );
   }
-  if (/^\d+$/u.test(trimmed)) return parseLooseDateTimeToIso(Number(trimmed));
+  if (/^\d+$/u.test(trimmed)) return parseLooseDateTimeToTms(Number(trimmed));
 
   const normalized = trimmed
     .replace(/^(\d{4})[.](\d{1,2})[.](\d{1,2})/u, (_all, year, month, day) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`)
     .replace(/^(\d{4})-(\d{1,2})-(\d{1,2})/u, (_all, year, month, day) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`)
     .replace(" ", "T");
   const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
 }
 
-function getImportedDataTime(item: unknown): string | undefined {
+function getImportedDataTms(item: unknown): number | undefined {
   if (typeof item !== "object" || item === null) return undefined;
   const record = item as Record<string, unknown>;
   const inferredFromName = typeof record.Name === "string"
-    ? inferSessionDataTimeFromName(record.Name)
+    ? inferSessionDataTmsFromName(record.Name)
     : typeof record.name === "string"
-      ? inferSessionDataTimeFromName(record.name)
+      ? inferSessionDataTmsFromName(record.name)
       : null;
-  return parseLooseDateTimeToIso(record.DataTms)
-    ?? parseLooseDateTimeToIso(record.dataTms)
-    ?? parseLooseDateTimeToIso(record.DataTime)
-    ?? parseLooseDateTimeToIso(record.dataTime)
+  return parseLooseDateTimeToTms(record.DataTms)
+    ?? parseLooseDateTimeToTms(record.dataTms)
+    ?? parseLooseDateTimeToTms(record.DataTime)
+    ?? parseLooseDateTimeToTms(record.dataTime)
     ?? inferredFromName
     ?? undefined;
 }
 
-function getEditableSessionDataTime(session: SavedSession): string {
-  const explicitDataTime = Object.prototype.hasOwnProperty.call(session, "dataTime") && session.dataTime
-    ? session.dataTime
-    : undefined;
-  return explicitDataTime
-    ?? inferSessionDataTimeFromName(session.name)
-    ?? session.updatedAt;
+function getEditableSessionDataTms(session: SavedSession): number {
+  return getSessionDataTms(session);
 }
 
 function getSessionDataTimeMs(session: SavedSession): number {
-  return new Date(getSessionDataTime(session)).getTime();
+  return getSessionDataTms(session);
 }
 
 function validateSessionName(name: string, sessions: SavedSession[], currentId?: string): string | null {
@@ -10414,8 +10410,11 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
       throw new Error("号码数据有问题，请检查。");
     }
 
-    const time = typeof item.tms === "number" && Number.isFinite(item.tms) ? item.tms : Date.now() + index;
-    const updatedAt = new Date(time).toISOString();
+    const time = parseLooseDateTimeToTms((item as { updatedTms?: unknown }).updatedTms)
+      ?? parseLooseDateTimeToTms(item.tms)
+      ?? parseLooseDateTimeToTms((item as { updatedAt?: unknown }).updatedAt)
+      ?? parseLooseDateTimeToTms((item as { SaveTime?: unknown }).SaveTime)
+      ?? Date.now() + index;
     const importIdx = typeof (item as { ImportIndex?: number }).ImportIndex === "number"
       ? (item as { ImportIndex?: number }).ImportIndex : index;
     const sharedUploader = typeof (item as { SharedUploader?: string }).SharedUploader === "string"
@@ -10432,8 +10431,8 @@ function parseSessionImport(text: string, existingSessions: SavedSession[]): { i
       id: crypto.randomUUID?.() ?? `${Date.now()}-${index}`,
       name,
       numbers: parsed.numbers,
-      updatedAt,
-      dataTime: getImportedDataTime(item),
+      updatedTms: time,
+      dataTms: getImportedDataTms(item),
       importIndex: importIdx,
       sharedUploader,
       tableId,
@@ -10454,7 +10453,7 @@ function isImportItem(item: unknown): item is { Name: string; Numbers: string; t
   );
 }
 
-function formatSessionTime(value: string): string {
+function formatSessionTime(value: string | number): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   const pad = (item: number) => item.toString().padStart(2, "0");
@@ -10463,9 +10462,9 @@ function formatSessionTime(value: string): string {
   )}`;
 }
 
-/** Convert ISO date string to datetime-local input format (YYYY-MM-DDTHH:MM). */
-function isoToDatetimeLocal(iso: string): string {
-  const date = new Date(iso);
+/** Convert milliseconds to datetime-local input format (YYYY-MM-DDTHH:MM). */
+function tmsToDatetimeLocal(tms: number): string {
+  const date = new Date(tms);
   if (Number.isNaN(date.getTime())) return "";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;

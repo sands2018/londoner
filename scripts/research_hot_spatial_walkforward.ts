@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getHistoryDataIso, getHistoryDataTms } from "./historyTime";
 import { analyzeHotNumbers, type HotNumberSignalEvent } from "../app/src/core/hotNumbers";
 import { buildAutoTableProfileState, type AutoTableInputSession } from "../app/src/core/autoTableProfile";
 import { buildTableProfiles, evaluateHotNumberTableSupport, type HotTableSupportLevel } from "../app/src/core/tableHotProfile";
@@ -73,17 +74,7 @@ function parseNumbers(raw: string | number[] | undefined): RouletteNumber[] {
 }
 
 function parseUpdatedAt(row: RawHistoryRow, sourceIndex: number): string {
-  if (typeof row.tms === "number" && Number.isFinite(row.tms)) {
-    return new Date(row.tms).toISOString();
-  }
-  const text = String(row.SaveTime ?? "");
-  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?/u);
-  if (match) {
-    const hour = match[4] ?? "12";
-    const minute = match[5] ?? "00";
-    return `${match[1]}-${match[2]}-${match[3]}T${hour}:${minute}:00.000+08:00`;
-  }
-  return new Date(sourceIndex).toISOString();
+  return getHistoryDataIso(row, sourceIndex);
 }
 
 function loadSessions(): Session[] {
@@ -97,6 +88,7 @@ function loadSessions(): Session[] {
         name,
         numbers: parseNumbers(row.Numbers),
         updatedAt: parseUpdatedAt(row, sourceIndex),
+      updatedTms: getHistoryDataTms(row, sourceIndex),
         importIndex: row.ImportIndex ?? sourceIndex,
       };
     })

@@ -10,7 +10,7 @@ interface Session {
   Count: number;
   Name: string;
   Numbers: string;
-  SaveTime: string;
+  SaveTime?: string;
   tms: number;
   ImportIndex: number;
   SharedUploader: string;

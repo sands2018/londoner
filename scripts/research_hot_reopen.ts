@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { getHistorySortInfo } from "./historyTime";
 
 type RouletteNumber = number;
 type Mode = "long" | "short";
@@ -78,7 +79,7 @@ function loadSessions(): Session[] {
   return rows
     .map((row, index) => {
       const name = String(row.Name ?? `session-${index + 1}`);
-      const sortDate = parseSortDate(name, row.SaveTime);
+      const sortDate = getHistorySortInfo(row, index).date;
       return {
         index,
         name,

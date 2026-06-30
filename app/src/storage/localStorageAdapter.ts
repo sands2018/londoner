@@ -1,4 +1,5 @@
 import type { RouletteNumber } from "../core/roulette";
+import { inferDataTmsFromSessionName, parseLooseDateTimeToTms } from "./storage";
 import type { CasinoTable, SavedSession, StorageAdapter } from "./storage";
 
 const currentNumbersKey = "londoner.currentNumbers";
@@ -50,6 +51,7 @@ interface LegacyFileIndex {
 }
 
 interface SessionMetadata {
+  dataTms?: number;
   dataTime?: string;
   sharedUploader?: string;
   tableId?: string;
@@ -64,6 +66,11 @@ function parseNumbers(value: string | null): RouletteNumber[] {
     .filter((item): item is RouletteNumber => Number.isInteger(item) && item >= 0 && item <= 36);
 }
 
+function normalizeOptionalTms(value: unknown): number | undefined {
+  const parsed = parseLooseDateTimeToTms(value);
+  return parsed === null ? undefined : parsed;
+}
+
 function readLegacySessions(): SavedSession[] {
   const legacyIndex = parseJson<LegacyFileIndex>(localStorage.getItem(legacyFileIndexKey), {});
   const metadata = parseJson<Record<string, SessionMetadata>>(localStorage.getItem(sessionMetadataKey), {});
@@ -73,13 +80,14 @@ function readLegacySessions(): SavedSession[] {
     .filter((row) => row.p && row.n)
     .map((row) => {
       const id = row.p as string;
-      const updatedAt = new Date(row.t ?? Date.now()).toISOString();
+      const updatedTms = parseLooseDateTimeToTms(row.t) ?? Date.now();
       return {
         id,
         name: row.n as string,
         numbers: parseNumbers(localStorage.getItem(id)),
-        updatedAt,
-        dataTime: metadata[id]?.dataTime,
+        updatedTms,
+        dataTms: normalizeOptionalTms(metadata[id]?.dataTms)
+          ?? normalizeOptionalTms(metadata[id]?.dataTime),
         sharedUploader: metadata[id]?.sharedUploader ?? "",
         tableId: metadata[id]?.tableId,
       };
@@ -108,11 +116,23 @@ export class LocalStorageAdapter implements StorageAdapter {
   async listSessions(): Promise<SavedSession[]> {
     const raw = parseJson<Array<Record<string, unknown>>>(localStorage.getItem(sessionsKey), []);
     const sessions: SavedSession[] = raw.map((s) => {
-      const updatedAt = typeof s.updatedAt === "string" ? s.updatedAt : new Date().toISOString();
+      const {
+        dataTime: _oldDataTime,
+        updatedAt: _oldUpdatedAt,
+        sharedId: _oldSharedId,
+        ...sessionFields
+      } = s;
+      const updatedTms = parseLooseDateTimeToTms(s.updatedTms)
+        ?? parseLooseDateTimeToTms(s.updatedAt)
+        ?? Date.now();
+      const name = typeof s.name === "string" ? s.name : "";
       return {
-        ...(s as unknown as SavedSession),
-        updatedAt,
-        dataTime: typeof s.dataTime === "string" && s.dataTime ? s.dataTime : undefined,
+        ...(sessionFields as unknown as SavedSession),
+        updatedTms,
+        dataTms: normalizeOptionalTms(s.dataTms)
+          ?? parseLooseDateTimeToTms(s.dataTime)
+          ?? inferDataTmsFromSessionName(name)
+          ?? undefined,
         sharedUploader: (s.sharedUploader as string) ?? (s.sharedId as string) ?? "",
       };
     });
@@ -122,22 +142,27 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async saveSession(session: SavedSession): Promise<void> {
+    const {
+      dataTime: _oldDataTime,
+      updatedAt: _oldUpdatedAt,
+      ...sessionFields
+    } = session as SavedSession & { dataTime?: string; updatedAt?: string };
     const normalizedSession: SavedSession = {
-      ...session,
-      dataTime: session.dataTime || undefined,
+      ...sessionFields,
+      updatedTms: parseLooseDateTimeToTms(session.updatedTms) ?? Date.now(),
+      dataTms: normalizeOptionalTms(session.dataTms),
     };
     if (isLegacyId(session.id)) {
       const legacyIndex = parseJson<LegacyFileIndex>(localStorage.getItem(legacyFileIndexKey), {});
       const rows = Array.isArray(legacyIndex.rows) ? legacyIndex.rows : [];
       const metadata = parseJson<Record<string, SessionMetadata>>(localStorage.getItem(sessionMetadataKey), {});
-      const time = new Date(normalizedSession.updatedAt).getTime();
       saveLegacyRows(
         rows.map((row) =>
-          row.p === normalizedSession.id ? { ...row, c: normalizedSession.numbers.length, n: normalizedSession.name, t: time } : row,
+          row.p === normalizedSession.id ? { ...row, c: normalizedSession.numbers.length, n: normalizedSession.name, t: normalizedSession.updatedTms } : row,
         ),
       );
       metadata[normalizedSession.id] = {
-        dataTime: normalizedSession.dataTime,
+        dataTms: normalizedSession.dataTms,
         sharedUploader: normalizedSession.sharedUploader ?? "",
         tableId: normalizedSession.tableId,
       };

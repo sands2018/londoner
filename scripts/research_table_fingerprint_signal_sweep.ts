@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getHistoryDataIso, getHistoryDataTms } from "./historyTime";
 import {
   assignSessionToAutoTableProfileState,
   buildAutoTableProfileState,
@@ -143,13 +144,7 @@ function parseNumbers(raw: string | number[] | undefined): RouletteNumber[] {
 }
 
 function parseUpdatedAt(row: RawHistoryRow, sourceIndex: number): string {
-  if (typeof row.tms === "number" && Number.isFinite(row.tms)) return new Date(row.tms).toISOString();
-  const text = String(row.SaveTime ?? "");
-  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?/u);
-  if (match) {
-    return `${match[1]}-${match[2]}-${match[3]}T${match[4] ?? "12"}:${match[5] ?? "00"}:00.000+08:00`;
-  }
-  return new Date(sourceIndex).toISOString();
+  return getHistoryDataIso(row, sourceIndex);
 }
 
 function loadSessions(filePath: string): Session[] {
@@ -161,6 +156,7 @@ function loadSessions(filePath: string): Session[] {
       name: String(row.Name ?? `session-${sourceIndex + 1}`),
       numbers: parseNumbers(row.Numbers),
       updatedAt: parseUpdatedAt(row, sourceIndex),
+      updatedTms: getHistoryDataTms(row, sourceIndex),
       importIndex: row.ImportIndex ?? sourceIndex,
       tableId: row.tableId ?? row.TableId,
     }))

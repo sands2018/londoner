@@ -27,15 +27,28 @@ function parseNumbers(text) {
     .filter((value) => Number.isInteger(value) && value >= 0 && value <= 36);
 }
 
+function historyDataTms(row, fallback = 0) {
+  const value = row?.DataTms ?? row?.dataTms ?? row?.tms ?? fallback;
+  const tms = Number(value);
+  return Number.isFinite(tms) ? tms : fallback;
+}
+
+function formatMonth(tms) {
+  const date = new Date(tms);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function loadSessions() {
   const rows = JSON.parse(fs.readFileSync(HISTORY_PATH, "utf8"));
   return rows.map((row, index) => {
     const numbers = Array.isArray(row.Numbers) ? row.Numbers : parseNumbers(row.Numbers);
+    const dataTms = historyDataTms(row, index);
     return {
       index,
       name: row.Name ?? `session-${index + 1}`,
-      saveTime: row.SaveTime ?? "",
-      month: String(row.SaveTime ?? row.Name ?? "").slice(0, 7),
+      saveTime: new Date(dataTms).toISOString(),
+      month: formatMonth(dataTms),
       casino: detectCasino(row.Name ?? ""),
       numbers,
     };

@@ -9,6 +9,12 @@ function parseNumbers(raw) {
   return [];
 }
 
+function historyDataTms(entry, fallback = 0) {
+  const value = entry?.DataTms ?? entry?.dataTms ?? entry?.tms ?? fallback;
+  const tms = Number(value);
+  return Number.isFinite(tms) ? tms : fallback;
+}
+
 function loadSessions() {
   const root = path.resolve(import.meta.dirname, "..");
   const raw = JSON.parse(fs.readFileSync(path.join(root, "history_data.json"), "utf8"));
@@ -17,7 +23,7 @@ function loadSessions() {
       index,
       name: String(entry.Name ?? `session-${index}`),
       numbers: parseNumbers(entry.Numbers),
-      tms: Number(entry.tms ?? 0),
+      tms: historyDataTms(entry, index),
     }))
     .filter((session) => session.numbers.length > 0)
     .sort((a, b) => (a.tms - b.tms) || (a.index - b.index));

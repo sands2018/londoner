@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getHistorySortInfo } from "./historyTime";
 import {
   buildTableProfiles,
   evaluateHotNumberTableSupport,
@@ -137,7 +138,8 @@ function loadTargetSessions(): Session[] {
     .map((row, sourceIndex) => {
       const name = String(row.Name ?? `session-${sourceIndex + 1}`);
       const numbers = parseNumbers(row.Numbers);
-      const { sortDate, sortOrder } = parseSortInfo(name, row.SaveTime, sourceIndex);
+      const { date: sortDate, minute, tie } = getHistorySortInfo(row, sourceIndex);
+      const sortOrder = minute * 1000 + tie;
       return {
         id: `s${sourceIndex}`,
         sourceIndex,

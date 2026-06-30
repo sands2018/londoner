@@ -6,13 +6,18 @@
 
 import fs from "node:fs";
 import { analyzeNumberMergeV2 } from "../app/src/core/numberMergeV2";
+import { getHistoryDataIso, getHistorySaveTms } from "./historyTime";
 
 interface Session {
   Count: number;
   Name: string;
   Numbers: string;
-  SaveTime: string;
-  tms: number;
+  SaveTime?: string;
+  tms?: number;
+  DataTms?: number;
+  dataTms?: number;
+  DataTime?: string;
+  dataTime?: string;
   ImportIndex: number;
   SharedUploader: string;
 }
@@ -40,8 +45,8 @@ function metadata(item: (typeof parsed)[number]) {
     name: item.session.Name,
     countField: item.session.Count,
     actualCount: item.numbers.length,
-    saveTime: item.session.SaveTime,
-    tms: item.session.tms,
+    dataIso: getHistoryDataIso(item.session, item.position),
+    saveTms: getHistorySaveTms(item.session, item.position),
     importIndex: item.session.ImportIndex,
     uploader: item.session.SharedUploader,
   };
