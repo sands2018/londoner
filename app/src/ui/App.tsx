@@ -6761,14 +6761,14 @@ export function App() {
                   <th onClick={() => sortDataView("count")}>
                     量 <SortMark active={sessionSortField === "count"} direction={sessionSortDirection} />
                   </th>
-                  <th onClick={() => sortDataView("sharedUploader")}>
-                    ID <SortMark active={sessionSortField === "sharedUploader"} direction={sessionSortDirection} />
+                  <th onClick={() => sortDataView("time")}>
+                    数据时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
                   </th>
                   <th onClick={() => sortDataView("table")}>
                     桌 <SortMark active={sessionSortField === "table"} direction={sessionSortDirection} />
                   </th>
-                  <th onClick={() => sortDataView("time")}>
-                    数据时间 <SortMark active={sessionSortField === "time"} direction={sessionSortDirection} />
+                  <th onClick={() => sortDataView("sharedUploader")}>
+                    ID <SortMark active={sessionSortField === "sharedUploader"} direction={sessionSortDirection} />
                   </th>
                 </tr>
               </thead>
@@ -6786,9 +6786,9 @@ export function App() {
                   >
                     <td>{session.name}</td>
                     <td>{session.numbers.length}</td>
-                    <td>{session.sharedUploader ?? ""}</td>
-                    <td>{formatSessionTableLabel(session, autoTableState.assignmentsById.get(session.id), tableLabelById, tableNameById)}</td>
                     <td>{formatSessionTime(getSessionDataTms(session))}</td>
+                    <td>{formatSessionTableLabel(session, autoTableState.assignmentsById.get(session.id), tableLabelById, tableNameById)}</td>
+                    <td>{session.sharedUploader ?? ""}</td>
                   </tr>
                 ))}
               </tbody>
@@ -9800,7 +9800,7 @@ function formatSessionTableLabel(
   tableNameById: ReadonlyMap<string, string>,
 ): string {
   if (session.tableId) {
-    return `人:${formatTableShortName(manualLabelById.get(session.tableId)) || tableNameById.get(session.tableId) || "已归桌"}`;
+    return `★${formatTableShortName(manualLabelById.get(session.tableId)) || tableNameById.get(session.tableId) || "已归桌"}`;
   }
   if (assignment?.source === "auto" && assignment.effectiveTableId) {
     return formatAutoTableShortName(tableNameById.get(assignment.effectiveTableId))
