@@ -6686,7 +6686,7 @@ export function App() {
             {utilityRow === "dock" ? (
               <>
                 <button className="control-button digit-transfer" disabled={sharedLoading || numbers.length === 0} onClick={() => { ensureSharedConnected((u, p) => { setConfirmDialog({ title: "传输数据", message: "要把当前数据上传到传输数据中吗？", confirmFirst: true, confirmText: "上传", onConfirm: () => void uploadCurrentTransfer(u, p) }); }); }} type="button">传递</button>
-                <button className="control-button digit-connect" disabled={numbers.length === 0} onClick={openConnectDialog} type="button">接上</button>
+                <button className="control-button digit-number-zone" onClick={() => { void openDataDialog(); }} type="button">数据</button>
                 <button className="control-button digit-game" onClick={() => { setStatsTab("game"); setStatsViewOpen(true); }} type="button">打法</button>
                 <button className="control-button digit-colrow" onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
                 <button className="control-button digit-frequency" onClick={() => { setFrequencyDistanceTab("frequency"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
@@ -6695,9 +6695,9 @@ export function App() {
               </>
             ) : (
               <>
-                <button className="control-button digit-table" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); openTableCalibrationDialog(); }} type="button">桌号</button>
+                <button className="control-button digit-connect" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); openConnectDialog(); }} type="button">接上</button>
                 <button className="control-button digit-save" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); openSaveDialog(); }} type="button">保存</button>
-                <button className="control-button digit-number-zone" onClick={() => { setUtilityRow("dock"); void openDataDialog(); }} type="button">数据</button>
+                <button className="control-button digit-table" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); openTableCalibrationDialog(); }} type="button">桌号</button>
                 <button className="control-button digit-config" onClick={() => { setUtilityRow("dock"); openConfigView(); }} type="button">配置</button>
                 <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => { setUtilityRow("dock"); void exportCurrentData(); }} type="button">output</button>
                 <button className="control-button digit-other" onClick={() => { setUtilityRow("dock"); setStatsTab("numberZone"); setStatsViewOpen(true); }} type="button">号码</button>
