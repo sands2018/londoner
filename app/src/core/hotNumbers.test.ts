@@ -59,10 +59,10 @@ describe("analyzeHotNumbers", () => {
     expect(analysis.totalRoiFrom201).toMatchObject({
       signals: 71,
       bet: 71,
-      win: 108,
-      hits: 3,
+      win: 72,
+      hits: 2,
     });
-    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(52.1127, 4);
+    expect(analysis.totalRoiFrom201.roi).toBeCloseTo(1.4085, 4);
   });
 
   it("can close the current signal after earlier betting-area signals", () => {
@@ -86,26 +86,23 @@ describe("analyzeHotNumbers", () => {
     const baseline = analyzeHotNumbers(numbers, 200);
     const confirmed = analyzeHotNumbers(numbers, 200, { requirePaperHitAfterRoiStart: true });
     const baselineBettingEvents = baseline.events.filter((event) => event.position >= 200);
-    const firstPaperHit = baselineBettingEvents.find((event) => event.hit);
-    const expectedBettingEvents = firstPaperHit
-      ? baselineBettingEvents.filter((event) => event.position > firstPaperHit.position)
-      : [];
     const confirmedBettingEvents = confirmed.events.filter((event) => event.position >= 200);
 
-    expect(firstPaperHit).toBeDefined();
-    expect(confirmedBettingEvents.map((event) => event.position)).toEqual(
-      expectedBettingEvents.map((event) => event.position),
-    );
-    expect(confirmed.totalRoiFrom201.signals).toBe(expectedBettingEvents.length);
+    expect(baselineBettingEvents.length).toBe(283);
+    // Confirmation still follows the original raw hot-number line, while
+    // recorded bets use the switch50base reranked pick after confirmation.
+    expect(confirmedBettingEvents[0]?.position).toBe(271);
+    expect(confirmed.totalRoiFrom201).toMatchObject({
+      signals: 216,
+      bet: 216,
+      win: 108,
+      hits: 3,
+    });
   });
 
   it("marks the hot signal as pending before the first betting-area paper hit", () => {
     const source = makeNumbers(520, 2);
-    const firstPaperHit = analyzeHotNumbers(source, 200).events.find((event) => event.position >= 200 && event.hit);
-    expect(firstPaperHit).toBeDefined();
-    if (!firstPaperHit) return;
-
-    const numbers = source.slice(0, firstPaperHit.position);
+    const numbers = source.slice(0, 270);
     const confirmed = analyzeHotNumbers(numbers, 200, { requirePaperHitAfterRoiStart: true });
 
     expect(confirmed.paperHitPending).toBe(true);

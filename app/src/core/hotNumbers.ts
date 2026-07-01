@@ -1,10 +1,12 @@
 /**
- * Hot Number Prediction - rawSafeOrCool@7
- * =======================================
+ * Hot Number Prediction - rawSafeOrCool@7 + switch50base
+ * ======================================================
  * The hot-number engine keeps LONG/SHORT candidate lists, then:
  * - tries the adaptive LONG/SHORT order first;
  * - skips a raw candidate after seven consecutive paper misses;
- * - falls back to a broader cooling-but-warming candidate when needed.
+ * - falls back to a broader cooling-but-warming candidate when needed;
+ * - keeps the original signal timing, but reranks the actual pick by each
+ *   candidate's recent paper performance.
  *
  * The UI may optionally wait for one betting-area paper hit before showing
  * real hot-number bets, but the core algorithm does not require that gate.
@@ -63,6 +65,10 @@ interface HotNumberCandidate extends HotNumberSignal {
   count20: number;
   lastGap: number;
   order: number;
+}
+
+interface CandidatePaperStats {
+  nets: number[];
 }
 
 // ---- Shared helpers ----
@@ -352,6 +358,8 @@ function orderedCandidates(
 }
 
 const RAW_SAFE_MISS_LIMIT = 7;
+const RERANK_PAPER_WINDOW = 50;
+const RERANK_MIN_SAMPLES = 8;
 
 function broadCoolCandidate(numbers: readonly RouletteNumber[], end: number): HotNumberCandidate | null {
   let best: RouletteNumber | null = null;
@@ -404,6 +412,58 @@ function chooseHotCandidate(
     ?? broadCoolCandidate(numbers, end);
 }
 
+function paperStatsScore(stats: CandidatePaperStats): { count: number; roi: number } {
+  const nets = stats.nets;
+  const net = nets.reduce((sum, value) => sum + value, 0);
+  return {
+    count: nets.length,
+    roi: nets.length > 0 ? (net / nets.length) * 100 : -999,
+  };
+}
+
+function chooseRerankedHotCandidate(
+  numbers: readonly RouletteNumber[],
+  end: number,
+  candidates: readonly HotNumberCandidate[],
+  rawMissStreak: ArrayLike<number>,
+  candidatePaperStats: readonly CandidatePaperStats[],
+): HotNumberCandidate | null {
+  const eligible = candidates.filter((candidate) => rawMissStreak[candidate.number] < RAW_SAFE_MISS_LIMIT);
+  const current = eligible[0] ?? null;
+  if (current === null) return broadCoolCandidate(numbers, end);
+  if (eligible.length <= 1) return current;
+
+  const currentScore = paperStatsScore(candidatePaperStats[current.number]);
+  let best = current;
+  let bestRoi = currentScore.count >= RERANK_MIN_SAMPLES ? currentScore.roi : -999;
+
+  for (const candidate of eligible) {
+    const score = paperStatsScore(candidatePaperStats[candidate.number]);
+    if (score.count < RERANK_MIN_SAMPLES) continue;
+    if (score.roi > bestRoi || (score.roi === bestRoi && candidate.order < best.order)) {
+      best = candidate;
+      bestRoi = score.roi;
+    }
+  }
+
+  return best;
+}
+
+function updateCandidatePaperStats(
+  stats: CandidatePaperStats[],
+  candidates: readonly HotNumberCandidate[],
+  outcome: RouletteNumber,
+): void {
+  const seen = new Set<number>();
+  for (const candidate of candidates) {
+    if (seen.has(candidate.number)) continue;
+    seen.add(candidate.number);
+    const nets = stats[candidate.number].nets;
+    nets.push(outcome === candidate.number ? 35 : -1);
+    if (nets.length > RERANK_PAPER_WINDOW) nets.shift();
+  }
+}
+
 // ---- Public API ----
 
 export function analyzeHotNumbers(
@@ -440,6 +500,7 @@ export function analyzeHotNumbers(
   let blockConfirmCount = 0;
   let paperHitConfirmed = !requirePaperHitAfterRoiStart;
   const rawMissStreak = new Uint16Array(37);
+  const candidatePaperStats: CandidatePaperStats[] = Array.from({ length: 37 }, () => ({ nets: [] }));
 
   // Running paper P&L (sliding ADAPTIVE_LOOKBACK window, pointer-based for O(1) trim)
   let longCnt = 0, longNet = 0;
@@ -510,13 +571,16 @@ export function analyzeHotNumbers(
       shouldPreferShort(longCnt, longNet, shortCnt, shortNet),
     );
     const rawPick = candidates[0] ?? null;
-    const pick = environmentAllowsSignals
+    const basePick = environmentAllowsSignals
       ? chooseHotCandidate(numbers, i, candidates, rawMissStreak)
+      : null;
+    const pick = environmentAllowsSignals
+      ? chooseRerankedHotCandidate(numbers, i, candidates, rawMissStreak, candidatePaperStats)
       : null;
     if (pick !== null) {
       const hit = numbers[i] === pick.number;
       if (i >= roiStartIndex && !paperHitConfirmed) {
-        if (hit) paperHitConfirmed = true;
+        if (basePick !== null && numbers[i] === basePick.number) paperHitConfirmed = true;
       } else {
         // All-data ROI
         sigAll++; betAll++;
@@ -533,6 +597,7 @@ export function analyzeHotNumbers(
     if (rawPick !== null) {
       rawMissStreak[rawPick.number] = numbers[i] === rawPick.number ? 0 : rawMissStreak[rawPick.number] + 1;
     }
+    updateCandidatePaperStats(candidatePaperStats, candidates, numbers[i]);
     pushShortEnvironmentNet(shortCandidates[i][0] ?? null, i);
   }
 
@@ -556,10 +621,16 @@ export function analyzeHotNumbers(
     shortCandidates[n],
     shouldPreferShort(longCnt, longNet, shortCnt, shortNet),
   );
-  const rawCurrentPick = chooseHotCandidate(numbers, n, currentCandidates, rawMissStreak);
+  const rerankedCurrentPick = chooseRerankedHotCandidate(
+    numbers,
+    n,
+    currentCandidates,
+    rawMissStreak,
+    candidatePaperStats,
+  );
   const currentPick = environmentAllowsSignals
     && (n < roiStartIndex || paperHitConfirmed)
-    ? rawCurrentPick
+    ? rerankedCurrentPick
     : null;
 
   return {
