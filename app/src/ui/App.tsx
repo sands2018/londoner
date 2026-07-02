@@ -82,7 +82,7 @@ import { CHASE6_HISTORY_BENCHMARK } from "../core/chaseSixHistoryBenchmark";
 import { analyzeChaseThree, chaseThreeStreetEnd, chaseThreeStreetStart, streetOf } from "../core/chaseThree";
 import { QUALITY_124_TIER_META, QUALITY_124_TIER_ORDER, analyzeQuality124, type Quality124Roi, type Quality124Tier } from "../core/quality124";
 import { QUALITY_124_HISTORY_BENCHMARK } from "../core/quality124HistoryBenchmark";
-import { analyzeHotNumbers, type HotNumberRoi, type HotNumberSignal, type HotNumberSignalEvent } from "../core/hotNumbers";
+import { analyzeHotNumbers, type HotNumberEnvironmentSample, type HotNumberRoi, type HotNumberSignal, type HotNumberSignalEvent } from "../core/hotNumbers";
 import { HOT_HISTORY_BENCHMARK } from "../core/hotHistoryBenchmark";
 import {
   buildHotTableCalibrationState,
@@ -479,7 +479,7 @@ const chaseSixHistoryDataBenchmarkArchiveKey = "londoner.chaseSixHistoryDataBenc
 const quality124LocalHistoryBenchmarkKey = "londoner.quality124LocalHistoryBenchmark";
 const quality124Recent10BenchmarkKey = "londoner.quality124Recent10Benchmark";
 const quality124HistoryDataBenchmarkArchiveKey = "londoner.quality124HistoryDataBenchmarkArchive";
-const hotAlgorithmCacheVersion = "rawSafeOrCool7Switch50BaseSampleGate";
+const hotAlgorithmCacheVersion = "rawSafeOrCool7Switch50BaseSampleGateTierLinked";
 const hotLocalHistoryBenchmarkKey = `londoner.hotLocalHistoryBenchmark.${hotAlgorithmCacheVersion}`;
 const hotRecent10BenchmarkKey = `londoner.hotRecent10Benchmark.${hotAlgorithmCacheVersion}`;
 const hotHistoryDataBenchmarkArchiveKey = `londoner.hotHistoryDataBenchmarkArchive.${hotAlgorithmCacheVersion}`;
@@ -1681,6 +1681,19 @@ export function App() {
     ? currentSessionAssignment.effectiveTableId
     : undefined;
   const currentResolvedTableId = currentManualTableId ?? currentAutoTableId;
+  const hotCalibrationVisibility = useMemo<Record<HotTableCalibrationAction, boolean>>(() => ({
+    enhance: showHotCalibrationEnhance,
+    baseline: showHotCalibrationBaseline,
+    observe: showHotCalibrationObserve,
+    hint: showHotCalibrationHint,
+    block: showHotCalibrationBlock,
+  }), [
+    showHotCalibrationBaseline,
+    showHotCalibrationBlock,
+    showHotCalibrationEnhance,
+    showHotCalibrationHint,
+    showHotCalibrationObserve,
+  ]);
   const [allGameBets, setAllGameBets] = useState<number[][]>([]);
   const [selectedBetKeys, setSelectedBetKeys] = useState<string[]>([]);
   const [selectedRounds, setSelectedRounds] = useState<number[]>([]);
@@ -1723,9 +1736,40 @@ export function App() {
     ),
     [quality124From201.tierRois, quality124TierVisibility],
   );
+  const allHotCalibrationActionsVisible = hotCalibrationActionOrder.every((action) => hotCalibrationVisibility[action]);
+  const hotEnvironmentSampleFilter = useMemo<((sample: HotNumberEnvironmentSample) => boolean) | undefined>(
+    () => {
+      if (allHotCalibrationActionsVisible) return undefined;
+      return (sample) => isHotEnvironmentSampleVisible(
+        numbers,
+        sample,
+        tableProfiles,
+        hotTableCalibrationState,
+        currentResolvedTableId,
+        hotCalibrationVisibility,
+      );
+    },
+    [
+      allHotCalibrationActionsVisible,
+      currentResolvedTableId,
+      hotCalibrationVisibility,
+      hotTableCalibrationState,
+      numbers,
+      tableProfiles,
+    ],
+  );
   const hotNumber = useMemo(
-    () => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS, { requirePaperHitAfterRoiStart: requireHotPaperHit }),
-    [numbers, requireHotPaperHit],
+    () => analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS, {
+      requirePaperHitAfterRoiStart: requireHotPaperHit,
+      environmentSampleFilter: hotEnvironmentSampleFilter,
+    }),
+    [hotEnvironmentSampleFilter, numbers, requireHotPaperHit],
+  );
+  const hotNumberAllCalibrationActions = useMemo(
+    () => allHotCalibrationActionsVisible
+      ? hotNumber
+      : analyzeHotNumbers(numbers, REPEAT_INITIAL_ROUNDS, { requirePaperHitAfterRoiStart: requireHotPaperHit }),
+    [allHotCalibrationActionsVisible, hotNumber, numbers, requireHotPaperHit],
   );
   const hotNumberSignal = hotNumber.activeNumber;
   const hotNumberRoi = hotNumber.totalRoi;
@@ -1774,19 +1818,6 @@ export function App() {
         ? `${hotTableMatch.profile.tableName} · 实时匹配`
         : "未识别 · 实时匹配";
   const hotTableFeatureShortLabel = hotTableFeatureLabel.split(" · ")[0] || hotTableFeatureLabel;
-  const hotCalibrationVisibility = useMemo<Record<HotTableCalibrationAction, boolean>>(() => ({
-    enhance: showHotCalibrationEnhance,
-    baseline: showHotCalibrationBaseline,
-    observe: showHotCalibrationObserve,
-    hint: showHotCalibrationHint,
-    block: showHotCalibrationBlock,
-  }), [
-    showHotCalibrationBaseline,
-    showHotCalibrationBlock,
-    showHotCalibrationEnhance,
-    showHotCalibrationHint,
-    showHotCalibrationObserve,
-  ]);
   const hotNumberSignalVisible = shouldShowHotTableSignal(
     hotTableCalibration,
     hotCalibrationVisibility,
@@ -1796,22 +1827,19 @@ export function App() {
     ? "off"
     : hotNumber.paperHitPending
       ? "pending"
-      : !hotNumber.environmentOpen || hotNumberHiddenByCalibration
-      ? "closed"
-      : "open";
+      : hotNumber.environmentOpen
+        ? "open"
+        : "closed";
   const hotSignalStatusLabel = !showHotNumber
     ? "热门关闭"
     : hotNumber.paperHitPending
       ? "热门等待命中确认"
-      : hotNumberHiddenByCalibration
-      ? "热门关闭（当前档位隐藏）"
       : hotNumber.environmentOpen
-      ? "热门开启"
-      : "热门关闭";
+        ? hotNumberHiddenByCalibration
+          ? "热门自动开启（当前档位隐藏）"
+          : "热门开启"
+        : "热门关闭";
   const hotStatusPanelClass = hotSignalStatusClass === "off" ? "manual-off" : hotSignalStatusClass;
-  const hotDisplayEnvironmentHistory = hotNumberHiddenByCalibration
-    ? [{ position: numbers.length, open: false }, ...hotEnvironmentHistory]
-    : hotEnvironmentHistory;
   const shouldComputeHotDetailStats = predictionWindowOpen && predictionTab === "hotNumber";
   const hotCalibrationBreakdown = useMemo(
     () => shouldComputeHotDetailStats
@@ -1826,7 +1854,7 @@ export function App() {
             : Date.now(),
         },
         numbers,
-        hotNumber.events,
+        hotNumberAllCalibrationActions.events,
         null,
         tableProfiles,
         hotTableCalibrationState,
@@ -1836,7 +1864,7 @@ export function App() {
       : emptyHotCalibrationBreakdown(),
     [
       currentResolvedTableId,
-      hotNumber.events,
+      hotNumberAllCalibrationActions.events,
       hotTableCalibrationState,
       numbers,
       shouldComputeHotDetailStats,
@@ -1846,6 +1874,59 @@ export function App() {
   const hotSelectedCurrentSummary = useMemo(
     () => summarizeSelectedHotRows(hotCalibrationBreakdown, hotCalibrationVisibility),
     [hotCalibrationBreakdown, hotCalibrationVisibility],
+  );
+  const anyHotCalibrationActionVisible = hotCalibrationActionOrder.some((action) => hotCalibrationVisibility[action]);
+  const hotVisibleRoi = useMemo(
+    () => {
+      if (!anyHotCalibrationActionVisible) return emptyHotRoi();
+      if (allHotCalibrationActionsVisible) return hotNumberRoi;
+      return summarizeVisibleHotEvents(
+        numbers,
+        hotNumber.events,
+        tableProfiles,
+        hotTableCalibrationState,
+        currentResolvedTableId,
+        hotCalibrationVisibility,
+        0,
+      );
+    },
+    [
+      allHotCalibrationActionsVisible,
+      anyHotCalibrationActionVisible,
+      currentResolvedTableId,
+      hotCalibrationVisibility,
+      hotNumber.events,
+      hotNumberRoi,
+      hotTableCalibrationState,
+      numbers,
+      tableProfiles,
+    ],
+  );
+  const hotVisibleRoiFrom201 = useMemo(
+    () => {
+      if (!anyHotCalibrationActionVisible) return emptyHotRoi();
+      if (allHotCalibrationActionsVisible) return hotNumberRoiFrom201;
+      return summarizeVisibleHotEvents(
+        numbers,
+        hotNumber.events,
+        tableProfiles,
+        hotTableCalibrationState,
+        currentResolvedTableId,
+        hotCalibrationVisibility,
+        REPEAT_INITIAL_ROUNDS,
+      );
+    },
+    [
+      allHotCalibrationActionsVisible,
+      anyHotCalibrationActionVisible,
+      currentResolvedTableId,
+      hotCalibrationVisibility,
+      hotNumber.events,
+      hotNumberRoiFrom201,
+      hotTableCalibrationState,
+      numbers,
+      tableProfiles,
+    ],
   );
   const currentSessionName = useMemo(() => {
     if (currentSessionId) {
@@ -2008,10 +2089,10 @@ export function App() {
       bet += shortRepeatRoi.bet; win += shortRepeatRoi.win;
     }
     if (showHotNumber) {
-      bet += hotNumberRoi.bet; win += hotNumberRoi.win;
+      bet += hotVisibleRoi.bet; win += hotVisibleRoi.win;
     }
     return { bet, win, net: win - bet };
-  }, [canUseSmartSignals, canUseQuality124, showQuality124, quality124Roi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotNumberRoi]);
+  }, [canUseSmartSignals, canUseQuality124, showQuality124, quality124Roi, chase6Filter, chaseSixRoi, chase3Filter, chaseThreeRoi, canUsePreferredNumber, showPreferredNumber, preferredNumberRoi, showRepeat, repeatFilteredRoi, showShortRepeat, shortRepeatRoi, showHotNumber, hotVisibleRoi]);
 
   // 从第201轮开始投注的综合ROI，numbers.length <= 200 时为空
   const combinedRoiFrom201 = useMemo(() => {
@@ -2031,9 +2112,9 @@ export function App() {
       bet += repeatFilteredRoiFrom201.bet; win += repeatFilteredRoiFrom201.win;
     }
     if (showShortRepeat) { bet += shortRepeatRoiFrom201.bet; win += shortRepeatRoiFrom201.win; }
-    if (showHotNumber) { bet += hotNumberRoiFrom201.bet; win += hotNumberRoiFrom201.win; }
+    if (showHotNumber) { bet += hotVisibleRoiFrom201.bet; win += hotVisibleRoiFrom201.win; }
     return { bet, win, net: win - bet };
-  }, [numbers, canUseSmartSignals, canUseQuality124, showQuality124, quality124RoiFrom201, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotNumberRoiFrom201]);
+  }, [numbers, canUseSmartSignals, canUseQuality124, showQuality124, quality124RoiFrom201, chase6Filter, chase3Filter, canUsePreferredNumber, showPreferredNumber, preferredNumberRoiFrom201, showRepeat, repeatFilteredRoiFrom201, showShortRepeat, shortRepeatRoiFrom201, showHotNumber, hotVisibleRoiFrom201]);
 
   const effectiveStatsScope = statsScope < 0 ? numbers.length : statsScope;
   const effectiveColRowScope = colRowScope < 0 ? numbers.length : colRowScope;
@@ -6155,7 +6236,7 @@ export function App() {
         <strong className="top-stats-count">{numbers.length}</strong>
         <span className="top-stats-roi">
           {canUseSmartSignals ? (
-            <i className={`top-stats-hot-dot ${hotSignalStatusClass}`} aria-label={hotSignalStatusLabel} />
+            <i className={`top-stats-hot-dot ${hotSignalStatusClass}`} aria-label={hotSignalStatusLabel} title={hotSignalStatusLabel} />
           ) : null}
           <span className="top-stats-item">投<strong>{combinedRoi.bet}</strong></span>
           <span className={`top-stats-item top-stats-net ${combinedRoi.net >= 0 ? "net-positive" : "net-negative"}`}>
@@ -6402,7 +6483,7 @@ export function App() {
             tabIndex={0}
           >
             <span>热门</span>
-            <i className="hot-status-dot" aria-label={hotSignalStatusLabel} />
+            <i className="hot-status-dot" aria-label={hotSignalStatusLabel} title={hotSignalStatusLabel} />
           </div>
           {showHotNumber ? (
             <div
@@ -6412,7 +6493,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              {hotDisplayEnvironmentHistory.length > 0 ? hotDisplayEnvironmentHistory.map((event) => (
+              {hotEnvironmentHistory.length > 0 ? hotEnvironmentHistory.map((event) => (
                 <span
                   className={`hot-history-node ${event.open ? "open" : "closed"}`}
                   key={`${event.position}-${event.open ? "open" : "closed"}`}
@@ -8034,12 +8115,12 @@ export function App() {
                   <div className="prediction-roi-table">
                     <div className="prediction-roi-row prediction-roi-header"><span>信号</span><span>总投入</span><span>总赢回</span><span>命中</span><span>ROI</span></div>
                     <div className="prediction-roi-row">
-                      <strong>{hotNumberRoi.signals}</strong><strong>{hotNumberRoi.bet}</strong><strong>{hotNumberRoi.win}</strong><strong>{hotNumberRoi.hits}</strong>
-                      <strong className="roi-value" style={{ color: hotNumberRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoi.roi >= 0 ? "+" : ""}{hotNumberRoi.roi.toFixed(1)}%</strong>
+                      <strong>{hotVisibleRoi.signals}</strong><strong>{hotVisibleRoi.bet}</strong><strong>{hotVisibleRoi.win}</strong><strong>{hotVisibleRoi.hits}</strong>
+                      <strong className="roi-value" style={{ color: hotVisibleRoi.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotVisibleRoi.roi >= 0 ? "+" : ""}{hotVisibleRoi.roi.toFixed(1)}%</strong>
                     </div>
                     <div className="prediction-roi-row">
-                      <span className="prediction-roi-subheader">200后</span><span>{hotNumberRoiFrom201.bet}</span><span>{hotNumberRoiFrom201.win}</span><span>{hotNumberRoiFrom201.hits}</span>
-                      <strong className="roi-value" style={{ color: hotNumberRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotNumberRoiFrom201.roi >= 0 ? "+" : ""}{hotNumberRoiFrom201.roi.toFixed(1)}%</strong>
+                      <span className="prediction-roi-subheader">200后</span><span>{hotVisibleRoiFrom201.bet}</span><span>{hotVisibleRoiFrom201.win}</span><span>{hotVisibleRoiFrom201.hits}</span>
+                      <strong className="roi-value" style={{ color: hotVisibleRoiFrom201.roi >= 0 ? "#b85a3a" : "#5f9a70" }}>{hotVisibleRoiFrom201.roi >= 0 ? "+" : ""}{hotVisibleRoiFrom201.roi.toFixed(1)}%</strong>
                     </div>
                   </div>
                   <div className="tabs tabs-top tabs-solid tabs-full hot-benchmark-tabs" aria-label="热门统计范围" role="tablist">
@@ -9955,6 +10036,40 @@ function summarizeChaseSixRowsForFilter(
   if (filter === "全关") return emptyChaseSixBenchmarkRow("total");
   const id: ChaseSixBenchmarkRowId = filter === "波浪强" ? "waveStrong" : filter === "强" ? "strong" : "total";
   return rows.find((row) => row.id === id) ?? emptyChaseSixBenchmarkRow(id);
+}
+
+function isHotEnvironmentSampleVisible(
+  numbers: readonly RouletteNumber[],
+  sample: HotNumberEnvironmentSample,
+  profiles: readonly TableProfile[],
+  calibrationState: HotTableCalibrationState,
+  forcedTableId: string | undefined,
+  visibility: Readonly<Record<HotTableCalibrationAction, boolean>>,
+): boolean {
+  const prefix = numbers.slice(0, sample.position);
+  const support = evaluateHotNumberTableSupport(prefix, sample.signal.number, profiles, forcedTableId);
+  const calibration = evaluateHotTableCalibration(support, calibrationState);
+  return visibility[calibration.action];
+}
+
+function summarizeVisibleHotEvents(
+  numbers: readonly RouletteNumber[],
+  events: readonly HotNumberSignalEvent[],
+  profiles: readonly TableProfile[],
+  calibrationState: HotTableCalibrationState,
+  forcedTableId: string | undefined,
+  visibility: Readonly<Record<HotTableCalibrationAction, boolean>>,
+  roiStartIndex: number,
+): HotNumberRoi {
+  const stats = emptyHotRoi();
+  for (const event of events) {
+    if (event.position < roiStartIndex) continue;
+    const prefix = numbers.slice(0, event.position);
+    const support = evaluateHotNumberTableSupport(prefix, event.signal.number, profiles, forcedTableId);
+    const calibration = evaluateHotTableCalibration(support, calibrationState);
+    if (visibility[calibration.action]) addHotRoi(stats, event.hit);
+  }
+  return stats;
 }
 
 function emptyHotCalibrationBreakdown(): HotCalibrationBreakdownRow[] {

@@ -62,6 +62,12 @@ interface GateSpec {
   kind: GateKind;
   sampleOnly?: boolean;
   confirm?: number;
+  closeProtect?: {
+    window: number;
+    minSamples: number;
+    minRoi: number;
+    minTotalNet?: number;
+  };
 }
 
 interface ChooseContext {
@@ -310,12 +316,24 @@ function isHotEnvironmentAllowed(nets: readonly number[], kind: GateKind, curren
 
 function updateHotEnvironmentState(
   recentShortNets: readonly number[],
+  recentOpenSignalNets: readonly number[],
+  openSignalNet: number,
   allowsSignals: boolean,
   allowConfirmCount: number,
   blockConfirmCount: number,
   gate: GateSpec,
 ) {
-  const shouldAllow = isHotEnvironmentAllowed(recentShortNets, gate.kind, allowsSignals);
+  let shouldAllow = isHotEnvironmentAllowed(recentShortNets, gate.kind, allowsSignals);
+  if (allowsSignals && !shouldAllow && gate.closeProtect) {
+    const recent = recentOpenSignalNets.slice(-gate.closeProtect.window);
+    if (
+      recent.length >= gate.closeProtect.minSamples
+      && netRoiPercent(recent) >= gate.closeProtect.minRoi
+      && openSignalNet >= (gate.closeProtect.minTotalNet ?? -Infinity)
+    ) {
+      shouldAllow = true;
+    }
+  }
   const confirm = gate.confirm ?? HOT_ENVIRONMENT_CONFIRM;
   if (allowsSignals) {
     const nextBlockConfirmCount = shouldAllow ? 0 : blockConfirmCount + 1;
@@ -521,6 +539,8 @@ function runSession(session: Session, strategy: Strategy, requirePaperHitAfterRo
   const numberStats: NumberPaperStats[] = Array.from({ length: 37 }, () => ({ nets: [] }));
   const rawMissStreak = new Uint16Array(37);
   const recentShortEnvironmentNets: number[] = [];
+  const recentOpenSignalNets: number[] = [];
+  let openSignalNet = 0;
   let environmentAllowsSignals = true;
   let allowConfirmCount = 0;
   let blockConfirmCount = 0;
@@ -581,6 +601,8 @@ function runSession(session: Session, strategy: Strategy, requirePaperHitAfterRo
     if (!gate.sampleOnly || hasPendingEnvironmentSample) {
       const env = updateHotEnvironmentState(
         recentShortEnvironmentNets,
+        recentOpenSignalNets,
+        openSignalNet,
         environmentAllowsSignals,
         allowConfirmCount,
         blockConfirmCount,
@@ -611,14 +633,18 @@ function runSession(session: Session, strategy: Strategy, requirePaperHitAfterRo
         const confirmPick = strategy.confirmBase ? firstEligible(chooseContext) : pick;
         if (confirmPick !== null && numbers[i] === confirmPick.number) paperHitConfirmed = true;
       } else if (i >= ROI_START) {
+        const net = hit ? 35 : -1;
         events.push({
           session: session.name,
           position: i,
           pick: pick.number,
           mode: pick.mode,
           hit,
-          net: hit ? 35 : -1,
+          net,
         });
+        recentOpenSignalNets.push(net);
+        openSignalNet += net;
+        if (recentOpenSignalNets.length > 150) recentOpenSignalNets.shift();
       }
     }
 
@@ -712,6 +738,11 @@ const strategies: Strategy[] = [
   { name: "sw50-holdPosS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "holdPositive", sampleOnly: true } },
   { name: "sw50-holdLossS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "holdLossOnly", sampleOnly: true } },
   { name: "sw50-holdLateS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "holdLateNotBad", sampleOnly: true } },
+  { name: "sw50-prot12", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "current", sampleOnly: true, closeProtect: { window: 12, minSamples: 5, minRoi: 0 } } },
+  { name: "sw50-prot24", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "current", sampleOnly: true, closeProtect: { window: 24, minSamples: 5, minRoi: 0 } } },
+  { name: "sw50-prot37", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "current", sampleOnly: true, closeProtect: { window: 37, minSamples: 8, minRoi: 0 } } },
+  { name: "sw50-prot37+50", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "current", sampleOnly: true, closeProtect: { window: 37, minSamples: 8, minRoi: 50 } } },
+  { name: "sw50-prot37+50net", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "current", sampleOnly: true, closeProtect: { window: 37, minSamples: 8, minRoi: 50, minTotalNet: 0 } } },
   { name: "sw50-open", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "always" } },
   { name: "switch74+25", missLimit: 7, choose: paperSwitch(74, 10, 25) },
   { name: "switch74+50", missLimit: 7, choose: paperSwitch(74, 10, 50) },
@@ -745,6 +776,69 @@ if (extraSessions.length > 0) {
   for (const session of extraSessions) {
     printRows(session.name, [session], activeStrategies, true);
   }
+}
+
+function printStrategyDelta(
+  title: string,
+  sessions: readonly Session[],
+  leftName: string,
+  rightName: string,
+  requireConfirm: boolean,
+): void {
+  const left = strategies.find((strategy) => strategy.name === leftName);
+  const right = strategies.find((strategy) => strategy.name === rightName);
+  if (!left || !right) return;
+
+  const rows = sessions.map((session) => {
+    const leftSummary = summarize(runSession(session, left, requireConfirm));
+    const rightSummary = summarize(runSession(session, right, requireConfirm));
+    return {
+      session,
+      left: leftSummary,
+      right: rightSummary,
+      deltaNet: rightSummary.net - leftSummary.net,
+      deltaSignals: rightSummary.signals - leftSummary.signals,
+      deltaDrawdown: rightSummary.maxDrawdown - leftSummary.maxDrawdown,
+    };
+  }).filter((row) => row.left.signals > 0 || row.right.signals > 0);
+
+  const sortedDeltas = rows.map((row) => row.deltaNet).sort((a, b) => a - b);
+  const medianDelta = sortedDeltas.length > 0 ? sortedDeltas[Math.floor(sortedDeltas.length / 2)] : 0;
+  const better = rows.filter((row) => row.deltaNet > 0).length;
+  const worse = rows.filter((row) => row.deltaNet < 0).length;
+  const same = rows.length - better - worse;
+  const totalDelta = rows.reduce((sum, row) => sum + row.deltaNet, 0);
+  const totalSignalDelta = rows.reduce((sum, row) => sum + row.deltaSignals, 0);
+  const totalDrawdownDelta = rows.reduce((sum, row) => sum + row.deltaDrawdown, 0);
+
+  console.log(`\n${title} delta ${rightName} - ${leftName} confirm=${requireConfirm}`);
+  console.log(`active=${rows.length} better=${better} worse=${worse} same=${same} totalDelta=${totalDelta} medianDelta=${medianDelta} signalDelta=${totalSignalDelta} drawdownDeltaSum=${totalDrawdownDelta}`);
+  console.log("worst 8:");
+  for (const row of [...rows].sort((a, b) => a.deltaNet - b.deltaNet).slice(0, 8)) {
+    console.log([
+      row.session.name.padEnd(28).slice(0, 28),
+      `dNet=${String(row.deltaNet).padStart(4)}`,
+      `dSig=${String(row.deltaSignals).padStart(4)}`,
+      `L=${String(row.left.net).padStart(4)}/${String(row.left.signals).padStart(4)}`,
+      `R=${String(row.right.net).padStart(4)}/${String(row.right.signals).padStart(4)}`,
+    ].join(" "));
+  }
+  console.log("best 8:");
+  for (const row of [...rows].sort((a, b) => b.deltaNet - a.deltaNet).slice(0, 8)) {
+    console.log([
+      row.session.name.padEnd(28).slice(0, 28),
+      `dNet=${String(row.deltaNet).padStart(4)}`,
+      `dSig=${String(row.deltaSignals).padStart(4)}`,
+      `L=${String(row.left.net).padStart(4)}/${String(row.left.signals).padStart(4)}`,
+      `R=${String(row.right.net).padStart(4)}/${String(row.right.signals).padStart(4)}`,
+    ].join(" "));
+  }
+}
+
+if (gateOnly) {
+  printStrategyDelta("history-all", historySessions, "sw50-sample", "sw50-prot37+50net", true);
+  printStrategyDelta("history-2026", recent2026, "sw50-sample", "sw50-prot37+50net", true);
+  printStrategyDelta("history-last10", recent10, "sw50-sample", "sw50-prot37+50net", true);
 }
 
 function scanStrategies(): void {

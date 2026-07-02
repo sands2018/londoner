@@ -136,9 +136,15 @@ describe("analyzeHotNumbers", () => {
       33,22,2,29,10,11,3,27,11,20,11,14,11,1,15,9,2,31,21,27
     `);
     const confirmed = analyzeHotNumbers(numbers, 200, { requirePaperHitAfterRoiStart: true });
+    const filtered = analyzeHotNumbers(numbers, 200, {
+      requirePaperHitAfterRoiStart: true,
+      environmentSampleFilter: () => false,
+    });
 
     expect(confirmed.environmentHistory).toEqual([{ position: 225, open: false }]);
     expect(confirmed.events.some((event) => event.position === 221)).toBe(true);
     expect(confirmed.totalRoiFrom201.signals).toBe(12);
+    expect(filtered.environmentHistory).toEqual([]);
+    expect(filtered.environmentOpen).toBe(true);
   });
 });

@@ -43,6 +43,12 @@ export interface HotNumberEnvironmentEvent {
   open: boolean;
 }
 
+export interface HotNumberEnvironmentSample {
+  position: number;
+  signal: HotNumberSignal;
+  hit: boolean;
+}
+
 export interface HotNumberAnalysis {
   activeNumber: HotNumberSignal | null;
   environmentOpen: boolean;
@@ -57,6 +63,8 @@ export interface HotNumberAnalysis {
 export interface HotNumberOptions {
   /** In the betting area, wait for one paper hit before recording real hot-number bets. */
   requirePaperHitAfterRoiStart?: boolean;
+  /** Optional filter that decides whether a short-mode paper sample participates in environment gating. */
+  environmentSampleFilter?: (sample: HotNumberEnvironmentSample) => boolean;
 }
 
 interface HotNumberCandidate extends HotNumberSignal {
@@ -475,6 +483,7 @@ export function analyzeHotNumbers(
 ): HotNumberAnalysis {
   const n = numbers.length;
   const requirePaperHitAfterRoiStart = options.requirePaperHitAfterRoiStart ?? false;
+  const environmentSampleFilter = options.environmentSampleFilter;
 
   if (n < LONG_WARMUP) {
     return {
@@ -543,7 +552,15 @@ export function analyzeHotNumbers(
 
   function pushShortEnvironmentNet(shortN: HotNumberCandidate | null, outcomeIdx: number) {
     if (shortN === null) return;
-    recentShortEnvironmentNets.push(numbers[outcomeIdx] === shortN.number ? 35 : -1);
+    const hit = numbers[outcomeIdx] === shortN.number;
+    if (environmentSampleFilter && !environmentSampleFilter({
+      position: outcomeIdx,
+      signal: toSignal(shortN),
+      hit,
+    })) {
+      return;
+    }
+    recentShortEnvironmentNets.push(hit ? 35 : -1);
     if (recentShortEnvironmentNets.length > HOT_ENVIRONMENT_WINDOW) {
       recentShortEnvironmentNets.shift();
     }
