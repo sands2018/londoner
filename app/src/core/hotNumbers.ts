@@ -1,6 +1,6 @@
 /**
- * Hot Number Prediction - rawSafeOrCool@7 + switch50base
- * ======================================================
+ * Hot Number Prediction - rawSafeOrCool@7 + switch50base + sample-gated close
+ * ==========================================================================
  * The hot-number engine keeps LONG/SHORT candidate lists, then:
  * - tries the adaptive LONG/SHORT order first;
  * - skips a raw candidate after seven consecutive paper misses;
@@ -259,6 +259,8 @@ const ADAPTIVE_MIN_SHORT_SIGNALS = 5;
 const ADAPTIVE_MIN_SHORT_ROI = -40;
 const ADAPTIVE_SHORT_EDGE = -60;
 // Continuous hot-environment gate: recent short-mode paper signals, x3 confirmation.
+// Confirmation advances only when a fresh short-mode paper sample arrives; stale
+// windows must not close or reopen the gate by being counted repeatedly.
 const HOT_ENVIRONMENT_WINDOW = 90;
 const HOT_ENVIRONMENT_CONFIRM = 3;
 
@@ -498,6 +500,7 @@ export function analyzeHotNumbers(
   let environmentAllowsSignals = true;
   let allowConfirmCount = 0;
   let blockConfirmCount = 0;
+  let hasPendingEnvironmentSample = false;
   let paperHitConfirmed = !requirePaperHitAfterRoiStart;
   const rawMissStreak = new Uint16Array(37);
   const candidatePaperStats: CandidatePaperStats[] = Array.from({ length: 37 }, () => ({ nets: [] }));
@@ -544,6 +547,7 @@ export function analyzeHotNumbers(
     if (recentShortEnvironmentNets.length > HOT_ENVIRONMENT_WINDOW) {
       recentShortEnvironmentNets.shift();
     }
+    hasPendingEnvironmentSample = true;
   }
 
   for (let i = LONG_WARMUP; i < n; i++) {
@@ -552,18 +556,21 @@ export function analyzeHotNumbers(
     }
     trimPaper(Math.max(LONG_WARMUP, i - ADAPTIVE_LOOKBACK));
 
-    const environmentState = updateHotEnvironmentState(
-      recentShortEnvironmentNets,
-      environmentAllowsSignals,
-      allowConfirmCount,
-      blockConfirmCount,
-    );
-    if (environmentState.allowsSignals !== environmentAllowsSignals) {
-      environmentHistory.push({ position: i, open: environmentState.allowsSignals });
+    if (hasPendingEnvironmentSample) {
+      const environmentState = updateHotEnvironmentState(
+        recentShortEnvironmentNets,
+        environmentAllowsSignals,
+        allowConfirmCount,
+        blockConfirmCount,
+      );
+      if (environmentState.allowsSignals !== environmentAllowsSignals) {
+        environmentHistory.push({ position: i, open: environmentState.allowsSignals });
+      }
+      environmentAllowsSignals = environmentState.allowsSignals;
+      allowConfirmCount = environmentState.allowConfirmCount;
+      blockConfirmCount = environmentState.blockConfirmCount;
+      hasPendingEnvironmentSample = false;
     }
-    environmentAllowsSignals = environmentState.allowsSignals;
-    allowConfirmCount = environmentState.allowConfirmCount;
-    blockConfirmCount = environmentState.blockConfirmCount;
 
     const candidates = orderedCandidates(
       longCandidates[i],
@@ -604,18 +611,21 @@ export function analyzeHotNumbers(
   // Step 3: Current adaptive pick (at position n, using full paper P&L window)
   pushPaper(longCandidates[n - 1][0] ?? null, shortCandidates[n - 1][0] ?? null, n - 1);
   trimPaper(Math.max(LONG_WARMUP, n - ADAPTIVE_LOOKBACK));
-  const environmentState = updateHotEnvironmentState(
-    recentShortEnvironmentNets,
-    environmentAllowsSignals,
-    allowConfirmCount,
-    blockConfirmCount,
-  );
-  if (environmentState.allowsSignals !== environmentAllowsSignals) {
-    environmentHistory.push({ position: n, open: environmentState.allowsSignals });
+  if (hasPendingEnvironmentSample) {
+    const environmentState = updateHotEnvironmentState(
+      recentShortEnvironmentNets,
+      environmentAllowsSignals,
+      allowConfirmCount,
+      blockConfirmCount,
+    );
+    if (environmentState.allowsSignals !== environmentAllowsSignals) {
+      environmentHistory.push({ position: n, open: environmentState.allowsSignals });
+    }
+    environmentAllowsSignals = environmentState.allowsSignals;
+    allowConfirmCount = environmentState.allowConfirmCount;
+    blockConfirmCount = environmentState.blockConfirmCount;
+    hasPendingEnvironmentSample = false;
   }
-  environmentAllowsSignals = environmentState.allowsSignals;
-  allowConfirmCount = environmentState.allowConfirmCount;
-  blockConfirmCount = environmentState.blockConfirmCount;
   const currentCandidates = orderedCandidates(
     longCandidates[n],
     shortCandidates[n],

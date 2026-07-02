@@ -53,6 +53,15 @@ interface Strategy {
   choose: (ctx: ChooseContext) => Candidate | null;
   chooseClosed?: (ctx: ChooseContext) => Candidate | null;
   confirmBase?: boolean;
+  gate?: GateSpec;
+}
+
+type GateKind = "current" | "positive" | "lossOnly" | "lateNotBad" | "holdPositive" | "holdLossOnly" | "holdLateNotBad" | "always";
+
+interface GateSpec {
+  kind: GateKind;
+  sampleOnly?: boolean;
+  confirm?: number;
 }
 
 interface ChooseContext {
@@ -262,13 +271,41 @@ function netRoiPercent(nets: readonly number[]): number {
   return nets.length > 0 ? (nets.reduce((sum, net) => sum + net, 0) / nets.length) * 100 : 0;
 }
 
-function isHotEnvironmentAllowed(nets: readonly number[]): boolean {
-  if (nets.length === 0) return true;
+function environmentMetrics(nets: readonly number[]): { overallRoi: number; earlyRoi: number; lateRoi: number } {
   const overallRoi = netRoiPercent(nets);
   const splitIndex = Math.floor(nets.length / 2);
-  const earlyRoi = netRoiPercent(nets.slice(0, splitIndex));
-  const lateRoi = netRoiPercent(nets.slice(splitIndex));
-  return overallRoi < 0 && lateRoi >= earlyRoi;
+  return {
+    overallRoi,
+    earlyRoi: netRoiPercent(nets.slice(0, splitIndex)),
+    lateRoi: netRoiPercent(nets.slice(splitIndex)),
+  };
+}
+
+function isHotEnvironmentAllowed(nets: readonly number[], kind: GateKind, currentlyOpen: boolean): boolean {
+  if (nets.length === 0) return true;
+  const { overallRoi, earlyRoi, lateRoi } = environmentMetrics(nets);
+
+  if (kind === "always") return true;
+  if (kind === "current") return overallRoi < 0 && lateRoi >= earlyRoi;
+  if (kind === "positive") return overallRoi >= 0 || lateRoi >= earlyRoi;
+  if (kind === "lossOnly") return !(overallRoi < -25 && lateRoi < earlyRoi && lateRoi < -25);
+  if (kind === "lateNotBad") return overallRoi >= 0 || lateRoi >= earlyRoi || lateRoi >= -25;
+  if (kind === "holdPositive") {
+    return currentlyOpen
+      ? overallRoi >= 0 || lateRoi >= earlyRoi
+      : overallRoi < 0 && lateRoi >= earlyRoi;
+  }
+  if (kind === "holdLossOnly") {
+    return currentlyOpen
+      ? !(overallRoi < -25 && lateRoi < earlyRoi && lateRoi < -25)
+      : overallRoi < 0 && lateRoi >= earlyRoi;
+  }
+  if (kind === "holdLateNotBad") {
+    return currentlyOpen
+      ? overallRoi >= 0 || lateRoi >= earlyRoi || lateRoi >= -25
+      : overallRoi < 0 && lateRoi >= earlyRoi;
+  }
+  return true;
 }
 
 function updateHotEnvironmentState(
@@ -276,17 +313,19 @@ function updateHotEnvironmentState(
   allowsSignals: boolean,
   allowConfirmCount: number,
   blockConfirmCount: number,
+  gate: GateSpec,
 ) {
-  const shouldAllow = isHotEnvironmentAllowed(recentShortNets);
+  const shouldAllow = isHotEnvironmentAllowed(recentShortNets, gate.kind, allowsSignals);
+  const confirm = gate.confirm ?? HOT_ENVIRONMENT_CONFIRM;
   if (allowsSignals) {
     const nextBlockConfirmCount = shouldAllow ? 0 : blockConfirmCount + 1;
-    if (nextBlockConfirmCount >= HOT_ENVIRONMENT_CONFIRM) {
+    if (nextBlockConfirmCount >= confirm) {
       return { allowsSignals: false, allowConfirmCount: 0, blockConfirmCount: 0 };
     }
     return { allowsSignals: true, allowConfirmCount: 0, blockConfirmCount: nextBlockConfirmCount };
   }
   const nextAllowConfirmCount = shouldAllow ? allowConfirmCount + 1 : 0;
-  if (nextAllowConfirmCount >= HOT_ENVIRONMENT_CONFIRM) {
+  if (nextAllowConfirmCount >= confirm) {
     return { allowsSignals: true, allowConfirmCount: 0, blockConfirmCount: 0 };
   }
   return { allowsSignals: false, allowConfirmCount: nextAllowConfirmCount, blockConfirmCount: 0 };
@@ -485,6 +524,7 @@ function runSession(session: Session, strategy: Strategy, requirePaperHitAfterRo
   let environmentAllowsSignals = true;
   let allowConfirmCount = 0;
   let blockConfirmCount = 0;
+  let hasPendingEnvironmentSample = false;
   let paperHitConfirmed = !requirePaperHitAfterRoiStart;
   let longCnt = 0;
   let longNet = 0;
@@ -528,6 +568,7 @@ function runSession(session: Session, strategy: Strategy, requirePaperHitAfterRo
     if (shortN === null) return;
     recentShortEnvironmentNets.push(numbers[outcomeIdx] === shortN.number ? 35 : -1);
     if (recentShortEnvironmentNets.length > HOT_ENVIRONMENT_WINDOW) recentShortEnvironmentNets.shift();
+    hasPendingEnvironmentSample = true;
   }
 
   for (let i = LONG_WARMUP; i < numbers.length; i += 1) {
@@ -536,10 +577,20 @@ function runSession(session: Session, strategy: Strategy, requirePaperHitAfterRo
     }
     trimPaper(Math.max(LONG_WARMUP, i - ADAPTIVE_LOOKBACK));
 
-    const env = updateHotEnvironmentState(recentShortEnvironmentNets, environmentAllowsSignals, allowConfirmCount, blockConfirmCount);
-    environmentAllowsSignals = env.allowsSignals;
-    allowConfirmCount = env.allowConfirmCount;
-    blockConfirmCount = env.blockConfirmCount;
+    const gate = strategy.gate ?? { kind: "current" };
+    if (!gate.sampleOnly || hasPendingEnvironmentSample) {
+      const env = updateHotEnvironmentState(
+        recentShortEnvironmentNets,
+        environmentAllowsSignals,
+        allowConfirmCount,
+        blockConfirmCount,
+        gate,
+      );
+      environmentAllowsSignals = env.allowsSignals;
+      allowConfirmCount = env.allowConfirmCount;
+      blockConfirmCount = env.blockConfirmCount;
+      hasPendingEnvironmentSample = false;
+    }
 
     const candidates = orderedCandidates(
       longCandidates[i],
@@ -653,6 +704,15 @@ const strategies: Strategy[] = [
   { name: "paper111", missLimit: 7, choose: bestByPaper(111, 12) },
   { name: "switch50+0", missLimit: 7, choose: paperSwitch(50, 8, 0) },
   { name: "switch50base", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true },
+  { name: "sw50-sample", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "current", sampleOnly: true } },
+  { name: "sw50-pos", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "positive" } },
+  { name: "sw50-posS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "positive", sampleOnly: true } },
+  { name: "sw50-lossS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "lossOnly", sampleOnly: true } },
+  { name: "sw50-lateS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "lateNotBad", sampleOnly: true } },
+  { name: "sw50-holdPosS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "holdPositive", sampleOnly: true } },
+  { name: "sw50-holdLossS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "holdLossOnly", sampleOnly: true } },
+  { name: "sw50-holdLateS", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "holdLateNotBad", sampleOnly: true } },
+  { name: "sw50-open", missLimit: 7, choose: paperSwitch(50, 8, 0), confirmBase: true, gate: { kind: "always" } },
   { name: "switch74+25", missLimit: 7, choose: paperSwitch(74, 10, 25) },
   { name: "switch74+50", missLimit: 7, choose: paperSwitch(74, 10, 50) },
   { name: "switch111+25", missLimit: 7, choose: paperSwitch(111, 12, 25) },
@@ -671,15 +731,19 @@ const extraPath = process.argv[2];
 const extraSessions = extraPath && fs.existsSync(extraPath) ? loadRows(extraPath) : [];
 const recent10 = historySessions.slice(-10);
 const recent2026 = historySessions.filter((session) => new Date(session.dataTms).getFullYear() >= 2026);
+const gateOnly = process.argv.includes("--gate-only");
+const activeStrategies = gateOnly
+  ? strategies.filter((strategy) => strategy.name === "switch50base" || strategy.name.startsWith("sw50-"))
+  : strategies;
 
-printRows("history-all", historySessions, strategies, false);
-printRows("history-all", historySessions, strategies, true);
-printRows("history-2026", recent2026, strategies, true);
-printRows("history-last10", recent10, strategies, true);
+printRows("history-all", historySessions, activeStrategies, false);
+printRows("history-all", historySessions, activeStrategies, true);
+printRows("history-2026", recent2026, activeStrategies, true);
+printRows("history-last10", recent10, activeStrategies, true);
 if (extraSessions.length > 0) {
-  printRows("attached-3", extraSessions, strategies, true);
+  printRows("attached-3", extraSessions, activeStrategies, true);
   for (const session of extraSessions) {
-    printRows(session.name, [session], strategies, true);
+    printRows(session.name, [session], activeStrategies, true);
   }
 }
 
@@ -747,4 +811,4 @@ function scanStrategies(): void {
   }
 }
 
-scanStrategies();
+if (!gateOnly) scanStrategies();

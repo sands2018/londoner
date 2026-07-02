@@ -479,7 +479,7 @@ const chaseSixHistoryDataBenchmarkArchiveKey = "londoner.chaseSixHistoryDataBenc
 const quality124LocalHistoryBenchmarkKey = "londoner.quality124LocalHistoryBenchmark";
 const quality124Recent10BenchmarkKey = "londoner.quality124Recent10Benchmark";
 const quality124HistoryDataBenchmarkArchiveKey = "londoner.quality124HistoryDataBenchmarkArchive";
-const hotAlgorithmCacheVersion = "rawSafeOrCool7Switch50Base";
+const hotAlgorithmCacheVersion = "rawSafeOrCool7Switch50BaseSampleGate";
 const hotLocalHistoryBenchmarkKey = `londoner.hotLocalHistoryBenchmark.${hotAlgorithmCacheVersion}`;
 const hotRecent10BenchmarkKey = `londoner.hotRecent10Benchmark.${hotAlgorithmCacheVersion}`;
 const hotHistoryDataBenchmarkArchiveKey = `londoner.hotHistoryDataBenchmarkArchive.${hotAlgorithmCacheVersion}`;
@@ -1732,21 +1732,6 @@ export function App() {
   const hotNumberRoiFrom201 = hotNumber.totalRoiFrom201;
   const hotCurrentBettingSpins = Math.max(0, numbers.length - REPEAT_INITIAL_ROUNDS);
   const hotEnvironmentHistory = [...hotNumber.environmentHistory].reverse();
-  const hotSignalStatusClass = !showHotNumber
-    ? "off"
-    : hotNumber.paperHitPending
-      ? "pending"
-      : hotNumber.environmentOpen
-      ? "open"
-      : "closed";
-  const hotSignalStatusLabel = !showHotNumber
-    ? "热门关闭"
-    : hotNumber.paperHitPending
-      ? "热门等待命中确认"
-      : hotNumber.environmentOpen
-      ? "热门开启"
-      : "热门关闭";
-  const hotStatusPanelClass = hotSignalStatusClass === "off" ? "manual-off" : hotSignalStatusClass;
   const autoHotTableSupport = useMemo(
     () => evaluateHotNumberTableSupport(numbers, hotNumberSignal?.number, tableProfiles),
     [hotNumberSignal?.number, numbers, tableProfiles],
@@ -1806,6 +1791,27 @@ export function App() {
     hotTableCalibration,
     hotCalibrationVisibility,
   );
+  const hotNumberHiddenByCalibration = hotNumberSignal !== null && !hotNumberSignalVisible;
+  const hotSignalStatusClass = !showHotNumber
+    ? "off"
+    : hotNumber.paperHitPending
+      ? "pending"
+      : !hotNumber.environmentOpen || hotNumberHiddenByCalibration
+      ? "closed"
+      : "open";
+  const hotSignalStatusLabel = !showHotNumber
+    ? "热门关闭"
+    : hotNumber.paperHitPending
+      ? "热门等待命中确认"
+      : hotNumberHiddenByCalibration
+      ? "热门关闭（当前档位隐藏）"
+      : hotNumber.environmentOpen
+      ? "热门开启"
+      : "热门关闭";
+  const hotStatusPanelClass = hotSignalStatusClass === "off" ? "manual-off" : hotSignalStatusClass;
+  const hotDisplayEnvironmentHistory = hotNumberHiddenByCalibration
+    ? [{ position: numbers.length, open: false }, ...hotEnvironmentHistory]
+    : hotEnvironmentHistory;
   const shouldComputeHotDetailStats = predictionWindowOpen && predictionTab === "hotNumber";
   const hotCalibrationBreakdown = useMemo(
     () => shouldComputeHotDetailStats
@@ -6406,7 +6412,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              {hotEnvironmentHistory.length > 0 ? hotEnvironmentHistory.map((event) => (
+              {hotDisplayEnvironmentHistory.length > 0 ? hotDisplayEnvironmentHistory.map((event) => (
                 <span
                   className={`hot-history-node ${event.open ? "open" : "closed"}`}
                   key={`${event.position}-${event.open ? "open" : "closed"}`}
