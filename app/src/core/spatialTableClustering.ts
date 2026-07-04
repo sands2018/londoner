@@ -65,6 +65,7 @@ const WHEEL_INDEX = new Map<RouletteNumber, number>(
 const MIN_SPATIAL_CLUSTER_SESSIONS = 3;
 const MIN_SPATIAL_SESSION_NUMBERS = 80;
 const MAX_CLUSTER_COUNT = 6;
+const GLOBAL_SPATIAL_KEY = "all";
 
 function numberToWheelIndex(number: RouletteNumber): number {
   return WHEEL_INDEX.get(number) ?? 0;
@@ -118,24 +119,8 @@ function sortSessionsChronologically<T extends SpatialTableInputSession>(session
 }
 
 export function inferSpatialVenueKey(name: string): string {
-  const trimmed = name.trim();
-  if (/^wzs(?:-|$)/i.test(trimmed)) return "wzs";
-  if (/^sxr(?:-|$)/i.test(trimmed)) return "sxr";
-
-  const leadingDate = /^(\d{8}|\d{4}[-.]\d{2}[-.]\d{2})(?:[-_ ]\d{4})?/;
-  if (!leadingDate.test(trimmed)) return "unknown";
-
-  const withoutDate = trimmed
-    .replace(leadingDate, "")
-    .replace(/^[-_ ]+/, "");
-  const parts = withoutDate
-    .split(/[-_ ]+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .filter((part) => !/^\d{3,4}$/.test(part))
-    .filter((part) => !/^(上午|下午|晚上|凌晨|清晨|夜|早|中|晚)$/.test(part));
-
-  return parts[parts.length - 1] || "unknown";
+  void name;
+  return GLOBAL_SPATIAL_KEY;
 }
 
 function makeCounts(numbers: readonly RouletteNumber[]): number[] {
@@ -417,7 +402,6 @@ export function buildSpatialTableClusters(sessions: readonly SpatialTableInputSe
   const groups = new Map<string, Fingerprint[]>();
   for (const session of sortSessionsChronologically(sessions)) {
     const venueKey = inferSpatialVenueKey(session.name);
-    if (venueKey === "unknown") continue;
     const fingerprint = makeFingerprint(session, venueKey);
     if (!fingerprint) continue;
     const group = groups.get(venueKey) ?? [];

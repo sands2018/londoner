@@ -505,23 +505,31 @@ function buildFullSpaceSeedAutoTableProfileState(
     const tables = makeTables(manualTables, autoTableIds, [...manualTableIds]);
     const profiles = buildTableProfiles(profileSessions, tables);
     const spatialCluster = spatialClusterBySessionId.get(session.id);
-    const match = spatialCluster ? null : matchTableProfile(session.numbers, profiles);
+    const match = matchTableProfile(session.numbers, profiles);
+    const targetManualSessionCount = match.profile
+      ? manualSessionCounts.get(match.profile.tableId) ?? 0
+      : 0;
+    const profileTableId = match.profile && shouldAcceptAutoMatch(match.level, targetManualSessionCount)
+      ? match.profile.tableId
+      : undefined;
     let autoTableId: string | undefined;
     let autoMatchLevel: AutoTableMatchLevel = match?.level ?? "none";
     let autoSimilarity = match?.similarity ?? 0;
     let autoGap = match?.gap ?? 0;
 
     if (spatialCluster) {
-      autoTableId = tableIdForSpatialCluster(spatialCluster);
-      autoMatchLevel = autoMatchLevelFromSpatialCluster(spatialCluster);
-      autoSimilarity = Math.max(0, Math.min(1, spatialCluster.silhouette));
-      autoGap = 0;
+      const spatialLevel = autoMatchLevelFromSpatialCluster(spatialCluster);
+      if (spatialLevel !== "confirmed" && profileTableId) {
+        autoTableId = profileTableId;
+      } else {
+        autoTableId = tableIdForSpatialCluster(spatialCluster);
+        autoMatchLevel = spatialLevel;
+        autoSimilarity = Math.max(0, Math.min(1, spatialCluster.silhouette));
+        autoGap = 0;
+      }
     } else if (match) {
-      const targetManualSessionCount = match.profile
-        ? manualSessionCounts.get(match.profile.tableId) ?? 0
-        : 0;
-      if (match.profile && shouldAcceptAutoMatch(match.level, targetManualSessionCount)) {
-        autoTableId = match.profile.tableId;
+      if (profileTableId) {
+        autoTableId = profileTableId;
       } else if (!manualTableId) {
         autoTableId = nextAutoTableId(autoTableIndex);
         autoTableIndex += 1;

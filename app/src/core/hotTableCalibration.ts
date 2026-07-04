@@ -1,6 +1,5 @@
 import { analyzeHotNumbers, type HotNumberOptions } from "./hotNumbers";
 import type { RouletteNumber } from "./roulette";
-import { inferSpatialVenueKey } from "./spatialTableClustering";
 import {
   buildTableProfiles,
   evaluateHotNumberTableSupport,
@@ -64,6 +63,7 @@ const TABLE_TIER_MIN_SIGNALS = 24;
 const TABLE_OVERALL_MIN_SIGNALS = 60;
 const VENUE_TIER_MIN_SIGNALS = 45;
 const VENUE_OVERALL_MIN_SIGNALS = 120;
+const GLOBAL_VENUE_KEY = "all";
 
 const SUPPORT_LEVELS: HotTableSupportLevel[] = [
   "strong",
@@ -126,22 +126,8 @@ function venueBucketKey(venueKey: string): string {
 }
 
 function inferVenueMap(sessions: readonly HotTableCalibrationSession[]): Map<string, string> {
-  const countsByTable = new Map<string, Map<string, number>>();
-  for (const session of sessions) {
-    if (!isKnownTableId(session.tableId)) continue;
-    const venueKey = inferSpatialVenueKey(session.name);
-    if (venueKey === "unknown") continue;
-    const counts = countsByTable.get(session.tableId) ?? new Map<string, number>();
-    counts.set(venueKey, (counts.get(venueKey) ?? 0) + 1);
-    countsByTable.set(session.tableId, counts);
-  }
-
-  const result = new Map<string, string>();
-  for (const [tableId, counts] of countsByTable) {
-    const best = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0];
-    if (best) result.set(tableId, best[0]);
-  }
-  return result;
+  void sessions;
+  return new Map();
 }
 
 function ensureBucket(
@@ -186,8 +172,7 @@ export function buildHotTableCalibrationState(
 
   for (const session of sortedSessions) {
     const tableId = isKnownTableId(session.tableId) ? session.tableId : undefined;
-    const sessionVenueKey = inferSpatialVenueKey(session.name);
-    const venueKey = tableId ? tableVenueById.get(tableId) ?? sessionVenueKey : sessionVenueKey;
+    const venueKey = tableId ? tableVenueById.get(tableId) ?? GLOBAL_VENUE_KEY : GLOBAL_VENUE_KEY;
     const profiles = buildTableProfiles(priorProfileSessions, tables);
     const analysis = analyzeHotNumbers(session.numbers, ROI_START_INDEX, hotOptions);
 
@@ -196,16 +181,6 @@ export function buildHotTableCalibrationState(
       const prefix = session.numbers.slice(0, event.position);
       const support = evaluateHotNumberTableSupport(prefix, event.signal.number, profiles, tableId);
       const effectiveTableId = support.profile?.tableId ?? tableId;
-
-      if (venueKey !== "unknown") {
-        const venueBucket = ensureBucket(bucketsByKey, {
-          scope: "venue",
-          key: venueBucketKey(venueKey),
-          label: venueKey,
-          venueKey,
-        });
-        record(venueBucket, support.level, event.hit);
-      }
 
       if (effectiveTableId) {
         const tableVenueKey = tableVenueById.get(effectiveTableId) ?? venueKey;

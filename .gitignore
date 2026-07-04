@@ -11,6 +11,7 @@ app/scripts/
 data/
 sands_history*.txt
 app/test-results/
+app/.playwright-browsers/
 HistoryData/
 history_data.json
 .claude/
