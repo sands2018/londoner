@@ -2401,10 +2401,11 @@ body:has(.app-shell.theme-dark) {
   display: grid;
   gap: var(--key-gap);
   grid-template-areas:
-    "backAll n7 n8 n9 undo game game"
-    "redoAll n4 n5 n6 redo input clear"
-    "n0 n1 n2 n3 topImport enter enter"
-    "table save export numberZone config other emptyTail";
+    "backAll undo n7 n8 n9 gameReturn gameReturn"
+    "redoAll redo n4 n5 n6 input clear"
+    "n0 n0 n1 n2 n3 enter enter"
+    "v1 v2 v3 v4 v5 v6 v7"
+    "u1 u2 u3 u4 u5 u6 u7";
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
@@ -2514,7 +2515,7 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid .digit-key-7 { grid-area: n7; }
 .digit-entry-grid .digit-key-8 { grid-area: n8; }
 .digit-entry-grid .digit-key-9 { grid-area: n9; }
-.digit-entry-grid .digit-top-import { grid-area: topImport; }
+.digit-entry-grid .digit-top-import { grid-area: v2; }
 .digit-entry-grid .home-game-return-key,
 .digit-entry-grid .home-game-logo { grid-area: game; }
 .digit-entry-grid .digit-entry-input { grid-area: input; }
@@ -2530,31 +2531,22 @@ body:has(.app-shell.theme-dark) {
 .digit-entry-grid .digit-key-1 { grid-area: n1; }
 .digit-entry-grid .digit-key-2 { grid-area: n2; }
 .digit-entry-grid .digit-key-3 { grid-area: n3; }
-.digit-entry-grid .digit-transfer { grid-area: table; }
-.digit-entry-grid .digit-connect { grid-area: table; }
-.digit-entry-grid .digit-import { grid-area: export; }
-.digit-entry-grid .digit-game { grid-area: export; }
-.digit-entry-grid .digit-colrow { grid-area: numberZone; }
-.digit-entry-grid .digit-frequency { grid-area: config; }
-.digit-entry-grid .digit-distance { grid-area: other; }
-.digit-entry-grid .digit-number-zone { grid-area: save; }
-.digit-entry-grid .digit-save { grid-area: save; }
-.digit-entry-grid .digit-table { grid-area: export; }
-.digit-entry-grid .digit-export { grid-area: config; }
-.digit-entry-grid .digit-config { grid-area: numberZone; }
-.digit-entry-grid .digit-other { grid-area: other; }
-.digit-entry-grid .digit-empty-tail { grid-area: emptyTail; }
-.digit-entry-grid .digit-row-switch { grid-area: emptyTail; }
-
-.digit-entry-grid .digit-row-switch {
-  color: #b99658;
-  font-size: calc(var(--control-font-size) + 10px);
-  line-height: 1;
-}
-
-.digit-entry-grid .digit-row-switch-default {
-  font-size: calc(var(--control-font-size) + 16px);
-}
+.digit-entry-grid .digit-connect { grid-area: v3; }
+.digit-entry-grid .digit-import { grid-area: u3; }
+.digit-entry-grid .digit-transfer { grid-area: v1; }
+.digit-entry-grid .digit-save { grid-area: v5; }
+.digit-entry-grid .digit-number-zone { grid-area: v4; }
+.digit-entry-grid .digit-game { grid-area: u2; }
+.digit-entry-grid .digit-colrow { grid-area: u3; }
+.digit-entry-grid .digit-frequency { grid-area: u4; }
+.digit-entry-grid .digit-distance { grid-area: u5; }
+.digit-entry-grid .digit-find { grid-area: u7; }
+.digit-entry-grid .digit-more-game { grid-area: gameReturn; }
+.digit-entry-grid .digit-table { grid-area: u6; }
+.digit-entry-grid .digit-export { grid-area: v6; }
+.digit-entry-grid .digit-match { grid-area: u1; }
+.digit-entry-grid .digit-other { grid-area: v7; }
+.digit-entry-grid .digit-empty-tail { grid-area: u6; }
 
 .digit-entry-grid .digit-empty,
 .dock-actions .dock-empty {
@@ -2563,7 +2555,8 @@ body:has(.app-shell.theme-dark) {
   pointer-events: none;
 }
 
-.digit-entry-grid .home-game-return-key {
+.digit-entry-grid .home-game-return-key,
+.dock-actions .home-game-return-key {
   background: #151b18;
   border: 1px solid rgb(244 215 157 / 0.16);
   border-radius: 999px;
@@ -2571,7 +2564,16 @@ body:has(.app-shell.theme-dark) {
   letter-spacing: 0.08em;
 }
 
-.digit-entry-grid .home-game-logo {
+.dock-actions button.home-game-return-key {
+  background: #151b18;
+  border-color: rgb(244 215 157 / 0.16);
+  border-radius: 999px;
+  color: #b99658;
+  letter-spacing: 0.08em;
+}
+
+.digit-entry-grid .home-game-logo,
+.dock-actions .home-game-logo {
   align-items: center;
   color: #f4f4f4;
   display: flex;
@@ -2584,7 +2586,8 @@ body:has(.app-shell.theme-dark) {
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
 
-.digit-entry-grid .home-game-logo strong {
+.digit-entry-grid .home-game-logo strong,
+.dock-actions .home-game-logo strong {
   color: #c93636;
   font: inherit;
 }
@@ -2597,10 +2600,6 @@ body:has(.app-shell.theme-dark) {
   color: #e8e8e8;
   height: var(--key-height);
   min-height: unset;
-}
-
-.app-shell.theme-dark .digit-entry-grid .digit-row-switch {
-  color: #cfcfcf;
 }
 
 .app-shell.theme-dark .digit-entry-input {
@@ -2616,10 +2615,13 @@ body:has(.app-shell.theme-dark) {
   opacity: 1;
 }
 
-.app-shell.theme-dark .digit-entry-grid .home-game-return-key {
+.app-shell.theme-dark .digit-entry-grid .home-game-return-key,
+.app-shell.theme-dark .dock-actions button.home-game-return-key {
   background: #151b18;
   border-color: rgb(244 215 157 / 0.16);
+  border-radius: 999px;
   color: #b99658;
+  letter-spacing: 0.08em;
 }
 
 .app-shell.theme-dark .digit-input-error {
