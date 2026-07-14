@@ -1380,6 +1380,8 @@ export function App() {
   const [numberZoneSubTab, setNumberZoneSubTab] = useState<"snapshot" | "zone">("zone");
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [sixStatsPanelCollapsed, setSixStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.sixStatsPanelCollapsed") === "1");
+  const [threeStatsPanelCollapsed, setThreeStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.threeStatsPanelCollapsed") === "1");
+  const [threeNumberDimCount, setThreeNumberDimCount] = useState<3 | 4 | 5 | null>(null);
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [hotStatusCollapsed, setHotStatusCollapsed] = useState(() => localStorage.getItem("londoner.hotStatusCollapsed") === "1");
@@ -2185,15 +2187,28 @@ export function App() {
     };
     return Array.from({ length: 12 }, (_, wi) => {
       const highlighted = latestStreet === wi;
+      const start = chaseThreeStreetStart(wi);
+      const end = chaseThreeStreetEnd(wi);
       return {
         distance: getMissDistanceBefore(wi, numbers.length - 1),
+        end,
         highlighted,
-        label: `${chaseThreeStreetStart(wi)}-${chaseThreeStreetEnd(wi)}`,
+        label: `${start}-${end}`,
         previousDistance: highlighted ? getMissDistanceBefore(wi, numbers.length - 2) : null,
+        start,
         wi,
       };
     });
   }, [latestNumber, numbers]);
+  const threeNumberDimmedSet = useMemo(() => {
+    if (threeNumberDimCount === null) return new Set<number>();
+    return new Set(
+      [...threeNumberSnapshot]
+        .sort((left, right) => right.distance - left.distance || left.wi - right.wi)
+        .slice(0, threeNumberDimCount)
+        .map((item) => item.wi),
+    );
+  }, [threeNumberDimCount, threeNumberSnapshot]);
   const groupBlockSnapshot = useMemo(() => {
     const groupOfNumber = (value: number) => value === 0 ? -1 : Math.floor((value - 1) / 12);
     const latestGroup = latestNumber !== null ? groupOfNumber(latestNumber) : -1;
@@ -6115,7 +6130,7 @@ export function App() {
             </div>
             <div className="group-block-grid">
               {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? " dimmed" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
                   {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
                     <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
                   ))}
@@ -6129,8 +6144,21 @@ export function App() {
                   </div>
                 ))}
               </div>
+              <div className="group-block-dim-buttons" aria-label="三数字置灰数量">
+                {([3, 4, 5] as const).map((value) => (
+                  <button
+                    aria-pressed={threeNumberDimCount === value}
+                    className={threeNumberDimCount === value ? "selected" : ""}
+                    key={value}
+                    onClick={() => setThreeNumberDimCount((current) => current === value ? null : value)}
+                    type="button"
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
               {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? " dimmed" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
                   {renderGroupBlockDistance(item)}
                 </div>
               ))}
@@ -6282,7 +6310,7 @@ export function App() {
       </section>
 
       <div className="home-panels">
-      {(canViewSixStatsPanel && sixStatsPanelCollapsed) || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || (canUseSmartSignals && hotStatusCollapsed) ? (
+      {(canViewSixStatsPanel && sixStatsPanelCollapsed) || (canViewSixStatsPanel && threeStatsPanelCollapsed) || (columnStats.length > 0 && columnsPanelCollapsed) || summaryGridCollapsed || (canUseSmartSignals && hotStatusCollapsed) ? (
         <section className="collapsed-combo-bar">
           {canViewSixStatsPanel && sixStatsPanelCollapsed ? (
             <div
@@ -6292,6 +6320,17 @@ export function App() {
               tabIndex={0}
             >
               <span className="section-toggle-label">6号码全</span>
+              <span className="section-toggle-arrow arrow-right" />
+            </div>
+          ) : null}
+          {canViewSixStatsPanel && threeStatsPanelCollapsed ? (
+            <div
+              className="section-toggle"
+              onClick={() => { setThreeStatsPanelCollapsed(false); localStorage.setItem("londoner.threeStatsPanelCollapsed", "0"); }}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="section-toggle-label">3号码</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -6351,6 +6390,41 @@ export function App() {
           <div className="six-stats-grid">
             {sixNumberSnapshot.map((item) => (
               <div className={`six-stat-chip${item.highlighted ? " highlighted" : ""}`} key={item.wi} title={item.label}>
+                <span className="six-stat-end">{item.end}</span>
+                <span className="six-stat-arrow" aria-hidden="true" />
+                <span className="six-stat-start">{item.start}</span>
+                <strong>
+                  <span className={item.highlighted && item.previousDistance !== null ? "previous-distance" : undefined}>
+                    {item.highlighted && item.previousDistance !== null ? `(${item.previousDistance})` : item.distance}
+                  </span>
+                </strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      ) : null}
+
+      {canViewSixStatsPanel ? (
+      <section className={`three-stats-panel${threeStatsPanelCollapsed ? " collapsed" : ""}`}>
+        <div
+          className="section-toggle"
+          onClick={() => { setThreeStatsPanelCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.threeStatsPanelCollapsed", nv ? "1" : "0"); return nv; }); }}
+          role="button"
+          tabIndex={0}
+        >
+          <span className="section-toggle-label">3号码</span>
+          <span className={`section-toggle-arrow${threeStatsPanelCollapsed ? " arrow-right" : " arrow-down"}`} />
+        </div>
+        <div
+          className="section-body"
+          onClick={() => { setThreeStatsPanelCollapsed((v) => { const nv = !v; localStorage.setItem("londoner.threeStatsPanelCollapsed", nv ? "1" : "0"); return nv; }); }}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="three-stats-grid">
+            {threeNumberSnapshot.map((item) => (
+              <div className={`six-stat-chip three-stat-chip${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? " dimmed" : ""}`} key={item.wi} title={item.label}>
                 <span className="six-stat-end">{item.end}</span>
                 <span className="six-stat-arrow" aria-hidden="true" />
                 <span className="six-stat-start">{item.start}</span>
