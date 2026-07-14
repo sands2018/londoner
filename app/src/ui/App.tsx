@@ -1385,6 +1385,9 @@ export function App() {
     const saved = localStorage.getItem("londoner.threeNumberDimCount");
     return saved === "3" || saved === "4" || saved === "5" ? Number(saved) as 3 | 4 | 5 : null;
   });
+  const [threeNumberHighlightMode, setThreeNumberHighlightMode] = useState<"dim" | "highlight">(() =>
+    localStorage.getItem("londoner.threeNumberHighlightMode") === "dim" ? "dim" : "highlight",
+  );
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [hotStatusCollapsed, setHotStatusCollapsed] = useState(() => localStorage.getItem("londoner.hotStatusCollapsed") === "1");
@@ -1523,6 +1526,7 @@ export function App() {
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
   const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
+  const [draftThreeNumberHighlightMode, setDraftThreeNumberHighlightMode] = useState<"dim" | "highlight">(threeNumberHighlightMode);
   const [draftCasinoTables, setDraftCasinoTables] = useState<CasinoTable[]>([]);
   const [draftSelectedCasinoId, setDraftSelectedCasinoId] = useState("");
   const [draftSelectedTableId, setDraftSelectedTableId] = useState("");
@@ -4857,6 +4861,7 @@ export function App() {
   function openConfigView() {
     reloadGameConfigState();
     setDraftWindowMode(windowMode);
+    setDraftThreeNumberHighlightMode(threeNumberHighlightMode);
     setDraftSimulatorDesktopMode(simulatorDesktopMode);
     void refreshCasinoTables().then((items) => {
       setDraftCasinoTables(items);
@@ -5119,8 +5124,10 @@ export function App() {
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
       setSimulatorDesktopMode(draftSimulatorDesktopMode);
+      setThreeNumberHighlightMode(draftThreeNumberHighlightMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
       localStorage.setItem(simulatorDesktopModeKey, draftSimulatorDesktopMode ? "1" : "0");
+      localStorage.setItem("londoner.threeNumberHighlightMode", draftThreeNumberHighlightMode);
       setConfigViewOpen(false);
       return;
     }
@@ -6133,7 +6140,7 @@ export function App() {
             </div>
             <div className="group-block-grid">
               {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? " dimmed" : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
                   {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
                     <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
                   ))}
@@ -6166,7 +6173,7 @@ export function App() {
                 ))}
               </div>
               {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? " dimmed" : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
                   {renderGroupBlockDistance(item)}
                 </div>
               ))}
@@ -6327,7 +6334,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <span className="section-toggle-label">6号码全</span>
+              <span className="section-toggle-label">6</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -6338,7 +6345,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <span className="section-toggle-label">3号码</span>
+              <span className="section-toggle-label">3</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -6349,7 +6356,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <span className="section-toggle-label">6号码</span>
+              <span className="section-toggle-label">6长</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -6360,7 +6367,7 @@ export function App() {
               role="button"
               tabIndex={0}
             >
-              <span className="section-toggle-label">基础统计</span>
+              <span className="section-toggle-label">基础</span>
               <span className="section-toggle-arrow arrow-right" />
             </div>
           ) : null}
@@ -6432,7 +6439,7 @@ export function App() {
         >
           <div className="three-stats-grid">
             {threeNumberSnapshot.map((item) => (
-              <div className={`six-stat-chip three-stat-chip${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? " dimmed" : ""}`} key={item.wi} title={item.label}>
+              <div className={`six-stat-chip three-stat-chip${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={item.wi} title={item.label}>
                 <span className="six-stat-end">{item.end}</span>
                 <span className="six-stat-arrow" aria-hidden="true" />
                 <span className="six-stat-start">{item.start}</span>
@@ -8916,6 +8923,29 @@ export function App() {
                         onChange={() => setDraftWindowMode("fibonacci")}
                       />
                       <span>斐波那契数字序列</span>
+                    </label>
+                  </div>
+                </section>
+                <section className="config-card config-bets">
+                  <h2><span>快照</span></h2>
+                  <div className="config-option-list">
+                    <label className="config-option-row">
+                      <input
+                        checked={draftThreeNumberHighlightMode === "dim"}
+                        name="three-number-highlight-mode"
+                        onChange={() => setDraftThreeNumberHighlightMode("dim")}
+                        type="radio"
+                      />
+                      <span>最远项变暗显示</span>
+                    </label>
+                    <label className="config-option-row">
+                      <input
+                        checked={draftThreeNumberHighlightMode === "highlight"}
+                        name="three-number-highlight-mode"
+                        onChange={() => setDraftThreeNumberHighlightMode("highlight")}
+                        type="radio"
+                      />
+                      <span>最远项高亮显示</span>
                     </label>
                   </div>
                 </section>

@@ -471,16 +471,31 @@ button:disabled {
 }
 
 .six-stat-chip.dimmed {
+  background: #c9c3ba;
+  border-color: #a69d91;
+  color: #625b52;
+}
+
+.six-stat-chip.dimmed strong {
+  color: #5e554a;
+}
+
+.six-stat-chip.dimmed strong span {
+  background: #bbb4aa;
+  color: #5e554a;
+}
+
+.six-stat-chip.highlight-distant {
   background: #fffaf2;
   border-color: #f0d49b;
   color: #2b241c;
 }
 
-.six-stat-chip.dimmed strong {
+.six-stat-chip.highlight-distant strong {
   color: #684411;
 }
 
-.six-stat-chip.dimmed strong span {
+.six-stat-chip.highlight-distant strong span {
   background: #fffdf9;
   color: #684411;
 }
@@ -1201,14 +1216,26 @@ body:has(.app-shell.theme-dark) {
   background: #3b3520;
 }
 .app-shell.theme-dark .six-stat-chip.dimmed {
+  background: #101010;
+  border-color: #202020;
+  color: #505050;
+}
+.app-shell.theme-dark .six-stat-chip.dimmed strong {
+  color: #555149;
+}
+.app-shell.theme-dark .six-stat-chip.dimmed strong span {
+  background: #181818;
+  color: #555149;
+}
+.app-shell.theme-dark .six-stat-chip.highlight-distant {
   background: #444444;
   border-color: #777777;
   color: #eeeeee;
 }
-.app-shell.theme-dark .six-stat-chip.dimmed strong {
+.app-shell.theme-dark .six-stat-chip.highlight-distant strong {
   color: #ffe0a3;
 }
-.app-shell.theme-dark .six-stat-chip.dimmed strong span {
+.app-shell.theme-dark .six-stat-chip.highlight-distant strong span {
   background: #505050;
   color: #ffe0a3;
 }
@@ -1560,16 +1587,16 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .group-block-row span.current { background: #332d19; color: #e0b870; box-shadow: inset 0 0 0 1px rgba(190, 150, 72, 0.34); }
 .app-shell.theme-dark .group-block-row.highlighted { border-color: rgba(180, 130, 70, 0.44); }
 .app-shell.theme-dark .group-block-row.dimmed {
-  background: #444444;
-  border-color: #777777;
+  background: #101010;
+  border-color: #202020;
 }
 .app-shell.theme-dark .group-block-row.dimmed span {
-  color: #eeeeee;
+  color: #505050;
 }
 .app-shell.theme-dark .group-block-row.dimmed span.current {
-  background: #5a5a5a;
-  color: #ffe0a3;
-  box-shadow: inset 0 0 0 1px rgb(240 190 95 / 0.4);
+  background: #181818;
+  color: #59554e;
+  box-shadow: inset 0 0 0 1px rgb(90 82 68 / 0.16);
 }
 .app-shell.theme-dark .group-block-row-stat { background: #26302b; border-color: #405146; color: #c8c8c8; }
 .app-shell.theme-dark .group-block-row-stat.highlighted { border-color: #75603d; }
@@ -1600,6 +1627,28 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .group-block-x.dimmed,
 .app-shell.theme-dark .group-block-y.dimmed,
 .app-shell.theme-dark .group-block-z.dimmed {
+  background: #111111;
+  border-color: #202020;
+  color: #505050;
+  box-shadow: none;
+  mix-blend-mode: normal;
+}
+.app-shell.theme-dark .group-block-row.highlight-distant {
+  background: #444444;
+  border-color: #777777;
+}
+.app-shell.theme-dark .group-block-row.highlight-distant span {
+  color: #eeeeee;
+}
+.app-shell.theme-dark .group-block-row.highlight-distant span.current {
+  background: #5a5a5a;
+  color: #ffe0a3;
+  box-shadow: inset 0 0 0 1px rgb(240 190 95 / 0.4);
+}
+.app-shell.theme-dark .group-block-cell.highlight-distant,
+.app-shell.theme-dark .group-block-x.highlight-distant,
+.app-shell.theme-dark .group-block-y.highlight-distant,
+.app-shell.theme-dark .group-block-z.highlight-distant {
   background: #484848;
   border-color: #777777;
   color: #eeeeee;
@@ -2948,18 +2997,18 @@ body:has(.app-shell.theme-dark) {
 }
 
 .group-block-row.dimmed {
-  background: #fffaf2;
-  border-color: #e7c987;
+  background: #c4beb5;
+  border-color: #9e9589;
 }
 
 .group-block-row.dimmed span {
-  color: #2b241c;
+  color: #61594f;
 }
 
 .group-block-row.dimmed span.current {
-  background: #ffe7ad;
-  color: #5d3f1c;
-  box-shadow: inset 0 0 0 1px rgb(190 142 95 / 0.5);
+  background: #b8b0a5;
+  color: #5d5346;
+  box-shadow: inset 0 0 0 1px rgb(105 95 80 / 0.24);
 }
 
 .group-block-row-stats {
@@ -3077,6 +3126,29 @@ body:has(.app-shell.theme-dark) {
 }
 
 .group-block-cell.dimmed {
+  background: #c5beb4;
+  border-color: #9d9284;
+  color: #60564b;
+  box-shadow: none;
+  mix-blend-mode: normal;
+}
+
+.group-block-row.highlight-distant {
+  background: #fffaf2;
+  border-color: #e7c987;
+}
+
+.group-block-row.highlight-distant span {
+  color: #2b241c;
+}
+
+.group-block-row.highlight-distant span.current {
+  background: #ffe7ad;
+  color: #5d3f1c;
+  box-shadow: inset 0 0 0 1px rgb(190 142 95 / 0.5);
+}
+
+.group-block-cell.highlight-distant {
   background: #fffaf2;
   border-color: #e7c987;
   color: #2b241c;
