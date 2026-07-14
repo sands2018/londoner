@@ -1381,7 +1381,10 @@ export function App() {
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [sixStatsPanelCollapsed, setSixStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.sixStatsPanelCollapsed") === "1");
   const [threeStatsPanelCollapsed, setThreeStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.threeStatsPanelCollapsed") === "1");
-  const [threeNumberDimCount, setThreeNumberDimCount] = useState<3 | 4 | 5 | null>(null);
+  const [threeNumberDimCount, setThreeNumberDimCount] = useState<3 | 4 | 5 | null>(() => {
+    const saved = localStorage.getItem("londoner.threeNumberDimCount");
+    return saved === "3" || saved === "4" || saved === "5" ? Number(saved) as 3 | 4 | 5 : null;
+  });
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [hotStatusCollapsed, setHotStatusCollapsed] = useState(() => localStorage.getItem("londoner.hotStatusCollapsed") === "1");
@@ -6150,7 +6153,12 @@ export function App() {
                     aria-pressed={threeNumberDimCount === value}
                     className={threeNumberDimCount === value ? "selected" : ""}
                     key={value}
-                    onClick={() => setThreeNumberDimCount((current) => current === value ? null : value)}
+                    onClick={() => setThreeNumberDimCount((current) => {
+                      const next = current === value ? null : value;
+                      if (next === null) localStorage.removeItem("londoner.threeNumberDimCount");
+                      else localStorage.setItem("londoner.threeNumberDimCount", String(next));
+                      return next;
+                    })}
                     type="button"
                   >
                     {value}
