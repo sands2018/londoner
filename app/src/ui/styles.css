@@ -8481,6 +8481,275 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   height: 58px;
 }
 
+.desktop-workspace-splitter,
+.desktop-pane-controls,
+.desktop-pane-close {
+  display: none;
+}
+
+.analysis-home {
+  align-content: start;
+  display: grid;
+  gap: var(--app-gap);
+  min-width: 0;
+}
+
+@media screen {
+  body:has(.app-shell.simulator-desktop-active) {
+    overflow-x: hidden;
+  }
+
+  .app-shell.simulator-desktop-active {
+    --desktop-analysis-panel-width: calc(100vw - var(--desktop-game-width) - var(--desktop-splitter-width));
+    --desktop-analysis-left-padding: 10px;
+    --desktop-analysis-right-padding: 16px;
+    --desktop-splitter-width: 3px;
+    --app-direction: row;
+    --app-display: grid;
+    --app-gap: clamp(4px, 0.65dvh, 6px);
+    --app-min-height: 100dvh;
+    --app-padding: 6px var(--desktop-analysis-right-padding) 324px var(--desktop-analysis-left-padding);
+    --dock-action-gap: clamp(3px, 0.45dvh, 4px);
+    --dock-actions-display: grid;
+    --dock-action-margin: 0 0 clamp(3px, 0.55dvh, 5px);
+    --dock-bottom: 0;
+    --dock-margin: 0 auto;
+    --dock-max-width: 520px;
+    --dock-position: fixed;
+    --dock-width: 100%;
+    --key-gap: clamp(3px, 0.45dvh, 4px);
+    --key-height: clamp(36px, 4.2dvh, 39px);
+    --keypad-columns: 10;
+    --menu-font-size: calc(clamp(13px, 1.62dvh, 15px) + var(--font-adjust));
+    --menu-min-height: clamp(30px, 3.45dvh, 32px);
+    --number-font-size: calc(clamp(17px, calc(var(--desktop-analysis-panel-width) * 0.045), 19px) + var(--font-adjust));
+    --queue-cell-size: clamp(22px, calc(var(--desktop-analysis-panel-width) * 0.0555), var(--queue-chip-height));
+    --queue-font-size: calc(clamp(18px, calc(var(--desktop-analysis-panel-width) * 0.046), 20px) + var(--font-adjust));
+    --signal-value-font-size: calc(clamp(18px, calc(var(--desktop-analysis-panel-width) * 0.0465), 20px) + var(--font-adjust));
+    --signal-strong-value-font-size: calc(clamp(19px, calc(var(--desktop-analysis-panel-width) * 0.0485), 21px) + var(--font-adjust));
+    --stat-value-font-size: calc(clamp(15px, calc(var(--desktop-analysis-panel-width) * 0.04), 17px) + var(--font-adjust));
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width));
+    margin: 0;
+    max-width: none;
+    min-height: 100dvh;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: auto;
+  }
+
+  .app-shell.simulator-desktop-active .analysis-home {
+    margin: 0 auto;
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .app-shell.simulator-desktop-active .top-stats-strip {
+    font-size: clamp(14px, calc(var(--desktop-analysis-panel-width) * 0.0345), 17px);
+  }
+
+  .app-shell.simulator-desktop-active .summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell.simulator-desktop-active .six-stats-panel:not(.collapsed),
+  .app-shell.simulator-desktop-active .columns-panel:not(.collapsed) {
+    display: block;
+  }
+
+  .app-shell.simulator-desktop-active .finished-line {
+    display: flex;
+  }
+
+  .app-shell.simulator-desktop-active .summary-grid:not(.collapsed) {
+    display: grid;
+  }
+
+  .app-shell.simulator-desktop-active.desktop-analysis-closed {
+    left: 100vw;
+    min-height: 0;
+    padding: 0;
+    right: auto;
+    width: 0;
+  }
+
+  .app-shell.simulator-desktop-active.desktop-analysis-closed > :not(.simulator-screen):not(.modal-backdrop) {
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .app-shell.simulator-desktop-active .input-dock {
+    --dock-padding: clamp(4px, 0.55dvh, 5px) 6px 10px;
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-left-padding));
+    margin: 0 auto;
+    max-width: 520px;
+    right: var(--desktop-analysis-right-padding);
+    width: min(520px, calc(var(--desktop-analysis-panel-width) - var(--desktop-analysis-left-padding) - var(--desktop-analysis-right-padding)));
+  }
+
+  .app-shell.simulator-desktop-active.desktop-analysis-closed .input-dock,
+  .app-shell.simulator-desktop-active.desktop-analysis-closed .keyboard-reopen {
+    display: none;
+  }
+
+  .app-shell.simulator-desktop-active .data-screen:not(.simulator-screen),
+  .app-shell.simulator-desktop-active .prediction-screen,
+  .app-shell.simulator-desktop-active .shot-screen {
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-left-padding));
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 520px;
+    right: var(--desktop-analysis-right-padding);
+    transform: none;
+    width: min(520px, calc(var(--desktop-analysis-panel-width) - var(--desktop-analysis-left-padding) - var(--desktop-analysis-right-padding)));
+  }
+
+  .simulator-screen.desktop-mode.desktop-split-pane {
+    left: 0;
+    right: auto;
+    width: var(--desktop-game-width);
+  }
+
+  .simulator-screen.desktop-mode.desktop-game-only {
+    width: 100vw;
+  }
+
+  .desktop-workspace-splitter {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    bottom: 0;
+    cursor: col-resize;
+    display: flex;
+    justify-content: center;
+    left: calc(var(--desktop-game-width) - 6px);
+    position: fixed;
+    top: 0;
+    touch-action: none;
+    width: 15px;
+    z-index: 50;
+  }
+
+  .desktop-workspace-splitter::before {
+    background: #2d302c;
+    bottom: 0;
+    content: "";
+    left: 6px;
+    position: absolute;
+    top: 0;
+    width: var(--desktop-splitter-width);
+  }
+
+  .desktop-workspace-splitter span {
+    display: none;
+  }
+
+  .desktop-workspace-splitter:hover,
+  .desktop-workspace-splitter:focus-visible {
+    background: transparent;
+    outline: 0;
+  }
+
+  .desktop-workspace-splitter:hover::before,
+  .desktop-workspace-splitter:focus-visible::before {
+    background: #45483f;
+  }
+
+  .desktop-pane-close {
+    align-items: center;
+    background: rgb(34 35 32 / 0.72);
+    border: 0;
+    border-radius: 5px;
+    color: #796b4c;
+    display: flex;
+    height: 28px;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    width: 28px;
+  }
+
+  .desktop-pane-close:hover {
+    background: rgb(57 58 53 / 0.9);
+    color: #a99465;
+  }
+
+  .desktop-pane-close:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .desktop-pane-close::after {
+    background: #1b1c1a;
+    border: 1px solid #343229;
+    border-radius: 3px;
+    color: #857651;
+    content: attr(data-tooltip);
+    font-size: 12px;
+    font-weight: var(--weight-regular);
+    line-height: 1;
+    opacity: 0;
+    padding: 5px 7px;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 5px);
+    transform: translateY(-2px);
+    transition: opacity 100ms ease, transform 100ms ease;
+    visibility: hidden;
+    white-space: nowrap;
+    z-index: 52;
+  }
+
+  .desktop-pane-close:hover::after,
+  .desktop-pane-close:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  .desktop-pane-controls {
+    display: flex;
+    gap: 1px;
+    position: fixed;
+    right: calc(100vw - var(--desktop-game-width) + 2px);
+    top: 8px;
+    z-index: 51;
+  }
+
+  .desktop-pane-icon {
+    border: 1px solid currentcolor;
+    border-radius: 4px;
+    display: block;
+    height: 15px;
+    overflow: hidden;
+    position: relative;
+    width: 20px;
+  }
+
+  .desktop-pane-icon::before {
+    background: currentcolor;
+    bottom: 0;
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 50%;
+  }
+
+  .desktop-pane-icon-left::before {
+    border-radius: 2px 0 0 2px;
+    left: 0;
+  }
+
+  .desktop-pane-icon-right::before {
+    border-radius: 0 2px 2px 0;
+    right: 0;
+  }
+
+  .simulator-screen.desktop-mode.desktop-game-only .desktop-pane-controls {
+    right: 2px;
+  }
+}
+
 .message-actions button {
   background: #fbfaf6;
   border: 1px solid #cbc4b7;
