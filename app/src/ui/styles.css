@@ -8506,28 +8506,35 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     --desktop-splitter-width: 3px;
     --app-direction: row;
     --app-display: grid;
-    --app-gap: clamp(4px, 0.65dvh, 6px);
+    --app-gap: 6px;
     --app-min-height: 100dvh;
-    --app-padding: 6px var(--desktop-analysis-right-padding) 324px var(--desktop-analysis-left-padding);
-    --dock-action-gap: clamp(3px, 0.45dvh, 4px);
+    --app-padding: 0;
+    --control-font-size: calc(15px + var(--font-adjust));
+    --control-min-height: 32px;
+    --dock-action-gap: 4px;
     --dock-actions-display: grid;
-    --dock-action-margin: 0 0 clamp(3px, 0.55dvh, 5px);
+    --dock-action-margin: 0 0 5px;
     --dock-bottom: 0;
     --dock-margin: 0 auto;
     --dock-max-width: 520px;
-    --dock-position: fixed;
+    --dock-position: sticky;
     --dock-width: 100%;
-    --key-gap: clamp(3px, 0.45dvh, 4px);
-    --key-height: clamp(36px, 4.2dvh, 39px);
+    --key-gap: 4px;
+    --key-height: 39px;
     --keypad-columns: 10;
-    --menu-font-size: calc(clamp(13px, 1.62dvh, 15px) + var(--font-adjust));
-    --menu-min-height: clamp(30px, 3.45dvh, 32px);
-    --number-font-size: calc(clamp(17px, calc(var(--desktop-analysis-panel-width) * 0.045), 19px) + var(--font-adjust));
-    --queue-cell-size: clamp(22px, calc(var(--desktop-analysis-panel-width) * 0.0555), var(--queue-chip-height));
-    --queue-font-size: calc(clamp(18px, calc(var(--desktop-analysis-panel-width) * 0.046), 20px) + var(--font-adjust));
-    --signal-value-font-size: calc(clamp(18px, calc(var(--desktop-analysis-panel-width) * 0.0465), 20px) + var(--font-adjust));
-    --signal-strong-value-font-size: calc(clamp(19px, calc(var(--desktop-analysis-panel-width) * 0.0485), 21px) + var(--font-adjust));
-    --stat-value-font-size: calc(clamp(15px, calc(var(--desktop-analysis-panel-width) * 0.04), 17px) + var(--font-adjust));
+    --menu-font-size: calc(15px + var(--font-adjust));
+    --menu-min-height: 32px;
+    --number-font-size: calc(19px + var(--font-adjust));
+    --queue-cell-size: 32px;
+    --queue-chip-height: 32px;
+    --queue-collapsed-padding-block: 1px;
+    --queue-font-size: calc(20px + var(--font-adjust));
+    --queue-padding-block: 12px;
+    --signal-label-height: 27px;
+    --signal-padding: 5px 5px;
+    --signal-value-font-size: calc(20px + var(--font-adjust));
+    --signal-strong-value-font-size: calc(21px + var(--font-adjust));
+    --stat-value-font-size: calc(17px + var(--font-adjust));
     left: calc(var(--desktop-game-width) + var(--desktop-splitter-width));
     margin: 0;
     max-width: none;
@@ -8539,13 +8546,44 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .app-shell.simulator-desktop-active .analysis-home {
-    margin: 0 auto;
+    background: var(--dock-background);
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-gap);
+    height: var(--desktop-analysis-design-height);
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-offset));
+    margin: 0;
+    max-width: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 6px var(--desktop-analysis-right-padding) 0 var(--desktop-analysis-left-padding);
+    position: fixed;
+    top: 0;
+    transform: scale(var(--desktop-analysis-scale));
+    transform-origin: top left;
+    width: var(--desktop-analysis-design-width);
+  }
+
+  .app-shell.simulator-desktop-active .analysis-home > :not(.input-dock):not(.keyboard-reopen) {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-right: auto;
     max-width: 520px;
     width: 100%;
   }
 
   .app-shell.simulator-desktop-active .top-stats-strip {
-    font-size: clamp(14px, calc(var(--desktop-analysis-panel-width) * 0.0345), 17px);
+    flex: 0 0 auto;
+    font-size: 17px;
+  }
+
+  .app-shell.simulator-desktop-active .queue-panel.expanded {
+    padding-top: 1px;
+  }
+
+  .app-shell.simulator-desktop-active .queue-row {
+    column-gap: 1px;
+    row-gap: 1px;
   }
 
   .app-shell.simulator-desktop-active .summary-grid {
@@ -8579,12 +8617,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .app-shell.simulator-desktop-active .input-dock {
-    --dock-padding: clamp(4px, 0.55dvh, 5px) 6px 10px;
-    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-left-padding));
-    margin: 0 auto;
+    --dock-padding: 5px 6px 10px;
+    bottom: 0;
+    flex: 0 0 auto;
+    left: auto;
+    margin: auto auto 0;
     max-width: 520px;
-    right: var(--desktop-analysis-right-padding);
-    width: min(520px, calc(var(--desktop-analysis-panel-width) - var(--desktop-analysis-left-padding) - var(--desktop-analysis-right-padding)));
+    position: sticky;
+    right: auto;
+    width: min(520px, 100%);
   }
 
   .app-shell.simulator-desktop-active.desktop-analysis-closed .input-dock,
@@ -8595,13 +8636,37 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   .app-shell.simulator-desktop-active .data-screen:not(.simulator-screen),
   .app-shell.simulator-desktop-active .prediction-screen,
   .app-shell.simulator-desktop-active .shot-screen {
-    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-left-padding));
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 520px;
-    right: var(--desktop-analysis-right-padding);
-    transform: none;
-    width: min(520px, calc(var(--desktop-analysis-panel-width) - var(--desktop-analysis-left-padding) - var(--desktop-analysis-right-padding)));
+    bottom: auto;
+    height: var(--desktop-analysis-design-height);
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-offset));
+    margin: 0;
+    max-height: none;
+    max-width: none;
+    right: auto;
+    top: 0;
+    transform: scale(var(--desktop-analysis-scale));
+    transform-origin: top left;
+    width: var(--desktop-analysis-design-width);
+  }
+
+  .app-shell.simulator-desktop-active .stats-bottom-actions {
+    padding-bottom: 3px;
+  }
+
+  .app-shell.simulator-desktop-active .tabs-bottom {
+    padding-bottom: 4px;
+  }
+
+  .app-shell.simulator-desktop-active > .config-backdrop,
+  .app-shell.simulator-desktop-active > .modal-backdrop {
+    bottom: auto;
+    height: var(--desktop-analysis-design-height);
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-offset));
+    right: auto;
+    top: 0;
+    transform: scale(var(--desktop-analysis-scale));
+    transform-origin: top left;
+    width: var(--desktop-analysis-design-width);
   }
 
   .simulator-screen.desktop-mode.desktop-split-pane {

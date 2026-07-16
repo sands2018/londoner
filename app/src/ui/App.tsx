@@ -139,7 +139,10 @@ const simulatorDesktopDesignHeight = 1080;
 const simulatorDesktopViewportPadding = 16;
 const simulatorDesktopAnalysisDesignWidth = 576;
 const simulatorDesktopAnalysisDesignHeight = 1080;
+const simulatorDesktopAnalysisLogicalHeight = 900;
 const simulatorDesktopDefaultAnalysisAspect = simulatorDesktopAnalysisDesignWidth / simulatorDesktopAnalysisDesignHeight;
+const simulatorDesktopMaximumAnalysisScaleAspect = 7 / 10;
+const simulatorDesktopAnalysisLogicalWidth = simulatorDesktopDefaultAnalysisAspect * simulatorDesktopAnalysisLogicalHeight;
 const simulatorDesktopMinimumDragGameWidth = 320;
 const simulatorDesktopMinimumDragAnalysisWidth = 240;
 const simulatorDesktopSplitterLayoutWidth = 3;
@@ -1595,7 +1598,7 @@ export function App() {
   const sharedUsernameNormalized = sharedUsername.trim().toLowerCase();
   const canUseSmartSignals = sharedConnected;
   const canUseQuality124 = canUseSmartSignals && ["ww", "wzs"].includes(sharedUsernameNormalized);
-  const canUseSimulator = sharedConnected && ["ww", "wzs"].includes(sharedUsernameNormalized);
+  const canUseSimulator = sharedConnected && ["ww", "wzs", "srx", "sxr", "ybh"].includes(sharedUsernameNormalized);
   const simulatorUsesDesktopLayout = simulatorDesktopMode;
   const simulatorDesktopWorkspaceActive = canUseSimulator && simulatorOpen && simulatorUsesDesktopLayout;
   const simulatorDesktopAnalysisWidth = simulatorDesktopAnalysisOpen
@@ -1605,12 +1608,30 @@ export function App() {
     ? Math.max(0, simulatorDesktopViewportSize.width - simulatorDesktopAnalysisWidth - simulatorDesktopSplitterLayoutWidth)
     : simulatorDesktopViewportSize.width;
   const simulatorDesktopGameRatio = simulatorDesktopGameWidth / simulatorDesktopViewportSize.width;
+  const simulatorDesktopScaledAnalysisWidth = simulatorDesktopAnalysisOpen
+    ? Math.min(
+        simulatorDesktopAnalysisWidth,
+        simulatorDesktopViewportSize.height * simulatorDesktopMaximumAnalysisScaleAspect,
+      )
+    : simulatorDesktopViewportSize.height * simulatorDesktopDefaultAnalysisAspect;
+  const simulatorDesktopAnalysisScale = simulatorDesktopScaledAnalysisWidth / simulatorDesktopAnalysisLogicalWidth;
+  const simulatorDesktopAnalysisLogicalCanvasHeight = simulatorDesktopViewportSize.height / simulatorDesktopAnalysisScale;
+  const simulatorDesktopAnalysisOffset = simulatorDesktopAnalysisOpen
+    ? Math.max(0, (simulatorDesktopAnalysisWidth - simulatorDesktopScaledAnalysisWidth) / 2)
+    : 0;
   const simulatorDesktopWorkspaceStyle = simulatorDesktopWorkspaceActive
     ? ({
+        "--desktop-analysis-design-width": `${simulatorDesktopAnalysisLogicalWidth}px`,
+        "--desktop-analysis-design-height": `${simulatorDesktopAnalysisLogicalCanvasHeight}px`,
+        "--desktop-analysis-offset": `${simulatorDesktopAnalysisOffset}px`,
+        "--desktop-analysis-scale": simulatorDesktopAnalysisScale,
         "--desktop-game-width": `${simulatorDesktopGameWidth}px`,
-      } as CSSProperties & Record<"--desktop-game-width", string>)
+      } as CSSProperties & Record<
+        "--desktop-analysis-design-width" | "--desktop-analysis-design-height" | "--desktop-analysis-offset" | "--desktop-analysis-scale" | "--desktop-game-width",
+        string | number
+      >)
     : undefined;
-  const useSrxButtonLabels = sharedConnected && sharedUsernameNormalized === "srx";
+  const useSrxButtonLabels = sharedConnected && ["srx", "sxr", "ybh"].includes(sharedUsernameNormalized);
   const homeButtonLabels = {
     pass: useSrxButtonLabels ? "传递" : "pass",
     input: useSrxButtonLabels ? "输入" : "input",
