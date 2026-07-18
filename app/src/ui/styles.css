@@ -1155,7 +1155,7 @@ body:has(.app-shell.theme-dark) {
 .app-shell.theme-dark .signal-watch { background: rgba(34, 34, 34, 0.68); border-color: transparent; }
 .app-shell.theme-dark .signal-strong { background: rgba(34, 34, 34, 0.68); border-color: transparent; }
 .app-shell.theme-dark .signal-label span { color: #b3b3b3; }
-.app-shell.theme-dark .signal-label strong { color: #c8a958; }
+.app-shell.theme-dark .signal-label strong { color: #d39a4a; }
 
 /* --- Hot status panel --- */
 .app-shell.theme-dark .hot-status-panel {
@@ -4957,7 +4957,7 @@ html.iphone .state-reading p {
 .config-option-list-inline .config-option-row {
   gap: 4px;
   flex: 0 1 auto;
-  font-size: calc(var(--dialog-row-font-size) + 2px);
+  font-size: calc(var(--dialog-row-font-size) + 1px);
   padding-left: 0;
   padding-right: 0;
   white-space: nowrap;
