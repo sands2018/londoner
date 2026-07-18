@@ -7330,6 +7330,73 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   content: "";
 }
 
+.config-analysis-scale {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) 42px;
+  padding: 2px 16px 14px;
+}
+
+.config-analysis-scale > span,
+.config-analysis-scale > strong {
+  color: #b9b4aa;
+  font-size: var(--dialog-row-font-size);
+  font-weight: var(--weight-ui);
+}
+
+.config-analysis-scale > strong {
+  color: #b99862;
+  text-align: right;
+}
+
+.config-analysis-scale.disabled {
+  opacity: 0.36;
+}
+
+.config-analysis-scale input[type="range"] {
+  appearance: none;
+  background: transparent;
+  height: 20px;
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+  -webkit-appearance: none;
+}
+
+.config-analysis-scale input[type="range"]::-webkit-slider-runnable-track {
+  background: #34302a;
+  border: 1px solid #5c4b35;
+  border-radius: 999px;
+  height: 4px;
+}
+
+.config-analysis-scale input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #b99862;
+  border: 1.5px solid #806744;
+  border-radius: 50%;
+  height: 16px;
+  margin-top: -7px;
+  width: 16px;
+}
+
+.config-analysis-scale input[type="range"]::-moz-range-track {
+  background: #34302a;
+  border: 1px solid #5c4b35;
+  border-radius: 999px;
+  height: 4px;
+}
+
+.config-analysis-scale input[type="range"]::-moz-range-thumb {
+  background: #b99862;
+  border: 1.5px solid #806744;
+  border-radius: 50%;
+  height: 16px;
+  width: 16px;
+}
+
 .app-shell.theme-dark .config-device-mode-options .config-tool-toggle:has(input:checked)::before {
   background: #242424;
   background-image: radial-gradient(circle, #b99862 0 6.5px, transparent 6.8px);

@@ -134,6 +134,7 @@ const simulatorStateKey = "londoner.simulatorState";
 const simulatorDesktopModeKey = "londoner.simulatorDesktopMode";
 const simulatorDesktopGameRatioKey = "londoner.simulatorDesktopGameRatio";
 const simulatorDesktopAnalysisAspectKey = "londoner.simulatorDesktopAnalysisAspect";
+const simulatorDesktopAnalysisZoomKey = "londoner.simulatorDesktopAnalysisZoom";
 const simulatorDesktopDesignWidth = 1920;
 const simulatorDesktopDesignHeight = 1080;
 const simulatorDesktopViewportPadding = 16;
@@ -146,6 +147,9 @@ const simulatorDesktopAnalysisLogicalWidth = simulatorDesktopDefaultAnalysisAspe
 const simulatorDesktopMinimumDragGameWidth = 320;
 const simulatorDesktopMinimumDragAnalysisWidth = 240;
 const simulatorDesktopSplitterLayoutWidth = 3;
+const simulatorDesktopAnalysisZoomMinimum = 0.75;
+const simulatorDesktopAnalysisZoomMaximum = 1.25;
+const simulatorDesktopAnalysisZoomStep = 0.05;
 const currentSessionIdKey = "londoner.currentSessionId";
 const currentAutoTableSessionId = "__current_auto_table__";
 const colRowScopeKey = "londoner.colRowScope";
@@ -176,6 +180,17 @@ function clampSimulatorDesktopAnalysisAspect(value: number, viewportWidth: numbe
   );
   const safeValue = Number.isFinite(value) && value > 0 ? value : simulatorDesktopDefaultAnalysisAspect;
   return Math.min(maximumAspect, Math.max(minimumAspect, safeValue));
+}
+
+function getSimulatorDesktopAnalysisWidth(
+  viewportWidth: number,
+  viewportHeight: number,
+  aspect: number,
+  zoom: number,
+): number {
+  const desiredWidth = Math.max(1, viewportHeight * aspect * zoom);
+  const maximumWidth = Math.max(1, viewportWidth - simulatorDesktopMinimumDragGameWidth - simulatorDesktopSplitterLayoutWidth);
+  return Math.min(desiredWidth, maximumWidth);
 }
 
 function encodeBase37(value: number, digits: number): RouletteNumber[] {
@@ -250,6 +265,12 @@ function loadSimulatorDeviceMode(): SimulatorDeviceMode {
   if (stored === "1") return "desktop";
   if (stored === "0") return "mobile";
   return "auto";
+}
+
+function loadSimulatorDesktopAnalysisZoom(): number {
+  const stored = Number.parseFloat(localStorage.getItem(simulatorDesktopAnalysisZoomKey) ?? "");
+  if (!Number.isFinite(stored)) return 1;
+  return Math.min(simulatorDesktopAnalysisZoomMaximum, Math.max(simulatorDesktopAnalysisZoomMinimum, stored));
 }
 const classicStatScopes: readonly number[] = [8, 13, 21, 40, 60, 100, -1];
 const fibonacciStatScopes: readonly number[] = [8, 13, 21, 34, 55, 89, 144, -1];
@@ -1547,6 +1568,8 @@ export function App() {
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [simulatorDeviceMode, setSimulatorDeviceMode] = useState<SimulatorDeviceMode>(loadSimulatorDeviceMode);
   const [draftSimulatorDeviceMode, setDraftSimulatorDeviceMode] = useState<SimulatorDeviceMode>(simulatorDeviceMode);
+  const [simulatorDesktopAnalysisZoom, setSimulatorDesktopAnalysisZoom] = useState(loadSimulatorDesktopAnalysisZoom);
+  const [draftSimulatorDesktopAnalysisZoom, setDraftSimulatorDesktopAnalysisZoom] = useState(simulatorDesktopAnalysisZoom);
   const [simulatorDesktopScale, setSimulatorDesktopScale] = useState(1);
   const [simulatorDesktopViewportSize, setSimulatorDesktopViewportSize] = useState(getSimulatorViewportSize);
   const [simulatorDesktopAnalysisOpen, setSimulatorDesktopAnalysisOpen] = useState(true);
@@ -1614,9 +1637,15 @@ export function App() {
   const simulatorDesktopMode = simulatorDeviceMode === "desktop" || (simulatorDeviceMode === "auto" && detectDesktopDevice());
   const simulatorUsesDesktopLayout = simulatorDesktopMode;
   const simulatorDesktopWorkspaceActive = canUseSimulator && simulatorOpen && simulatorUsesDesktopLayout;
+  const simulatorDesktopAnalysisZoomMultiplier = simulatorDeviceMode === "desktop" ? simulatorDesktopAnalysisZoom : 1;
   const simulatorDesktopAnalysisWidth = simulatorDesktopAnalysisOpen
     ? simulatorDesktopWorkspaceActive
-      ? simulatorDesktopViewportSize.height * simulatorDesktopAnalysisAspect
+      ? getSimulatorDesktopAnalysisWidth(
+          simulatorDesktopViewportSize.width,
+          simulatorDesktopViewportSize.height,
+          simulatorDesktopAnalysisAspect,
+          simulatorDesktopAnalysisZoomMultiplier,
+        )
       : simulatorDesktopViewportSize.width
     : 0;
   const simulatorDesktopGameWidth = simulatorDesktopWorkspaceActive
@@ -1630,11 +1659,11 @@ export function App() {
   const simulatorDesktopScaledAnalysisWidth = simulatorDesktopAnalysisOpen
     ? Math.min(
         simulatorDesktopAnalysisWidth,
-        simulatorDesktopViewportSize.height * simulatorDesktopMaximumAnalysisScaleAspect,
+        simulatorDesktopViewportSize.height * simulatorDesktopMaximumAnalysisScaleAspect * simulatorDesktopAnalysisZoomMultiplier,
       )
-    : simulatorDesktopViewportSize.height * simulatorDesktopDefaultAnalysisAspect;
-  const simulatorDesktopAnalysisScale = simulatorDesktopScaledAnalysisWidth / simulatorDesktopAnalysisLogicalWidth;
-  const simulatorDesktopAnalysisLogicalCanvasHeight = simulatorDesktopViewportSize.height / simulatorDesktopAnalysisScale;
+    : simulatorDesktopViewportSize.height * simulatorDesktopDefaultAnalysisAspect * simulatorDesktopAnalysisZoomMultiplier;
+  const simulatorDesktopAnalysisRenderScale = simulatorDesktopScaledAnalysisWidth / simulatorDesktopAnalysisLogicalWidth;
+  const simulatorDesktopAnalysisLogicalCanvasHeight = simulatorDesktopViewportSize.height / simulatorDesktopAnalysisRenderScale;
   const simulatorDesktopAnalysisOffset = simulatorDesktopAnalysisOpen
     ? Math.max(0, (simulatorDesktopAnalysisWidth - simulatorDesktopScaledAnalysisWidth) / 2)
     : 0;
@@ -1647,7 +1676,7 @@ export function App() {
         "--desktop-analysis-design-height": `${simulatorDesktopAnalysisLogicalCanvasHeight}px`,
         "--desktop-analysis-offset": `${simulatorDesktopAnalysisOffset}px`,
         "--desktop-analysis-origin-left": `${simulatorDesktopAnalysisOriginLeft}px`,
-        "--desktop-analysis-scale": simulatorDesktopAnalysisScale,
+        "--desktop-analysis-scale": simulatorDesktopAnalysisRenderScale,
         "--desktop-game-width": `${simulatorDesktopGameWidth}px`,
       } as CSSProperties & Record<
         "--desktop-analysis-design-width" | "--desktop-analysis-design-height" | "--desktop-analysis-offset" | "--desktop-analysis-origin-left" | "--desktop-analysis-scale" | "--desktop-game-width",
@@ -2626,7 +2655,12 @@ export function App() {
     const updateScale = () => {
       const viewport = getSimulatorViewportSize();
       const analysisWidth = simulatorDesktopAnalysisOpen
-        ? viewport.height * simulatorDesktopAnalysisAspect
+        ? getSimulatorDesktopAnalysisWidth(
+            viewport.width,
+            viewport.height,
+            simulatorDesktopAnalysisAspect,
+            simulatorDesktopAnalysisZoomMultiplier,
+          )
         : 0;
       const gamePaneWidth = simulatorDesktopAnalysisOpen
         ? Math.max(0, viewport.width - analysisWidth - simulatorDesktopSplitterLayoutWidth)
@@ -2649,7 +2683,7 @@ export function App() {
       window.removeEventListener("orientationchange", updateScale);
       window.visualViewport?.removeEventListener("resize", updateScale);
     };
-  }, [simulatorDesktopAnalysisAspect, simulatorDesktopAnalysisOpen, simulatorOpen, simulatorUsesDesktopLayout]);
+  }, [simulatorDesktopAnalysisAspect, simulatorDesktopAnalysisOpen, simulatorDesktopAnalysisZoomMultiplier, simulatorOpen, simulatorUsesDesktopLayout]);
 
   useEffect(() => {
     if (keyboardMode !== onlySupportedKeyboardMode) {
@@ -5008,7 +5042,7 @@ export function App() {
   function updateSimulatorDesktopGameRatio(clientX: number) {
     const viewport = getSimulatorViewportSize();
     const analysisWidth = viewport.width - clientX - simulatorDesktopSplitterLayoutWidth;
-    const nextAspect = analysisWidth / viewport.height;
+    const nextAspect = analysisWidth / (viewport.height * simulatorDesktopAnalysisZoomMultiplier);
     setSimulatorDesktopAnalysisAspect(clampSimulatorDesktopAnalysisAspect(nextAspect, viewport.width, viewport.height));
   }
 
@@ -5044,6 +5078,7 @@ export function App() {
     setDraftWindowMode(windowMode);
     setDraftThreeNumberHighlightMode(threeNumberHighlightMode);
     setDraftSimulatorDeviceMode(simulatorDeviceMode);
+    setDraftSimulatorDesktopAnalysisZoom(simulatorDesktopAnalysisZoom);
     void refreshCasinoTables().then((items) => {
       setDraftCasinoTables(items);
       setDraftSelectedCasinoId("");
@@ -5305,12 +5340,14 @@ export function App() {
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
       setSimulatorDeviceMode(draftSimulatorDeviceMode);
+      setSimulatorDesktopAnalysisZoom(draftSimulatorDesktopAnalysisZoom);
       setThreeNumberHighlightMode(draftThreeNumberHighlightMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
       localStorage.setItem(
         simulatorDesktopModeKey,
         draftSimulatorDeviceMode === "desktop" ? "1" : draftSimulatorDeviceMode === "mobile" ? "0" : "9",
       );
+      localStorage.setItem(simulatorDesktopAnalysisZoomKey, draftSimulatorDesktopAnalysisZoom.toFixed(2));
       localStorage.setItem("londoner.threeNumberHighlightMode", draftThreeNumberHighlightMode);
       setConfigViewOpen(false);
       return;
@@ -9220,6 +9257,20 @@ export function App() {
                         </label>
                       ))}
                     </div>
+                    <label className={`config-analysis-scale${draftSimulatorDeviceMode === "desktop" ? "" : " disabled"}`}>
+                      <span>缩放</span>
+                      <input
+                        aria-valuetext={`${Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%`}
+                        disabled={draftSimulatorDeviceMode !== "desktop"}
+                        max={simulatorDesktopAnalysisZoomMaximum}
+                        min={simulatorDesktopAnalysisZoomMinimum}
+                        onChange={(event) => setDraftSimulatorDesktopAnalysisZoom(Number.parseFloat(event.target.value))}
+                        step={simulatorDesktopAnalysisZoomStep}
+                        type="range"
+                        value={draftSimulatorDesktopAnalysisZoom}
+                      />
+                      <strong>{Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%</strong>
+                    </label>
                   </section>
                 ) : null}
                 {sharedConnected ? (
