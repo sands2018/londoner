@@ -1615,12 +1615,18 @@ export function App() {
   const simulatorUsesDesktopLayout = simulatorDesktopMode;
   const simulatorDesktopWorkspaceActive = canUseSimulator && simulatorOpen && simulatorUsesDesktopLayout;
   const simulatorDesktopAnalysisWidth = simulatorDesktopAnalysisOpen
-    ? simulatorDesktopViewportSize.height * simulatorDesktopAnalysisAspect
+    ? simulatorDesktopWorkspaceActive
+      ? simulatorDesktopViewportSize.height * simulatorDesktopAnalysisAspect
+      : simulatorDesktopViewportSize.width
     : 0;
-  const simulatorDesktopGameWidth = simulatorDesktopAnalysisOpen
-    ? Math.max(0, simulatorDesktopViewportSize.width - simulatorDesktopAnalysisWidth - simulatorDesktopSplitterLayoutWidth)
-    : simulatorDesktopViewportSize.width;
-  const simulatorDesktopGameRatio = simulatorDesktopGameWidth / simulatorDesktopViewportSize.width;
+  const simulatorDesktopGameWidth = simulatorDesktopWorkspaceActive
+    ? simulatorDesktopAnalysisOpen
+      ? Math.max(0, simulatorDesktopViewportSize.width - simulatorDesktopAnalysisWidth - simulatorDesktopSplitterLayoutWidth)
+      : simulatorDesktopViewportSize.width
+    : 0;
+  const simulatorDesktopGameRatio = simulatorDesktopWorkspaceActive
+    ? simulatorDesktopGameWidth / simulatorDesktopViewportSize.width
+    : 0;
   const simulatorDesktopScaledAnalysisWidth = simulatorDesktopAnalysisOpen
     ? Math.min(
         simulatorDesktopAnalysisWidth,
@@ -1632,15 +1638,19 @@ export function App() {
   const simulatorDesktopAnalysisOffset = simulatorDesktopAnalysisOpen
     ? Math.max(0, (simulatorDesktopAnalysisWidth - simulatorDesktopScaledAnalysisWidth) / 2)
     : 0;
-  const simulatorDesktopWorkspaceStyle = simulatorDesktopWorkspaceActive
+  const simulatorDesktopAnalysisOriginLeft =
+    (simulatorDesktopWorkspaceActive ? simulatorDesktopGameWidth + simulatorDesktopSplitterLayoutWidth : 0) +
+    simulatorDesktopAnalysisOffset;
+  const simulatorDesktopWorkspaceStyle = simulatorUsesDesktopLayout
     ? ({
         "--desktop-analysis-design-width": `${simulatorDesktopAnalysisLogicalWidth}px`,
         "--desktop-analysis-design-height": `${simulatorDesktopAnalysisLogicalCanvasHeight}px`,
         "--desktop-analysis-offset": `${simulatorDesktopAnalysisOffset}px`,
+        "--desktop-analysis-origin-left": `${simulatorDesktopAnalysisOriginLeft}px`,
         "--desktop-analysis-scale": simulatorDesktopAnalysisScale,
         "--desktop-game-width": `${simulatorDesktopGameWidth}px`,
       } as CSSProperties & Record<
-        "--desktop-analysis-design-width" | "--desktop-analysis-design-height" | "--desktop-analysis-offset" | "--desktop-analysis-scale" | "--desktop-game-width",
+        "--desktop-analysis-design-width" | "--desktop-analysis-design-height" | "--desktop-analysis-offset" | "--desktop-analysis-origin-left" | "--desktop-analysis-scale" | "--desktop-game-width",
         string | number
       >)
     : undefined;
@@ -6458,7 +6468,7 @@ export function App() {
 
   return (
     <main
-      className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorDesktopWorkspaceActive ? "simulator-desktop-active" : ""} ${simulatorDesktopWorkspaceActive && !simulatorDesktopAnalysisOpen ? "desktop-analysis-closed" : ""}`}
+      className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorUsesDesktopLayout ? "simulator-desktop-layout" : ""} ${simulatorDesktopWorkspaceActive ? "simulator-desktop-active" : ""} ${simulatorDesktopWorkspaceActive && !simulatorDesktopAnalysisOpen ? "desktop-analysis-closed" : ""}`}
       style={simulatorDesktopWorkspaceStyle}
     >
       {simulatorDesktopWorkspaceActive && simulatorDesktopAnalysisOpen ? (

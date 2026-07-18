@@ -8565,20 +8565,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 @media screen {
-  body:has(.app-shell.simulator-desktop-active) {
-    overflow-x: hidden;
-  }
-
-  .app-shell.simulator-desktop-active {
-    --desktop-analysis-panel-width: calc(100vw - var(--desktop-game-width) - var(--desktop-splitter-width));
+  .app-shell.simulator-desktop-layout {
     --desktop-analysis-left-padding: 10px;
-    --desktop-analysis-right-padding: 16px;
+    --desktop-analysis-right-padding: 10px;
     --desktop-splitter-width: 3px;
-    --app-direction: row;
-    --app-display: grid;
     --app-gap: 6px;
     --app-min-height: 100dvh;
     --app-padding: 0;
+    --app-direction: row;
+    --app-display: grid;
     --control-font-size: calc(15px + var(--font-adjust));
     --control-min-height: 32px;
     --dock-action-gap: 4px;
@@ -8605,23 +8600,31 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     --signal-value-font-size: calc(20px + var(--font-adjust));
     --signal-strong-value-font-size: calc(21px + var(--font-adjust));
     --stat-value-font-size: calc(17px + var(--font-adjust));
-    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width));
     margin: 0;
     max-width: none;
     min-height: 100dvh;
+    width: 100%;
+  }
+
+  body:has(.app-shell.simulator-desktop-layout) {
+    overflow-x: hidden;
+  }
+
+  .app-shell.simulator-desktop-active {
+    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width));
     position: absolute;
     right: 0;
     top: 0;
     width: auto;
   }
 
-  .app-shell.simulator-desktop-active .analysis-home {
+  .app-shell.simulator-desktop-layout .analysis-home {
     background: var(--dock-background);
     display: flex;
     flex-direction: column;
     gap: var(--app-gap);
     height: var(--desktop-analysis-design-height);
-    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-offset));
+    left: var(--desktop-analysis-origin-left);
     margin: 0;
     max-width: none;
     overflow-x: hidden;
@@ -8634,7 +8637,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     width: var(--desktop-analysis-design-width);
   }
 
-  .app-shell.simulator-desktop-active .analysis-home > :not(.input-dock):not(.keyboard-reopen) {
+  .app-shell.simulator-desktop-layout .analysis-home > :not(.input-dock):not(.keyboard-reopen) {
     flex: 0 0 auto;
     margin-left: auto;
     margin-right: auto;
@@ -8642,34 +8645,56 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     width: 100%;
   }
 
-  .app-shell.simulator-desktop-active .top-stats-strip {
+  .app-shell.simulator-desktop-layout .top-stats-strip {
     flex: 0 0 auto;
     font-size: 17px;
   }
 
-  .app-shell.simulator-desktop-active .queue-panel.expanded {
+  .app-shell.simulator-desktop-layout .queue-panel.expanded {
     padding-top: 1px;
   }
 
-  .app-shell.simulator-desktop-active .queue-row {
-    column-gap: 1px;
-    row-gap: 1px;
+  .app-shell.simulator-desktop-layout .queue-row {
+    column-gap: 2px;
+    row-gap: 2px;
   }
 
-  .app-shell.simulator-desktop-active .summary-grid {
+  .app-shell.simulator-desktop-layout .queue-panel {
+    background: #292929;
+  }
+
+  .app-shell.simulator-desktop-layout .queue-chip.number-red {
+    background: #3a2428;
+    border-color: #57333b;
+    color: #e4e4e4;
+  }
+
+  .app-shell.simulator-desktop-layout .queue-chip.number-black {
+    background: #111111;
+    border-color: #363636;
+    color: #e4e4e4;
+  }
+
+  .app-shell.simulator-desktop-layout .queue-chip.number-green {
+    background: #1c3527;
+    border-color: #31563e;
+    color: #e4e4e4;
+  }
+
+  .app-shell.simulator-desktop-layout .summary-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .app-shell.simulator-desktop-active .six-stats-panel:not(.collapsed),
-  .app-shell.simulator-desktop-active .columns-panel:not(.collapsed) {
+  .app-shell.simulator-desktop-layout .six-stats-panel:not(.collapsed),
+  .app-shell.simulator-desktop-layout .columns-panel:not(.collapsed) {
     display: block;
   }
 
-  .app-shell.simulator-desktop-active .finished-line {
+  .app-shell.simulator-desktop-layout .finished-line {
     display: flex;
   }
 
-  .app-shell.simulator-desktop-active .summary-grid:not(.collapsed) {
+  .app-shell.simulator-desktop-layout .summary-grid:not(.collapsed) {
     display: grid;
   }
 
@@ -8686,8 +8711,8 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     visibility: hidden;
   }
 
-  .app-shell.simulator-desktop-active .input-dock {
-    --dock-padding: 5px 6px 10px;
+  .app-shell.simulator-desktop-layout .input-dock {
+    --dock-padding: 5px 0 10px;
     bottom: 0;
     flex: 0 0 auto;
     left: auto;
@@ -8703,12 +8728,12 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     display: none;
   }
 
-  .app-shell.simulator-desktop-active .data-screen:not(.simulator-screen),
-  .app-shell.simulator-desktop-active .prediction-screen,
-  .app-shell.simulator-desktop-active .shot-screen {
+  .app-shell.simulator-desktop-layout .data-screen:not(.simulator-screen),
+  .app-shell.simulator-desktop-layout .prediction-screen,
+  .app-shell.simulator-desktop-layout .shot-screen {
     bottom: auto;
     height: var(--desktop-analysis-design-height);
-    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-offset));
+    left: var(--desktop-analysis-origin-left);
     margin: 0;
     max-height: none;
     max-width: none;
@@ -8719,19 +8744,19 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     width: var(--desktop-analysis-design-width);
   }
 
-  .app-shell.simulator-desktop-active .stats-bottom-actions {
+  .app-shell.simulator-desktop-layout .stats-bottom-actions {
     padding-bottom: 3px;
   }
 
-  .app-shell.simulator-desktop-active .tabs-bottom {
+  .app-shell.simulator-desktop-layout .tabs-bottom {
     padding-bottom: 4px;
   }
 
-  .app-shell.simulator-desktop-active > .config-backdrop,
-  .app-shell.simulator-desktop-active > .modal-backdrop {
+  .app-shell.simulator-desktop-layout > .config-backdrop,
+  .app-shell.simulator-desktop-layout > .modal-backdrop {
     bottom: auto;
     height: var(--desktop-analysis-design-height);
-    left: calc(var(--desktop-game-width) + var(--desktop-splitter-width) + var(--desktop-analysis-offset));
+    left: var(--desktop-analysis-origin-left);
     right: auto;
     top: 0;
     transform: scale(var(--desktop-analysis-scale));
