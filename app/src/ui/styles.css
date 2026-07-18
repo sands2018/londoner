@@ -8731,21 +8731,21 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .app-shell.simulator-desktop-layout .queue-chip.number-red {
-    background: #3a2428;
+    background: #472a20;
     border-color: #57333b;
-    color: #e4e4e4;
+    color: #dddddd;
   }
 
   .app-shell.simulator-desktop-layout .queue-chip.number-black {
     background: #111111;
     border-color: #363636;
-    color: #e4e4e4;
+    color: #dddddd;
   }
 
   .app-shell.simulator-desktop-layout .queue-chip.number-green {
-    background: #1c3527;
+    background: #1d462e;
     border-color: #31563e;
-    color: #e4e4e4;
+    color: #dddddd;
   }
 
   .app-shell.simulator-desktop-layout .summary-grid {
