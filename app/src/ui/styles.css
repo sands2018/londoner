@@ -4947,6 +4947,22 @@ html.iphone .state-reading p {
   padding: 10px 0;
 }
 
+.config-option-list-inline {
+  align-items: center;
+  display: flex;
+  gap: 28px;
+  padding: 10px 16px;
+}
+
+.config-option-list-inline .config-option-row {
+  gap: 4px;
+  flex: 0 1 auto;
+  font-size: calc(var(--dialog-row-font-size) + 2px);
+  padding-left: 0;
+  padding-right: 0;
+  white-space: nowrap;
+}
+
 .config-option-row {
   align-items: center;
   color: #5f5548;
@@ -7272,6 +7288,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   align-items: center;
   display: flex;
   gap: 8px;
+  justify-content: center;
   padding: 12px;
 }
 
@@ -7285,6 +7302,59 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   min-height: 38px;
   min-width: 104px;
   padding: 0 18px;
+}
+
+.config-device-mode-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 10px 16px;
+}
+
+.config-device-mode-options .config-tool-toggle {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  gap: 4px;
+  min-height: var(--dialog-row-height);
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.config-device-mode-options .config-tool-toggle::before {
+  background: transparent;
+  border-color: #806744;
+  border-width: 1.75px;
+  border-radius: 50%;
+  box-shadow: none;
+  content: "";
+}
+
+.app-shell.theme-dark .config-device-mode-options .config-tool-toggle:has(input:checked)::before {
+  background: #242424;
+  background-image: radial-gradient(circle, #b99862 0 6.5px, transparent 6.8px);
+  border-color: #806744;
+  border-width: 1.75px;
+  box-shadow: none;
+  content: "";
+}
+
+.config-option-list-inline .config-option-row::before {
+  background: transparent;
+  border-color: #806744;
+  border-radius: 50%;
+  border-width: 1.75px;
+  box-shadow: none;
+  content: "";
+}
+
+.app-shell.theme-dark .config-option-list-inline .config-option-row:has(input:checked)::before {
+  background: #242424;
+  background-image: radial-gradient(circle, #b99862 0 6.5px, transparent 6.8px);
+  border-color: #806744;
+  border-width: 1.75px;
+  box-shadow: none;
+  content: "";
 }
 
 .config-tool-toggle {

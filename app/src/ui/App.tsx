@@ -163,6 +163,10 @@ function getSimulatorViewportSize(): { width: number; height: number } {
   };
 }
 
+function detectDesktopDevice(): boolean {
+  return window.innerWidth >= 900 && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 function clampSimulatorDesktopAnalysisAspect(value: number, viewportWidth: number, viewportHeight: number): number {
   const safeHeight = Math.max(1, viewportHeight);
   const minimumAspect = simulatorDesktopMinimumDragAnalysisWidth / safeHeight;
@@ -239,6 +243,14 @@ function sanitizeManualTableId(tableId: string | undefined): string | undefined 
 }
 
 type WindowMode = "classic" | "fibonacci";
+type SimulatorDeviceMode = "auto" | "desktop" | "mobile";
+
+function loadSimulatorDeviceMode(): SimulatorDeviceMode {
+  const stored = localStorage.getItem(simulatorDesktopModeKey);
+  if (stored === "1") return "desktop";
+  if (stored === "0") return "mobile";
+  return "auto";
+}
 const classicStatScopes: readonly number[] = [8, 13, 21, 40, 60, 100, -1];
 const fibonacciStatScopes: readonly number[] = [8, 13, 21, 34, 55, 89, 144, -1];
 const classicColRowScopes: readonly number[] = [18, 36, 72, 144, 288, -1];
@@ -1533,8 +1545,8 @@ export function App() {
   const [shotBusy, setShotBusy] = useState(false);
   const [shotCount, setShotCount] = useState(0);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
-  const [simulatorDesktopMode, setSimulatorDesktopMode] = useState(() => localStorage.getItem(simulatorDesktopModeKey) === "1");
-  const [draftSimulatorDesktopMode, setDraftSimulatorDesktopMode] = useState(simulatorDesktopMode);
+  const [simulatorDeviceMode, setSimulatorDeviceMode] = useState<SimulatorDeviceMode>(loadSimulatorDeviceMode);
+  const [draftSimulatorDeviceMode, setDraftSimulatorDeviceMode] = useState<SimulatorDeviceMode>(simulatorDeviceMode);
   const [simulatorDesktopScale, setSimulatorDesktopScale] = useState(1);
   const [simulatorDesktopViewportSize, setSimulatorDesktopViewportSize] = useState(getSimulatorViewportSize);
   const [simulatorDesktopAnalysisOpen, setSimulatorDesktopAnalysisOpen] = useState(true);
@@ -1599,6 +1611,7 @@ export function App() {
   const canUseSmartSignals = sharedConnected;
   const canUseQuality124 = canUseSmartSignals && ["ww", "wzs"].includes(sharedUsernameNormalized);
   const canUseSimulator = sharedConnected && ["ww", "wzs", "srx", "sxr", "ybh"].includes(sharedUsernameNormalized);
+  const simulatorDesktopMode = simulatorDeviceMode === "desktop" || (simulatorDeviceMode === "auto" && detectDesktopDevice());
   const simulatorUsesDesktopLayout = simulatorDesktopMode;
   const simulatorDesktopWorkspaceActive = canUseSimulator && simulatorOpen && simulatorUsesDesktopLayout;
   const simulatorDesktopAnalysisWidth = simulatorDesktopAnalysisOpen
@@ -5020,7 +5033,7 @@ export function App() {
     reloadGameConfigState();
     setDraftWindowMode(windowMode);
     setDraftThreeNumberHighlightMode(threeNumberHighlightMode);
-    setDraftSimulatorDesktopMode(simulatorDesktopMode);
+    setDraftSimulatorDeviceMode(simulatorDeviceMode);
     void refreshCasinoTables().then((items) => {
       setDraftCasinoTables(items);
       setDraftSelectedCasinoId("");
@@ -5281,10 +5294,13 @@ export function App() {
   function saveConfigView() {
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
-      setSimulatorDesktopMode(draftSimulatorDesktopMode);
+      setSimulatorDeviceMode(draftSimulatorDeviceMode);
       setThreeNumberHighlightMode(draftThreeNumberHighlightMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
-      localStorage.setItem(simulatorDesktopModeKey, draftSimulatorDesktopMode ? "1" : "0");
+      localStorage.setItem(
+        simulatorDesktopModeKey,
+        draftSimulatorDeviceMode === "desktop" ? "1" : draftSimulatorDeviceMode === "mobile" ? "0" : "9",
+      );
       localStorage.setItem("londoner.threeNumberHighlightMode", draftThreeNumberHighlightMode);
       setConfigViewOpen(false);
       return;
@@ -9130,10 +9146,11 @@ export function App() {
               <div className="config-body config-body-natural" style={{ gridTemplateColumns: "1fr" }}>
                 <section className="config-card config-bets">
                   <h2><span>统计窗口</span></h2>
-                  <div className="config-option-list">
+                  <div className="config-option-list config-option-list-inline">
                     <label className="config-option-row">
                       <input
-                        type="checkbox"
+                        name="statistics-window-mode"
+                        type="radio"
                         checked={draftWindowMode === "classic"}
                         onChange={() => setDraftWindowMode("classic")}
                       />
@@ -9141,7 +9158,8 @@ export function App() {
                     </label>
                     <label className="config-option-row">
                       <input
-                        type="checkbox"
+                        name="statistics-window-mode"
+                        type="radio"
                         checked={draftWindowMode === "fibonacci"}
                         onChange={() => setDraftWindowMode("fibonacci")}
                       />
@@ -9151,7 +9169,7 @@ export function App() {
                 </section>
                 <section className="config-card config-bets">
                   <h2><span>快照</span></h2>
-                  <div className="config-option-list">
+                  <div className="config-option-list config-option-list-inline">
                     <label className="config-option-row">
                       <input
                         checked={draftThreeNumberHighlightMode === "dim"}
@@ -9174,17 +9192,31 @@ export function App() {
                 </section>
                 {sharedConnected ? (
                   <section className="config-card config-bets">
+                    <h2><span>显示</span></h2>
+                    <div className="config-device-mode-options" role="radiogroup" aria-label="设备模式">
+                      {([
+                        ["auto", "自动"],
+                        ["desktop", "电脑"],
+                        ["mobile", "手机"],
+                      ] as const).map(([value, label]) => (
+                        <label className="config-option-row config-tool-toggle" key={value}>
+                          <input
+                            checked={draftSimulatorDeviceMode === value}
+                            name="simulator-device-mode"
+                            onChange={() => setDraftSimulatorDeviceMode(value)}
+                            type="radio"
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+                {sharedConnected ? (
+                  <section className="config-card config-bets">
                     <h2><span>工具</span></h2>
                     <div className="config-tool-actions">
                       <button onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">Test</button>
-                      <label className="config-option-row config-tool-toggle">
-                        <input
-                          checked={draftSimulatorDesktopMode}
-                          onChange={(event) => setDraftSimulatorDesktopMode(event.target.checked)}
-                          type="checkbox"
-                        />
-                        <span>电脑版</span>
-                      </label>
                     </div>
                   </section>
                 ) : null}
