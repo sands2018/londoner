@@ -8907,7 +8907,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   .desktop-game-brand-copy {
     align-items: center;
     display: flex;
-    filter: brightness(0.7);
+    filter: brightness(0.9);
     flex-direction: column;
     gap: var(--desktop-game-brand-gap, 10px);
     width: var(--desktop-game-brand-width, 100%);
@@ -8966,21 +8966,27 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   .desktop-pane-close {
     align-items: center;
-    background: rgb(34 35 32 / 0.72);
+    background: rgb(24 25 23 / 0.72);
     border: 0;
     border-radius: 9.5px;
-    color: #796b4c;
+    color: #514b3a;
     display: flex;
     height: 53px;
     justify-content: center;
     padding: 0;
     position: relative;
+    transition: background-color 120ms ease, color 120ms ease;
     width: 53px;
   }
 
+  .desktop-pane-close.is-open {
+    background: rgb(36 35 31 / 0.82);
+    color: #796a49;
+  }
+
   .desktop-pane-close:hover {
-    background: rgb(57 58 53 / 0.9);
-    color: #a99465;
+    background: rgb(45 44 39 / 0.88);
+    color: #8c7a54;
   }
 
   .desktop-pane-close:active:not(:disabled) {
@@ -9020,11 +9026,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     display: flex;
     gap: 2px;
     position: fixed;
-    right: calc(100vw - var(--desktop-game-width) + 4px);
+    right: 4px;
     top: 6px;
-    transform: scale(var(--simulator-desktop-scale, 1));
+    transform: scale(var(--desktop-pane-controls-scale, 1));
     transform-origin: top right;
     z-index: 51;
+  }
+
+  .app-shell.simulator-desktop-active:not(.desktop-analysis-closed) > .desktop-pane-controls {
+    right: calc(100vw - var(--desktop-game-width) + 4px);
   }
 
   .desktop-pane-icon {
@@ -9052,9 +9062,6 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     transform: scaleX(-1);
   }
 
-  .simulator-screen.desktop-mode.desktop-game-only .desktop-pane-controls {
-    right: 4px;
-  }
 }
 
 .message-actions button {

@@ -5093,6 +5093,15 @@ export function App() {
     setSimulatorOpen(false);
   }
 
+  function toggleSimulatorGamePane() {
+    if (simulatorOpen) {
+      closeSimulatorGamePane();
+      return;
+    }
+    setSimulatorDesktopAnalysisOpen(true);
+    setSimulatorOpen(true);
+  }
+
   function handleSimulatorAnalysisAction() {
     if (simulatorUsesDesktopLayout && !simulatorDesktopAnalysisOpen) {
       setSimulatorDesktopAnalysisOpen(true);
@@ -5101,10 +5110,15 @@ export function App() {
     closeSimulatorGamePane();
   }
 
-  function closeSimulatorAnalysisPane() {
-    if (simulatorDesktopWorkspaceActive) {
+  function toggleSimulatorAnalysisPane() {
+    if (simulatorDesktopAnalysisOpen) {
+      if (!simulatorOpen) {
+        setSimulatorOpen(true);
+      }
       setSimulatorDesktopAnalysisOpen(false);
+      return;
     }
+    setSimulatorDesktopAnalysisOpen(true);
   }
 
   function updateSimulatorDesktopGameRatio(clientX: number) {
@@ -6576,6 +6590,36 @@ export function App() {
       className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorUsesDesktopLayout ? "simulator-desktop-layout" : ""} ${simulatorDesktopWorkspaceActive ? "simulator-desktop-active" : ""} ${simulatorDesktopWorkspaceActive && !simulatorDesktopAnalysisOpen ? "desktop-analysis-closed" : ""}`}
       style={simulatorDesktopWorkspaceStyle}
     >
+      {canUseSimulator && simulatorUsesDesktopLayout && simulatorOpen && simulatorDesktopAnalysisOpen ? (
+        <div
+          className="desktop-pane-controls"
+          aria-label="窗口控制"
+          style={{
+            "--desktop-pane-controls-scale": simulatorOpen ? simulatorDesktopScale : 1,
+          } as CSSProperties}
+        >
+          <button
+            aria-label={simulatorOpen ? "关闭左侧窗口" : "打开左侧窗口"}
+            aria-pressed={simulatorOpen}
+            className={`desktop-pane-close desktop-game-pane-close ${simulatorOpen ? "is-open" : "is-closed"}`}
+            data-tooltip={simulatorOpen ? "关闭左侧窗口" : "打开左侧窗口"}
+            onClick={toggleSimulatorGamePane}
+            type="button"
+          >
+            <span aria-hidden="true" className="desktop-pane-icon desktop-pane-icon-left" />
+          </button>
+          <button
+            aria-label={simulatorDesktopAnalysisOpen ? "关闭右侧窗口" : "打开右侧窗口"}
+            aria-pressed={simulatorDesktopAnalysisOpen}
+            className={`desktop-pane-close desktop-analysis-pane-close ${simulatorDesktopAnalysisOpen ? "is-open" : "is-closed"}`}
+            data-tooltip={simulatorDesktopAnalysisOpen ? "关闭右侧窗口" : "打开右侧窗口"}
+            onClick={toggleSimulatorAnalysisPane}
+            type="button"
+          >
+            <span aria-hidden="true" className="desktop-pane-icon desktop-pane-icon-right" />
+          </button>
+        </div>
+      ) : null}
       {simulatorDesktopWorkspaceActive && simulatorDesktopAnalysisOpen ? (
           <div
             aria-label="调整游戏区和分析区宽度"
@@ -8816,36 +8860,12 @@ export function App() {
             "--simulator-desktop-scale": simulatorDesktopScale,
           } as CSSProperties) : undefined}
         >
-          {simulatorUsesDesktopLayout ? (
+          {simulatorUsesDesktopLayout && simulatorDesktopAnalysisOpen ? (
             <div className="desktop-game-brand" aria-label="Roulette Game, Designed by Sands2018">
               <div className="desktop-game-brand-copy">
                 <strong>Roulette Game</strong>
                 <span>Designed by Sands2018</span>
               </div>
-            </div>
-          ) : null}
-          {simulatorUsesDesktopLayout ? (
-            <div className="desktop-pane-controls" aria-label="窗口控制">
-              <button
-                aria-label="关闭左侧窗口"
-                className="desktop-pane-close desktop-game-pane-close"
-                data-tooltip="关闭左侧窗口"
-                onClick={closeSimulatorGamePane}
-                type="button"
-              >
-                <span aria-hidden="true" className="desktop-pane-icon desktop-pane-icon-left" />
-              </button>
-              {simulatorDesktopAnalysisOpen ? (
-                <button
-                  aria-label="关闭右侧窗口"
-                  className="desktop-pane-close desktop-analysis-pane-close"
-                  data-tooltip="关闭右侧窗口"
-                  onClick={closeSimulatorAnalysisPane}
-                  type="button"
-                >
-                  <span aria-hidden="true" className="desktop-pane-icon desktop-pane-icon-right" />
-                </button>
-              ) : null}
             </div>
           ) : null}
           <div
