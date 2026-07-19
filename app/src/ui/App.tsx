@@ -7232,10 +7232,10 @@ export function App() {
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
             <NumberButton className="zero-key keypad-zero-h" value={0} onClick={addNumber} />
-            <button className="control-button wide-control" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+            <button aria-label="退到头" className="control-button wide-control" onClick={undoAll} disabled={numbers.length === 0}>
               <SkipBack size={16} />
             </button>
-            <button className="control-button skip-control keypad-redo" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+            <button aria-label="进到底" className="control-button skip-control keypad-redo" onClick={redoAll} disabled={redoNumbers.length === 0}>
               <SkipForward size={16} />
             </button>
             <button className="control-button wide-control" onClick={undo} disabled={numbers.length === 0}>
@@ -7259,10 +7259,10 @@ export function App() {
             {boardRows.flat().map((value) => (
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
-            <button className="control-button board-wide-2" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+            <button aria-label="退到头" className="control-button board-wide-2" onClick={undoAll} disabled={numbers.length === 0}>
               <SkipBack size={16} />
             </button>
-            <button className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+            <button aria-label="进到底" className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0}>
               <SkipForward size={16} />
             </button>
             <NumberButton className="board-wide-2 zero-key" value={0} onClick={addNumber} />
@@ -7288,7 +7288,7 @@ export function App() {
           </div>
         ) : (
           <div className="digit-entry-grid">
-            <button className="control-button digit-back-all" onClick={undoAll} disabled={numbers.length === 0} title="退到头">
+            <button aria-label="退到头" className="control-button digit-back-all" onClick={undoAll} disabled={numbers.length === 0}>
               <SkipBack size={16} />
             </button>
             <button className="control-button digit-key digit-key-7" onClick={() => appendDigitInput(7)} type="button">7</button>
@@ -7313,7 +7313,7 @@ export function App() {
             <button className="control-button digit-undo" onClick={undo} disabled={numbers.length === 0}>
               ←
             </button>
-            <button className="control-button digit-redo-all" onClick={redoAll} disabled={redoNumbers.length === 0} title="进到底">
+            <button aria-label="进到底" className="control-button digit-redo-all" onClick={redoAll} disabled={redoNumbers.length === 0}>
               <SkipForward size={16} />
             </button>
             <button className="control-button digit-key digit-key-4" onClick={() => appendDigitInput(4)} type="button">4</button>

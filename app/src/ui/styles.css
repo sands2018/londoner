@@ -6503,9 +6503,9 @@ html.android .sim-bet-band button {
 }
 
 .simulator-chip-10 {
-  --chip-accent: #8eafb9;
-  --chip-color: #168fd0;
-  --chip-inner: #0d496c;
+  --chip-accent: #92aeb7;
+  --chip-color: #218dca;
+  --chip-inner: #164a67;
 }
 
 .simulator-chip-20 {
@@ -8115,9 +8115,9 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-10 {
-  --sim-chip-accent: #8eafb9;
-  --sim-chip-color: #168fd0;
-  --sim-chip-inner: #0d496c;
+  --sim-chip-accent: #92aeb7;
+  --sim-chip-color: #218dca;
+  --sim-chip-inner: #164a67;
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-20 {
@@ -8386,6 +8386,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode {
   --simulator-desktop-vertical-offset: 28px;
+  --sim-desktop-primary-action-background: linear-gradient(180deg, #52815f 0%, #326247 52%, #1d452f 100%);
   --sim-desktop-action-h: 64px;
   --sim-desktop-action-tall: 144px;
   --sim-desktop-action-w: 72px;
@@ -8613,7 +8614,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-chip-actions .sim-action-play {
-  background: linear-gradient(180deg, #52815f 0%, #326247 52%, #1d452f 100%);
+  background: var(--sim-desktop-primary-action-background);
   border-color: rgb(255 235 184 / 0.36);
   box-shadow:
     0 8px 18px rgb(0 0 0 / 0.36),
@@ -8705,7 +8706,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-feed-actions .sim-feed-return {
-  background: linear-gradient(180deg, #384f42, #283a30);
+  background: var(--sim-desktop-primary-action-background);
 }
 
 .simulator-screen.desktop-mode .simulator-feed-actions > button:nth-child(-n + 4):disabled {
@@ -9076,6 +9077,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .desktop-workspace-splitter::after {
+    --desktop-tooltip-scale: var(--desktop-splitter-tooltip-scale, 1);
     content: attr(data-tooltip);
     left: var(--desktop-splitter-tooltip-x, calc(100% + 8px));
     opacity: 0;
@@ -12297,13 +12299,15 @@ html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulat
 .desktop-workspace-splitter::after,
 .desktop-pane-close::after {
   background: #1b1c1a;
-  border: 2px solid #514637;
-  border-radius: 6px;
+  border: calc(2px * var(--desktop-tooltip-scale, 1)) solid #514637;
+  border-radius: calc(6px * var(--desktop-tooltip-scale, 1));
   color: #aa8755;
-  font-size: 23px;
+  font-size: calc(23px * var(--desktop-tooltip-scale, 1));
   font-weight: var(--weight-regular);
   line-height: 1;
-  padding: 9.5px 13.5px;
+  padding:
+    calc(9.5px * var(--desktop-tooltip-scale, 1))
+    calc(13.5px * var(--desktop-tooltip-scale, 1));
 }
 
 /* Explicit mobile state keeps chip rendering independent of orientation fallbacks. */
