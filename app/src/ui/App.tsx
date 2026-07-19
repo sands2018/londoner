@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
+import { useLayoutEffect } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import {
   getNumberColor,
@@ -1418,6 +1419,8 @@ export function App() {
   const [keyboardVisible, setKeyboardVisible] = useState(true);
   const [separateColRows, setSeparateColRows] = useState(() => localStorage.getItem("londoner.separateColRows") !== "0");
   const [queueExpanded, setQueueExpanded] = useState(false);
+  const [queueExpandedMaxHeight, setQueueExpandedMaxHeight] = useState<number | null>(null);
+  const queuePanelRef = useRef<HTMLElement>(null);
   const [windowMode, setWindowMode] = useState<WindowMode>(() =>
     localStorage.getItem(windowModeKey) === "fibonacci" ? "fibonacci" : "classic",
   );
@@ -1683,15 +1686,16 @@ export function App() {
         string | number
       >)
     : undefined;
-  const useSrxButtonLabels = sharedConnected && ["srx", "sxr", "ybh"].includes(sharedUsernameNormalized);
   const homeButtonLabels = {
-    pass: useSrxButtonLabels ? "传递" : "pass",
-    input: useSrxButtonLabels ? "输入" : "input",
-    concat: useSrxButtonLabels ? "附加" : "concat",
-    data: useSrxButtonLabels ? "数据" : "data",
-    save: useSrxButtonLabels ? "保存" : "save",
-    output: useSrxButtonLabels ? "输出" : "output",
-    config: useSrxButtonLabels ? "配置" : "config",
+    pass: "传递",
+    input: "输入",
+    concat: "接上",
+    data: "数据",
+    save: "保存",
+    output: "输出",
+    config: "配置",
+    table: "桌子",
+    find: "Sands",
   };
   const canViewSixStatsPanel = sharedConnected;
   const simulatorNumbers = useMemo(
@@ -2641,6 +2645,39 @@ export function App() {
       window.visualViewport?.removeEventListener("resize", updateDesktopViewport);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (!queueExpanded) {
+      setQueueExpandedMaxHeight(null);
+      return;
+    }
+
+    const panel = queuePanelRef.current;
+    const row = panel?.querySelector<HTMLElement>(".queue-row");
+    if (!panel || !row) return;
+
+    const panelStyle = window.getComputedStyle(panel);
+    const rowStyle = window.getComputedStyle(row);
+    const targetHeight = Number.parseFloat(panelStyle.getPropertyValue("--queue-expanded-target-height"));
+    const rowHeight = Number.parseFloat(rowStyle.gridAutoRows);
+    const rowGap = Number.parseFloat(rowStyle.rowGap) || 0;
+    const verticalFrame =
+      (Number.parseFloat(panelStyle.paddingTop) || 0) +
+      (Number.parseFloat(panelStyle.paddingBottom) || 0) +
+      (Number.parseFloat(panelStyle.borderTopWidth) || 0) +
+      (Number.parseFloat(panelStyle.borderBottomWidth) || 0);
+
+    if (!Number.isFinite(targetHeight) || !Number.isFinite(rowHeight) || rowHeight <= 0) {
+      setQueueExpandedMaxHeight(null);
+      return;
+    }
+
+    const fullRowCount = Math.max(1, Math.floor((targetHeight - verticalFrame + rowGap) / (rowHeight + rowGap)));
+    const exactHeight = verticalFrame + fullRowCount * rowHeight + Math.max(0, fullRowCount - 1) * rowGap;
+    setQueueExpandedMaxHeight((current) =>
+      current !== null && Math.abs(current - exactHeight) < 0.1 ? current : exactHeight,
+    );
+  }, [queueExpanded, simulatorDesktopViewportSize.height, simulatorDesktopViewportSize.width, simulatorUsesDesktopLayout]);
 
   useEffect(() => {
     localStorage.setItem(simulatorDesktopAnalysisAspectKey, simulatorDesktopAnalysisAspect.toFixed(6));
@@ -6889,6 +6926,10 @@ export function App() {
       <section
         className={`queue-panel ${queueExpanded ? "expanded" : "collapsed"}`}
         onClick={() => setQueueExpanded((value) => !value)}
+        ref={queuePanelRef}
+        style={queueExpanded && queueExpandedMaxHeight !== null
+          ? { maxHeight: `${queueExpandedMaxHeight}px` }
+          : undefined}
       >
         {queueItems.length === 0 ? <span className="empty-state">等待输入</span> : null}
         <div className="queue-row">
@@ -7127,7 +7168,7 @@ export function App() {
             <button className="control-button digit-colrow" onClick={() => { setStatsTab("colrow"); setStatsGroupTab("colrow"); localStorage.setItem("londoner.statsGroupTab", "colrow"); setStatsViewOpen(true); }} type="button">行组</button>
             <button className="control-button digit-frequency" onClick={() => { setFrequencyDistanceTab("frequency"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">频率</button>
             <button className="control-button digit-distance" onClick={() => { setFrequencyDistanceTab("distance"); setStatsTab("freq"); setStatsViewOpen(true); }} type="button">距离</button>
-            <button className="control-button digit-find" onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">find</button>
+            <button className="control-button digit-find" onClick={() => { setConfigViewOpen(false); setShotViewOpen(true); }} type="button">{homeButtonLabels.find}</button>
             {canUseSimulator ? (
               <button className="control-button home-game-return-key digit-more-game" onClick={openSimulatorWorkspace} type="button">返回游戏</button>
             ) : (
@@ -7135,7 +7176,7 @@ export function App() {
                 <span>Las </span><strong>V</strong><span>egas</span>
               </div>
             )}
-            <button className="control-button digit-table" disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">table</button>
+            <button className="control-button digit-table" disabled={numbers.length === 0} onClick={openTableCalibrationDialog} type="button">{homeButtonLabels.table}</button>
             <button className="control-button digit-export" disabled={numbers.length === 0} onClick={() => { void exportCurrentData(); }} type="button">{homeButtonLabels.output}</button>
             <button className="control-button digit-match" onClick={openPredictionWindow} type="button">智能</button>
             <button className="control-button digit-other" onClick={openConfigView} type="button">{homeButtonLabels.config}</button>

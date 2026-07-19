@@ -36,6 +36,7 @@
   --queue-chip-height: clamp(36px, 4.4dvh, 40px);
   --queue-cell-size: clamp(22px, 5.55vw, var(--queue-chip-height));
   --queue-collapsed-padding-block: clamp(6px, 1dvh, 8px);
+  --queue-expanded-target-height: 280px;
   --queue-max-height: none;
   --queue-padding-block: clamp(10px, 1.5dvh, 12px);
   --reopen-button-size: 48px;
@@ -2686,7 +2687,7 @@ body:has(.app-shell.theme-dark) {
 
 .digit-entry-grid .home-game-return-key,
 .dock-actions .home-game-return-key {
-  background: #151b18;
+  background: #1b241f;
   border: 1px solid rgb(244 215 157 / 0.16);
   border-radius: 999px;
   color: #b99658;
@@ -2694,7 +2695,7 @@ body:has(.app-shell.theme-dark) {
 }
 
 .dock-actions button.home-game-return-key {
-  background: #151b18;
+  background: #1b241f;
   border-color: rgb(244 215 157 / 0.16);
   border-radius: 999px;
   color: #b99658;
@@ -2746,11 +2747,16 @@ body:has(.app-shell.theme-dark) {
 
 .app-shell.theme-dark .digit-entry-grid .home-game-return-key,
 .app-shell.theme-dark .dock-actions button.home-game-return-key {
-  background: #151b18;
+  background: #1b241f;
   border-color: rgb(244 215 157 / 0.16);
   border-radius: 999px;
   color: #b99658;
   letter-spacing: 0.08em;
+}
+
+.app-shell.simulator-desktop-layout .digit-entry-grid .home-game-return-key,
+.app-shell.simulator-desktop-layout .dock-actions button.home-game-return-key {
+  background: #1f2b24;
 }
 
 .app-shell.theme-dark .digit-input-error {
@@ -8660,6 +8666,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     --queue-cell-size: 32px;
     --queue-chip-height: 32px;
     --queue-collapsed-padding-block: 1px;
+    --queue-expanded-target-height: 280px;
     --queue-font-size: calc(20px + var(--font-adjust));
     --queue-padding-block: 12px;
     --signal-label-height: 27px;
@@ -8731,7 +8738,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .app-shell.simulator-desktop-layout .queue-chip.number-red {
-    background: #472a20;
+    background: #492923;
     border-color: #57333b;
     color: #dddddd;
   }
@@ -9521,6 +9528,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     --number-font-size: 15px;
     --queue-chip-height: 40px;
     --queue-collapsed-padding-block: 5px;
+    --queue-expanded-target-height: none;
     --queue-max-height: calc(var(--queue-chip-height) + (var(--queue-padding-block) * 2));
     --queue-padding-block: 4px;
     --reopen-button-size: 44px;
