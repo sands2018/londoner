@@ -1659,6 +1659,14 @@ export function App() {
   const simulatorDesktopGameRatio = simulatorDesktopWorkspaceActive
     ? simulatorDesktopGameWidth / simulatorDesktopViewportSize.width
     : 0;
+  const simulatorDesktopGameTopSpace = Math.max(
+    0,
+    (simulatorDesktopViewportSize.height - simulatorDesktopDesignHeight * simulatorDesktopScale) / 2,
+  );
+  const simulatorDesktopGameBrandHeight = Math.max(
+    simulatorDesktopGameTopSpace,
+    122 * simulatorDesktopScale,
+  );
   const simulatorDesktopScaledAnalysisWidth = simulatorDesktopAnalysisOpen
     ? Math.min(
         simulatorDesktopAnalysisWidth,
@@ -2645,6 +2653,29 @@ export function App() {
       window.visualViewport?.removeEventListener("resize", updateDesktopViewport);
     };
   }, []);
+
+  useEffect(() => {
+    const orientation = screen.orientation as (ScreenOrientation & {
+      lock?: (mode: "portrait-primary") => Promise<void>;
+    }) | undefined;
+
+    if (simulatorUsesDesktopLayout || typeof orientation?.lock !== "function") return;
+
+    const lockPortrait = () => {
+      void orientation.lock?.("portrait-primary").catch(() => undefined);
+    };
+    const lockWhenVisible = () => {
+      if (document.visibilityState === "visible") lockPortrait();
+    };
+
+    lockPortrait();
+    window.addEventListener("pointerdown", lockPortrait, { capture: true, once: true });
+    document.addEventListener("visibilitychange", lockWhenVisible);
+    return () => {
+      window.removeEventListener("pointerdown", lockPortrait, { capture: true });
+      document.removeEventListener("visibilitychange", lockWhenVisible);
+    };
+  }, [simulatorUsesDesktopLayout]);
 
   useLayoutEffect(() => {
     if (!queueExpanded) {
@@ -8773,7 +8804,26 @@ export function App() {
         <section
           className={`simulator-screen ${simulatorUsesDesktopLayout ? "desktop-mode desktop-split-pane" : ""} ${simulatorUsesDesktopLayout && !simulatorDesktopAnalysisOpen ? "desktop-game-only" : ""}`}
           aria-label="轮盘模拟"
+          style={simulatorUsesDesktopLayout ? ({
+            "--desktop-game-brand-height": `${simulatorDesktopGameBrandHeight}px`,
+            "--desktop-game-brand-width": `${Math.min(simulatorDesktopGameWidth, simulatorDesktopDesignWidth * simulatorDesktopScale)}px`,
+            "--desktop-game-brand-title-size": `${59.04 * simulatorDesktopScale}px`,
+            "--desktop-game-brand-subtitle-size": `${20 * simulatorDesktopScale}px`,
+            "--desktop-game-brand-gap": `${10 * simulatorDesktopScale}px`,
+            "--desktop-game-brand-line-gap": `${52 * simulatorDesktopScale}px`,
+            "--desktop-game-brand-line-height": `${2.94 * simulatorDesktopScale}px`,
+            "--desktop-game-brand-line-offset": `${16 * simulatorDesktopScale}px`,
+            "--simulator-desktop-scale": simulatorDesktopScale,
+          } as CSSProperties) : undefined}
         >
+          {simulatorUsesDesktopLayout ? (
+            <div className="desktop-game-brand" aria-label="Roulette Game, Designed by Sands2018">
+              <div className="desktop-game-brand-copy">
+                <strong>Roulette Game</strong>
+                <span>Designed by Sands2018</span>
+              </div>
+            </div>
+          ) : null}
           {simulatorUsesDesktopLayout ? (
             <div className="desktop-pane-controls" aria-label="窗口控制">
               <button
@@ -8800,7 +8850,6 @@ export function App() {
           ) : null}
           <div
             className="simulator-landscape"
-            style={simulatorUsesDesktopLayout ? ({ "--simulator-desktop-scale": simulatorDesktopScale } as CSSProperties) : undefined}
           >
             {simulatorRoundPop ? (
               <div className="simulator-round-pop-overlay" aria-hidden="true">

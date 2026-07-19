@@ -7,7 +7,7 @@
   "scope": "/londoner/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "fullscreen", "browser"],
-  "orientation": "any",
+  "orientation": "portrait-primary",
   "background_color": "#f3f2ee",
   "theme_color": "#f3f2ee",
   "icons": [

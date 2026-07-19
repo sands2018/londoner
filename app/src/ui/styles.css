@@ -8324,6 +8324,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode {
+  --simulator-desktop-vertical-offset: 28px;
   --sim-desktop-action-h: 64px;
   --sim-desktop-action-tall: 144px;
   --sim-desktop-action-w: 72px;
@@ -8348,7 +8349,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   left: 50%;
   max-height: none;
   max-width: none;
-  top: 50%;
+  top: calc(50% + var(--simulator-desktop-vertical-offset));
   transform: translate(-50%, -50%) scale(var(--simulator-desktop-scale, 1));
   transform-origin: center center;
   width: 1920px;
@@ -8889,18 +8890,92 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     background: #45483f;
   }
 
+  .desktop-game-brand {
+    align-items: center;
+    display: flex;
+    height: var(--desktop-game-brand-height, 0px);
+    justify-content: center;
+    left: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: fixed;
+    top: calc(var(--simulator-desktop-vertical-offset) - 11px);
+    width: var(--desktop-game-width);
+    z-index: 2;
+  }
+
+  .desktop-game-brand-copy {
+    align-items: center;
+    display: flex;
+    filter: brightness(0.7);
+    flex-direction: column;
+    gap: var(--desktop-game-brand-gap, 10px);
+    width: var(--desktop-game-brand-width, 100%);
+  }
+
+  .desktop-game-brand strong {
+    align-items: center;
+    background-image:
+      repeating-linear-gradient(117deg, transparent 0 13px, rgb(47 30 8 / 0.72) 13px 14px, transparent 14px 31px),
+      repeating-linear-gradient(71deg, transparent 0 21px, rgb(255 236 171 / 0.2) 21px 22px, transparent 22px 43px),
+      linear-gradient(180deg, #ead38a 0%, #b88a38 29%, #69501f 51%, #cba34b 73%, #846328 100%);
+    background-blend-mode: multiply, screen, normal;
+    background-clip: text;
+    color: transparent;
+    display: flex;
+    filter: drop-shadow(0 2px 1px rgb(0 0 0 / 0.72));
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: var(--desktop-game-brand-title-size, 82px);
+    font-weight: var(--weight-strong);
+    letter-spacing: 0.08em;
+    line-height: 0.92;
+    text-align: center;
+    white-space: nowrap;
+    width: 100%;
+    word-spacing: 0.12em;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .desktop-game-brand strong::before,
+  .desktop-game-brand strong::after {
+    content: "";
+    flex: 1;
+    height: var(--desktop-game-brand-line-height, 4.2px);
+    transform: translateY(var(--desktop-game-brand-line-offset, 7px));
+  }
+
+  .desktop-game-brand strong::before {
+    background: linear-gradient(90deg, transparent 0%, rgb(176 139 69 / 0.18) 5%, rgb(180 143 72 / 0.28) 32%, rgb(185 147 74 / 0.48) 68%, rgb(190 151 76 / 0.72) 100%);
+    margin-right: var(--desktop-game-brand-line-gap, 22px);
+  }
+
+  .desktop-game-brand strong::after {
+    background: linear-gradient(90deg, rgb(190 151 76 / 0.72) 0%, rgb(185 147 74 / 0.48) 32%, rgb(180 143 72 / 0.28) 68%, rgb(176 139 69 / 0.18) 95%, transparent 100%);
+    margin-left: var(--desktop-game-brand-line-gap, 22px);
+  }
+
+  .desktop-game-brand span {
+    color: #90784d;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: var(--desktop-game-brand-subtitle-size, 20px);
+    font-weight: var(--weight-regular);
+    line-height: 1;
+    text-shadow: 0 1px 1px rgb(0 0 0 / 0.72);
+  }
+
   .desktop-pane-close {
     align-items: center;
     background: rgb(34 35 32 / 0.72);
     border: 0;
-    border-radius: 5px;
+    border-radius: 9.5px;
     color: #796b4c;
     display: flex;
-    height: 28px;
+    height: 53px;
     justify-content: center;
     padding: 0;
     position: relative;
-    width: 28px;
+    width: 53px;
   }
 
   .desktop-pane-close:hover {
@@ -8914,20 +8989,20 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   .desktop-pane-close::after {
     background: #1b1c1a;
-    border: 1px solid #343229;
-    border-radius: 3px;
+    border: 2px solid #343229;
+    border-radius: 6px;
     color: #857651;
     content: attr(data-tooltip);
-    font-size: 12px;
+    font-size: 23px;
     font-weight: var(--weight-regular);
     line-height: 1;
     opacity: 0;
-    padding: 5px 7px;
+    padding: 9.5px 13.5px;
     pointer-events: none;
     position: absolute;
     right: 0;
-    top: calc(100% + 5px);
-    transform: translateY(-2px);
+    top: calc(100% + 9.5px);
+    transform: translateY(-4px);
     transition: opacity 100ms ease, transform 100ms ease;
     visibility: hidden;
     white-space: nowrap;
@@ -8943,44 +9018,42 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   .desktop-pane-controls {
     display: flex;
-    gap: 1px;
+    gap: 2px;
     position: fixed;
-    right: calc(100vw - var(--desktop-game-width) + 2px);
-    top: 8px;
+    right: calc(100vw - var(--desktop-game-width) + 4px);
+    top: 6px;
+    transform: scale(var(--simulator-desktop-scale, 1));
+    transform-origin: top right;
     z-index: 51;
   }
 
   .desktop-pane-icon {
-    border: 1px solid currentcolor;
-    border-radius: 4px;
+    border: 2px solid currentcolor;
+    border-radius: 7.5px;
     display: block;
-    height: 15px;
+    height: 30.5px;
     overflow: hidden;
     position: relative;
-    width: 20px;
+    width: 38px;
   }
 
   .desktop-pane-icon::before {
     background: currentcolor;
-    bottom: 0;
+    border-radius: 999px;
+    bottom: 3.75px;
     content: "";
+    left: 7.5px;
     position: absolute;
-    top: 0;
-    width: 50%;
+    top: 3.75px;
+    width: 2px;
   }
 
-  .desktop-pane-icon-left::before {
-    border-radius: 2px 0 0 2px;
-    left: 0;
-  }
-
-  .desktop-pane-icon-right::before {
-    border-radius: 0 2px 2px 0;
-    right: 0;
+  .desktop-pane-icon-right {
+    transform: scaleX(-1);
   }
 
   .simulator-screen.desktop-mode.desktop-game-only .desktop-pane-controls {
-    right: 2px;
+    right: 4px;
   }
 }
 
@@ -9498,80 +9571,6 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   .manage-side-actions button {
     min-height: var(--action-button-min-height);
   }
-}
-
-@media (orientation: landscape) and (max-height: 560px) {
-  :root {
-    --app-direction: column;
-    --app-display: flex;
-    --app-gap: 2px;
-    --app-min-height: 100dvh;
-    --app-padding: clamp(8px, 2dvh, 12px) max(6px, env(safe-area-inset-right)) clamp(5px, 1.5dvh, 8px) max(6px, env(safe-area-inset-left));
-    --control-font-size: 13px;
-    --control-min-height: 32px;
-    --dock-action-gap: 2px;
-    --dock-actions-display: none;
-    --dock-action-margin: 0 0 2px;
-    --dock-bottom: auto;
-    --dock-left: auto;
-    --dock-margin: auto 0 0;
-    --dock-max-width: none;
-    --dock-padding: 4px 0 0;
-    --dock-position: static;
-    --dock-right: auto;
-    --dock-width: auto;
-    --key-gap: 2px;
-    --key-height: clamp(34px, 9.5dvh, 42px);
-    --keypad-columns: 10;
-    --menu-font-size: 13px;
-    --menu-min-height: clamp(24px, 6.6dvh, 32px);
-    --number-font-size: 15px;
-    --queue-chip-height: 40px;
-    --queue-collapsed-padding-block: 5px;
-    --queue-expanded-target-height: none;
-    --queue-max-height: calc(var(--queue-chip-height) + (var(--queue-padding-block) * 2));
-    --queue-padding-block: 4px;
-    --reopen-button-size: 44px;
-    --signal-gap: 4px;
-    --signal-label-height: 23px;
-    --signal-padding: 3px 7px;
-    --signal-stack-gap: 2px;
-  }
-
-  .six-stats-panel,
-  .columns-panel,
-  .finished-line,
-  .summary-grid {
-    display: none;
-  }
-
-  .app-shell.keyboard-hidden {
-    --app-padding: clamp(8px, 2dvh, 12px) max(6px, env(safe-area-inset-right)) clamp(5px, 1.5dvh, 8px) max(6px, env(safe-area-inset-left));
-  }
-
-  .queue-panel.expanded {
-    max-height: none;
-    overflow-y: auto;
-  }
-
-  .keypad-grid > * {
-    height: var(--key-height);
-  }
-
-  .keypad-grid .control-button {
-    grid-column: span 2;
-    min-height: var(--key-height);
-    order: 50;
-  }
-
-  .keypad-grid .skip-control {
-    grid-column: span 1;
-  }
-
-  .keypad-grid .zero-key {
-    grid-column: auto;
-  }
-
 }
 
 @media (min-width: 760px) {
