@@ -5334,6 +5334,8 @@ html.iphone .state-reading p {
 
 /* --- Roulette simulator --- */
 .simulator-screen {
+  --sim-table-line: 3px;
+  --sim-table-line-color: rgb(238 236 196 / 0.72);
   background: #050806;
   color: #f4ead3;
   display: grid;
@@ -5342,6 +5344,10 @@ html.iphone .state-reading p {
   overflow: hidden;
   position: fixed;
   z-index: 42;
+}
+
+.simulator-screen:not(.desktop-mode) {
+  --sim-table-line: 2px;
 }
 
 .simulator-landscape {
@@ -5867,6 +5873,12 @@ html.iphone .state-reading p {
   min-height: 0;
   position: relative;
   text-shadow: 0 2px 3px rgb(0 0 0 / 0.55);
+}
+
+html.android .sim-number,
+html.android .sim-row-bets button,
+html.android .sim-bet-band button {
+  font-family: "Libre Baskerville", Georgia, "Times New Roman", serif;
 }
 
 .sim-red,
@@ -8345,6 +8357,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-landscape {
+  border-color: #0a0d0b;
   height: 1080px;
   left: 50%;
   max-height: none;
@@ -8360,8 +8373,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-chip-tray {
+  background: transparent;
   gap: var(--sim-desktop-gap);
   min-height: var(--sim-desktop-panel-h);
+  overflow: visible;
   padding: 10px 14px;
 }
 
@@ -8383,12 +8398,57 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   font-size: 50px;
 }
 
-.simulator-screen.desktop-mode .sim-number,
-.simulator-screen.desktop-mode .sim-row-bets button,
-.simulator-screen.desktop-mode .sim-bet-band button,
-.simulator-screen.desktop-mode .sim-zero,
-.simulator-screen.desktop-mode .sim-zero-trios button {
-  border-width: 2px;
+.simulator-screen .sim-number,
+.simulator-screen .sim-row-bets button,
+.simulator-screen .sim-bet-band button,
+.simulator-screen .sim-zero,
+.simulator-screen .sim-zero-trios button,
+.simulator-screen.desktop-mode .simulator-no-bet-zone {
+  border-color: var(--sim-table-line-color);
+  border-width: 0;
+}
+
+/* Draw each shared table edge once so inner and outer lines stay equally thick. */
+.simulator-screen .sim-number-grid .sim-number {
+  border-width: 0 var(--sim-table-line) var(--sim-table-line) 0;
+}
+
+.simulator-screen .sim-number-grid .sim-number:nth-child(-n + 12) {
+  border-top-width: var(--sim-table-line);
+}
+
+.simulator-screen .sim-number-grid .sim-number:nth-child(12n + 1) {
+  border-left-width: var(--sim-table-line);
+}
+
+.simulator-screen .sim-zero {
+  border-width: var(--sim-table-line) 0 var(--sim-table-line) var(--sim-table-line);
+}
+
+.simulator-screen .sim-row-bets button {
+  border-width: 0 var(--sim-table-line) var(--sim-table-line) 0;
+}
+
+.simulator-screen .sim-row-bets button:first-child {
+  border-top-width: var(--sim-table-line);
+}
+
+.simulator-screen .sim-bet-band button {
+  border-width: 0 var(--sim-table-line) var(--sim-table-line) 0;
+}
+
+.simulator-screen .sim-bet-band button:first-child {
+  border-left-width: var(--sim-table-line);
+}
+
+.simulator-screen.desktop-mode .simulator-no-bet-zone-a,
+.simulator-screen.desktop-mode .simulator-no-bet-zone-b {
+  border-width: 0 0 var(--sim-table-line) var(--sim-table-line);
+}
+
+.simulator-screen.desktop-mode .simulator-no-bet-zone-c,
+.simulator-screen.desktop-mode .simulator-no-bet-zone-d {
+  border-width: 0 var(--sim-table-line) var(--sim-table-line) 0;
 }
 
 .simulator-screen.desktop-mode .sim-row-bets button,
@@ -8478,8 +8538,42 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   height: calc(var(--sim-desktop-latest) + var(--sim-desktop-action-h) + var(--sim-desktop-feed-gap));
   margin-left: 18px;
   min-width: 0;
+  overflow: visible;
   padding: 0 4px;
   width: max-content;
+}
+
+.simulator-screen.desktop-mode .simulator-desktop-tooltip {
+  position: relative;
+}
+
+.simulator-screen.desktop-mode .simulator-desktop-tooltip::after {
+  background: #1b1c1a;
+  border: 2px solid #454237;
+  border-radius: 6px;
+  bottom: calc(100% + 9.5px);
+  color: #9b895d;
+  content: attr(data-tooltip);
+  font-size: 23px;
+  font-weight: var(--weight-regular);
+  left: 50%;
+  line-height: 1;
+  opacity: 0;
+  padding: 9.5px 13.5px;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, 4px);
+  transition: opacity 100ms ease, transform 100ms ease;
+  visibility: hidden;
+  white-space: nowrap;
+  z-index: 52;
+}
+
+.simulator-screen.desktop-mode .simulator-desktop-tooltip:hover::after,
+.simulator-screen.desktop-mode .simulator-desktop-tooltip:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  visibility: visible;
 }
 
 .simulator-screen.desktop-mode .simulator-feed-actions {
@@ -8716,7 +8810,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     flex: 0 0 auto;
     margin-left: auto;
     margin-right: auto;
-    max-width: 520px;
+    max-width: none;
     width: 100%;
   }
 
@@ -8792,10 +8886,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     flex: 0 0 auto;
     left: auto;
     margin: auto auto 0;
-    max-width: 520px;
+    max-width: none;
     position: sticky;
     right: auto;
-    width: min(520px, 100%);
+    width: 100%;
   }
 
   .app-shell.simulator-desktop-active.desktop-analysis-closed .input-dock,
@@ -8899,7 +8993,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     overflow: hidden;
     pointer-events: none;
     position: fixed;
-    top: calc(var(--simulator-desktop-vertical-offset) - 11px);
+    top: 0;
     width: var(--desktop-game-width);
     z-index: 2;
   }
@@ -8972,15 +9066,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     align-items: center;
     background: rgb(24 25 23 / 0.72);
     border: 0;
-    border-radius: 9.5px;
+    border-radius: 9px;
     color: #514b3a;
     display: flex;
-    height: 53px;
+    height: 50px;
     justify-content: center;
     padding: 0;
     position: relative;
     transition: background-color 120ms ease, color 120ms ease;
-    width: 53px;
+    width: 50px;
   }
 
   .desktop-pane-close.is-open {
@@ -9043,22 +9137,22 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   .desktop-pane-icon {
     border: 2px solid currentcolor;
-    border-radius: 7.5px;
+    border-radius: 7px;
     display: block;
-    height: 30.5px;
+    height: 29px;
     overflow: hidden;
     position: relative;
-    width: 38px;
+    width: 36px;
   }
 
   .desktop-pane-icon::before {
     background: currentcolor;
     border-radius: 999px;
-    bottom: 3.75px;
+    bottom: 3.5px;
     content: "";
-    left: 7.5px;
+    left: 7px;
     position: absolute;
-    top: 3.75px;
+    top: 3.5px;
     width: 2px;
   }
 
@@ -11524,6 +11618,409 @@ strong.roi-value {
   gap: 8px;
   overflow: auto;
   padding: 14px 10px 4px;
+}
+
+/* Mobile fallback when the browser cannot honor portrait orientation lock. */
+html.mobile-portrait-fallback-active,
+html.mobile-portrait-fallback-active body,
+html.mobile-portrait-fallback-active #root {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+html.mobile-portrait-fallback-active {
+  --app-gap: clamp(4px, 0.65dvw, 6px);
+  --app-min-height: 100dvw;
+  --dock-action-gap: clamp(3px, 0.45dvw, 4px);
+  --dock-action-margin: 0 0 clamp(3px, 0.55dvw, 5px);
+  --dock-padding: clamp(4px, 0.55dvw, 5px) 6px clamp(22px, 2.5dvw, 28px);
+  --key-gap: clamp(3px, 0.45dvw, 4px);
+  --key-height: clamp(36px, 4.2dvw, 39px);
+  --number-font-size: calc(clamp(17px, 4.5dvh, 19px) + var(--font-adjust));
+  --queue-font-size: calc(clamp(18px, 4.6dvh, 20px) + var(--font-adjust));
+  --queue-chip-height: clamp(36px, 4.4dvw, 40px);
+  --queue-cell-size: clamp(22px, 5.55dvh, var(--queue-chip-height));
+  --queue-collapsed-padding-block: clamp(6px, 1dvw, 8px);
+  --queue-padding-block: clamp(10px, 1.5dvw, 12px);
+  --signal-gap: clamp(2px, 0.35dvw, 3px);
+  --signal-padding: clamp(4px, 0.55dvw, 5px) 5px;
+  --signal-label-height: clamp(24px, 2.9dvw, 27px);
+  --signal-value-font-size: calc(clamp(18px, 4.65dvh, 20px) + var(--font-adjust));
+  --signal-strong-value-font-size: calc(clamp(19px, 4.85dvh, 21px) + var(--font-adjust));
+  --stat-value-font-size: calc(clamp(15px, 4dvh, 17px) + var(--font-adjust));
+  --control-font-size: calc(clamp(13px, 1.62dvw, 15px) + var(--font-adjust));
+  --control-min-height: clamp(30px, 3.45dvw, 32px);
+  --data-title-font-size: calc(clamp(16px, 4dvh, 18px) + var(--font-adjust));
+  --data-header-font-size: calc(clamp(14px, 3.55dvh, 16px) + var(--font-adjust));
+  --data-row-font-size: calc(clamp(13px, 3.35dvh, 15px) + var(--font-adjust));
+  --action-button-font-size: calc(clamp(13px, 3.35dvh, 15px) + var(--font-adjust));
+  --dialog-title-font-size: calc(clamp(15px, 3.45dvh, 16px) + var(--font-adjust));
+  --dialog-section-title-font-size: calc(clamp(15px, 3.45dvh, 16px) + var(--font-adjust));
+  --dialog-row-font-size: calc(clamp(13px, 2.95dvh, 14px) + var(--font-adjust));
+  --menu-font-size: calc(clamp(13px, 1.62dvw, 15px) + var(--font-adjust));
+  --menu-min-height: clamp(30px, 3.45dvw, 32px);
+}
+
+.app-shell.mobile-portrait-fallback {
+  height: 100dvw;
+  margin: 0;
+  max-width: none;
+  min-height: 100dvw;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: fixed;
+  transform-origin: top left;
+  width: 100dvh;
+}
+
+html.mobile-portrait-fallback-active.android .app-shell.mobile-portrait-fallback,
+html.mobile-portrait-fallback-active.android .prediction-screen {
+  zoom: 1;
+}
+
+.app-shell.mobile-portrait-fallback-clockwise {
+  left: 100dvw;
+  top: 0;
+  transform: rotate(90deg);
+}
+
+.app-shell.mobile-portrait-fallback-counterclockwise {
+  left: 0;
+  top: 100dvh;
+  transform: rotate(-90deg);
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .data-screen:not(.simulator-screen),
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .prediction-screen {
+  left: 0;
+  max-width: none;
+  right: 0;
+  transform: none;
+  width: 100%;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .summary-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .number-zone-grid {
+  grid-template-columns: none;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .number-zone-zero-row {
+  grid-column: auto;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .number-zone-row {
+  display: grid;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .config-backdrop {
+  align-items: center;
+  padding: 18px 10px;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .config-dialog {
+  height: min(72%, 540px);
+  max-height: min(86%, 700px);
+  width: calc(100% - 20px);
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback .manage-dialog {
+  max-height: min(84%, 700px);
+  width: calc(100% - 14px);
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback-clockwise .simulator-landscape {
+  height: 100dvh;
+  max-height: none;
+  max-width: none;
+  transform: translate(-50%, -50%) rotate(90deg);
+  width: 100dvw;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback-counterclockwise .simulator-landscape {
+  height: 100dvh;
+  max-height: none;
+  max-width: none;
+  transform: translate(-50%, -50%) rotate(90deg);
+  width: 100dvw;
+}
+
+/* Keep the simulator on its portrait sizing branch after the physical viewport turns. */
+html.mobile-portrait-fallback-active .simulator-zero {
+  font-size: clamp(36px, 6dvh, 72px);
+}
+
+html.mobile-portrait-fallback-active .simulator-screen:not(.desktop-mode) .sim-number {
+  font-size: clamp(31px, 5.3dvh, 66px);
+}
+
+html.mobile-portrait-fallback-active .simulator-screen:not(.desktop-mode) .sim-row-bets button,
+html.mobile-portrait-fallback-active .simulator-screen:not(.desktop-mode) .sim-bet-band button {
+  font-size: clamp(17px, 2dvh, 24px);
+}
+
+html.mobile-portrait-fallback-active .simulator-screen:not(.desktop-mode) .sim-dozens button {
+  font-size: clamp(20px, 2.45dvh, 30px);
+}
+
+html.mobile-portrait-fallback-active .simulator-round-pop span {
+  font-size: clamp(22px, 4.4dvw, 38px);
+}
+
+html.mobile-portrait-fallback-active .simulator-round-pop.positive span,
+html.mobile-portrait-fallback-active .simulator-round-pop.negative span {
+  font-size: clamp(42px, 9dvw, 76px);
+}
+
+html.mobile-portrait-fallback-active .simulator-round-pop strong {
+  font-size: clamp(72px, 17dvw, 132px);
+}
+
+html.mobile-portrait-fallback-active .simulator-round-pop .simulator-round-number {
+  font-size: clamp(60px, 14dvw, 108px);
+  height: clamp(116px, 25dvw, 178px);
+  width: clamp(116px, 25dvw, 178px);
+}
+
+html.mobile-portrait-fallback-active.android .simulator-main {
+  grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
+}
+
+html.mobile-portrait-fallback-active.android .simulator-round-pop-overlay {
+  bottom: 22.5%;
+}
+
+html.mobile-portrait-fallback-active.android .sim-table-felt {
+  --sim-dozens-height: 20%;
+  --sim-outside-height: 20%;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-table {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 12fr) minmax(0, 1fr);
+}
+
+html.mobile-portrait-fallback-active.android .sim-dozens,
+html.mobile-portrait-fallback-active.android .sim-outside {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+html.mobile-portrait-fallback-active.android .sim-number {
+  font-size: clamp(16px, 3svw, 31px);
+  line-height: 0.9;
+  overflow: hidden;
+}
+
+html.mobile-portrait-fallback-active.android .sim-zero {
+  font-size: clamp(24px, 4.1svw, 44px);
+}
+
+html.mobile-portrait-fallback-active.android .sim-bet-band button,
+html.mobile-portrait-fallback-active.android .sim-row-bets button {
+  font-size: clamp(12px, 2.05svw, 18px);
+  line-height: 0.95;
+  overflow: hidden;
+}
+
+html.mobile-portrait-fallback-active.android .sim-dozens button {
+  font-size: clamp(15px, 2.65svw, 22px);
+}
+
+html.mobile-portrait-fallback-active.android .sim-outside button {
+  font-size: clamp(12px, 2svw, 18px);
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-tray {
+  gap: 3px;
+  min-height: 76px;
+  padding: 11px 5px 4px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-tray .simulator-chip {
+  height: 30px;
+  max-height: 30px;
+  min-height: 30px;
+  min-width: 30px;
+  width: 30px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-picker {
+  gap: 1px;
+  height: 63px;
+  width: 116px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-picker-row {
+  gap: 2px;
+  grid-template-columns: repeat(3, 31px);
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-picker-row-offset {
+  padding-left: 15px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-tray .simulator-chip-picker .simulator-chip {
+  height: 31px;
+  max-height: 31px;
+  min-height: 31px;
+  min-width: 31px;
+  width: 31px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip span {
+  font-size: 10px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-actions {
+  gap: 4px;
+  grid-template-columns: 72px 40px;
+  grid-template-rows: repeat(2, 34px);
+  margin-left: 8px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-chip-actions button,
+html.mobile-portrait-fallback-active.android .simulator-feed-actions button {
+  border-radius: 7px;
+  font-size: 10px;
+  min-height: 30px;
+  padding: 0 3px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-bottom-feed {
+  --sim-mobile-feed-gap: 3px;
+  align-self: center;
+  gap: var(--sim-mobile-feed-gap);
+  grid-template-rows: 28px 40px;
+  height: 72px;
+  margin-left: 2px;
+  min-width: 0;
+  padding: 0 3px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-recent-numbers,
+html.mobile-portrait-fallback-active.android .simulator-log-preview {
+  gap: var(--sim-mobile-feed-gap);
+}
+
+html.mobile-portrait-fallback-active.android .simulator-recent-numbers strong,
+html.mobile-portrait-fallback-active.android .simulator-log-preview strong {
+  border-radius: 4px;
+  font-size: 11px;
+  height: 21px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-recent-numbers strong.latest {
+  font-size: 15px;
+  height: 26px;
+  min-width: 0;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-feed-actions {
+  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+html.mobile-portrait-fallback-active.android .simulator-feed-actions button {
+  min-height: 40px;
+  padding: 0 2px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-log-preview {
+  font-size: 10px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-bottom-status {
+  flex: 1 1 0;
+  gap: 2px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-left: 3px;
+  min-width: 0;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-bottom-status > div {
+  border-radius: 6px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  min-height: 20px;
+  padding: 1px 4px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-return-button {
+  border-radius: 6px;
+  font-size: 10px;
+  min-height: 20px;
+  padding: 0 2px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-bottom-status span {
+  font-size: 10px;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-bottom-status strong {
+  font-size: 12px;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulator-active .modal-backdrop {
+  padding: 0;
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback-clockwise.simulator-active .message-panel {
+  max-height: calc(100dvh - 28px);
+  max-width: calc(100dvw - 28px);
+  transform: rotate(90deg);
+  width: min(420px, calc(100dvw - 28px));
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback-counterclockwise.simulator-active .message-panel {
+  max-height: calc(100dvh - 28px);
+  max-width: calc(100dvw - 28px);
+  transform: rotate(90deg);
+  width: min(420px, calc(100dvw - 28px));
+}
+
+html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulator-active .message-body {
+  padding-left: 22px;
+  padding-right: 22px;
+}
+
+@media (orientation: landscape) and (max-width: 820px) {
+  html.mobile-portrait-fallback-active {
+    --app-padding: 5px 6px 326px;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 760px) {
+  html.mobile-portrait-fallback-active.android .simulator-bottom-feed {
+    flex-basis: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
+    width: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
+  }
+
+  html.mobile-portrait-fallback-active.android .simulator-recent-numbers {
+    grid-template-columns: repeat(8, var(--sim-mobile-recent-size));
+  }
+
+  html.mobile-portrait-fallback-active.android .simulator-recent-numbers strong:nth-of-type(n + 9) {
+    display: none;
+  }
+
+  html.mobile-portrait-fallback-active.android .simulator-bottom-status {
+    flex-basis: 168px;
+    min-width: 158px;
+  }
+
+  html.mobile-portrait-fallback-active.android .simulator-bottom-status > div {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  html.mobile-portrait-fallback-active.android .simulator-bottom-status strong {
+    white-space: nowrap;
+  }
 }
 
 .wave-detail-panel {

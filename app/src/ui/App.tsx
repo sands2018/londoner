@@ -134,7 +134,8 @@ const currentRedoNumbersKey = "londoner.currentRedoNumbers";
 const simulatorStateKey = "londoner.simulatorState";
 const simulatorDesktopModeKey = "londoner.simulatorDesktopMode";
 const simulatorDesktopGameRatioKey = "londoner.simulatorDesktopGameRatio";
-const simulatorDesktopAnalysisAspectKey = "londoner.simulatorDesktopAnalysisAspect";
+const simulatorDesktopAnalysisAspectLegacyKey = "londoner.simulatorDesktopAnalysisAspect";
+const simulatorDesktopAnalysisAspectKey = "londoner.simulatorDesktopAnalysisAspectV2";
 const simulatorDesktopAnalysisZoomKey = "londoner.simulatorDesktopAnalysisZoom";
 const simulatorDesktopDesignWidth = 1920;
 const simulatorDesktopDesignHeight = 1080;
@@ -172,6 +173,30 @@ function detectDesktopDevice(): boolean {
   return window.innerWidth >= 900 && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 }
 
+type MobilePortraitFallbackRotation = "clockwise" | "counterclockwise";
+
+function detectMobilePortraitFallbackRotation(): MobilePortraitFallbackRotation | null {
+  const orientation = screen.orientation;
+  const orientationType = orientation?.type ?? "";
+  const legacyAngle = (window as Window & { orientation?: number }).orientation;
+  const normalizedLegacyAngle = Number.isFinite(legacyAngle)
+    ? (((legacyAngle ?? 0) % 360) + 360) % 360
+    : null;
+  const normalizedScreenAngle = Number.isFinite(orientation?.angle)
+    ? ((orientation.angle % 360) + 360) % 360
+    : null;
+  const normalizedAngle = normalizedLegacyAngle === 90 || normalizedLegacyAngle === 270
+    ? normalizedLegacyAngle
+    : normalizedScreenAngle;
+  const isLandscape = orientationType.startsWith("landscape")
+    || normalizedLegacyAngle === 90
+    || normalizedLegacyAngle === 270
+    || window.matchMedia("(orientation: landscape)").matches;
+  if (!isLandscape) return null;
+
+  return normalizedAngle === 90 ? "counterclockwise" : "clockwise";
+}
+
 function clampSimulatorDesktopAnalysisAspect(value: number, viewportWidth: number, viewportHeight: number): number {
   const safeHeight = Math.max(1, viewportHeight);
   const minimumAspect = simulatorDesktopMinimumDragAnalysisWidth / safeHeight;
@@ -187,9 +212,8 @@ function getSimulatorDesktopAnalysisWidth(
   viewportWidth: number,
   viewportHeight: number,
   aspect: number,
-  zoom: number,
 ): number {
-  const desiredWidth = Math.max(1, viewportHeight * aspect * zoom);
+  const desiredWidth = Math.max(1, viewportHeight * aspect);
   const maximumWidth = Math.max(1, viewportWidth - simulatorDesktopMinimumDragGameWidth - simulatorDesktopSplitterLayoutWidth);
   return Math.min(desiredWidth, maximumWidth);
 }
@@ -1576,11 +1600,20 @@ export function App() {
   const [simulatorDesktopScale, setSimulatorDesktopScale] = useState(1);
   const [simulatorDesktopViewportSize, setSimulatorDesktopViewportSize] = useState(getSimulatorViewportSize);
   const [simulatorDesktopAnalysisOpen, setSimulatorDesktopAnalysisOpen] = useState(true);
+  const [mobilePortraitFallbackRotation, setMobilePortraitFallbackRotation] = useState<MobilePortraitFallbackRotation | null>(null);
   const [simulatorDesktopAnalysisAspect, setSimulatorDesktopAnalysisAspect] = useState(() => {
     const viewport = getSimulatorViewportSize();
     const storedAspect = Number.parseFloat(localStorage.getItem(simulatorDesktopAnalysisAspectKey) ?? "");
     if (Number.isFinite(storedAspect) && storedAspect > 0) {
       return clampSimulatorDesktopAnalysisAspect(storedAspect, viewport.width, viewport.height);
+    }
+    const legacyAspect = Number.parseFloat(localStorage.getItem(simulatorDesktopAnalysisAspectLegacyKey) ?? "");
+    if (Number.isFinite(legacyAspect) && legacyAspect > 0) {
+      return clampSimulatorDesktopAnalysisAspect(
+        legacyAspect * simulatorDesktopAnalysisZoom,
+        viewport.width,
+        viewport.height,
+      );
     }
     const storedGameRatio = Number.parseFloat(localStorage.getItem(simulatorDesktopGameRatioKey) ?? "");
     const migratedAspect = Number.isFinite(storedGameRatio)
@@ -1643,12 +1676,11 @@ export function App() {
   const simulatorDesktopAnalysisZoomMultiplier = simulatorDeviceMode === "desktop" ? simulatorDesktopAnalysisZoom : 1;
   const simulatorDesktopAnalysisWidth = simulatorDesktopAnalysisOpen
     ? simulatorDesktopWorkspaceActive
-      ? getSimulatorDesktopAnalysisWidth(
-          simulatorDesktopViewportSize.width,
-          simulatorDesktopViewportSize.height,
-          simulatorDesktopAnalysisAspect,
-          simulatorDesktopAnalysisZoomMultiplier,
-        )
+        ? getSimulatorDesktopAnalysisWidth(
+            simulatorDesktopViewportSize.width,
+            simulatorDesktopViewportSize.height,
+            simulatorDesktopAnalysisAspect,
+          )
       : simulatorDesktopViewportSize.width
     : 0;
   const simulatorDesktopGameWidth = simulatorDesktopWorkspaceActive
@@ -1659,31 +1691,36 @@ export function App() {
   const simulatorDesktopGameRatio = simulatorDesktopWorkspaceActive
     ? simulatorDesktopGameWidth / simulatorDesktopViewportSize.width
     : 0;
-  const simulatorDesktopGameTopSpace = Math.max(
+  const simulatorDesktopGameAspect = simulatorDesktopGameWidth > 0
+    ? simulatorDesktopViewportSize.height / simulatorDesktopGameWidth
+    : Number.POSITIVE_INFINITY;
+  const simulatorDesktopGameBrandVisible = simulatorDesktopAnalysisOpen && simulatorDesktopGameAspect >= 0.64;
+  const simulatorDesktopFreeVerticalSpace = Math.max(
     0,
-    (simulatorDesktopViewportSize.height - simulatorDesktopDesignHeight * simulatorDesktopScale) / 2,
+    simulatorDesktopViewportSize.height - simulatorDesktopDesignHeight * simulatorDesktopScale,
   );
-  const simulatorDesktopGameBrandHeight = Math.max(
-    simulatorDesktopGameTopSpace,
-    122 * simulatorDesktopScale,
-  );
-  const simulatorDesktopScaledAnalysisWidth = simulatorDesktopAnalysisOpen
+  const simulatorDesktopGameTop = simulatorDesktopFreeVerticalSpace * 0.75;
+  const simulatorDesktopGameVerticalOffset = simulatorDesktopFreeVerticalSpace * 0.25;
+  const simulatorDesktopGameBrandHeight = simulatorDesktopGameTop * 1.06;
+  const simulatorDesktopAnalysisCanvasWidth = simulatorDesktopAnalysisOpen
     ? Math.min(
         simulatorDesktopAnalysisWidth,
-        simulatorDesktopViewportSize.height * simulatorDesktopMaximumAnalysisScaleAspect * simulatorDesktopAnalysisZoomMultiplier,
+        simulatorDesktopViewportSize.height * simulatorDesktopMaximumAnalysisScaleAspect,
       )
-    : simulatorDesktopViewportSize.height * simulatorDesktopDefaultAnalysisAspect * simulatorDesktopAnalysisZoomMultiplier;
-  const simulatorDesktopAnalysisRenderScale = simulatorDesktopScaledAnalysisWidth / simulatorDesktopAnalysisLogicalWidth;
+    : simulatorDesktopViewportSize.height * simulatorDesktopDefaultAnalysisAspect;
+  const simulatorDesktopAnalysisBaseRenderScale = simulatorDesktopAnalysisCanvasWidth / simulatorDesktopAnalysisLogicalWidth;
+  const simulatorDesktopAnalysisRenderScale = simulatorDesktopAnalysisBaseRenderScale * simulatorDesktopAnalysisZoomMultiplier;
+  const simulatorDesktopAnalysisLogicalCanvasWidth = simulatorDesktopAnalysisCanvasWidth / simulatorDesktopAnalysisRenderScale;
   const simulatorDesktopAnalysisLogicalCanvasHeight = simulatorDesktopViewportSize.height / simulatorDesktopAnalysisRenderScale;
   const simulatorDesktopAnalysisOffset = simulatorDesktopAnalysisOpen
-    ? Math.max(0, (simulatorDesktopAnalysisWidth - simulatorDesktopScaledAnalysisWidth) / 2)
+    ? Math.max(0, (simulatorDesktopAnalysisWidth - simulatorDesktopAnalysisCanvasWidth) / 2)
     : 0;
   const simulatorDesktopAnalysisOriginLeft =
     (simulatorDesktopWorkspaceActive ? simulatorDesktopGameWidth + simulatorDesktopSplitterLayoutWidth : 0) +
     simulatorDesktopAnalysisOffset;
   const simulatorDesktopWorkspaceStyle = simulatorUsesDesktopLayout
     ? ({
-        "--desktop-analysis-design-width": `${simulatorDesktopAnalysisLogicalWidth}px`,
+        "--desktop-analysis-design-width": `${simulatorDesktopAnalysisLogicalCanvasWidth}px`,
         "--desktop-analysis-design-height": `${simulatorDesktopAnalysisLogicalCanvasHeight}px`,
         "--desktop-analysis-offset": `${simulatorDesktopAnalysisOffset}px`,
         "--desktop-analysis-origin-left": `${simulatorDesktopAnalysisOriginLeft}px`,
@@ -2677,6 +2714,37 @@ export function App() {
     };
   }, [simulatorUsesDesktopLayout]);
 
+  useEffect(() => {
+    if (simulatorUsesDesktopLayout) {
+      setMobilePortraitFallbackRotation(null);
+      return undefined;
+    }
+
+    const updateFallbackRotation = () => {
+      setMobilePortraitFallbackRotation(detectMobilePortraitFallbackRotation());
+    };
+    const orientation = screen.orientation;
+
+    updateFallbackRotation();
+    window.addEventListener("orientationchange", updateFallbackRotation);
+    window.addEventListener("resize", updateFallbackRotation);
+    window.visualViewport?.addEventListener("resize", updateFallbackRotation);
+    orientation?.addEventListener("change", updateFallbackRotation);
+    return () => {
+      window.removeEventListener("orientationchange", updateFallbackRotation);
+      window.removeEventListener("resize", updateFallbackRotation);
+      window.visualViewport?.removeEventListener("resize", updateFallbackRotation);
+      orientation?.removeEventListener("change", updateFallbackRotation);
+    };
+  }, [simulatorUsesDesktopLayout]);
+
+  useEffect(() => {
+    const className = "mobile-portrait-fallback-active";
+    const active = mobilePortraitFallbackRotation !== null;
+    document.documentElement.classList.toggle(className, active);
+    return () => document.documentElement.classList.remove(className);
+  }, [mobilePortraitFallbackRotation]);
+
   useLayoutEffect(() => {
     if (!queueExpanded) {
       setQueueExpandedMaxHeight(null);
@@ -2723,12 +2791,11 @@ export function App() {
     const updateScale = () => {
       const viewport = getSimulatorViewportSize();
       const analysisWidth = simulatorDesktopAnalysisOpen
-        ? getSimulatorDesktopAnalysisWidth(
-            viewport.width,
-            viewport.height,
-            simulatorDesktopAnalysisAspect,
-            simulatorDesktopAnalysisZoomMultiplier,
-          )
+          ? getSimulatorDesktopAnalysisWidth(
+              viewport.width,
+              viewport.height,
+              simulatorDesktopAnalysisAspect,
+            )
         : 0;
       const gamePaneWidth = simulatorDesktopAnalysisOpen
         ? Math.max(0, viewport.width - analysisWidth - simulatorDesktopSplitterLayoutWidth)
@@ -2751,7 +2818,7 @@ export function App() {
       window.removeEventListener("orientationchange", updateScale);
       window.visualViewport?.removeEventListener("resize", updateScale);
     };
-  }, [simulatorDesktopAnalysisAspect, simulatorDesktopAnalysisOpen, simulatorDesktopAnalysisZoomMultiplier, simulatorOpen, simulatorUsesDesktopLayout]);
+  }, [simulatorDesktopAnalysisAspect, simulatorDesktopAnalysisOpen, simulatorOpen, simulatorUsesDesktopLayout]);
 
   useEffect(() => {
     if (keyboardMode !== onlySupportedKeyboardMode) {
@@ -5124,7 +5191,7 @@ export function App() {
   function updateSimulatorDesktopGameRatio(clientX: number) {
     const viewport = getSimulatorViewportSize();
     const analysisWidth = viewport.width - clientX - simulatorDesktopSplitterLayoutWidth;
-    const nextAspect = analysisWidth / (viewport.height * simulatorDesktopAnalysisZoomMultiplier);
+    const nextAspect = analysisWidth / viewport.height;
     setSimulatorDesktopAnalysisAspect(clampSimulatorDesktopAnalysisAspect(nextAspect, viewport.width, viewport.height));
   }
 
@@ -6587,7 +6654,7 @@ export function App() {
 
   return (
     <main
-      className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorUsesDesktopLayout ? "simulator-desktop-layout" : ""} ${simulatorDesktopWorkspaceActive ? "simulator-desktop-active" : ""} ${simulatorDesktopWorkspaceActive && !simulatorDesktopAnalysisOpen ? "desktop-analysis-closed" : ""}`}
+      className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorUsesDesktopLayout ? "simulator-desktop-layout" : ""} ${simulatorDesktopWorkspaceActive ? "simulator-desktop-active" : ""} ${simulatorDesktopWorkspaceActive && !simulatorDesktopAnalysisOpen ? "desktop-analysis-closed" : ""} ${mobilePortraitFallbackRotation ? `mobile-portrait-fallback mobile-portrait-fallback-${mobilePortraitFallbackRotation}` : ""}`}
       style={simulatorDesktopWorkspaceStyle}
     >
       {canUseSimulator && simulatorUsesDesktopLayout && simulatorOpen && simulatorDesktopAnalysisOpen ? (
@@ -8857,10 +8924,11 @@ export function App() {
             "--desktop-game-brand-line-gap": `${52 * simulatorDesktopScale}px`,
             "--desktop-game-brand-line-height": `${2.94 * simulatorDesktopScale}px`,
             "--desktop-game-brand-line-offset": `${16 * simulatorDesktopScale}px`,
+            "--simulator-desktop-vertical-offset": `${simulatorDesktopGameVerticalOffset}px`,
             "--simulator-desktop-scale": simulatorDesktopScale,
           } as CSSProperties) : undefined}
         >
-          {simulatorUsesDesktopLayout && simulatorDesktopAnalysisOpen ? (
+          {simulatorUsesDesktopLayout && simulatorDesktopGameBrandVisible ? (
             <div className="desktop-game-brand" aria-label="Roulette Game, Designed by Sands2018">
               <div className="desktop-game-brand-copy">
                 <strong><span className="desktop-game-brand-title">Roulette Game</span></strong>
@@ -9207,7 +9275,14 @@ export function App() {
                   </div>
                 </div>
                 <div className="simulator-chip-actions">
-                  <button aria-label="开下一口" className="sim-action-play" onClick={settleSimulatorRound} title="开下一口" type="button">
+                  <button
+                    aria-label="开下一口"
+                    className={`sim-action-play${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
+                    data-tooltip={simulatorUsesDesktopLayout ? "开下一口" : undefined}
+                    onClick={settleSimulatorRound}
+                    title={simulatorUsesDesktopLayout ? undefined : "开下一口"}
+                    type="button"
+                  >
                     <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
                   </button>
                   {!simulatorUsesDesktopLayout ? (
@@ -9223,14 +9298,45 @@ export function App() {
                     ))}
                   </button>
                   <div className="simulator-feed-actions" aria-label="模拟下注操作">
-                    <button aria-label="撤销下注" disabled={simulatorBetPlacements.length === 0} onClick={undoSimulatorBet} title="撤销下注" type="button">
+                    <button
+                      aria-label="撤销下注"
+                      className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
+                      data-tooltip={simulatorUsesDesktopLayout ? "撤销下注" : undefined}
+                      disabled={simulatorBetPlacements.length === 0}
+                      onClick={undoSimulatorBet}
+                      title={simulatorUsesDesktopLayout ? undefined : "撤销下注"}
+                      type="button"
+                    >
                       <Undo2 aria-hidden="true" size={15} strokeWidth={2.4} />
                     </button>
-                    <button aria-label="清空下注" onClick={clearSimulatorBets} title="清空下注" type="button">AC</button>
-                    <button aria-label="重复上一把投注" disabled={simulatorLastBets.length === 0} onClick={repeatSimulatorLastBets} title="重复上一把投注" type="button">
+                    <button
+                      aria-label="清空下注"
+                      className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
+                      data-tooltip={simulatorUsesDesktopLayout ? "清空下注" : undefined}
+                      onClick={clearSimulatorBets}
+                      title={simulatorUsesDesktopLayout ? undefined : "清空下注"}
+                      type="button"
+                    >AC</button>
+                    <button
+                      aria-label="重复上一把下注"
+                      className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
+                      data-tooltip={simulatorUsesDesktopLayout ? "重复上一把下注" : undefined}
+                      disabled={simulatorLastBets.length === 0}
+                      onClick={repeatSimulatorLastBets}
+                      title={simulatorUsesDesktopLayout ? undefined : "重复上一把下注"}
+                      type="button"
+                    >
                       <Repeat aria-hidden="true" size={15} strokeWidth={2.4} />
                     </button>
-                    <button aria-label="当前赌注翻倍" disabled={simulatorBets.length === 0} onClick={doubleSimulatorBets} title="当前赌注翻倍" type="button">
+                    <button
+                      aria-label="当前赌注加倍"
+                      className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
+                      data-tooltip={simulatorUsesDesktopLayout ? "当前赌注加倍" : undefined}
+                      disabled={simulatorBets.length === 0}
+                      onClick={doubleSimulatorBets}
+                      title={simulatorUsesDesktopLayout ? undefined : "当前赌注加倍"}
+                      type="button"
+                    >
                       <ChevronsUp aria-hidden="true" size={15} strokeWidth={2.4} />
                     </button>
                     {simulatorUsesDesktopLayout ? (
