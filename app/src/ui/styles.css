@@ -8933,10 +8933,8 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     font-weight: var(--weight-strong);
     letter-spacing: 0.08em;
     line-height: 0.92;
-    margin-inline: 0.75em;
+    margin-right: -0.08em;
     text-align: center;
-    transform: scaleX(1.2) scaleY(0.9);
-    transform-origin: center center;
     white-space: nowrap;
     word-spacing: 0.12em;
     -webkit-background-clip: text;
