@@ -8915,6 +8915,11 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   .desktop-game-brand strong {
     align-items: center;
+    display: flex;
+    width: 100%;
+  }
+
+  .desktop-game-brand-title {
     background-image:
       repeating-linear-gradient(117deg, transparent 0 13px, rgb(47 30 8 / 0.72) 13px 14px, transparent 14px 31px),
       repeating-linear-gradient(71deg, transparent 0 21px, rgb(255 236 171 / 0.2) 21px 22px, transparent 22px 43px),
@@ -8922,16 +8927,17 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     background-blend-mode: multiply, screen, normal;
     background-clip: text;
     color: transparent;
-    display: flex;
     filter: drop-shadow(0 2px 1px rgb(0 0 0 / 0.72));
     font-family: Georgia, "Times New Roman", serif;
     font-size: var(--desktop-game-brand-title-size, 82px);
     font-weight: var(--weight-strong);
     letter-spacing: 0.08em;
     line-height: 0.92;
+    margin-inline: 0.75em;
     text-align: center;
+    transform: scaleX(1.2) scaleY(0.9);
+    transform-origin: center center;
     white-space: nowrap;
-    width: 100%;
     word-spacing: 0.12em;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -8955,7 +8961,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     margin-left: var(--desktop-game-brand-line-gap, 22px);
   }
 
-  .desktop-game-brand span {
+  .desktop-game-brand-subtitle {
     color: #90784d;
     font-family: Georgia, "Times New Roman", serif;
     font-size: var(--desktop-game-brand-subtitle-size, 20px);

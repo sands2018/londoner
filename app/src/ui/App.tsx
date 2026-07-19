@@ -8863,8 +8863,8 @@ export function App() {
           {simulatorUsesDesktopLayout && simulatorDesktopAnalysisOpen ? (
             <div className="desktop-game-brand" aria-label="Roulette Game, Designed by Sands2018">
               <div className="desktop-game-brand-copy">
-                <strong>Roulette Game</strong>
-                <span>Designed by Sands2018</span>
+                <strong><span className="desktop-game-brand-title">Roulette Game</span></strong>
+                <span className="desktop-game-brand-subtitle">Designed by Sands2018</span>
               </div>
             </div>
           ) : null}
