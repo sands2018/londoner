@@ -1699,8 +1699,17 @@ export function App() {
     0,
     simulatorDesktopViewportSize.height - simulatorDesktopDesignHeight * simulatorDesktopScale,
   );
-  const simulatorDesktopGameTop = simulatorDesktopFreeVerticalSpace * (7 / 9);
-  const simulatorDesktopGameVerticalOffset = simulatorDesktopFreeVerticalSpace * (5 / 18);
+  const simulatorDesktopGameTopPadding = simulatorDesktopAnalysisOpen
+    ? Math.min(18, simulatorDesktopFreeVerticalSpace)
+    : 0;
+  const simulatorDesktopRatioVerticalSpace = simulatorDesktopFreeVerticalSpace - simulatorDesktopGameTopPadding;
+  const simulatorDesktopGameTop = simulatorDesktopAnalysisOpen
+    ? simulatorDesktopGameTopPadding + simulatorDesktopRatioVerticalSpace * (73 / 93)
+    : simulatorDesktopFreeVerticalSpace * (7 / 9);
+  const simulatorDesktopGameBottom = simulatorDesktopAnalysisOpen
+    ? simulatorDesktopRatioVerticalSpace * (20 / 93)
+    : simulatorDesktopFreeVerticalSpace * (2 / 9);
+  const simulatorDesktopGameVerticalOffset = (simulatorDesktopGameTop - simulatorDesktopGameBottom) / 2;
   const simulatorDesktopGameBrandHeight = simulatorDesktopGameTop * 1.06;
   const simulatorDesktopAnalysisCanvasWidth = simulatorDesktopAnalysisOpen
     ? Math.min(
@@ -3062,22 +3071,30 @@ export function App() {
     return simulatorBets.find((item) => item.key === key)?.amount ?? 0;
   }
 
-  function getSimulatorTableChipClass(amount: number) {
+  function getSimulatorTableChipClass(amount: number, key: string) {
+    let denomination = amount;
+    for (let index = simulatorBetPlacements.length - 1; index >= 0; index -= 1) {
+      if (simulatorBetPlacements[index].key !== key) continue;
+      denomination = simulatorBetPlacements[index].amount;
+      break;
+    }
+    if (simulatorChips.some((chip) => chip === denomination)) return `sim-table-chip-${denomination}`;
     if (amount <= 100) return "sim-table-chip-green";
     if (amount <= 1000) return "sim-table-chip-red";
     return "sim-table-chip-purple";
   }
 
-  function renderSimulatorTableChip(amount: number) {
+  function renderSimulatorTableChip(amount: number, key: string) {
     return amount > 0 ? (
-      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount)}`}>
+      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount, key)}`}>
         <span className="sim-table-chip-text">{amount}</span>
       </span>
     ) : null;
   }
 
   function renderSimulatorChip(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
-    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers));
+    const key = simulatorBetKey(kind, betNumbers);
+    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers), key);
   }
 
   function clearSimulatorRoundState(nextProgress = numbers.length) {
@@ -8921,7 +8938,7 @@ export function App() {
 
       {canUseSimulator && simulatorOpen ? (
         <section
-          className={`simulator-screen ${simulatorUsesDesktopLayout ? "desktop-mode desktop-split-pane" : ""} ${simulatorUsesDesktopLayout && !simulatorDesktopAnalysisOpen ? "desktop-game-only" : ""}`}
+          className={`simulator-screen ${simulatorUsesDesktopLayout ? "desktop-mode desktop-split-pane" : "mobile-mode"} ${simulatorUsesDesktopLayout && !simulatorDesktopAnalysisOpen ? "desktop-game-only" : ""}`}
           aria-label="轮盘模拟"
           style={simulatorUsesDesktopLayout ? ({
             "--desktop-game-brand-height": `${simulatorDesktopGameBrandHeight}px`,
@@ -8932,6 +8949,7 @@ export function App() {
             "--desktop-game-brand-line-gap": `${52 * simulatorDesktopScale}px`,
             "--desktop-game-brand-line-height": `${2.94 * simulatorDesktopScale}px`,
             "--desktop-game-brand-line-offset": `${16 * simulatorDesktopScale}px`,
+            "--simulator-desktop-game-only-offset": `${simulatorDesktopAnalysisOpen ? 0 : 18 * simulatorDesktopScale}px`,
             "--simulator-desktop-vertical-offset": `${simulatorDesktopGameVerticalOffset}px`,
             "--simulator-desktop-scale": simulatorDesktopScale,
           } as CSSProperties) : undefined}
@@ -9070,7 +9088,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("zero-trio", bet.label, bet.numbers, bet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("zero-trio", bet.numbers)) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })}
@@ -9087,7 +9105,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("first-four", simulatorFirstFourBet.label, simulatorFirstFourBet.numbers, simulatorFirstFourBet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("first-four", simulatorFirstFourBet.numbers)) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })()}
@@ -9128,7 +9146,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("split", bet.numbers)) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9147,7 +9165,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("corner", bet.numbers)) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9166,7 +9184,7 @@ export function App() {
                                 style={{ left: `${((index + 0.5) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("street", bet.numbers)) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9185,7 +9203,7 @@ export function App() {
                                 style={{ left: `${((index + 1) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("six", bet.numbers)) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9348,12 +9366,12 @@ export function App() {
                       <ChevronsUp aria-hidden="true" size={15} strokeWidth={2.4} />
                     </button>
                     {simulatorUsesDesktopLayout ? (
-                      <button aria-label="打开结算明细" className="sim-feed-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
+                      <button aria-label="打开结算明细" className="sim-feed-detail simulator-desktop-tooltip" data-tooltip="结算明细" onClick={() => setSimulatorDetailOpen(true)} type="button">
                         <List aria-hidden="true" size={16} strokeWidth={2.3} />
                       </button>
                     ) : null}
-                    {simulatorUsesDesktopLayout ? <button aria-label="跳到第200个号码" className="sim-feed-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} title="跳到第200个号码" type="button">200</button> : null}
-                    {simulatorUsesDesktopLayout ? <button aria-label="返回分析" className="sim-feed-return" onClick={handleSimulatorAnalysisAction} title="返回分析" type="button">分析</button> : null}
+                    {simulatorUsesDesktopLayout ? <button aria-label="跳到第200个号码" className="sim-feed-200 simulator-desktop-tooltip" data-tooltip="跳到第200个号码" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button> : null}
+                    {simulatorUsesDesktopLayout ? <button aria-label="返回分析" className="sim-feed-return simulator-desktop-tooltip" data-tooltip="返回分析" onClick={handleSimulatorAnalysisAction} type="button">分析</button> : null}
                   </div>
                 </div>
                 <div className="simulator-bottom-status" aria-label="模拟进度和胜负">

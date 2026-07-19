@@ -6003,10 +6003,11 @@ html.android .sim-bet-band button {
 }
 
 .sim-table-chip {
+  --sim-chip-accent: #b8ae98;
   align-items: center;
   background:
     radial-gradient(circle at 50% 50%, #303030 0 35%, transparent 36%),
-    conic-gradient(#f8f1d8 0 26deg, var(--sim-chip-color, #d28d36) 26deg 58deg, #f8f1d8 58deg 90deg, var(--sim-chip-color, #d28d36) 90deg 122deg, #f8f1d8 122deg 154deg, var(--sim-chip-color, #d28d36) 154deg 186deg, #f8f1d8 186deg 218deg, var(--sim-chip-color, #d28d36) 218deg 250deg, #f8f1d8 250deg 282deg, var(--sim-chip-color, #d28d36) 282deg 314deg, #f8f1d8 314deg 360deg);
+    conic-gradient(var(--sim-chip-accent) 0 26deg, var(--sim-chip-color, #d28d36) 26deg 58deg, var(--sim-chip-accent) 58deg 90deg, var(--sim-chip-color, #d28d36) 90deg 122deg, var(--sim-chip-accent) 122deg 154deg, var(--sim-chip-color, #d28d36) 154deg 186deg, var(--sim-chip-accent) 186deg 218deg, var(--sim-chip-color, #d28d36) 218deg 250deg, var(--sim-chip-accent) 250deg 282deg, var(--sim-chip-color, #d28d36) 282deg 314deg, var(--sim-chip-accent) 314deg 360deg);
   border: 2px solid rgb(255 249 225 / 0.82);
   border-radius: 50%;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.62);
@@ -6416,6 +6417,7 @@ html.android .sim-bet-band button {
 }
 
 .simulator-chip {
+  --chip-accent: #b8ae98;
   --chip-color: #d18d34;
   --chip-inner: #7a5120;
   align-items: center;
@@ -6426,17 +6428,17 @@ html.android .sim-bet-band button {
     radial-gradient(circle at 50% 50%, transparent 0 44%, var(--chip-inner) 45% 63%, transparent 64%),
     conic-gradient(
       from 0deg,
-      #f7f1df 0 17deg,
+      var(--chip-accent) 0 17deg,
       var(--chip-color) 17deg 60deg,
-      #f7f1df 60deg 77deg,
+      var(--chip-accent) 60deg 77deg,
       var(--chip-color) 77deg 120deg,
-      #f7f1df 120deg 137deg,
+      var(--chip-accent) 120deg 137deg,
       var(--chip-color) 137deg 180deg,
-      #f7f1df 180deg 197deg,
+      var(--chip-accent) 180deg 197deg,
       var(--chip-color) 197deg 240deg,
-      #f7f1df 240deg 257deg,
+      var(--chip-accent) 240deg 257deg,
       var(--chip-color) 257deg 300deg,
-      #f7f1df 300deg 317deg,
+      var(--chip-accent) 300deg 317deg,
       var(--chip-color) 317deg 360deg
     );
   border: 0;
@@ -6501,31 +6503,37 @@ html.android .sim-bet-band button {
 }
 
 .simulator-chip-10 {
-  --chip-color: #c56e19;
-  --chip-inner: #744013;
+  --chip-accent: #8eafb9;
+  --chip-color: #168fd0;
+  --chip-inner: #0d496c;
 }
 
 .simulator-chip-20 {
+  --chip-accent: #879b82;
   --chip-color: #1f6a3e;
   --chip-inner: #124127;
 }
 
 .simulator-chip-50 {
-  --chip-color: #65c7dd;
-  --chip-inner: #2e7788;
+  --chip-accent: #c0af82;
+  --chip-color: #aa8628;
+  --chip-inner: #665019;
 }
 
 .simulator-chip-100 {
-  --chip-color: #168fd0;
-  --chip-inner: #0d496c;
+  --chip-accent: #c8a57d;
+  --chip-color: #c56e19;
+  --chip-inner: #744013;
 }
 
 .simulator-chip-500 {
+  --chip-accent: #b8877c;
   --chip-color: #b02e2c;
   --chip-inner: #682020;
 }
 
 .simulator-chip-1000 {
+  --chip-accent: #998790;
   --chip-color: #583269;
   --chip-inner: #372042;
 }
@@ -6952,8 +6960,8 @@ html.android .sim-bet-band button {
 }
 
 .simulator-chip:not(.selected) {
-  filter: brightness(0.58) saturate(0.72);
-  opacity: 0.72;
+  filter: brightness(0.72) saturate(0.72);
+  opacity: 0.8;
 }
 
 .simulator-chip.selected {
@@ -8055,6 +8063,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 .sim-table-felt .sim-zero-hotspots .sim-table-chip,
 .sim-table-felt .sim-zero-trios .sim-table-chip {
   --sim-chip-color: #238a52;
+  --sim-chip-accent: #879b82;
   --sim-chip-inner: #123f2a;
   background:
     radial-gradient(circle at 36% 28%, rgb(255 255 255 / 0.42) 0 8%, transparent 24%),
@@ -8062,23 +8071,24 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     radial-gradient(circle at 50% 50%, transparent 0 44%, var(--sim-chip-inner) 45% 63%, transparent 64%),
     conic-gradient(
       from 0deg,
-      #f7f1df 0 17deg,
+      var(--sim-chip-accent) 0 17deg,
       var(--sim-chip-color) 17deg 60deg,
-      #f7f1df 60deg 77deg,
+      var(--sim-chip-accent) 60deg 77deg,
       var(--sim-chip-color) 77deg 120deg,
-      #f7f1df 120deg 137deg,
+      var(--sim-chip-accent) 120deg 137deg,
       var(--sim-chip-color) 137deg 180deg,
-      #f7f1df 180deg 197deg,
+      var(--sim-chip-accent) 180deg 197deg,
       var(--sim-chip-color) 197deg 240deg,
-      #f7f1df 240deg 257deg,
+      var(--sim-chip-accent) 240deg 257deg,
       var(--sim-chip-color) 257deg 300deg,
-      #f7f1df 300deg 317deg,
+      var(--sim-chip-accent) 300deg 317deg,
       var(--sim-chip-color) 317deg 360deg
     );
   border: 0;
   box-sizing: border-box;
   box-shadow: 0 2px 6px rgb(0 0 0 / 0.68), inset 0 2px 3px rgb(255 255 255 / 0.18), inset 0 -3px 4px rgb(0 0 0 / 0.45);
   color: #fff4bd;
+  filter: brightness(1.1);
   font-size: 17px;
   font-weight: 800;
   height: 32px;
@@ -8087,18 +8097,57 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-green {
+  --sim-chip-accent: #83a5b0;
   --sim-chip-color: #168fd0;
   --sim-chip-inner: #0d496c;
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-red {
+  --sim-chip-accent: #b9897e;
   --sim-chip-color: #c63a34;
   --sim-chip-inner: #641f1d;
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-purple {
+  --sim-chip-accent: #9c89af;
   --sim-chip-color: #7042b4;
   --sim-chip-inner: #3c236b;
+}
+
+.sim-table-felt .sim-table-chip.sim-table-chip-10 {
+  --sim-chip-accent: #8eafb9;
+  --sim-chip-color: #168fd0;
+  --sim-chip-inner: #0d496c;
+}
+
+.sim-table-felt .sim-table-chip.sim-table-chip-20 {
+  --sim-chip-accent: #879b82;
+  --sim-chip-color: #1f6a3e;
+  --sim-chip-inner: #124127;
+}
+
+.sim-table-felt .sim-table-chip.sim-table-chip-50 {
+  --sim-chip-accent: #c0af82;
+  --sim-chip-color: #aa8628;
+  --sim-chip-inner: #665019;
+}
+
+.sim-table-felt .sim-table-chip.sim-table-chip-100 {
+  --sim-chip-accent: #c8a57d;
+  --sim-chip-color: #c56e19;
+  --sim-chip-inner: #744013;
+}
+
+.sim-table-felt .sim-table-chip.sim-table-chip-500 {
+  --sim-chip-accent: #b8877c;
+  --sim-chip-color: #b02e2c;
+  --sim-chip-inner: #682020;
+}
+
+.sim-table-felt .sim-table-chip.sim-table-chip-1000 {
+  --sim-chip-accent: #998790;
+  --sim-chip-color: #583269;
+  --sim-chip-inner: #372042;
 }
 
 .sim-table-felt .sim-table-chip::before {
@@ -8341,16 +8390,16 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   --sim-desktop-action-tall: 144px;
   --sim-desktop-action-w: 72px;
   --sim-desktop-play-w: 150px;
-  --sim-desktop-chip: 70px;
-  --sim-desktop-chip-col-gap: 12px;
+  --sim-desktop-chip: 80px;
+  --sim-desktop-chip-col-gap: 11px;
   --sim-desktop-chip-picker-h: 150px;
   --sim-desktop-chip-row-gap: 16px;
   --sim-desktop-feed-gap: 14px;
   --sim-desktop-gap: 7px;
   --sim-desktop-latest: 70px;
-  --sim-desktop-panel-h: 243px;
+  --sim-desktop-operation-offset-y: -10px;
   --sim-desktop-recent: 56px;
-  --sim-desktop-table-chip: 66px;
+  --sim-desktop-table-chip: 69px;
   --sim-desktop-table-chip-inset: 13px;
   background:
     linear-gradient(rgb(32 22 3 / 0.09), rgb(32 22 3 / 0.09)),
@@ -8371,26 +8420,28 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   left: 50%;
   max-height: none;
   max-width: none;
-  top: calc(50% + var(--simulator-desktop-vertical-offset));
+  top: calc(50% + var(--simulator-desktop-vertical-offset) + var(--simulator-desktop-game-only-offset, 0px));
   transform: translate(-50%, -50%) scale(var(--simulator-desktop-scale, 1));
   transform-origin: center center;
   width: 1920px;
 }
 
 .simulator-screen.desktop-mode .simulator-main {
-  grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
+  grid-template-rows: minmax(0, 34fr) minmax(0, 9fr);
 }
 
 .simulator-screen.desktop-mode .simulator-chip-tray {
   background: transparent;
+  box-sizing: border-box;
   gap: var(--sim-desktop-gap);
-  min-height: var(--sim-desktop-panel-h);
+  min-height: 0;
   overflow: visible;
-  padding: 10px 14px;
+  padding: 12px 4px 0;
+  width: 100%;
 }
 
 .simulator-screen.desktop-mode .simulator-round-pop-overlay {
-  bottom: var(--sim-desktop-panel-h);
+  bottom: calc(100% * 9 / 43);
 }
 
 .simulator-screen.desktop-mode .sim-table-felt .sim-table-chip {
@@ -8485,7 +8536,9 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   flex-direction: column;
   height: var(--sim-desktop-chip-picker-h);
   justify-content: center;
-  padding-left: 8px;
+  padding-left: 0;
+  position: relative;
+  top: 4px;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-picker-label {
@@ -8505,7 +8558,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   line-height: 1;
   margin-bottom: 20px;
   padding-left: 12px;
-  transform: translateY(-16px);
+  transform: translateY(-13px);
   text-align: left;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -8532,10 +8585,14 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   font-size: 28px;
 }
 
+.simulator-screen.desktop-mode .simulator-chip-picker .simulator-chip.selected {
+  transform: translateY(-3px) scale(1.1);
+}
+
 .simulator-screen.desktop-mode .simulator-chip-actions {
-  grid-template-columns: var(--sim-desktop-play-w);
+  grid-template-columns: var(--sim-desktop-action-tall);
   grid-template-rows: var(--sim-desktop-action-tall);
-  margin-left: 22px;
+  margin-left: 12px;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-actions .sim-action-play {
@@ -8544,9 +8601,30 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-chip-actions button,
 .simulator-screen.desktop-mode .simulator-feed-actions button {
-  border-radius: 11px;
   font-size: 15px;
   min-height: var(--sim-desktop-action-h);
+}
+
+.simulator-screen.desktop-mode .simulator-chip-actions button {
+  border-radius: 50%;
+  height: calc(var(--sim-desktop-action-tall) - 8px);
+  place-self: center;
+  width: calc(var(--sim-desktop-action-tall) - 8px);
+}
+
+.simulator-screen.desktop-mode .simulator-chip-actions .sim-action-play {
+  background: linear-gradient(180deg, #52815f 0%, #326247 52%, #1d452f 100%);
+  border-color: rgb(255 235 184 / 0.36);
+  box-shadow:
+    0 8px 18px rgb(0 0 0 / 0.36),
+    inset 0 2px 2px rgb(255 244 198 / 0.16),
+    inset 0 -5px 9px rgb(5 24 16 / 0.42);
+  color: #fff4d0;
+  height: calc(90% - 7.2px);
+  left: -3px;
+  min-height: 0;
+  text-shadow: 0 2px 2px rgb(35 20 5 / 0.62);
+  width: calc(90% - 7.2px);
 }
 
 .simulator-screen.desktop-mode .simulator-bottom-feed {
@@ -8554,7 +8632,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   gap: var(--sim-desktop-feed-gap);
   grid-template-rows: var(--sim-desktop-latest) var(--sim-desktop-action-h);
   height: calc(var(--sim-desktop-latest) + var(--sim-desktop-action-h) + var(--sim-desktop-feed-gap));
-  margin-left: 18px;
+  margin-left: -2px;
   min-width: 0;
   overflow: visible;
   padding: 0 4px;
@@ -8566,18 +8644,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-desktop-tooltip::after {
-  background: #1b1c1a;
-  border: 2px solid #454237;
-  border-radius: 6px;
   bottom: calc(100% + 9.5px);
-  color: #9b895d;
   content: attr(data-tooltip);
-  font-size: 23px;
-  font-weight: var(--weight-regular);
   left: 50%;
-  line-height: 1;
   opacity: 0;
-  padding: 9.5px 13.5px;
   pointer-events: none;
   position: absolute;
   transform: translate(-50%, 4px);
@@ -8601,6 +8671,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   width: 100%;
 }
 
+.simulator-screen.desktop-mode .simulator-chip-tray > * {
+  transform: translateY(var(--sim-desktop-operation-offset-y));
+}
+
 .simulator-screen.desktop-mode .simulator-recent-numbers {
   gap: var(--sim-desktop-gap);
   grid-template-columns: var(--sim-desktop-latest) repeat(11, var(--sim-desktop-recent));
@@ -8610,7 +8684,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-recent-numbers strong {
-  border-radius: 7px;
+  border-radius: 50%;
   font-size: 28px;
   height: var(--sim-desktop-recent);
   width: var(--sim-desktop-recent);
@@ -8623,8 +8697,22 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-feed-actions button {
+  border-radius: 999px;
+  height: var(--sim-desktop-action-h);
   padding: 0 8px;
   font-size: 28px;
+  width: auto;
+}
+
+.simulator-screen.desktop-mode .simulator-feed-actions .sim-feed-return {
+  background: linear-gradient(180deg, #384f42, #283a30);
+}
+
+.simulator-screen.desktop-mode .simulator-feed-actions > button:nth-child(-n + 4):disabled {
+  background: linear-gradient(180deg, #35463b, #1c2c23);
+  border-color: rgb(255 235 184 / 0.24);
+  color: rgb(244 234 211 / 0.58);
+  opacity: 0.62;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-actions button svg,
@@ -8988,19 +9076,9 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .desktop-workspace-splitter::after {
-    background: #1b1c1a;
-    border: calc(2px * var(--desktop-splitter-tooltip-scale, 1)) solid #343229;
-    border-radius: calc(6px * var(--desktop-splitter-tooltip-scale, 1));
-    color: #857651;
     content: attr(data-tooltip);
-    font-size: calc(23px * var(--desktop-splitter-tooltip-scale, 1));
-    font-weight: var(--weight-regular);
     left: var(--desktop-splitter-tooltip-x, calc(100% + 8px));
-    line-height: 1;
     opacity: 0;
-    padding:
-      calc(9.5px * var(--desktop-splitter-tooltip-scale, 1))
-      calc(13.5px * var(--desktop-splitter-tooltip-scale, 1));
     pointer-events: none;
     position: fixed;
     top: var(--desktop-splitter-tooltip-y, 50%);
@@ -9141,16 +9219,8 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   .desktop-pane-close::after {
-    background: #1b1c1a;
-    border: 2px solid #343229;
-    border-radius: 6px;
-    color: #857651;
     content: attr(data-tooltip);
-    font-size: 23px;
-    font-weight: var(--weight-regular);
-    line-height: 1;
     opacity: 0;
-    padding: 9.5px 13.5px;
     pointer-events: none;
     position: absolute;
     right: 0;
@@ -12221,4 +12291,28 @@ html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulat
   color: #20241f;
   font-size: 15px;
   font-weight: var(--weight-emphasis);
+}
+
+.simulator-screen.desktop-mode .simulator-desktop-tooltip::after,
+.desktop-workspace-splitter::after,
+.desktop-pane-close::after {
+  background: #1b1c1a;
+  border: 2px solid #514637;
+  border-radius: 6px;
+  color: #aa8755;
+  font-size: 23px;
+  font-weight: var(--weight-regular);
+  line-height: 1;
+  padding: 9.5px 13.5px;
+}
+
+/* Explicit mobile state keeps chip rendering independent of orientation fallbacks. */
+.simulator-screen.mobile-mode .simulator-chip:not(.selected) {
+  filter: brightness(0.79) saturate(0.72);
+  opacity: 0.84;
+}
+
+.simulator-screen.mobile-mode .sim-table-felt .sim-table-chip {
+  height: 34px;
+  width: 34px;
 }
