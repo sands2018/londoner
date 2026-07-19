@@ -1699,8 +1699,8 @@ export function App() {
     0,
     simulatorDesktopViewportSize.height - simulatorDesktopDesignHeight * simulatorDesktopScale,
   );
-  const simulatorDesktopGameTop = simulatorDesktopFreeVerticalSpace * 0.75;
-  const simulatorDesktopGameVerticalOffset = simulatorDesktopFreeVerticalSpace * 0.25;
+  const simulatorDesktopGameTop = simulatorDesktopFreeVerticalSpace * (7 / 9);
+  const simulatorDesktopGameVerticalOffset = simulatorDesktopFreeVerticalSpace * (5 / 18);
   const simulatorDesktopGameBrandHeight = simulatorDesktopGameTop * 1.06;
   const simulatorDesktopAnalysisCanvasWidth = simulatorDesktopAnalysisOpen
     ? Math.min(
@@ -5201,7 +5201,13 @@ export function App() {
     event.preventDefault();
   }
 
+  function updateSimulatorDesktopSplitterTooltipPosition(event: ReactPointerEvent<HTMLDivElement>) {
+    event.currentTarget.style.setProperty("--desktop-splitter-tooltip-x", `${event.clientX + 14}px`);
+    event.currentTarget.style.setProperty("--desktop-splitter-tooltip-y", `${event.clientY + 14}px`);
+  }
+
   function handleSimulatorDesktopSplitterPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    updateSimulatorDesktopSplitterTooltipPosition(event);
     if (!simulatorDesktopSplitterDraggingRef.current) return;
     updateSimulatorDesktopGameRatio(event.clientX);
   }
@@ -6711,11 +6717,13 @@ export function App() {
             }}
             onPointerCancel={stopSimulatorDesktopSplitterDrag}
             onPointerDown={handleSimulatorDesktopSplitterPointerDown}
+            onPointerEnter={updateSimulatorDesktopSplitterTooltipPosition}
             onPointerMove={handleSimulatorDesktopSplitterPointerMove}
             onPointerUp={stopSimulatorDesktopSplitterDrag}
             role="separator"
+            style={{ "--desktop-splitter-tooltip-scale": simulatorDesktopScale } as CSSProperties}
             tabIndex={0}
-            title="拖动调整宽度，双击恢复默认比例"
+            data-tooltip="拖动调整宽度，双击恢复默认比例"
           >
             <span />
           </div>

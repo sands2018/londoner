@@ -5,6 +5,7 @@ import "@fontsource/roboto/latin-500.css";
 import "@fontsource/libre-baskerville/latin-700.css";
 import "@fontsource/noto-sans-sc/chinese-simplified-400.css";
 import "@fontsource/noto-sans-sc/chinese-simplified-500.css";
+import "@fontsource/noto-serif-sc/chinese-simplified-700.css";
 import { App } from "./ui/App";
 import "./ui/styles.css";
 

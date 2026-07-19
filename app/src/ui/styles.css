@@ -8352,12 +8352,21 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   --sim-desktop-recent: 56px;
   --sim-desktop-table-chip: 66px;
   --sim-desktop-table-chip-inset: 13px;
+  background:
+    linear-gradient(rgb(32 22 3 / 0.09), rgb(32 22 3 / 0.09)),
+    linear-gradient(180deg, rgb(0 0 0 / 0.32) 0%, rgb(0 0 0 / 0.13) 32%, transparent 56%),
+    radial-gradient(circle at 34% -16%, rgb(255 218 120 / 0.18), transparent 30%),
+    radial-gradient(circle at 88% 86%, rgb(205 161 78 / 0.18), transparent 36%),
+    radial-gradient(circle at 52% 48%, rgb(0 0 0 / 0.18), transparent 42%),
+    linear-gradient(135deg, #05140c 0%, #073e22 49%, #021008 100%);
   overflow: hidden;
   padding: 0;
 }
 
 .simulator-screen.desktop-mode .simulator-landscape {
-  border-color: #0a0d0b;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   height: 1080px;
   left: 50%;
   max-height: none;
@@ -8481,16 +8490,25 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-chip-picker-label {
   align-self: stretch;
-  color: #d8bd79;
+  background-image:
+    repeating-linear-gradient(117deg, transparent 0 13px, rgb(61 42 12 / 0.48) 13px 14px, transparent 14px 31px),
+    repeating-linear-gradient(71deg, transparent 0 21px, rgb(255 239 180 / 0.28) 21px 22px, transparent 22px 43px),
+    linear-gradient(124deg, #dfc77a 0%, #b98d3d 30%, #795b26 52%, #cda34d 74%, #85652c 100%);
+  background-blend-mode: multiply, screen, normal;
+  background-clip: text;
+  color: transparent;
   display: block;
-  font-size: 30px;
+  filter: drop-shadow(0 2px 1px rgb(0 0 0 / 0.72));
+  font-family: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: 36px;
   font-weight: var(--weight-ui);
   line-height: 1;
   margin-bottom: 20px;
   padding-left: 12px;
-  text-shadow: 0 2px 8px rgb(3 12 8 / 0.75);
   transform: translateY(-16px);
   text-align: left;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-picker-row {
@@ -8969,6 +8987,30 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
     width: var(--desktop-splitter-width);
   }
 
+  .desktop-workspace-splitter::after {
+    background: #1b1c1a;
+    border: calc(2px * var(--desktop-splitter-tooltip-scale, 1)) solid #343229;
+    border-radius: calc(6px * var(--desktop-splitter-tooltip-scale, 1));
+    color: #857651;
+    content: attr(data-tooltip);
+    font-size: calc(23px * var(--desktop-splitter-tooltip-scale, 1));
+    font-weight: var(--weight-regular);
+    left: var(--desktop-splitter-tooltip-x, calc(100% + 8px));
+    line-height: 1;
+    opacity: 0;
+    padding:
+      calc(9.5px * var(--desktop-splitter-tooltip-scale, 1))
+      calc(13.5px * var(--desktop-splitter-tooltip-scale, 1));
+    pointer-events: none;
+    position: fixed;
+    top: var(--desktop-splitter-tooltip-y, 50%);
+    transform: translateY(-4px);
+    transition: opacity 100ms ease, transform 100ms ease;
+    visibility: hidden;
+    white-space: nowrap;
+    z-index: 52;
+  }
+
   .desktop-workspace-splitter span {
     display: none;
   }
@@ -8982,6 +9024,13 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   .desktop-workspace-splitter:hover::before,
   .desktop-workspace-splitter:focus-visible::before {
     background: #45483f;
+  }
+
+  .desktop-workspace-splitter:hover::after,
+  .desktop-workspace-splitter:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
   }
 
   .desktop-game-brand {
