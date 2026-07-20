@@ -339,8 +339,28 @@ interface SimulatorBet {
 }
 
 interface SimulatorBetPlacement {
+  actionId?: number;
   amount: number;
   key: string;
+}
+
+type SimulatorCallBetId = "tiers" | "zero" | "voisins" | "orphelins";
+
+interface SimulatorCallBetPart {
+  kind: SimulatorBetKind;
+  label: string;
+  numbers: readonly RouletteNumber[];
+  payout: number;
+  units: number;
+}
+
+interface SimulatorCallBetDefinition {
+  alias: string;
+  id: SimulatorCallBetId;
+  label: string;
+  numbers: readonly RouletteNumber[];
+  parts: readonly SimulatorCallBetPart[];
+  unitCount: number;
 }
 
 interface SimulatorLog {
@@ -393,6 +413,103 @@ const simulatorZeroTrioBets = [
   { label: "0-2-3", numbers: [0, 2, 3] as RouletteNumber[], payout: 11 },
 ];
 const simulatorFirstFourBet = { label: "0-1-2-3", numbers: [0, 1, 2, 3] as RouletteNumber[], payout: 8 };
+const simulatorZeroThreeSplitBet = { label: "0/3", numbers: [0, 3] as RouletteNumber[], payout: 17 };
+const simulatorCallBetDefinitions: readonly SimulatorCallBetDefinition[] = [
+  {
+    alias: "Serie 5/8",
+    id: "tiers",
+    label: "58区",
+    numbers: [5, 8, 10, 11, 13, 16, 23, 24, 27, 30, 33, 36],
+    parts: [
+      { kind: "split", label: "58区 5/8", numbers: [5, 8], payout: 17, units: 1 },
+      { kind: "split", label: "58区 10/11", numbers: [10, 11], payout: 17, units: 1 },
+      { kind: "split", label: "58区 13/16", numbers: [13, 16], payout: 17, units: 1 },
+      { kind: "split", label: "58区 23/24", numbers: [23, 24], payout: 17, units: 1 },
+      { kind: "split", label: "58区 27/30", numbers: [27, 30], payout: 17, units: 1 },
+      { kind: "split", label: "58区 33/36", numbers: [33, 36], payout: 17, units: 1 },
+    ],
+    unitCount: 6,
+  },
+  {
+    alias: "Jeu Zero",
+    id: "zero",
+    label: "小零区",
+    numbers: [0, 3, 12, 15, 26, 32, 35],
+    parts: [
+      { kind: "split", label: "小零区 0/3", numbers: [0, 3], payout: 17, units: 1 },
+      { kind: "split", label: "小零区 12/15", numbers: [12, 15], payout: 17, units: 1 },
+      { kind: "straight", label: "小零区 26", numbers: [26], payout: 35, units: 1 },
+      { kind: "split", label: "小零区 32/35", numbers: [32, 35], payout: 17, units: 1 },
+    ],
+    unitCount: 4,
+  },
+  {
+    alias: "Voisins",
+    id: "voisins",
+    label: "大零区",
+    numbers: [0, 2, 3, 4, 7, 12, 15, 18, 19, 21, 22, 25, 26, 28, 29, 32, 35],
+    parts: [
+      { kind: "split", label: "大零区 4/7", numbers: [4, 7], payout: 17, units: 1 },
+      { kind: "split", label: "大零区 12/15", numbers: [12, 15], payout: 17, units: 1 },
+      { kind: "split", label: "大零区 18/21", numbers: [18, 21], payout: 17, units: 1 },
+      { kind: "split", label: "大零区 19/22", numbers: [19, 22], payout: 17, units: 1 },
+      { kind: "split", label: "大零区 32/35", numbers: [32, 35], payout: 17, units: 1 },
+      { kind: "zero-trio", label: "大零区 0/2/3", numbers: [0, 2, 3], payout: 11, units: 2 },
+      { kind: "corner", label: "大零区 25/26/28/29", numbers: [25, 26, 28, 29], payout: 8, units: 2 },
+    ],
+    unitCount: 9,
+  },
+  {
+    alias: "Orphelins",
+    id: "orphelins",
+    label: "其它区",
+    numbers: [1, 6, 9, 14, 17, 20, 31, 34],
+    parts: [
+      { kind: "straight", label: "其它区 1", numbers: [1], payout: 35, units: 1 },
+      { kind: "split", label: "其它区 6/9", numbers: [6, 9], payout: 17, units: 1 },
+      { kind: "split", label: "其它区 14/17", numbers: [14, 17], payout: 17, units: 1 },
+      { kind: "split", label: "其它区 17/20", numbers: [17, 20], payout: 17, units: 1 },
+      { kind: "split", label: "其它区 31/34", numbers: [31, 34], payout: 17, units: 1 },
+    ],
+    unitCount: 5,
+  },
+];
+const simulatorEuropeanWheelOrder: readonly RouletteNumber[] = [
+  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
+  5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
+];
+const simulatorRacetrackGeometry = {
+  centerY: 330,
+  height: 660,
+  leftCenter: 320,
+  numberBandWidth: 72,
+  radius: 234,
+  rightCenter: 1080,
+  sectorBandGap: 8,
+  sectorBandWidth: 42,
+  smallZeroBandWidth: 30,
+  width: 1400,
+} as const;
+// Keep neighbour-five preview and betting available for a later racetrack mode.
+const simulatorRacetrackNumberInteractionEnabled = false;
+
+interface SimulatorRacetrackSectorSegment {
+  betId: SimulatorCallBetId;
+  endCell: number;
+  label: string;
+  labelCell: number;
+  lane: "main" | "overlap";
+  segmentId: string;
+  startCell: number;
+}
+
+const simulatorRacetrackSectorSegments: readonly SimulatorRacetrackSectorSegment[] = [
+  { betId: "voisins", endCell: 44.5, label: "大零区", labelCell: 30.5, lane: "main", segmentId: "voisins", startCell: 27.5 },
+  { betId: "tiers", endCell: 22.5, label: "58区", labelCell: 12.5, lane: "main", segmentId: "tiers", startCell: 10.5 },
+  { betId: "orphelins", endCell: 10.5, label: "其它区", labelCell: 9, lane: "main", segmentId: "orphelins-a", startCell: 7.5 },
+  { betId: "orphelins", endCell: 27.5, label: "其它区", labelCell: 25, lane: "main", segmentId: "orphelins-b", startCell: 22.5 },
+  { betId: "zero", endCell: 39.5, label: "小零区", labelCell: 36, lane: "overlap", segmentId: "zero", startCell: 32.5 },
+];
 const simulatorHorizontalSplitBets = boardRows.flatMap((row, rowIndex) =>
   row.slice(0, -1).map((value, colIndex) => {
     const next = row[colIndex + 1];
@@ -984,6 +1101,108 @@ function simulatorBetKey(kind: SimulatorBetKind, numbers: readonly RouletteNumbe
   return `${kind}:${[...numbers].sort((a, b) => a - b).join("-")}`;
 }
 
+function simulatorWheelNeighbours(value: RouletteNumber, radius = 2): RouletteNumber[] {
+  const center = simulatorEuropeanWheelOrder.indexOf(value);
+  if (center < 0) return [value];
+  const total = simulatorEuropeanWheelOrder.length;
+  return Array.from({ length: radius * 2 + 1 }, (_, offset) => (
+    simulatorEuropeanWheelOrder[(center - radius + offset + total) % total]
+  ));
+}
+
+interface SimulatorStadiumPoint {
+  angle: number;
+  nx: number;
+  ny: number;
+  x: number;
+  y: number;
+}
+
+function simulatorStadiumPoint(fraction: number, radius: number): SimulatorStadiumPoint {
+  const { centerY, leftCenter, rightCenter } = simulatorRacetrackGeometry;
+  const referenceRadius = simulatorRacetrackGeometry.radius;
+  const straight = rightCenter - leftCenter;
+  const quarterArc = Math.PI * referenceRadius / 2;
+  const halfArc = Math.PI * referenceRadius;
+  const perimeter = quarterArc * 2 + halfArc + straight * 2;
+  const normalized = ((fraction % 1) + 1) % 1;
+  let distance = normalized * perimeter;
+  let nx: number;
+  let ny: number;
+  let tx: number;
+  let ty: number;
+  let x: number;
+  let y: number;
+
+  if (distance < quarterArc) {
+    const angle = Math.PI + distance / referenceRadius;
+    nx = Math.cos(angle);
+    ny = Math.sin(angle);
+    tx = -Math.sin(angle);
+    ty = Math.cos(angle);
+    x = leftCenter + nx * radius;
+    y = centerY + ny * radius;
+  } else if ((distance -= quarterArc) < straight) {
+    nx = 0;
+    ny = -1;
+    tx = 1;
+    ty = 0;
+    x = leftCenter + distance;
+    y = centerY - radius;
+  } else if ((distance -= straight) < halfArc) {
+    const angle = -Math.PI / 2 + distance / referenceRadius;
+    nx = Math.cos(angle);
+    ny = Math.sin(angle);
+    tx = -Math.sin(angle);
+    ty = Math.cos(angle);
+    x = rightCenter + nx * radius;
+    y = centerY + ny * radius;
+  } else if ((distance -= halfArc) < straight) {
+    nx = 0;
+    ny = 1;
+    tx = -1;
+    ty = 0;
+    x = rightCenter - distance;
+    y = centerY + radius;
+  } else {
+    distance -= straight;
+    const angle = Math.PI / 2 + distance / referenceRadius;
+    nx = Math.cos(angle);
+    ny = Math.sin(angle);
+    tx = -Math.sin(angle);
+    ty = Math.cos(angle);
+    x = leftCenter + nx * radius;
+    y = centerY + ny * radius;
+  }
+
+  let angle = Math.atan2(ty, tx) * 180 / Math.PI;
+  if (angle > 90) angle -= 180;
+  if (angle < -90) angle += 180;
+  return { angle, nx, ny, x, y };
+}
+
+function simulatorStadiumBandPath(
+  startFraction: number,
+  endFraction: number,
+  radius: number,
+  width: number,
+): string {
+  const span = endFraction - startFraction;
+  const samples = Math.max(8, Math.ceil(Math.abs(span) * simulatorEuropeanWheelOrder.length * 5));
+  const outer: Array<{ x: number; y: number }> = [];
+  const inner: Array<{ x: number; y: number }> = [];
+
+  for (let index = 0; index <= samples; index += 1) {
+    const fraction = startFraction + span * index / samples;
+    const point = simulatorStadiumPoint(fraction, radius);
+    outer.push({ x: point.x + point.nx * width / 2, y: point.y + point.ny * width / 2 });
+    inner.push({ x: point.x - point.nx * width / 2, y: point.y - point.ny * width / 2 });
+  }
+
+  const points = [...outer, ...inner.reverse()];
+  return `${points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ")} Z`;
+}
+
 function simulatorNumbersLabel(numbers: readonly RouletteNumber[]): string {
   return [...numbers].sort((a, b) => a - b).join("/");
 }
@@ -1001,7 +1220,16 @@ function simulatorDecodeNumbers(value: string | undefined): RouletteNumber[] {
 }
 
 function isSimulatorBetKind(value: unknown): value is SimulatorBetKind {
-  return value === "straight" || value === "split" || value === "corner" || value === "street" || value === "six" || value === "dozen" || value === "column" || value === "outside";
+  return value === "straight"
+    || value === "split"
+    || value === "corner"
+    || value === "street"
+    || value === "six"
+    || value === "dozen"
+    || value === "row"
+    || value === "outside"
+    || value === "zero-trio"
+    || value === "first-four";
 }
 
 function normalizeSimulatorBet(value: unknown): SimulatorBet | null {
@@ -1021,9 +1249,10 @@ function normalizeSimulatorBet(value: unknown): SimulatorBet | null {
 function normalizeSimulatorBetPlacement(value: unknown): SimulatorBetPlacement | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
+  const actionId = typeof item.actionId === "number" && Number.isFinite(item.actionId) ? item.actionId : undefined;
   const amount = typeof item.amount === "number" && Number.isFinite(item.amount) ? item.amount : null;
   const key = typeof item.key === "string" ? item.key : "";
-  return amount !== null && key ? { amount, key } : null;
+  return amount !== null && key ? { actionId, amount, key } : null;
 }
 
 function normalizeSimulatorLog(value: unknown): SimulatorLog | null {
@@ -1343,6 +1572,7 @@ interface NoticeDialog {
 }
 
 interface ConfirmDialog extends NoticeDialog {
+  appearance?: "simulator-game";
   confirmFirst?: boolean;
   confirmText?: string;
   onConfirm: () => Promise<void> | void;
@@ -1600,6 +1830,7 @@ export function App() {
   const [simulatorDesktopScale, setSimulatorDesktopScale] = useState(1);
   const [simulatorDesktopViewportSize, setSimulatorDesktopViewportSize] = useState(getSimulatorViewportSize);
   const [simulatorDesktopAnalysisOpen, setSimulatorDesktopAnalysisOpen] = useState(true);
+  const [simulatorMobileRecentCount, setSimulatorMobileRecentCount] = useState(10);
   const [mobilePortraitFallbackRotation, setMobilePortraitFallbackRotation] = useState<MobilePortraitFallbackRotation | null>(null);
   const [simulatorDesktopAnalysisAspect, setSimulatorDesktopAnalysisAspect] = useState(() => {
     const viewport = getSimulatorViewportSize();
@@ -1622,6 +1853,7 @@ export function App() {
     return clampSimulatorDesktopAnalysisAspect(migratedAspect, viewport.width, viewport.height);
   });
   const simulatorDesktopSplitterDraggingRef = useRef(false);
+  const simulatorBottomFeedRef = useRef<HTMLDivElement>(null);
   const initialSimulatorState = useMemo(loadSimulatorState, []);
   const [simulatorBalance, setSimulatorBalance] = useState(initialSimulatorState.balance);
   const [simulatorSelectedChip, setSimulatorSelectedChip] = useState<number>(initialSimulatorState.selectedChip);
@@ -1631,9 +1863,13 @@ export function App() {
   const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>(initialSimulatorState.log);
   const [simulatorDetailOpen, setSimulatorDetailOpen] = useState(false);
   const [simulatorRecentOpen, setSimulatorRecentOpen] = useState(false);
+  const [simulatorRacetrackOpen, setSimulatorRacetrackOpen] = useState(false);
+  const [simulatorRacetrackHighlight, setSimulatorRacetrackHighlight] = useState<readonly RouletteNumber[] | null>(null);
   const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; phase: "result" | "net"; result: RouletteNumber; stake: number; winReturn: number } | null>(null);
   const simulatorBetIdRef = useRef(Math.max(0, ...initialSimulatorState.bets.map((bet) => bet.id), ...initialSimulatorState.lastBets.map((bet) => bet.id)));
+  const simulatorBetActionIdRef = useRef(Math.max(0, ...initialSimulatorState.betPlacements.map((placement) => placement.actionId ?? 0)));
   const simulatorProgressRef = useRef(0);
+  const simulatorStatusTapRef = useRef<{ at: number; key: string } | null>(null);
   const simulatorRoundPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shotVideoRef = useRef<HTMLVideoElement>(null);
   const shotStreamRef = useRef<MediaStream | null>(null);
@@ -2755,6 +2991,41 @@ export function App() {
   }, [mobilePortraitFallbackRotation]);
 
   useLayoutEffect(() => {
+    if (!simulatorOpen || simulatorUsesDesktopLayout) {
+      setSimulatorMobileRecentCount(10);
+      return undefined;
+    }
+
+    const feed = simulatorBottomFeedRef.current;
+    if (!feed) return undefined;
+
+    const updateRecentCount = () => {
+      const style = window.getComputedStyle(feed);
+      const padding = (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
+      const availableWidth = Math.max(0, feed.clientWidth - padding);
+      const regularSize = Number.parseFloat(style.getPropertyValue("--sim-mobile-recent-size")) || 24;
+      const latestSize = Number.parseFloat(style.getPropertyValue("--sim-mobile-latest-size")) || 32;
+      const gap = Number.parseFloat(style.getPropertyValue("--sim-mobile-feed-gap")) || 0;
+      const capacity = availableWidth >= latestSize
+        ? 1 + Math.floor((availableWidth - latestSize) / (regularSize + gap))
+        : 1;
+      const nextCount = Math.max(1, capacity);
+      setSimulatorMobileRecentCount((current) => current === nextCount ? current : nextCount);
+    };
+
+    updateRecentCount();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateRecentCount);
+    observer?.observe(feed);
+    window.addEventListener("resize", updateRecentCount);
+    window.visualViewport?.addEventListener("resize", updateRecentCount);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateRecentCount);
+      window.visualViewport?.removeEventListener("resize", updateRecentCount);
+    };
+  }, [mobilePortraitFallbackRotation, simulatorOpen, simulatorUsesDesktopLayout]);
+
+  useLayoutEffect(() => {
     if (!queueExpanded) {
       setQueueExpandedMaxHeight(null);
       return;
@@ -3122,14 +3393,40 @@ export function App() {
     }
   }
 
+  function confirmSimulatorBettingReset() {
+    setConfirmDialog({
+      appearance: "simulator-game",
+      title: "请确认",
+      message: "是否要重置投注？",
+      confirmFirst: true,
+      confirmText: "是",
+      cancelText: "否",
+      onConfirm: () => clearSimulatorRoundState(numbers.length),
+    });
+  }
+
+  function handleSimulatorStatusPointerUp(key: string, event: ReactPointerEvent<HTMLDivElement>) {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const now = Date.now();
+    const previous = simulatorStatusTapRef.current;
+    if (previous?.key === key && now - previous.at <= 420) {
+      simulatorStatusTapRef.current = null;
+      confirmSimulatorBettingReset();
+      return;
+    }
+    simulatorStatusTapRef.current = { at: now, key };
+  }
+
   function addSimulatorBetBatch(bets: readonly Omit<SimulatorBet, "id">[]) {
     const additions = bets.filter((bet) => bet.amount > 0 && bet.numbers.length > 0);
     if (additions.length === 0) return;
+    simulatorBetActionIdRef.current += 1;
+    const actionId = simulatorBetActionIdRef.current;
     const total = additions.reduce((sum, bet) => sum + bet.amount, 0);
     setSimulatorBalance((value) => value - total);
     setSimulatorBetPlacements((items) => [
       ...items,
-      ...additions.map((bet) => ({ amount: bet.amount, key: bet.key })),
+      ...additions.map((bet) => ({ actionId, amount: bet.amount, key: bet.key })),
     ]);
     setSimulatorBets((items) => {
       let next = items;
@@ -3166,6 +3463,31 @@ export function App() {
       numbers: [...betNumbers],
       payout,
     }]);
+  }
+
+  function placeSimulatorCallBet(definition: SimulatorCallBetDefinition) {
+    addSimulatorBetBatch(definition.parts.flatMap((part) => (
+      Array.from({ length: part.units }, () => ({
+        amount: simulatorSelectedChip,
+        key: simulatorBetKey(part.kind, part.numbers),
+        kind: part.kind,
+        label: part.label,
+        numbers: [...part.numbers],
+        payout: part.payout,
+      }))
+    )));
+  }
+
+  function placeSimulatorNeighbourBet(value: RouletteNumber) {
+    const neighbours = simulatorWheelNeighbours(value);
+    addSimulatorBetBatch(neighbours.map((number) => ({
+      amount: simulatorSelectedChip,
+      key: simulatorBetKey("straight", [number]),
+      kind: "straight",
+      label: `邻号 ${value} / ${number}`,
+      numbers: [number],
+      payout: 35,
+    })));
   }
 
   function repeatSimulatorLastBets() {
@@ -3417,15 +3739,24 @@ export function App() {
   function undoSimulatorBet() {
     const lastPlacement = simulatorBetPlacements.at(-1);
     if (!lastPlacement) return;
-    setSimulatorBalance((value) => value + lastPlacement.amount);
-    setSimulatorBetPlacements((items) => items.slice(0, -1));
-    setSimulatorBets((items) =>
-      items.flatMap((item) => {
-        if (item.key !== lastPlacement.key) return [item];
-        const nextAmount = item.amount - lastPlacement.amount;
-        return nextAmount > 0 ? [{ ...item, amount: nextAmount }] : [];
-      }),
-    );
+    const placements = lastPlacement.actionId === undefined
+      ? [lastPlacement]
+      : simulatorBetPlacements.filter((placement) => placement.actionId === lastPlacement.actionId);
+    const refundByKey = new Map<string, number>();
+    placements.forEach((placement) => {
+      refundByKey.set(placement.key, (refundByKey.get(placement.key) ?? 0) + placement.amount);
+    });
+    const refund = placements.reduce((sum, placement) => sum + placement.amount, 0);
+    setSimulatorBalance((value) => value + refund);
+    setSimulatorBetPlacements((items) => (
+      lastPlacement.actionId === undefined
+        ? items.slice(0, -1)
+        : items.filter((placement) => placement.actionId !== lastPlacement.actionId)
+    ));
+    setSimulatorBets((items) => items.flatMap((item) => {
+      const nextAmount = item.amount - (refundByKey.get(item.key) ?? 0);
+      return nextAmount > 0 ? [{ ...item, amount: nextAmount }] : [];
+    }));
   }
 
   function applySimulatorJumpTo200() {
@@ -3444,6 +3775,7 @@ export function App() {
     if (simulatorNumbers.length < 200 || simulatorIndex === 200) return;
     const goingForward = simulatorIndex < 200;
     setConfirmDialog({
+      appearance: "simulator-game",
       title: "请确认",
       message: goingForward
         ? "是否要前进到第200个号码？"
@@ -8983,6 +9315,63 @@ export function App() {
                 </div>
               </div>
             ) : null}
+            {confirmDialog?.appearance === "simulator-game" ? (
+              <div className="simulator-detail-overlay" role="dialog" aria-modal="true" aria-label={confirmDialog.title}>
+                <div className="simulator-detail-panel simulator-confirm-panel">
+                  <header>
+                    <strong>{confirmDialog.title}</strong>
+                    <button onClick={() => setConfirmDialog(null)} type="button">X</button>
+                  </header>
+                  <div className="simulator-detail-grid simulator-confirm-grid">
+                    <section>
+                      <p className="simulator-confirm-message">{confirmDialog.message}</p>
+                      <div className="simulator-confirm-actions">
+                        {(() => {
+                          const cancelButton = confirmDialog.cancelText ? (
+                            <button
+                              onClick={() => {
+                                const action = confirmDialog.onCancel;
+                                setConfirmDialog(null);
+                                if (action) void action();
+                              }}
+                              type="button"
+                            >
+                              {confirmDialog.cancelText}
+                            </button>
+                          ) : (
+                            <button onClick={() => setConfirmDialog(null)} type="button">取消</button>
+                          );
+                          const confirmButton = (
+                            <button
+                              className="primary-action"
+                              onClick={() => {
+                                const action = confirmDialog.onConfirm;
+                                setConfirmDialog(null);
+                                void action();
+                              }}
+                              type="button"
+                            >
+                              {confirmDialog.confirmText ?? "确定"}
+                            </button>
+                          );
+                          return confirmDialog.confirmFirst || !confirmDialog.cancelText ? (
+                            <>
+                              {confirmButton}
+                              {cancelButton}
+                            </>
+                          ) : (
+                            <>
+                              {cancelButton}
+                              {confirmButton}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {simulatorDetailOpen ? (
               <div className="simulator-detail-overlay" role="dialog" aria-modal="true" aria-label="模拟明细">
                 <div className="simulator-detail-panel">
@@ -9044,7 +9433,117 @@ export function App() {
               </div>
             ) : null}
             <div className="simulator-main">
-              <section className="simulator-table-wrap">
+              <section className={`simulator-table-wrap${simulatorRacetrackOpen ? " racetrack-open" : ""}`}>
+                {simulatorRacetrackOpen ? (
+                  <div className="simulator-racetrack" aria-label="欧洲轮盘号码盘">
+                    <svg
+                      aria-label="号码顺序及分区范围"
+                      className="simulator-racetrack-svg"
+                      preserveAspectRatio="xMidYMid meet"
+                      role="group"
+                      viewBox={`0 0 ${simulatorRacetrackGeometry.width} ${simulatorRacetrackGeometry.height}`}
+                    >
+                      <g className="simulator-racetrack-sectors">
+                        {simulatorRacetrackSectorSegments.map((segment) => {
+                          const definition = simulatorCallBetDefinitions.find((item) => item.id === segment.betId);
+                          if (!definition) return null;
+                          const isSectorHighlighted = simulatorRacetrackHighlight !== null
+                            && simulatorRacetrackHighlight.length === definition.numbers.length
+                            && definition.numbers.every((number) => simulatorRacetrackHighlight.includes(number));
+                          const numberOuterRadius = simulatorRacetrackGeometry.radius + simulatorRacetrackGeometry.numberBandWidth / 2;
+                          const mainRadius = numberOuterRadius + simulatorRacetrackGeometry.sectorBandGap + simulatorRacetrackGeometry.sectorBandWidth / 2;
+                          const radius = segment.lane === "main"
+                            ? mainRadius
+                            : numberOuterRadius
+                              + simulatorRacetrackGeometry.sectorBandGap
+                              + simulatorRacetrackGeometry.smallZeroBandWidth / 2;
+                          const width = segment.lane === "main"
+                            ? simulatorRacetrackGeometry.sectorBandWidth
+                            : simulatorRacetrackGeometry.smallZeroBandWidth;
+                          const labelPoint = simulatorStadiumPoint(segment.labelCell / simulatorEuropeanWheelOrder.length, radius);
+                          return (
+                            <g
+                              aria-label={`${definition.label}，${definition.unitCount}注，共${definition.unitCount * simulatorSelectedChip}`}
+                              className={`simulator-racetrack-sector simulator-racetrack-sector-${segment.betId} simulator-racetrack-sector-${segment.lane}${isSectorHighlighted ? " is-highlighted" : ""}`}
+                              key={`racetrack-sector-${segment.segmentId}`}
+                              onBlur={() => setSimulatorRacetrackHighlight(null)}
+                              onClick={() => placeSimulatorCallBet(definition)}
+                              onFocus={() => setSimulatorRacetrackHighlight(definition.numbers)}
+                              onKeyDown={(event) => {
+                                if (event.key !== "Enter" && event.key !== " ") return;
+                                event.preventDefault();
+                                placeSimulatorCallBet(definition);
+                              }}
+                              onPointerEnter={() => setSimulatorRacetrackHighlight(definition.numbers)}
+                              onPointerLeave={() => setSimulatorRacetrackHighlight(null)}
+                              role="button"
+                              tabIndex={0}
+                            >
+                              <path d={simulatorStadiumBandPath(
+                                segment.startCell / simulatorEuropeanWheelOrder.length,
+                                segment.endCell / simulatorEuropeanWheelOrder.length,
+                                radius,
+                                width,
+                              )} />
+                              <text
+                                dominantBaseline="middle"
+                                textAnchor="middle"
+                                transform={`rotate(${labelPoint.angle.toFixed(1)} ${labelPoint.x.toFixed(1)} ${labelPoint.y.toFixed(1)})`}
+                                x={labelPoint.x}
+                                y={labelPoint.y}
+                              >
+                                {segment.label}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </g>
+                      <g className="simulator-racetrack-cells">
+                        {simulatorEuropeanWheelOrder.map((value, index) => {
+                          const total = simulatorEuropeanWheelOrder.length;
+                          const neighbours = simulatorWheelNeighbours(value);
+                          const isHighlighted = simulatorRacetrackHighlight?.includes(value) ?? false;
+                          const point = simulatorStadiumPoint(index / total, simulatorRacetrackGeometry.radius);
+                          return (
+                            <g
+                              aria-label={simulatorRacetrackNumberInteractionEnabled ? `邻号5：${neighbours.join("、")}` : `${value}号`}
+                              className={`simulator-racetrack-cell simulator-racetrack-cell-${getNumberColor(value)}${simulatorRacetrackHighlight ? (isHighlighted ? " is-highlighted" : " is-muted") : ""}`}
+                              key={`racetrack-${value}`}
+                              onBlur={simulatorRacetrackNumberInteractionEnabled ? () => setSimulatorRacetrackHighlight(null) : undefined}
+                              onClick={simulatorRacetrackNumberInteractionEnabled ? () => placeSimulatorNeighbourBet(value) : undefined}
+                              onFocus={simulatorRacetrackNumberInteractionEnabled ? () => setSimulatorRacetrackHighlight(neighbours) : undefined}
+                              onKeyDown={simulatorRacetrackNumberInteractionEnabled ? (event) => {
+                                if (event.key !== "Enter" && event.key !== " ") return;
+                                event.preventDefault();
+                                placeSimulatorNeighbourBet(value);
+                              } : undefined}
+                              onPointerEnter={simulatorRacetrackNumberInteractionEnabled ? () => setSimulatorRacetrackHighlight(neighbours) : undefined}
+                              onPointerLeave={simulatorRacetrackNumberInteractionEnabled ? () => setSimulatorRacetrackHighlight(null) : undefined}
+                              role={simulatorRacetrackNumberInteractionEnabled ? "button" : undefined}
+                              tabIndex={simulatorRacetrackNumberInteractionEnabled ? 0 : undefined}
+                            >
+                              <path d={simulatorStadiumBandPath(
+                                (index - 0.5) / total,
+                                (index + 0.5) / total,
+                                simulatorRacetrackGeometry.radius,
+                                simulatorRacetrackGeometry.numberBandWidth,
+                              )} />
+                              <text
+                                dominantBaseline="middle"
+                                textAnchor="middle"
+                                transform={`rotate(${point.angle.toFixed(1)} ${point.x.toFixed(1)} ${point.y.toFixed(1)})`}
+                                x={point.x}
+                                y={point.y}
+                              >
+                                {value}
+                              </text>
+                            </g>
+                          );
+                        })}
+                      </g>
+                    </svg>
+                  </div>
+                ) : null}
                 <div className="sim-table-felt" onClickCapture={handleSimulatorTableClick}>
                   {simulatorUsesDesktopLayout ? (
                     <>
@@ -9074,6 +9573,23 @@ export function App() {
                         {renderSimulatorChip("straight", [0])}
                       </button>
                       <div className="sim-zero-hotspots" aria-label="0区三数下注位">
+                        {(() => {
+                          const amount = getSimulatorBetAmount("split", simulatorZeroThreeSplitBet.numbers);
+                          return (
+                            <button
+                              aria-label="下注2数 0/3"
+                              className={`sim-zero-split-spot ${amount > 0 ? "has-chip" : ""}`}
+                              data-sim-kind="split"
+                              data-sim-label="2数 0/3"
+                              data-sim-numbers={simulatorEncodeNumbers(simulatorZeroThreeSplitBet.numbers)}
+                              data-sim-payout={simulatorZeroThreeSplitBet.payout}
+                              onClick={() => placeSimulatorBet("split", "2数 0/3", simulatorZeroThreeSplitBet.numbers, simulatorZeroThreeSplitBet.payout)}
+                              type="button"
+                            >
+                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("split", simulatorZeroThreeSplitBet.numbers)) : <span className="sim-hotspot-mark" />}
+                            </button>
+                          );
+                        })()}
                         {simulatorZeroTrioBets.map((bet, index) => {
                           const amount = getSimulatorBetAmount("zero-trio", bet.numbers);
                           return (
@@ -9311,19 +9827,30 @@ export function App() {
                   >
                     <Play aria-hidden="true" fill="currentColor" size={15} strokeWidth={2.5} />
                   </button>
-                  {!simulatorUsesDesktopLayout ? (
-                    <button aria-label="打开结算明细" className="sim-action-detail" onClick={() => setSimulatorDetailOpen(true)} title="结算明细" type="button">
-                      <List aria-hidden="true" size={15} strokeWidth={2.3} />
-                    </button>
-                  ) : null}
                 </div>
-                <div className="simulator-bottom-feed" aria-label="模拟信息">
-                  <button className="simulator-recent-numbers" onClick={() => setSimulatorRecentOpen(true)} type="button" aria-label="查看最近号码">
-                    {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-(simulatorUsesDesktopLayout ? 12 : 10)).reverse().map((value, index) => (
-                      <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
-                    ))}
-                  </button>
-                  <div className="simulator-feed-actions" aria-label="模拟下注操作">
+                <div ref={simulatorBottomFeedRef} className="simulator-bottom-feed" aria-label="模拟信息">
+                  <div className="simulator-feed-actions simulator-feed-top" aria-label="最近号码和分析">
+                    <button
+                      aria-label="查看最近号码"
+                      className="simulator-recent-numbers"
+                      onClick={() => setSimulatorRecentOpen(true)}
+                      type="button"
+                    >
+                      {numbers.length === 0 ? <em>暂无号码</em> : numbers.slice(-(simulatorUsesDesktopLayout ? 10 : simulatorMobileRecentCount)).reverse().map((value, index) => (
+                        <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
+                      ))}
+                    </button>
+                    {simulatorUsesDesktopLayout ? (
+                      <button
+                        aria-label="返回分析"
+                        className="sim-feed-return simulator-desktop-tooltip"
+                        data-tooltip="返回分析"
+                        onClick={handleSimulatorAnalysisAction}
+                        type="button"
+                      >分析</button>
+                    ) : null}
+                  </div>
+                  <div className="simulator-feed-actions simulator-feed-bottom" aria-label="模拟功能">
                     <button
                       aria-label="撤销下注"
                       className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
@@ -9365,25 +9892,50 @@ export function App() {
                     >
                       <ChevronsUp aria-hidden="true" size={15} strokeWidth={2.4} />
                     </button>
+                    <button
+                      aria-label="打开结算明细"
+                      className={`sim-feed-detail${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
+                      data-tooltip={simulatorUsesDesktopLayout ? "结算明细" : undefined}
+                      onClick={() => setSimulatorDetailOpen(true)}
+                      title={simulatorUsesDesktopLayout ? undefined : "结算明细"}
+                      type="button"
+                    >
+                      <List aria-hidden="true" size={16} strokeWidth={2.3} />
+                    </button>
                     {simulatorUsesDesktopLayout ? (
-                      <button aria-label="打开结算明细" className="sim-feed-detail simulator-desktop-tooltip" data-tooltip="结算明细" onClick={() => setSimulatorDetailOpen(true)} type="button">
-                        <List aria-hidden="true" size={16} strokeWidth={2.3} />
-                      </button>
+                      <button
+                        aria-label="跳到第200个号码"
+                        className="sim-feed-200 simulator-desktop-tooltip"
+                        data-tooltip="跳到第200个号码"
+                        disabled={simulatorNumbers.length < 200}
+                        onClick={jumpSimulatorTo200}
+                        type="button"
+                      >200</button>
                     ) : null}
-                    {simulatorUsesDesktopLayout ? <button aria-label="跳到第200个号码" className="sim-feed-200 simulator-desktop-tooltip" data-tooltip="跳到第200个号码" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button> : null}
-                    {simulatorUsesDesktopLayout ? <button aria-label="返回分析" className="sim-feed-return simulator-desktop-tooltip" data-tooltip="返回分析" onClick={handleSimulatorAnalysisAction} type="button">分析</button> : null}
+                    <button
+                      aria-label={simulatorRacetrackOpen ? "收起转盘" : "展开转盘"}
+                      aria-pressed={simulatorRacetrackOpen}
+                      className={`sim-feed-racetrack${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
+                      data-tooltip={simulatorUsesDesktopLayout ? (simulatorRacetrackOpen ? "收起转盘" : "展开转盘") : undefined}
+                      onClick={() => {
+                        setSimulatorRacetrackHighlight(null);
+                        setSimulatorRacetrackOpen((value) => !value);
+                      }}
+                      title={simulatorUsesDesktopLayout ? undefined : (simulatorRacetrackOpen ? "收起转盘" : "展开转盘")}
+                      type="button"
+                    >转盘</button>
                   </div>
                 </div>
                 <div className="simulator-bottom-status" aria-label="模拟进度和胜负">
-                  <div>
+                  <div onPointerUp={(event) => handleSimulatorStatusPointerUp("progress", event)}>
                     <span>进度</span>
                     <strong>{Math.min(simulatorIndex, simulatorNumbers.length)} / {simulatorNumbers.length}</strong>
                   </div>
-                  <div>
+                  <div onPointerUp={(event) => handleSimulatorStatusPointerUp("stake", event)}>
                     <span>投注</span>
                     <strong>{simulatorTotalStake} / {simulatorTotalBetAmount}</strong>
                   </div>
-                  <div>
+                  <div onPointerUp={(event) => handleSimulatorStatusPointerUp("balance", event)}>
                     <span>胜负</span>
                     <strong className={simulatorBalance >= 0 ? "positive" : "negative"}>{simulatorBalance >= 0 ? "+" : ""}{simulatorBalance}</strong>
                   </div>
@@ -9874,7 +10426,7 @@ export function App() {
         </MessageDialog>
       ) : null}
 
-      {confirmDialog ? (
+      {confirmDialog && confirmDialog.appearance !== "simulator-game" ? (
         <MessageDialog
           title={confirmDialog.title}
           onClose={() => setConfirmDialog(null)}

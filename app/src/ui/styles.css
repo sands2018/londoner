@@ -5937,6 +5937,8 @@ html.android .sim-bet-band button {
 .sim-hotspot:focus-visible .sim-hotspot-mark,
 .sim-zero-first-four-spot:hover .sim-hotspot-mark,
 .sim-zero-first-four-spot:focus-visible .sim-hotspot-mark,
+.sim-zero-split-spot:hover .sim-hotspot-mark,
+.sim-zero-split-spot:focus-visible .sim-hotspot-mark,
 .sim-zero-trio-spot:hover .sim-hotspot-mark,
 .sim-zero-trio-spot:focus-visible .sim-hotspot-mark {
   opacity: 1;
@@ -5966,6 +5968,7 @@ html.android .sim-bet-band button {
 
 .sim-hotspot.has-chip,
 .sim-zero-first-four-spot.has-chip,
+.sim-zero-split-spot.has-chip,
 .sim-zero-trio-spot.has-chip,
 .sim-zero-trios button.has-chip {
   z-index: 12;
@@ -5996,6 +5999,7 @@ html.android .sim-bet-band button {
   transform: translate(-50%, -50%);
 }
 
+.sim-table-felt .sim-zero-split-spot:active:not(:disabled),
 .sim-table-felt .sim-zero-trio-spot:active:not(:disabled) {
   filter: none;
   opacity: 1;
@@ -6814,6 +6818,7 @@ html.android .sim-bet-band button {
   z-index: 8;
 }
 
+.sim-zero-split-spot,
 .sim-zero-trio-spot {
   align-items: center;
   background: transparent;
@@ -6828,6 +6833,10 @@ html.android .sim-bet-band button {
   right: -15px;
   transform: translateY(-50%);
   width: 30px;
+}
+
+.sim-zero-split-spot {
+  top: 16.667%;
 }
 
 .sim-zero-first-four-spot {
@@ -6898,6 +6907,7 @@ html.android .sim-bet-band button {
   z-index: 3;
 }
 
+.sim-zero-split-spot,
 .sim-zero-trio-spot {
   height: 40px;
   right: -20px;
@@ -7011,48 +7021,13 @@ html.android .sim-bet-band button {
   width: 36px;
 }
 
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-picker {
-  width: 144px;
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-picker-row {
-  gap: 8px;
-  justify-content: center;
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-picker-row-offset {
-  padding-left: 0;
-  transform: translateX(24px);
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-tray .simulator-chip-picker .simulator-chip {
-  height: 40px;
-  max-height: 40px;
-  min-height: 40px;
-  min-width: 40px;
-  width: 40px;
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-chip-actions {
-  margin-left: 36px;
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
-  grid-template-rows: 34px 38px;
-  height: 76px;
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions button {
-  min-height: 38px;
-}
-
-
 .simulator-chip-actions {
   display: grid;
+  flex: 0 0 72px;
   gap: 6px;
-  grid-template-columns: 98px 50px;
+  grid-template-columns: 72px;
   grid-template-rows: repeat(2, 33px);
-  margin-left: 8px;
+  margin-left: 0;
   min-width: 0;
 }
 
@@ -7060,7 +7035,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 .simulator-feed-actions button {
   background: linear-gradient(180deg, #d1a245, #805a22);
   border: 1px solid rgb(255 235 184 / 0.36);
-  border-radius: 9px;
+  border-radius: 999px;
   color: #fff8dc;
   display: grid;
   font-family: var(--ui-font-family);
@@ -7071,6 +7046,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   place-items: center;
 }
 
+.simulator-chip-actions button {
+  border-radius: 9px;
+}
+
 .simulator-chip-actions .sim-action-play,
 .simulator-chip-actions .sim-action-200 {
   grid-column: 1;
@@ -7078,8 +7057,23 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-chip-actions .sim-action-play {
-  background: linear-gradient(180deg, #d46f35, #8d351f);
-  border-color: rgb(255 185 146 / 0.42);
+  background: linear-gradient(180deg, #52815f 0%, #326247 52%, #1d452f 100%);
+  border-color: rgb(255 235 184 / 0.36);
+  border-radius: 50%;
+  box-shadow:
+    0 4px 10px rgb(0 0 0 / 0.36),
+    inset 0 1px 1px rgb(255 244 198 / 0.16),
+    inset 0 -3px 6px rgb(5 24 16 / 0.42);
+  color: #fff4d0;
+  height: 64px;
+  place-self: center;
+  text-shadow: 0 1px 1px rgb(35 20 5 / 0.62);
+  width: 64px;
+}
+
+.simulator-chip-actions .sim-action-play svg {
+  height: 18px;
+  width: 18px;
 }
 
 .simulator-chip-actions .sim-action-detail {
@@ -7104,17 +7098,24 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   border-color: rgb(190 245 196 / 0.38);
 }
 
+.simulator-feed-actions .sim-feed-racetrack {
+  background: linear-gradient(180deg, #866b55 0%, #684f3b 52%, #463429 100%);
+  border-color: rgb(202 169 129 / 0.4);
+  color: #f5dfb7;
+}
+
 .simulator-feed-actions .sim-feed-return {
-  background: linear-gradient(180deg, rgb(41 54 44 / 0.95), rgb(19 31 24 / 0.95));
+  background: linear-gradient(180deg, #52815f 0%, #326247 52%, #1d452f 100%);
   border-color: rgb(244 215 157 / 0.28);
   color: #d9b56e;
 }
 
 .simulator-chip-actions button:disabled,
 .simulator-feed-actions button:disabled {
-  background: linear-gradient(180deg, #28332c, #111a15);
-  border-color: rgb(255 235 184 / 0.14);
-  color: rgb(244 234 211 / 0.38);
+  background: linear-gradient(180deg, #35463b, #1c2c23);
+  border-color: rgb(255 235 184 / 0.24);
+  color: rgb(244 234 211 / 0.58);
+  opacity: 0.62;
 }
 
 .simulator-chip-actions .sim-action-200,
@@ -7125,12 +7126,13 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-bottom-status {
   display: grid;
-  flex: 0 1 200px;
+  flex: 0 0 190px;
   grid-template-columns: minmax(168px, 1fr);
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  margin-left: 10px;
+  margin-left: 0;
   min-width: 190px;
+  width: 190px;
 }
 
 .simulator-bottom-status > div {
@@ -7144,6 +7146,8 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   grid-template-columns: 44px minmax(0, 1fr);
   min-height: 22px;
   padding: 2px 9px;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .simulator-return-button {
@@ -7745,27 +7749,58 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen:not(.desktop-mode) .simulator-chip-tray {
   background: transparent;
+  padding-right: 0;
   padding-top: 14px;
 }
 
+.simulator-screen:not(.desktop-mode) .simulator-chip-picker-wrap {
+  flex: 0 0 auto;
+}
+
 .simulator-bottom-feed {
-  --sim-mobile-feed-gap: 4px;
-  --sim-mobile-recent-size: 26px;
+  --sim-mobile-feed-gap: 3px;
+  --sim-mobile-latest-size: 32px;
+  --sim-mobile-recent-size: 24px;
   align-self: center;
   background: transparent;
   border: 0;
   border-radius: 0;
   color: #f4ead3;
   display: grid;
-  flex: 0 0 calc(var(--sim-mobile-recent-size) * 10 + var(--sim-mobile-feed-gap) * 9 + 8px);
+  flex: 1 1 0;
   gap: var(--sim-mobile-feed-gap);
   grid-template-rows: 34px 34px;
   height: 72px;
-  margin-left: 5px;
+  margin-left: 0;
   min-width: 0;
   overflow: hidden;
-  padding: 0 4px;
-  width: calc(var(--sim-mobile-recent-size) * 10 + var(--sim-mobile-feed-gap) * 9 + 8px);
+  padding: 0;
+  width: auto;
+}
+
+.simulator-feed-top,
+.simulator-feed-bottom {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.simulator-feed-top .simulator-recent-numbers {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  grid-column: 1 / span 6;
+  padding: 0;
+}
+
+.simulator-feed-top .sim-feed-return {
+  grid-column: 7;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-top .simulator-recent-numbers {
+  grid-column: 1 / -1;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-bottom {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .simulator-recent-numbers {
@@ -7775,7 +7810,9 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   color: inherit;
   display: grid;
   gap: var(--sim-mobile-feed-gap);
-  grid-template-columns: repeat(10, var(--sim-mobile-recent-size));
+  grid-auto-columns: var(--sim-mobile-recent-size);
+  grid-auto-flow: column;
+  grid-template-columns: var(--sim-mobile-latest-size);
   min-width: 0;
   padding: 0;
   width: 100%;
@@ -7788,10 +7825,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 .simulator-recent-numbers strong,
 .simulator-log-preview strong {
   align-items: center;
-  border-radius: 5px;
+  border-radius: 50%;
   display: inline-flex;
   font-size: 13px;
-  height: 25px;
+  height: var(--sim-mobile-recent-size);
   justify-content: center;
   line-height: 1;
   min-width: 0;
@@ -7801,15 +7838,16 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-recent-numbers strong.latest {
   font-size: 19px;
-  height: 32px;
+  height: var(--sim-mobile-latest-size);
   min-width: 0;
+  width: var(--sim-mobile-latest-size);
 }
 
 .simulator-feed-actions {
   align-items: stretch;
   display: grid;
   gap: 5px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   min-width: 0;
 }
 
@@ -7907,6 +7945,52 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   min-height: 0;
   overflow: auto;
   padding: 7px;
+}
+
+.simulator-confirm-panel {
+  width: min(46%, 620px);
+}
+
+.simulator-confirm-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.simulator-confirm-grid section {
+  display: grid;
+  gap: 12px;
+  overflow: visible;
+  padding: 14px;
+}
+
+.simulator-confirm-message {
+  color: #d9cfb8;
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0;
+  text-align: center;
+}
+
+.simulator-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.simulator-confirm-actions button,
+.app-shell.theme-dark .simulator-confirm-actions button {
+  background: linear-gradient(180deg, #26332b, #101a14);
+  border: 1px solid rgb(238 205 138 / 0.42);
+  border-radius: 7px;
+  color: #e6c879;
+  min-height: 30px;
+  min-width: 96px;
+  padding: 0 16px;
+}
+
+.simulator-confirm-actions .primary-action,
+.app-shell.theme-dark .simulator-confirm-actions .primary-action {
+  background: linear-gradient(180deg, #314737, #14281c);
+  border-color: rgb(238 205 138 / 0.58);
 }
 
 .simulator-detail-grid h3 {
@@ -8227,7 +8311,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   html.android .simulator-chip-tray {
     gap: 3px;
     min-height: 76px;
-    padding: 11px 5px 4px;
+    padding: 11px 0 4px 5px;
   }
 
   html.android .simulator-chip-tray .simulator-chip {
@@ -8267,28 +8351,37 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   html.android .simulator-chip-actions {
     gap: 4px;
-    grid-template-columns: 72px 40px;
+    grid-template-columns: 72px;
     grid-template-rows: repeat(2, 34px);
-    margin-left: 8px;
+    margin-left: 0;
   }
 
   html.android .simulator-chip-actions button,
   html.android .simulator-feed-actions button {
-    border-radius: 7px;
     font-size: 10px;
     min-height: 30px;
     padding: 0 3px;
   }
 
+  html.android .simulator-chip-actions button {
+    border-radius: 50%;
+  }
+
+  html.android .simulator-feed-actions button {
+    border-radius: 999px;
+  }
+
   html.android .simulator-bottom-feed {
     --sim-mobile-feed-gap: 3px;
+    --sim-mobile-latest-size: 35px;
+    --sim-mobile-recent-size: 30px;
     align-self: center;
     gap: var(--sim-mobile-feed-gap);
-    grid-template-rows: 28px 40px;
+    grid-template-rows: repeat(2, 34px);
     height: 72px;
-    margin-left: 2px;
+    margin-left: 0;
     min-width: 0;
-    padding: 0 3px;
+    padding: 0;
   }
 
   html.android .simulator-recent-numbers,
@@ -8298,26 +8391,30 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
   html.android .simulator-recent-numbers strong,
   html.android .simulator-log-preview strong {
-    border-radius: 4px;
-    font-size: 11px;
-    height: 21px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    font-size: 15px;
+    height: var(--sim-mobile-recent-size);
     min-width: 0;
-    padding: 0 2px;
+    padding: 0;
+    width: var(--sim-mobile-recent-size);
   }
 
   html.android .simulator-recent-numbers strong.latest {
-    font-size: 15px;
-    height: 26px;
+    font-size: 19px;
+    height: var(--sim-mobile-latest-size);
     min-width: 0;
+    width: var(--sim-mobile-latest-size);
   }
 
   html.android .simulator-feed-actions {
     gap: 4px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
   html.android .simulator-feed-actions button {
-    min-height: 40px;
+    height: 34px;
+    min-height: 34px;
     padding: 0 2px;
   }
 
@@ -8326,18 +8423,20 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   html.android .simulator-bottom-status {
-    flex: 1 1 0;
+    flex: 0 0 190px;
     gap: 2px;
     grid-template-columns: minmax(0, 1fr);
-    margin-left: 3px;
-    min-width: 0;
+    margin-left: 10px;
+    min-width: 190px;
+    transform: translateY(-3px);
+    width: 190px;
   }
 
   html.android .simulator-bottom-status > div {
     border-radius: 6px;
     grid-template-columns: 30px minmax(0, 1fr);
-    min-height: 20px;
-    padding: 1px 4px;
+    min-height: 22px;
+    padding: 2px 4px;
   }
 
   html.android .simulator-return-button {
@@ -8348,31 +8447,18 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   }
 
   html.android .simulator-bottom-status span {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   html.android .simulator-bottom-status strong {
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 
 @media (orientation: portrait) and (max-height: 760px) {
-  html.android .simulator-bottom-feed {
-    flex-basis: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
-    width: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
-  }
-
-  html.android .simulator-recent-numbers {
-    grid-template-columns: repeat(8, var(--sim-mobile-recent-size));
-  }
-
-  html.android .simulator-recent-numbers strong:nth-of-type(n + 9) {
-    display: none;
-  }
-
   html.android .simulator-bottom-status {
-    flex-basis: 168px;
-    min-width: 158px;
+    flex-basis: 190px;
+    min-width: 190px;
   }
 
   html.android .simulator-bottom-status > div {
@@ -8382,6 +8468,152 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   html.android .simulator-bottom-status strong {
     white-space: nowrap;
   }
+}
+
+/* One mobile operation geometry for iPhone and Android. Only the center feed flexes. */
+.simulator-screen:not(.desktop-mode) .simulator-chip-tray {
+  gap: 3px;
+  min-height: 76px;
+  padding: 11px 0 4px 5px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-picker {
+  gap: 1px;
+  height: 63px;
+  width: 116px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-picker-row {
+  gap: 2px;
+  grid-template-columns: repeat(3, 31px);
+  justify-content: start;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-picker-row-offset {
+  padding-left: 15px;
+  transform: none;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-tray .simulator-chip {
+  height: 30px;
+  max-height: 30px;
+  min-height: 30px;
+  min-width: 30px;
+  width: 30px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-tray .simulator-chip-picker .simulator-chip {
+  height: 31px;
+  max-height: 31px;
+  min-height: 31px;
+  min-width: 31px;
+  width: 31px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip span {
+  font-size: 10px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-actions {
+  flex: 0 0 72px;
+  gap: 4px;
+  grid-template-columns: 72px;
+  grid-template-rows: repeat(2, 34px);
+  margin-left: 0;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-actions button,
+.simulator-screen:not(.desktop-mode) .simulator-feed-actions button {
+  font-size: 10px;
+  min-height: 30px;
+  padding: 0 3px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-chip-actions button {
+  border-radius: 50%;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
+  --sim-mobile-feed-gap: 3px;
+  --sim-mobile-latest-size: 35px;
+  --sim-mobile-recent-size: 30px;
+  gap: var(--sim-mobile-feed-gap);
+  grid-template-rows: repeat(2, 34px);
+  height: 72px;
+  margin-left: 0;
+  padding: 0;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-recent-numbers,
+.simulator-screen:not(.desktop-mode) .simulator-log-preview {
+  gap: var(--sim-mobile-feed-gap);
+}
+
+html.android .simulator-screen:not(.desktop-mode) .simulator-feed-top .simulator-recent-numbers {
+  position: relative;
+  top: -2px;
+}
+
+html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
+  grid-template-rows: 36px 34px;
+  row-gap: 2px;
+  transform: translateY(-2px);
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-recent-numbers strong,
+.simulator-screen:not(.desktop-mode) .simulator-log-preview strong {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 15px;
+  height: var(--sim-mobile-recent-size);
+  min-width: 0;
+  padding: 0;
+  width: var(--sim-mobile-recent-size);
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-recent-numbers strong.latest {
+  font-size: 19px;
+  height: var(--sim-mobile-latest-size);
+  width: var(--sim-mobile-latest-size);
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-actions {
+  gap: 4px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-bottom {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-actions button {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 2px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-bottom-status {
+  flex: 0 0 190px;
+  gap: 2px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-left: 10px;
+  min-width: 190px;
+  transform: translateY(-3px);
+  width: 190px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-bottom-status > div {
+  border-radius: 6px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  min-height: 22px;
+  padding: 2px 4px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-bottom-status span {
+  font-size: 11px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-bottom-status strong {
+  font-size: 13px;
 }
 
 .simulator-screen.desktop-mode {
@@ -8591,6 +8823,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 }
 
 .simulator-screen.desktop-mode .simulator-chip-actions {
+  flex: 0 0 var(--sim-desktop-action-tall);
   grid-template-columns: var(--sim-desktop-action-tall);
   grid-template-rows: var(--sim-desktop-action-tall);
   margin-left: 12px;
@@ -8637,7 +8870,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   min-width: 0;
   overflow: visible;
   padding: 0 4px;
-  width: max-content;
+  width: 760px;
+}
+
+.simulator-screen.desktop-mode .simulator-table-wrap.racetrack-open .sim-table-felt {
+  transform: translateY(-1px) scale(0.54);
+}
+
+.simulator-screen.desktop-mode .simulator-racetrack {
+  inset: 2.25% 1.5%;
 }
 
 .simulator-screen.desktop-mode .simulator-desktop-tooltip {
@@ -8667,9 +8908,177 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-feed-actions {
   gap: var(--sim-desktop-gap);
-  grid-template-columns: repeat(7, minmax(0, 1fr));
   justify-self: start;
   width: 100%;
+}
+
+.simulator-screen.desktop-mode .simulator-feed-top,
+.simulator-screen.desktop-mode .simulator-feed-bottom {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.simulator-screen.desktop-mode .simulator-feed-top .simulator-recent-numbers {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  grid-column: 1 / span 6;
+  height: var(--sim-desktop-latest);
+  padding: 0;
+}
+
+.simulator-screen.desktop-mode .simulator-feed-top .sim-feed-return {
+  grid-column: 7;
+  height: var(--sim-desktop-latest);
+}
+
+.simulator-table-wrap {
+  isolation: isolate;
+  position: relative;
+}
+
+.simulator-table-wrap.racetrack-open .sim-table-felt {
+  position: relative;
+  transform: translateY(-1px) scale(0.52);
+  transform-origin: center;
+  z-index: 4;
+}
+
+.simulator-racetrack {
+  inset: 2.75% 2%;
+  pointer-events: none;
+  position: absolute;
+  transform: translateY(-1px) scale(1.04);
+  transform-origin: center;
+  z-index: 3;
+}
+
+.simulator-racetrack-svg {
+  display: block;
+  filter: drop-shadow(0 7px 11px rgb(0 0 0 / 0.48));
+  height: 100%;
+  overflow: visible;
+  width: 100%;
+}
+
+.simulator-racetrack-cell {
+  cursor: default;
+  outline: none;
+  pointer-events: none;
+}
+
+.simulator-racetrack-sector {
+  cursor: pointer;
+  outline: none;
+  pointer-events: auto;
+}
+
+.simulator-racetrack-cell path,
+.simulator-racetrack-sector path {
+  stroke-linejoin: round;
+  transition: fill 120ms ease, filter 120ms ease, opacity 120ms ease, stroke 120ms ease;
+}
+
+.simulator-racetrack-cell path {
+  stroke: rgb(224 202 148 / 0.68);
+  stroke-width: 1.5px;
+}
+
+.simulator-racetrack-cell-red path {
+  fill: #a51f2a;
+}
+
+.simulator-racetrack-cell-black path {
+  fill: #0c1210;
+}
+
+.simulator-racetrack-cell-green path {
+  fill: #155a3c;
+}
+
+.simulator-racetrack-cell text {
+  fill: #e9e1d2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 27px;
+  font-weight: 700;
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: rgb(0 0 0 / 0.52);
+  stroke-width: 1.4px;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.72);
+  user-select: none;
+}
+
+.simulator-racetrack-cell.is-highlighted path {
+  filter: brightness(1.22) saturate(1.08);
+  stroke: #efcf85;
+}
+
+.simulator-racetrack-cell.is-highlighted text {
+  fill: #fff2cd;
+}
+
+.simulator-racetrack-cell.is-muted path {
+  filter: brightness(0.46) saturate(0.58);
+  opacity: 0.72;
+}
+
+.simulator-racetrack-cell.is-muted text {
+  fill: rgb(218 211 197 / 0.55);
+}
+
+.simulator-racetrack-sector path {
+  stroke: rgb(196 167 102 / 0.56);
+  stroke-width: 1.5px;
+}
+
+.simulator-racetrack-sector text {
+  fill: rgb(229 207 158 / 0.86);
+  font-size: 20px;
+  font-weight: var(--weight-ui);
+  paint-order: stroke;
+  pointer-events: none;
+  stroke: rgb(6 12 9 / 0.72);
+  stroke-width: 2px;
+  user-select: none;
+}
+
+.simulator-racetrack-sector-voisins path {
+  fill: #2a4637;
+}
+
+.simulator-racetrack-sector-tiers path {
+  fill: #57462f;
+}
+
+.simulator-racetrack-sector-orphelins path {
+  fill: #343e43;
+}
+
+.simulator-racetrack-sector-zero path {
+  fill: #70422e;
+  stroke: rgb(128 102 62 / 0.5);
+}
+
+.simulator-racetrack-sector-overlap text {
+  fill: #f0c77c;
+  font-size: 16px;
+}
+
+.simulator-racetrack-sector:hover path,
+.simulator-racetrack-sector:focus-visible path,
+.simulator-racetrack-sector.is-highlighted path {
+  filter: brightness(1.24) saturate(1.06);
+  stroke: #e3bf72;
+}
+
+.simulator-racetrack-sector:hover text,
+.simulator-racetrack-sector:focus-visible text,
+.simulator-racetrack-sector.is-highlighted text {
+  fill: #f2d38f;
+}
+
+.simulator-racetrack-sector:active path {
+  filter: brightness(1.08) saturate(1.02);
 }
 
 .simulator-screen.desktop-mode .simulator-chip-tray > * {
@@ -8678,7 +9087,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-recent-numbers {
   gap: var(--sim-desktop-gap);
-  grid-template-columns: var(--sim-desktop-latest) repeat(11, var(--sim-desktop-recent));
+  grid-template-columns: var(--sim-desktop-latest) repeat(9, var(--sim-desktop-recent));
   justify-self: start;
   overflow: visible;
   width: max-content;
@@ -8728,6 +9137,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
   grid-template-columns: minmax(154px, 1fr);
   margin-left: 18px;
   min-width: 330px;
+  width: auto;
 }
 
 .simulator-screen.desktop-mode .simulator-bottom-status > div {
@@ -8761,6 +9171,31 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-feed-actions 
 
 .simulator-screen.desktop-mode .simulator-detail-grid h3 {
   font-size: 26px;
+}
+
+.simulator-screen.desktop-mode .simulator-confirm-panel {
+  width: min(46%, 620px);
+}
+
+.simulator-screen.desktop-mode .simulator-confirm-grid section {
+  gap: 22px;
+  padding: 24px;
+}
+
+.simulator-screen.desktop-mode .simulator-confirm-message {
+  font-size: 28px;
+}
+
+.simulator-screen.desktop-mode .simulator-confirm-actions {
+  gap: 18px;
+}
+
+.simulator-screen.desktop-mode .simulator-confirm-actions button {
+  border-radius: 999px;
+  font-size: 26px;
+  min-height: 50px;
+  min-width: 168px;
+  padding: 0 24px;
 }
 
 .simulator-screen.desktop-mode .simulator-log-table {
@@ -11959,7 +12394,7 @@ html.mobile-portrait-fallback-active.android .sim-outside button {
 html.mobile-portrait-fallback-active.android .simulator-chip-tray {
   gap: 3px;
   min-height: 76px;
-  padding: 11px 5px 4px;
+  padding: 11px 0 4px 5px;
 }
 
 html.mobile-portrait-fallback-active.android .simulator-chip-tray .simulator-chip {
@@ -11999,28 +12434,37 @@ html.mobile-portrait-fallback-active.android .simulator-chip span {
 
 html.mobile-portrait-fallback-active.android .simulator-chip-actions {
   gap: 4px;
-  grid-template-columns: 72px 40px;
+  grid-template-columns: 72px;
   grid-template-rows: repeat(2, 34px);
-  margin-left: 8px;
+  margin-left: 0;
 }
 
 html.mobile-portrait-fallback-active.android .simulator-chip-actions button,
 html.mobile-portrait-fallback-active.android .simulator-feed-actions button {
-  border-radius: 7px;
   font-size: 10px;
   min-height: 30px;
   padding: 0 3px;
 }
 
+html.mobile-portrait-fallback-active.android .simulator-chip-actions button {
+  border-radius: 50%;
+}
+
+html.mobile-portrait-fallback-active.android .simulator-feed-actions button {
+  border-radius: 999px;
+}
+
 html.mobile-portrait-fallback-active.android .simulator-bottom-feed {
   --sim-mobile-feed-gap: 3px;
+  --sim-mobile-latest-size: 35px;
+  --sim-mobile-recent-size: 30px;
   align-self: center;
   gap: var(--sim-mobile-feed-gap);
-  grid-template-rows: 28px 40px;
+  grid-template-rows: repeat(2, 34px);
   height: 72px;
-  margin-left: 2px;
+  margin-left: 0;
   min-width: 0;
-  padding: 0 3px;
+  padding: 0;
 }
 
 html.mobile-portrait-fallback-active.android .simulator-recent-numbers,
@@ -12030,26 +12474,34 @@ html.mobile-portrait-fallback-active.android .simulator-log-preview {
 
 html.mobile-portrait-fallback-active.android .simulator-recent-numbers strong,
 html.mobile-portrait-fallback-active.android .simulator-log-preview strong {
-  border-radius: 4px;
-  font-size: 11px;
-  height: 21px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 15px;
+  height: var(--sim-mobile-recent-size);
   min-width: 0;
-  padding: 0 2px;
+  padding: 0;
+  width: var(--sim-mobile-recent-size);
 }
 
 html.mobile-portrait-fallback-active.android .simulator-recent-numbers strong.latest {
-  font-size: 15px;
-  height: 26px;
+  font-size: 19px;
+  height: var(--sim-mobile-latest-size);
   min-width: 0;
+  width: var(--sim-mobile-latest-size);
 }
 
 html.mobile-portrait-fallback-active.android .simulator-feed-actions {
   gap: 4px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+html.mobile-portrait-fallback-active.android .simulator-feed-bottom {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 html.mobile-portrait-fallback-active.android .simulator-feed-actions button {
-  min-height: 40px;
+  height: 34px;
+  min-height: 34px;
   padding: 0 2px;
 }
 
@@ -12058,18 +12510,20 @@ html.mobile-portrait-fallback-active.android .simulator-log-preview {
 }
 
 html.mobile-portrait-fallback-active.android .simulator-bottom-status {
-  flex: 1 1 0;
+  flex: 0 0 190px;
   gap: 2px;
   grid-template-columns: minmax(0, 1fr);
-  margin-left: 3px;
-  min-width: 0;
+  margin-left: 10px;
+  min-width: 190px;
+  transform: translateY(-3px);
+  width: 190px;
 }
 
 html.mobile-portrait-fallback-active.android .simulator-bottom-status > div {
   border-radius: 6px;
   grid-template-columns: 30px minmax(0, 1fr);
-  min-height: 20px;
-  padding: 1px 4px;
+  min-height: 22px;
+  padding: 2px 4px;
 }
 
 html.mobile-portrait-fallback-active.android .simulator-return-button {
@@ -12080,11 +12534,11 @@ html.mobile-portrait-fallback-active.android .simulator-return-button {
 }
 
 html.mobile-portrait-fallback-active.android .simulator-bottom-status span {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 html.mobile-portrait-fallback-active.android .simulator-bottom-status strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulator-active .modal-backdrop {
@@ -12117,22 +12571,9 @@ html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulat
 }
 
 @media (orientation: landscape) and (max-width: 760px) {
-  html.mobile-portrait-fallback-active.android .simulator-bottom-feed {
-    flex-basis: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
-    width: calc(var(--sim-mobile-recent-size) * 8 + var(--sim-mobile-feed-gap) * 7 + 8px);
-  }
-
-  html.mobile-portrait-fallback-active.android .simulator-recent-numbers {
-    grid-template-columns: repeat(8, var(--sim-mobile-recent-size));
-  }
-
-  html.mobile-portrait-fallback-active.android .simulator-recent-numbers strong:nth-of-type(n + 9) {
-    display: none;
-  }
-
   html.mobile-portrait-fallback-active.android .simulator-bottom-status {
-    flex-basis: 168px;
-    min-width: 158px;
+    flex-basis: 190px;
+    min-width: 190px;
   }
 
   html.mobile-portrait-fallback-active.android .simulator-bottom-status > div {
