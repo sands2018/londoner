@@ -8943,6 +8943,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
   z-index: 4;
 }
 
+html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-table-wrap.racetrack-open .sim-table-felt {
+  transform: translateY(-1px) scale(0.48);
+}
+
 .simulator-racetrack {
   inset: 2.75% 2%;
   pointer-events: none;
@@ -9006,6 +9010,10 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
   stroke-width: 1.4px;
   text-shadow: 0 1px 2px rgb(0 0 0 / 0.72);
   user-select: none;
+}
+
+html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text {
+  font-family: "Libre Baskerville", Georgia, "Times New Roman", serif;
 }
 
 .simulator-racetrack-cell.is-highlighted path {
