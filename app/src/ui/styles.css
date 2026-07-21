@@ -8874,11 +8874,18 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
 }
 
 .simulator-screen.desktop-mode .simulator-table-wrap.racetrack-open .sim-table-felt {
-  transform: translateY(-1px) scale(0.54);
+  transform: translateY(-5px) scale(0.58);
+}
+
+.simulator-screen.desktop-mode .simulator-table-wrap.racetrack-open {
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
 }
 
 .simulator-screen.desktop-mode .simulator-racetrack {
-  inset: 2.25% 1.5%;
+  inset: 0;
+  transform: translateY(-5px) scale(1.03);
 }
 
 .simulator-screen.desktop-mode .simulator-desktop-tooltip {

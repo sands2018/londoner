@@ -9451,15 +9451,15 @@ export function App() {
                             && simulatorRacetrackHighlight.length === definition.numbers.length
                             && definition.numbers.every((number) => simulatorRacetrackHighlight.includes(number));
                           const numberOuterRadius = simulatorRacetrackGeometry.radius + simulatorRacetrackGeometry.numberBandWidth / 2;
-                          const mainRadius = numberOuterRadius + simulatorRacetrackGeometry.sectorBandGap + simulatorRacetrackGeometry.sectorBandWidth / 2;
-                          const radius = segment.lane === "main"
-                            ? mainRadius
-                            : numberOuterRadius
-                              + simulatorRacetrackGeometry.sectorBandGap
-                              + simulatorRacetrackGeometry.smallZeroBandWidth / 2;
-                          const width = segment.lane === "main"
+                          const baseWidth = segment.lane === "main"
                             ? simulatorRacetrackGeometry.sectorBandWidth
                             : simulatorRacetrackGeometry.smallZeroBandWidth;
+                          const width = simulatorUsesDesktopLayout
+                            ? baseWidth - (segment.lane === "main" ? 4 : 3)
+                            : baseWidth;
+                          const outerRadius = numberOuterRadius + simulatorRacetrackGeometry.sectorBandGap + baseWidth;
+                          const radius = outerRadius - width / 2
+                            + (simulatorUsesDesktopLayout && segment.lane === "overlap" ? 2 : 0);
                           const labelPoint = simulatorStadiumPoint(segment.labelCell / simulatorEuropeanWheelOrder.length, radius);
                           return (
                             <g
@@ -9503,7 +9503,8 @@ export function App() {
                           const total = simulatorEuropeanWheelOrder.length;
                           const neighbours = simulatorWheelNeighbours(value);
                           const isHighlighted = simulatorRacetrackHighlight?.includes(value) ?? false;
-                          const point = simulatorStadiumPoint(index / total, simulatorRacetrackGeometry.radius);
+                          const numberRadius = simulatorRacetrackGeometry.radius + (simulatorUsesDesktopLayout ? 8 : 0);
+                          const point = simulatorStadiumPoint(index / total, numberRadius);
                           return (
                             <g
                               aria-label={simulatorRacetrackNumberInteractionEnabled ? `邻号5：${neighbours.join("、")}` : `${value}号`}
@@ -9525,7 +9526,7 @@ export function App() {
                               <path d={simulatorStadiumBandPath(
                                 (index - 0.5) / total,
                                 (index + 0.5) / total,
-                                simulatorRacetrackGeometry.radius,
+                                numberRadius,
                                 simulatorRacetrackGeometry.numberBandWidth,
                               )} />
                               <text
