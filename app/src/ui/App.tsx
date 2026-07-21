@@ -5498,6 +5498,10 @@ export function App() {
   }
 
   function openSimulatorWorkspace() {
+    if (simulatorUsesDesktopLayout && simulatorOpen && simulatorDesktopAnalysisOpen) {
+      setSimulatorDesktopAnalysisOpen(false);
+      return;
+    }
     setSimulatorDesktopAnalysisOpen(true);
     setSimulatorOpen(true);
   }
@@ -5509,32 +5513,12 @@ export function App() {
     setSimulatorOpen(false);
   }
 
-  function toggleSimulatorGamePane() {
-    if (simulatorOpen) {
-      closeSimulatorGamePane();
-      return;
-    }
-    setSimulatorDesktopAnalysisOpen(true);
-    setSimulatorOpen(true);
-  }
-
   function handleSimulatorAnalysisAction() {
     if (simulatorUsesDesktopLayout && !simulatorDesktopAnalysisOpen) {
       setSimulatorDesktopAnalysisOpen(true);
       return;
     }
     closeSimulatorGamePane();
-  }
-
-  function toggleSimulatorAnalysisPane() {
-    if (simulatorDesktopAnalysisOpen) {
-      if (!simulatorOpen) {
-        setSimulatorOpen(true);
-      }
-      setSimulatorDesktopAnalysisOpen(false);
-      return;
-    }
-    setSimulatorDesktopAnalysisOpen(true);
   }
 
   function updateSimulatorDesktopGameRatio(clientX: number) {
@@ -7012,36 +6996,6 @@ export function App() {
       className={`app-shell theme-dark ${keyboardVisible ? "" : "keyboard-hidden"} ${simulatorOpen ? "simulator-active" : ""} ${simulatorUsesDesktopLayout ? "simulator-desktop-layout" : ""} ${simulatorDesktopWorkspaceActive ? "simulator-desktop-active" : ""} ${simulatorDesktopWorkspaceActive && !simulatorDesktopAnalysisOpen ? "desktop-analysis-closed" : ""} ${mobilePortraitFallbackRotation ? `mobile-portrait-fallback mobile-portrait-fallback-${mobilePortraitFallbackRotation}` : ""}`}
       style={simulatorDesktopWorkspaceStyle}
     >
-      {canUseSimulator && simulatorUsesDesktopLayout && simulatorOpen && simulatorDesktopAnalysisOpen ? (
-        <div
-          className="desktop-pane-controls"
-          aria-label="窗口控制"
-          style={{
-            "--desktop-pane-controls-scale": simulatorOpen ? simulatorDesktopScale : 1,
-          } as CSSProperties}
-        >
-          <button
-            aria-label={simulatorOpen ? "关闭左侧窗口" : "打开左侧窗口"}
-            aria-pressed={simulatorOpen}
-            className={`desktop-pane-close desktop-game-pane-close ${simulatorOpen ? "is-open" : "is-closed"}`}
-            data-tooltip={simulatorOpen ? "关闭左侧窗口" : "打开左侧窗口"}
-            onClick={toggleSimulatorGamePane}
-            type="button"
-          >
-            <span aria-hidden="true" className="desktop-pane-icon desktop-pane-icon-left" />
-          </button>
-          <button
-            aria-label={simulatorDesktopAnalysisOpen ? "关闭右侧窗口" : "打开右侧窗口"}
-            aria-pressed={simulatorDesktopAnalysisOpen}
-            className={`desktop-pane-close desktop-analysis-pane-close ${simulatorDesktopAnalysisOpen ? "is-open" : "is-closed"}`}
-            data-tooltip={simulatorDesktopAnalysisOpen ? "关闭右侧窗口" : "打开右侧窗口"}
-            onClick={toggleSimulatorAnalysisPane}
-            type="button"
-          >
-            <span aria-hidden="true" className="desktop-pane-icon desktop-pane-icon-right" />
-          </button>
-        </div>
-      ) : null}
       {simulatorDesktopWorkspaceActive && simulatorDesktopAnalysisOpen ? (
           <div
             aria-label="调整游戏区和分析区宽度"

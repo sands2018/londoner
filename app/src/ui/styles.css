@@ -9276,9 +9276,7 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
   height: 58px;
 }
 
-.desktop-workspace-splitter,
-.desktop-pane-controls,
-.desktop-pane-close {
+.desktop-workspace-splitter {
   display: none;
 }
 
@@ -9639,96 +9637,6 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
     font-weight: var(--weight-regular);
     line-height: 1;
     text-shadow: 0 1px 1px rgb(0 0 0 / 0.72);
-  }
-
-  .desktop-pane-close {
-    align-items: center;
-    background: rgb(24 25 23 / 0.72);
-    border: 0;
-    border-radius: 9px;
-    color: #514b3a;
-    display: flex;
-    height: 50px;
-    justify-content: center;
-    padding: 0;
-    position: relative;
-    transition: background-color 120ms ease, color 120ms ease;
-    width: 50px;
-  }
-
-  .desktop-pane-close.is-open {
-    background: rgb(36 35 31 / 0.82);
-    color: #796a49;
-  }
-
-  .desktop-pane-close:hover {
-    background: rgb(45 44 39 / 0.88);
-    color: #8c7a54;
-  }
-
-  .desktop-pane-close:active:not(:disabled) {
-    transform: scale(0.96);
-  }
-
-  .desktop-pane-close::after {
-    content: attr(data-tooltip);
-    opacity: 0;
-    pointer-events: none;
-    position: absolute;
-    right: 0;
-    top: calc(100% + 9.5px);
-    transform: translateY(-4px);
-    transition: opacity 100ms ease, transform 100ms ease;
-    visibility: hidden;
-    white-space: nowrap;
-    z-index: 52;
-  }
-
-  .desktop-pane-close:hover::after,
-  .desktop-pane-close:focus-visible::after {
-    opacity: 1;
-    transform: translateY(0);
-    visibility: visible;
-  }
-
-  .desktop-pane-controls {
-    display: flex;
-    gap: 2px;
-    position: fixed;
-    right: 4px;
-    top: 6px;
-    transform: scale(var(--desktop-pane-controls-scale, 1));
-    transform-origin: top right;
-    z-index: 51;
-  }
-
-  .app-shell.simulator-desktop-active:not(.desktop-analysis-closed) > .desktop-pane-controls {
-    right: calc(100vw - var(--desktop-game-width) + 4px);
-  }
-
-  .desktop-pane-icon {
-    border: 2px solid currentcolor;
-    border-radius: 7px;
-    display: block;
-    height: 29px;
-    overflow: hidden;
-    position: relative;
-    width: 36px;
-  }
-
-  .desktop-pane-icon::before {
-    background: currentcolor;
-    border-radius: 999px;
-    bottom: 3.5px;
-    content: "";
-    left: 7px;
-    position: absolute;
-    top: 3.5px;
-    width: 2px;
-  }
-
-  .desktop-pane-icon-right {
-    transform: scaleX(-1);
   }
 
 }
@@ -12752,8 +12660,7 @@ html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulat
 }
 
 .simulator-screen.desktop-mode .simulator-desktop-tooltip::after,
-.desktop-workspace-splitter::after,
-.desktop-pane-close::after {
+.desktop-workspace-splitter::after {
   background: #1b1c1a;
   border: calc(2px * var(--desktop-tooltip-scale, 1)) solid #514637;
   border-radius: calc(6px * var(--desktop-tooltip-scale, 1));
