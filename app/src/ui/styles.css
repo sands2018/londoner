@@ -8591,6 +8591,15 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
   padding: 0 2px;
 }
 
+.simulator-screen:not(.desktop-mode) .simulator-feed-bottom button {
+  font-size: 13px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-bottom button svg {
+  height: 19px;
+  width: 19px;
+}
+
 .simulator-screen:not(.desktop-mode) .simulator-bottom-status {
   flex: 0 0 190px;
   gap: 2px;
@@ -8874,7 +8883,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
 }
 
 .simulator-screen.desktop-mode .simulator-table-wrap.racetrack-open .sim-table-felt {
-  transform: translateY(-5px) scale(0.58);
+  transform: translateY(-5px) scale(0.61);
 }
 
 .simulator-screen.desktop-mode .simulator-table-wrap.racetrack-open {
@@ -8945,20 +8954,24 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
 
 .simulator-table-wrap.racetrack-open .sim-table-felt {
   position: relative;
-  transform: translateY(-1px) scale(0.52);
+  transform: translateY(calc(0.5% - 1px)) scale(0.57);
   transform-origin: center;
   z-index: 4;
 }
 
+.simulator-screen:not(.desktop-mode) .simulator-table-wrap.racetrack-open {
+  overflow: visible;
+}
+
 html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-table-wrap.racetrack-open .sim-table-felt {
-  transform: translateY(-1px) scale(0.48);
+  transform: translateY(calc(0.5% - 1px)) scale(0.53);
 }
 
 .simulator-racetrack {
   inset: 2.75% 2%;
   pointer-events: none;
   position: absolute;
-  transform: translateY(-1px) scale(1.04);
+  transform: translateY(calc(0.5% - 1px)) scale(1.05);
   transform-origin: center;
   z-index: 3;
 }
@@ -9077,6 +9090,16 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
 .simulator-racetrack-sector-overlap text {
   fill: #f0c77c;
   font-size: 16px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-racetrack-sector text {
+  font-size: 26px;
+  paint-order: normal;
+  stroke: none;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-racetrack-sector-overlap text {
+  font-size: 22px;
 }
 
 .simulator-racetrack-sector:hover path,
@@ -9385,6 +9408,7 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
 
   .app-shell.simulator-desktop-layout .queue-panel {
     background: #292929;
+    cursor: pointer;
   }
 
   .app-shell.simulator-desktop-layout .queue-chip.number-red {

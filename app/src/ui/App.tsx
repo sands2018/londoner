@@ -487,7 +487,7 @@ const simulatorRacetrackGeometry = {
   rightCenter: 1080,
   sectorBandGap: 8,
   sectorBandWidth: 42,
-  smallZeroBandWidth: 30,
+  smallZeroBandWidth: 33,
   width: 1400,
 } as const;
 // Keep neighbour-five preview and betting available for a later racetrack mode.
@@ -1930,7 +1930,7 @@ export function App() {
   const simulatorDesktopGameAspect = simulatorDesktopGameWidth > 0
     ? simulatorDesktopViewportSize.height / simulatorDesktopGameWidth
     : Number.POSITIVE_INFINITY;
-  const simulatorDesktopGameBrandVisible = simulatorDesktopAnalysisOpen && simulatorDesktopGameAspect >= 0.64;
+  const simulatorDesktopGameBrandVisible = simulatorDesktopGameAspect >= 0.64;
   const simulatorDesktopFreeVerticalSpace = Math.max(
     0,
     simulatorDesktopViewportSize.height - simulatorDesktopDesignHeight * simulatorDesktopScale,
@@ -7152,7 +7152,7 @@ export function App() {
         >
           <div className="six-stats-grid">
             {sixNumberSnapshot.map((item) => (
-              <div className={`six-stat-chip${item.highlighted ? " highlighted" : ""}`} key={item.wi} title={item.label}>
+              <div className={`six-stat-chip${item.highlighted ? " highlighted" : ""}`} key={item.wi} title={simulatorUsesDesktopLayout ? undefined : item.label}>
                 <span className="six-stat-end">{item.end}</span>
                 <span className="six-stat-arrow" aria-hidden="true" />
                 <span className="six-stat-start">{item.start}</span>
@@ -7187,7 +7187,7 @@ export function App() {
         >
           <div className="three-stats-grid">
             {threeNumberSnapshot.map((item) => (
-              <div className={`six-stat-chip three-stat-chip${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={item.wi} title={item.label}>
+              <div className={`six-stat-chip three-stat-chip${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={item.wi} title={simulatorUsesDesktopLayout ? undefined : item.label}>
                 <span className="six-stat-end">{item.end}</span>
                 <span className="six-stat-arrow" aria-hidden="true" />
                 <span className="six-stat-start">{item.start}</span>
@@ -9441,6 +9441,7 @@ export function App() {
                               )} />
                               <text
                                 dominantBaseline="middle"
+                                dy={segment.lane === "main" ? "0.14em" : undefined}
                                 textAnchor="middle"
                                 transform={`rotate(${labelPoint.angle.toFixed(1)} ${labelPoint.x.toFixed(1)} ${labelPoint.y.toFixed(1)})`}
                                 x={labelPoint.x}
@@ -9457,7 +9458,8 @@ export function App() {
                           const total = simulatorEuropeanWheelOrder.length;
                           const neighbours = simulatorWheelNeighbours(value);
                           const isHighlighted = simulatorRacetrackHighlight?.includes(value) ?? false;
-                          const numberRadius = simulatorRacetrackGeometry.radius + (simulatorUsesDesktopLayout ? 8 : 0);
+                          const numberRadius = simulatorRacetrackGeometry.radius + (simulatorUsesDesktopLayout ? 15 : 12.5);
+                          const numberBandWidth = simulatorRacetrackGeometry.numberBandWidth - (simulatorUsesDesktopLayout ? 14 : 17);
                           const point = simulatorStadiumPoint(index / total, numberRadius);
                           return (
                             <g
@@ -9481,7 +9483,7 @@ export function App() {
                                 (index - 0.5) / total,
                                 (index + 0.5) / total,
                                 numberRadius,
-                                simulatorRacetrackGeometry.numberBandWidth,
+                                numberBandWidth,
                               )} />
                               <text
                                 dominantBaseline="middle"
@@ -9819,7 +9821,7 @@ export function App() {
                     </button>
                     <button
                       aria-label="清空下注"
-                      className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
+                      className={`sim-feed-clear${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
                       data-tooltip={simulatorUsesDesktopLayout ? "清空下注" : undefined}
                       onClick={clearSimulatorBets}
                       title={simulatorUsesDesktopLayout ? undefined : "清空下注"}
