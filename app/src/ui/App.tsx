@@ -9,7 +9,7 @@ import {
   isRouletteNumber,
   type RouletteNumber,
 } from "../core/roulette";
-import { ChevronsUp, CircleUser, Keyboard, List, Play, Repeat, SkipBack, SkipForward, Undo2 } from "lucide-react";
+import { CircleUser, Keyboard, List, Play, SkipBack, SkipForward, Undo2 } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -9836,7 +9836,7 @@ export function App() {
                       title={simulatorUsesDesktopLayout ? undefined : "重复上一把下注"}
                       type="button"
                     >
-                      <Repeat aria-hidden="true" size={15} strokeWidth={2.4} />
+                      <span aria-hidden="true" className="simulator-feed-symbol simulator-repeat-symbol">↻</span>
                     </button>
                     <button
                       aria-label="当前赌注加倍"
@@ -9847,7 +9847,7 @@ export function App() {
                       title={simulatorUsesDesktopLayout ? undefined : "当前赌注加倍"}
                       type="button"
                     >
-                      <ChevronsUp aria-hidden="true" size={15} strokeWidth={2.4} />
+                      <span aria-hidden="true" className="simulator-feed-symbol">x2</span>
                     </button>
                     <button
                       aria-label="打开结算明细"

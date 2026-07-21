@@ -8067,8 +8067,8 @@ html.android .sim-bet-band button {
 .simulator-screen:not(.desktop-mode) .sim-table-side-action {
   align-items: center;
   appearance: none;
-  background: linear-gradient(180deg, rgb(41 54 44 / 0.95), rgb(19 31 24 / 0.95));
-  border: 1px solid rgb(244 215 157 / 0.28);
+  background: linear-gradient(180deg, rgb(62 79 65 / 0.95), rgb(36 52 41 / 0.95));
+  border: 1px solid rgb(244 215 157 / 0.45);
   border-radius: 8px;
   color: #d9b56e;
   display: grid;
@@ -8086,21 +8086,32 @@ html.android .sim-bet-band button {
 }
 
 .simulator-screen:not(.desktop-mode) .sim-table-side-action:disabled {
-  background: linear-gradient(180deg, #28332c, #111a15);
-  border-color: rgb(255 235 184 / 0.14);
+  background: linear-gradient(180deg, #2d3a32, #151f19);
+  border-color: rgb(255 235 184 / 0.2);
   color: rgb(244 234 211 / 0.38);
 }
 
 .simulator-screen:not(.desktop-mode) .sim-table-side-action-200 {
+  align-self: end;
+  border-width: 1.5px;
+  font-size: 16px;
   grid-column: 1;
   grid-row: 4 / span 2;
+  height: calc(100% - 4px);
+  justify-self: start;
+  width: calc(100% - 4px);
 }
 
 .simulator-screen:not(.desktop-mode) .sim-table-side-action-return {
+  align-self: end;
+  border-width: 1.5px;
   font-size: 15px;
   grid-column: 14;
   grid-row: 4 / span 2;
+  height: calc(100% - 4px);
+  justify-self: end;
   letter-spacing: 0;
+  width: calc(100% - 4px);
   writing-mode: horizontal-tb;
 }
 
@@ -8592,12 +8603,29 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-feed-bottom button {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-feed-bottom button svg {
   height: 19px;
   width: 19px;
+}
+
+.simulator-feed-symbol {
+  display: inline-block;
+  line-height: 1;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-feed-symbol {
+  font-size: 15px;
+}
+
+.simulator-screen:not(.desktop-mode) .simulator-repeat-symbol {
+  font-size: 24px;
+}
+
+.simulator-screen.desktop-mode .simulator-repeat-symbol {
+  font-size: 32px;
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-bottom-status {
