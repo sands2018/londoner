@@ -1865,7 +1865,17 @@ export function App() {
   const [simulatorRecentOpen, setSimulatorRecentOpen] = useState(false);
   const [simulatorRacetrackOpen, setSimulatorRacetrackOpen] = useState(false);
   const [simulatorRacetrackHighlight, setSimulatorRacetrackHighlight] = useState<readonly RouletteNumber[] | null>(null);
-  const [simulatorRoundPop, setSimulatorRoundPop] = useState<{ id: number; net: number; phase: "result" | "net"; result: RouletteNumber; stake: number; winReturn: number } | null>(null);
+  const [simulatorRoundPop, setSimulatorRoundPop] = useState<{
+    balanceBeforePayout: number;
+    bets: SimulatorBet[];
+    id: number;
+    net: number;
+    phase: "result" | "net";
+    result: RouletteNumber;
+    stake: number;
+    totalBetAmountBeforeSettle: number;
+    winReturn: number;
+  } | null>(null);
   const simulatorBetIdRef = useRef(Math.max(0, ...initialSimulatorState.bets.map((bet) => bet.id), ...initialSimulatorState.lastBets.map((bet) => bet.id)));
   const simulatorBetActionIdRef = useRef(Math.max(0, ...initialSimulatorState.betPlacements.map((placement) => placement.actionId ?? 0)));
   const simulatorProgressRef = useRef(0);
@@ -1997,6 +2007,9 @@ export function App() {
   const simulatorLastNumber = numbers.at(-1) ?? null;
   const simulatorTotalStake = simulatorBets.reduce((sum, bet) => sum + bet.amount, 0);
   const simulatorTotalBetAmount = simulatorLog.reduce((sum, item) => sum + item.stake, 0) + simulatorTotalStake;
+  const simulatorDisplayedStake = simulatorRoundPop?.stake ?? simulatorTotalStake;
+  const simulatorDisplayedTotalBetAmount = simulatorRoundPop?.totalBetAmountBeforeSettle ?? simulatorTotalBetAmount;
+  const simulatorDisplayedBalance = simulatorRoundPop?.balanceBeforePayout ?? simulatorBalance;
   const tableSelectOptions = useMemo(() => {
     const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
     return casinoTables
@@ -3339,7 +3352,8 @@ export function App() {
 
   function getSimulatorBetAmount(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
     const key = simulatorBetKey(kind, betNumbers);
-    return simulatorBets.find((item) => item.key === key)?.amount ?? 0;
+    const visibleBets = simulatorRoundPop?.bets ?? simulatorBets;
+    return visibleBets.find((item) => item.key === key)?.amount ?? 0;
   }
 
   function getSimulatorTableChipClass(amount: number) {
@@ -3413,6 +3427,7 @@ export function App() {
   }
 
   function addSimulatorBetBatch(bets: readonly Omit<SimulatorBet, "id">[]) {
+    if (simulatorRoundPop) return;
     const additions = bets.filter((bet) => bet.amount > 0 && bet.numbers.length > 0);
     if (additions.length === 0) return;
     simulatorBetActionIdRef.current += 1;
@@ -3781,6 +3796,7 @@ export function App() {
   }
 
   function settleSimulatorRound() {
+    if (simulatorRoundPop) return;
     if (simulatorNextNumber === null) {
       setNoticeDialog({ title: "模拟", message: "当前数据已经回放结束。" });
       return;
@@ -3793,9 +3809,20 @@ export function App() {
     const net = winReturn - stake;
     const balanceBefore = simulatorBalance + stake;
     const nextBalance = simulatorBalance + winReturn;
-    setSimulatorLastBets(simulatorBets.map((bet) => ({ ...bet, numbers: [...bet.numbers] })));
+    const settledBets = simulatorBets.map((bet) => ({ ...bet, numbers: [...bet.numbers] }));
+    setSimulatorLastBets(settledBets);
     const popId = keyPopIdRef.current++;
-    setSimulatorRoundPop({ id: popId, net, phase: "result", result: simulatorNextNumber, stake, winReturn });
+    setSimulatorRoundPop({
+      balanceBeforePayout: simulatorBalance,
+      bets: settledBets,
+      id: popId,
+      net,
+      phase: "result",
+      result: simulatorNextNumber,
+      stake,
+      totalBetAmountBeforeSettle: simulatorTotalBetAmount,
+      winReturn,
+    });
     if (simulatorRoundPopTimerRef.current) {
       clearTimeout(simulatorRoundPopTimerRef.current);
     }
@@ -3804,8 +3831,8 @@ export function App() {
       simulatorRoundPopTimerRef.current = setTimeout(() => {
         setSimulatorRoundPop((current) => (current?.id === popId ? null : current));
         simulatorRoundPopTimerRef.current = null;
-      }, 3000);
-    }, 2000);
+      }, 2200);
+    }, 1600);
     setSimulatorBalance(nextBalance);
     setSimulatorLog((items) => [
       {
@@ -9496,7 +9523,7 @@ export function App() {
                     </svg>
                   </div>
                 ) : null}
-                <div className="sim-table-felt" onClickCapture={handleSimulatorTableClick}>
+                <div className={`sim-table-felt${simulatorRoundPop ? " settling" : ""}`} onClickCapture={handleSimulatorTableClick}>
                   {simulatorUsesDesktopLayout ? (
                     <>
                       <button className="simulator-no-bet-zone simulator-no-bet-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
@@ -9513,7 +9540,7 @@ export function App() {
                   <div className="simulator-table">
                     <div className="sim-zero-zone">
                       <button
-                        className="sim-number sim-zero"
+                        className={`sim-number sim-zero${simulatorRoundPop?.result === 0 ? " sim-number-round-winner" : ""}`}
                         data-sim-kind="straight"
                         data-sim-label="单号 0"
                         data-sim-numbers={simulatorEncodeNumbers([0])}
@@ -9584,7 +9611,7 @@ export function App() {
                         <div className="sim-number-grid">
                           {boardRows.map((row) => row.map((value) => (
                             <button
-                              className={`sim-number sim-${getNumberColor(value)}`}
+                              className={`sim-number sim-${getNumberColor(value)}${simulatorRoundPop?.result === value ? " sim-number-round-winner" : ""}`}
                               data-sim-kind="straight"
                               data-sim-label={`单号 ${value}`}
                               data-sim-numbers={simulatorEncodeNumbers([value])}
@@ -9773,6 +9800,7 @@ export function App() {
                     aria-label="开下一口"
                     className={`sim-action-play${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
                     data-tooltip={simulatorUsesDesktopLayout ? "开下一口" : undefined}
+                    disabled={simulatorRoundPop !== null}
                     onClick={settleSimulatorRound}
                     title={simulatorUsesDesktopLayout ? undefined : "开下一口"}
                     type="button"
@@ -9826,7 +9854,7 @@ export function App() {
                       aria-label="重复上一把下注"
                       className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
                       data-tooltip={simulatorUsesDesktopLayout ? "重复上一把下注" : undefined}
-                      disabled={simulatorLastBets.length === 0}
+                      disabled={simulatorRoundPop !== null || simulatorLastBets.length === 0}
                       onClick={repeatSimulatorLastBets}
                       title={simulatorUsesDesktopLayout ? undefined : "重复上一把下注"}
                       type="button"
@@ -9885,11 +9913,11 @@ export function App() {
                   </div>
                   <div onPointerUp={(event) => handleSimulatorStatusPointerUp("stake", event)}>
                     <span>投注</span>
-                    <strong>{simulatorTotalStake} / {simulatorTotalBetAmount}</strong>
+                    <strong>{simulatorDisplayedStake} / {simulatorDisplayedTotalBetAmount}</strong>
                   </div>
                   <div onPointerUp={(event) => handleSimulatorStatusPointerUp("balance", event)}>
                     <span>胜负</span>
-                    <strong className={simulatorBalance >= 0 ? "positive" : "negative"}>{simulatorBalance >= 0 ? "+" : ""}{simulatorBalance}</strong>
+                    <strong className={simulatorDisplayedBalance >= 0 ? "positive" : "negative"}>{simulatorDisplayedBalance >= 0 ? "+" : ""}{simulatorDisplayedBalance}</strong>
                   </div>
                 </div>
               </footer>
