@@ -3342,22 +3342,17 @@ export function App() {
     return simulatorBets.find((item) => item.key === key)?.amount ?? 0;
   }
 
-  function getSimulatorTableChipClass(amount: number, key: string) {
-    let denomination = amount;
-    for (let index = simulatorBetPlacements.length - 1; index >= 0; index -= 1) {
-      if (simulatorBetPlacements[index].key !== key) continue;
-      denomination = simulatorBetPlacements[index].amount;
-      break;
+  function getSimulatorTableChipClass(amount: number) {
+    for (let index = simulatorChips.length - 1; index >= 0; index -= 1) {
+      const denomination = simulatorChips[index];
+      if (amount >= denomination) return `sim-table-chip-${denomination}`;
     }
-    if (simulatorChips.some((chip) => chip === denomination)) return `sim-table-chip-${denomination}`;
-    if (amount <= 100) return "sim-table-chip-green";
-    if (amount <= 1000) return "sim-table-chip-red";
-    return "sim-table-chip-purple";
+    return `sim-table-chip-${simulatorChips[0]}`;
   }
 
-  function renderSimulatorTableChip(amount: number, key: string) {
+  function renderSimulatorTableChip(amount: number) {
     return amount > 0 ? (
-      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount, key)}`}>
+      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount)}`}>
         <span className="sim-table-chip-text">{amount}</span>
       </span>
     ) : null;
@@ -3365,7 +3360,7 @@ export function App() {
 
   function renderSimulatorChip(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
     const key = simulatorBetKey(kind, betNumbers);
-    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers), key);
+    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers));
   }
 
   function clearSimulatorRoundState(nextProgress = numbers.length) {
@@ -9543,7 +9538,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("split", "2数 0/3", simulatorZeroThreeSplitBet.numbers, simulatorZeroThreeSplitBet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("split", simulatorZeroThreeSplitBet.numbers)) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })()}
@@ -9561,7 +9556,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("zero-trio", bet.label, bet.numbers, bet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("zero-trio", bet.numbers)) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })}
@@ -9578,7 +9573,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("first-four", simulatorFirstFourBet.label, simulatorFirstFourBet.numbers, simulatorFirstFourBet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("first-four", simulatorFirstFourBet.numbers)) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })()}
@@ -9619,7 +9614,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("split", bet.numbers)) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9638,7 +9633,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("corner", bet.numbers)) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9657,7 +9652,7 @@ export function App() {
                                 style={{ left: `${((index + 0.5) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("street", bet.numbers)) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9676,7 +9671,7 @@ export function App() {
                                 style={{ left: `${((index + 1) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount, simulatorBetKey("six", bet.numbers)) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}

@@ -6507,21 +6507,21 @@ html.android .sim-bet-band button {
 }
 
 .simulator-chip-10 {
-  --chip-accent: #92aeb7;
-  --chip-color: #218dca;
-  --chip-inner: #164a67;
+  --chip-accent: #aaa69c;
+  --chip-color: #7d786d;
+  --chip-inner: #575249;
 }
 
 .simulator-chip-20 {
-  --chip-accent: #879b82;
-  --chip-color: #1f6a3e;
-  --chip-inner: #124127;
+  --chip-accent: #8bafb3;
+  --chip-color: #3397ad;
+  --chip-inner: #1f5869;
 }
 
 .simulator-chip-50 {
-  --chip-accent: #c0af82;
-  --chip-color: #aa8628;
-  --chip-inner: #665019;
+  --chip-accent: #879b82;
+  --chip-color: #1f6a3e;
+  --chip-inner: #124127;
 }
 
 .simulator-chip-100 {
@@ -8191,40 +8191,22 @@ html.android .sim-bet-band button {
   width: 32px;
 }
 
-.sim-table-felt .sim-table-chip.sim-table-chip-green {
-  --sim-chip-accent: #83a5b0;
-  --sim-chip-color: #168fd0;
-  --sim-chip-inner: #0d496c;
-}
-
-.sim-table-felt .sim-table-chip.sim-table-chip-red {
-  --sim-chip-accent: #b9897e;
-  --sim-chip-color: #c63a34;
-  --sim-chip-inner: #641f1d;
-}
-
-.sim-table-felt .sim-table-chip.sim-table-chip-purple {
-  --sim-chip-accent: #9c89af;
-  --sim-chip-color: #7042b4;
-  --sim-chip-inner: #3c236b;
-}
-
 .sim-table-felt .sim-table-chip.sim-table-chip-10 {
-  --sim-chip-accent: #92aeb7;
-  --sim-chip-color: #218dca;
-  --sim-chip-inner: #164a67;
+  --sim-chip-accent: #aaa69c;
+  --sim-chip-color: #7d786d;
+  --sim-chip-inner: #575249;
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-20 {
-  --sim-chip-accent: #879b82;
-  --sim-chip-color: #1f6a3e;
-  --sim-chip-inner: #124127;
+  --sim-chip-accent: #8bafb3;
+  --sim-chip-color: #3397ad;
+  --sim-chip-inner: #1f5869;
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-50 {
-  --sim-chip-accent: #c0af82;
-  --sim-chip-color: #aa8628;
-  --sim-chip-inner: #665019;
+  --sim-chip-accent: #879b82;
+  --sim-chip-color: #1f6a3e;
+  --sim-chip-inner: #124127;
 }
 
 .sim-table-felt .sim-table-chip.sim-table-chip-100 {
