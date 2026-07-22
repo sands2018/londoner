@@ -8252,9 +8252,9 @@ html.android .sim-bet-band button {
   font-size: 16px;
   grid-column: 1;
   grid-row: 4 / span 2;
-  height: calc(100% - 4px);
+  height: calc(100% - 3px);
   justify-self: start;
-  width: calc(100% - 4px);
+  width: calc(100% - 3px);
 }
 
 .simulator-screen:not(.desktop-mode) .sim-table-side-action-return {
@@ -8263,11 +8263,27 @@ html.android .sim-bet-band button {
   font-size: 15px;
   grid-column: 14;
   grid-row: 4 / span 2;
-  height: calc(100% - 4px);
+  height: calc(100% - 3px);
   justify-self: end;
   letter-spacing: 0;
-  width: calc(100% - 4px);
+  width: calc(100% - 3px);
   writing-mode: horizontal-tb;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-zero {
+  border-bottom-left-radius: 4px;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-row-bets button:last-child {
+  border-bottom-right-radius: 4px;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-outside button:first-child {
+  border-bottom-left-radius: 4px;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-outside button:last-of-type {
+  border-bottom-right-radius: 4px;
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-table-wrap {
