@@ -5334,8 +5334,9 @@ html.iphone .state-reading p {
 
 /* --- Roulette simulator --- */
 .simulator-screen {
+  --sim-table-number-font: Georgia, "Times New Roman", serif;
   --sim-table-line: 3px;
-  --sim-table-line-color: rgb(238 236 196 / 0.72);
+  --sim-table-line-color: rgb(205 177 104 / 0.78);
   background: #050806;
   color: #f4ead3;
   display: grid;
@@ -5347,7 +5348,7 @@ html.iphone .state-reading p {
 }
 
 .simulator-screen:not(.desktop-mode) {
-  --sim-table-line: 2px;
+  --sim-table-line: 1.5px;
 }
 
 .simulator-landscape {
@@ -5867,7 +5868,7 @@ html.iphone .state-reading p {
   border-radius: 3px;
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
   color: #fff9e9;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--sim-table-number-font);
   font-size: clamp(26px, 4.7vw, 58px);
   font-weight: 700;
   min-height: 0;
@@ -5879,10 +5880,22 @@ html.iphone .state-reading p {
   pointer-events: none;
 }
 
+.simulator-landscape.settling {
+  overflow: visible;
+}
+
+.simulator-table-wrap.settling {
+  overflow: visible;
+}
+
 .sim-number-round-winner {
   isolation: isolate;
   overflow: visible;
   z-index: 2;
+}
+
+.sim-table-felt.settling .sim-number-round-winner {
+  overflow: visible;
 }
 
 .sim-number-round-winner::before,
@@ -5893,14 +5906,18 @@ html.iphone .state-reading p {
 }
 
 .sim-number-round-winner::before {
+  --sim-winner-glow-half: 31px;
+  --sim-winner-glow-thickness: 62px;
+  --sim-winner-glow-x-pad: 44px;
+  --sim-winner-glow-y-pad: 38px;
   animation: simWinningNumberRays 900ms ease-in-out infinite alternate;
   background:
-    linear-gradient(90deg, transparent 3%, rgb(255 224 126 / 0.12) 24%, rgb(255 238 172 / 0.96) 50%, rgb(255 224 126 / 0.12) 76%, transparent 97%) center top / 82% 18px no-repeat,
-    linear-gradient(90deg, transparent 3%, rgb(255 224 126 / 0.12) 24%, rgb(255 238 172 / 0.96) 50%, rgb(255 224 126 / 0.12) 76%, transparent 97%) center bottom / 82% 18px no-repeat,
-    linear-gradient(0deg, transparent 3%, rgb(255 224 126 / 0.12) 24%, rgb(255 238 172 / 0.96) 50%, rgb(255 224 126 / 0.12) 76%, transparent 97%) left center / 18px 82% no-repeat,
-    linear-gradient(0deg, transparent 3%, rgb(255 224 126 / 0.12) 24%, rgb(255 238 172 / 0.96) 50%, rgb(255 224 126 / 0.12) 76%, transparent 97%) right center / 18px 82% no-repeat;
-  filter: blur(1px) drop-shadow(0 0 7px rgb(255 198 72 / 0.9));
-  inset: -13px;
+    radial-gradient(ellipse at center, rgb(255 242 188 / 0.98) 0, rgb(255 224 126 / 0.62) 18%, rgb(255 205 78 / 0.28) 38%, rgb(255 193 55 / 0.1) 56%, rgb(255 184 48 / 0.025) 70%, transparent 82%) center calc(var(--sim-winner-glow-y-pad) - var(--sim-winner-glow-half)) / 100% var(--sim-winner-glow-thickness) no-repeat,
+    radial-gradient(ellipse at center, rgb(255 242 188 / 0.98) 0, rgb(255 224 126 / 0.62) 18%, rgb(255 205 78 / 0.28) 38%, rgb(255 193 55 / 0.1) 56%, rgb(255 184 48 / 0.025) 70%, transparent 82%) center calc(100% - var(--sim-winner-glow-y-pad) + var(--sim-winner-glow-half)) / 100% var(--sim-winner-glow-thickness) no-repeat,
+    radial-gradient(ellipse at center, rgb(255 242 188 / 0.98) 0, rgb(255 224 126 / 0.62) 18%, rgb(255 205 78 / 0.28) 38%, rgb(255 193 55 / 0.1) 56%, rgb(255 184 48 / 0.025) 70%, transparent 82%) calc(var(--sim-winner-glow-x-pad) - var(--sim-winner-glow-half)) center / var(--sim-winner-glow-thickness) 100% no-repeat,
+    radial-gradient(ellipse at center, rgb(255 242 188 / 0.98) 0, rgb(255 224 126 / 0.62) 18%, rgb(255 205 78 / 0.28) 38%, rgb(255 193 55 / 0.1) 56%, rgb(255 184 48 / 0.025) 70%, transparent 82%) calc(100% - var(--sim-winner-glow-x-pad) + var(--sim-winner-glow-half)) center / var(--sim-winner-glow-thickness) 100% no-repeat;
+  filter: blur(1.5px);
+  inset: calc(-1 * var(--sim-winner-glow-y-pad)) calc(-1 * var(--sim-winner-glow-x-pad));
   z-index: 0;
 }
 
@@ -5925,6 +5942,10 @@ html.iphone .state-reading p {
   z-index: 30;
 }
 
+.sim-table-felt.settling .simulator-table {
+  z-index: 8;
+}
+
 .sim-table-felt.settling .sim-dozens,
 .sim-table-felt.settling .sim-outside {
   z-index: 7;
@@ -5934,10 +5955,47 @@ html.iphone .state-reading p {
   z-index: 41;
 }
 
+.sim-table-felt.settling .sim-table-chip.sim-table-chip-round-hit {
+  animation: simWinningChipPulse 650ms ease-in-out infinite alternate;
+  box-shadow:
+    0 2px 6px rgb(0 0 0 / 0.68),
+    0 0 0 2px rgb(255 229 148 / 0.7),
+    0 0 16px rgb(255 191 60 / 0.9),
+    inset 0 2px 3px rgb(255 255 255 / 0.22),
+    inset 0 -3px 4px rgb(0 0 0 / 0.4);
+  opacity: 1;
+  z-index: 43;
+}
+
+.sim-table-felt.settling .sim-table-chip.sim-table-chip-round-miss {
+  filter: brightness(0.48) saturate(0.5);
+  opacity: 0.88;
+}
+
+.simulator-screen.desktop-mode .sim-number-round-winner::before {
+  --sim-winner-glow-half: 45px;
+  --sim-winner-glow-thickness: 90px;
+  --sim-winner-glow-x-pad: 69px;
+  --sim-winner-glow-y-pad: 54px;
+  filter: blur(2px);
+}
+
+.simulator-screen.desktop-mode .sim-number-round-winner::after {
+  box-shadow:
+    0 0 8px rgb(255 226 137 / 0.92),
+    0 0 24px rgb(255 184 48 / 0.72),
+    inset 0 0 14px rgb(255 224 126 / 0.4);
+  inset: -3px;
+}
+
+html.android .simulator-screen {
+  --sim-table-number-font: "Libre Baskerville", Georgia, "Times New Roman", serif;
+}
+
 html.android .sim-number,
 html.android .sim-row-bets button,
 html.android .sim-bet-band button {
-  font-family: "Libre Baskerville", Georgia, "Times New Roman", serif;
+  font-family: var(--sim-table-number-font);
 }
 
 .sim-red,
@@ -6438,9 +6496,11 @@ html.android .sim-bet-band button {
   grid-column: 1;
   grid-row: 2;
   justify-content: center;
+  isolation: isolate;
   min-height: 0;
   overflow: hidden;
   padding: 8px 10px;
+  position: relative;
 }
 
 .simulator-chip-tray > span {
@@ -7245,132 +7305,133 @@ html.android .sim-bet-band button {
   color: #8fd0aa;
 }
 
-.simulator-round-pop-overlay {
+.simulator-settlement-overlay {
   align-items: center;
-  bottom: 92px;
+  animation: simSettlementOverlayFade var(--simulator-settlement-duration, 5000ms) ease-out forwards;
+  background:
+    radial-gradient(circle at 38% 46%, rgb(30 82 55 / 0.38), transparent 48%),
+    linear-gradient(105deg, rgb(2 17 11 / 0.9), rgb(7 48 31 / 0.9) 52%, rgb(1 15 10 / 0.9));
+  border-radius: inherit;
   display: flex;
+  inset: 0;
   justify-content: center;
-  left: 0;
   pointer-events: none;
   position: absolute;
-  right: 0;
-  top: 0;
-  z-index: 30;
+  z-index: 60;
 }
 
-.simulator-round-pop {
+.simulator-settlement-card {
   align-items: center;
-  animation: simRoundPopFade 3s ease-out forwards;
-  background: transparent;
+  animation: simSettlementCardFade var(--simulator-settlement-duration, 5000ms) ease-out forwards;
+  display: flex;
+  gap: 36px;
+  line-height: 1;
+  text-align: left;
+}
+
+.simulator-settlement-number {
+  border: 2px solid rgb(231 199 132 / 0.72);
+  border-radius: 50%;
+  color: #fff2d8;
+  display: grid;
+  flex: 0 0 58px;
+  font-family: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-feature-settings: "lnum" 1, "tnum" 1;
+  font-size: 27px;
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
+  height: 58px;
+  place-items: center;
+  text-shadow: none;
+  width: 58px;
+}
+
+.simulator-settlement-number > span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-0.04em) scaleY(0.9);
+}
+
+.simulator-settlement-number.sim-result-red {
+  background: linear-gradient(180deg, #c72b34, #941b24);
+}
+
+.simulator-settlement-number.sim-result-black {
+  background: linear-gradient(180deg, #242625, #070908);
+}
+
+.simulator-settlement-number.sim-result-green {
+  background: linear-gradient(180deg, #16834b, #07552e);
+}
+
+.simulator-settlement-copy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  isolation: isolate;
-  line-height: 1;
-  position: absolute;
-  text-align: center;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.58), 0 2px 6px rgb(0 0 0 / 0.46);
+  gap: 6px;
+  min-width: 116px;
 }
 
-.simulator-round-pop:not(.result-phase)::before {
-  background:
-    radial-gradient(ellipse at center, rgb(0 36 24 / 0.86) 0 30%, rgb(0 46 30 / 0.74) 42%, rgb(0 54 34 / 0.52) 62%, transparent 84%);
-  content: "";
-  filter: blur(20px);
-  inset: -52px -124px;
-  pointer-events: none;
-  position: absolute;
-  z-index: -1;
-}
-
-.simulator-round-pop.sim-result-red,
-.simulator-round-pop.sim-result-black,
-.simulator-round-pop.sim-result-green {
-  background: transparent;
-}
-
-.simulator-round-pop.result-phase {
-  animation-name: simRoundNumberPopFade;
-  animation-duration: 2s;
-}
-
-.simulator-round-pop span {
-  color: #f4ead3;
-  font-size: clamp(22px, 4.4dvh, 38px);
-  font-weight: var(--weight-strong);
-}
-
-.simulator-round-pop.positive span,
-.simulator-round-pop.negative span {
-  font-size: clamp(42px, 9dvh, 76px);
-  line-height: 1.08;
-}
-
-.simulator-round-pop .simulator-round-settle-line {
-  color: #f6b84a;
-  position: relative;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.58), 0 2px 5px rgb(0 0 0 / 0.44);
-  z-index: 1;
-}
-
-.simulator-round-pop .simulator-round-settle-line strong {
-  color: inherit;
-  font-size: inherit;
-  font-weight: 900;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.62), 0 2px 5px rgb(0 0 0 / 0.46);
-}
-
-.simulator-round-pop .simulator-round-win.positive strong {
-  color: #ff6f6f;
-}
-
-.simulator-round-pop .simulator-round-win.negative strong {
-  color: #8fd0aa;
-}
-
-.simulator-round-pop .simulator-round-win.zero strong {
-  color: #f6b84a;
-}
-
-.simulator-round-pop strong {
-  font-size: clamp(72px, 17dvh, 132px);
-  font-weight: 900;
-}
-
-.simulator-round-pop .simulator-round-number {
-  align-items: center;
-  border-radius: 50%;
+.simulator-settlement-line {
+  align-items: baseline;
+  color: #e9c57e;
   display: flex;
-  font-size: clamp(60px, 14dvh, 108px);
-  height: clamp(116px, 25dvh, 178px);
-  justify-content: center;
-  width: clamp(116px, 25dvh, 178px);
+  font-size: 25px;
+  font-weight: var(--weight-strong);
+  gap: 8px;
+  line-height: 1.05;
+  text-shadow: none;
+  white-space: nowrap;
 }
 
-.simulator-round-pop.positive strong {
-  color: #f6b84a;
+.simulator-settlement-label {
+  background-image:
+    repeating-linear-gradient(117deg, transparent 0 13px, rgb(61 42 12 / 0.48) 13px 14px, transparent 14px 31px),
+    repeating-linear-gradient(71deg, transparent 0 21px, rgb(255 239 180 / 0.28) 21px 22px, transparent 22px 43px),
+    linear-gradient(124deg, #f0d98b 0%, #caa049 30%, #6b4b1e 52%, #dfb65a 74%, #795622 100%);
+  background-blend-mode: multiply, screen, normal;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+  filter:
+    drop-shadow(0 -0.6px 0.35px rgb(255 239 187 / 0.4))
+    drop-shadow(0 1.2px 0.8px rgb(0 0 0 / 0.82));
+  font-family: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-weight: var(--weight-ui);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.simulator-round-pop.negative strong {
-  color: #8fd0aa;
+.simulator-settlement-line strong {
+  --sim-settlement-value-gradient: linear-gradient(124deg, #f0d98b 0%, #caa049 30%, #6b4b1e 52%, #dfb65a 74%, #795622 100%);
+  background-image:
+    repeating-linear-gradient(117deg, transparent 0 13px, rgb(61 42 12 / 0.48) 13px 14px, transparent 14px 31px),
+    repeating-linear-gradient(71deg, transparent 0 21px, rgb(255 239 180 / 0.28) 21px 22px, transparent 22px 43px),
+    var(--sim-settlement-value-gradient);
+  background-blend-mode: multiply, screen, normal;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+  filter:
+    drop-shadow(0 -0.6px 0.35px rgb(255 239 187 / 0.4))
+    drop-shadow(0 1.2px 0.8px rgb(0 0 0 / 0.82));
+  font-family: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: inherit;
+  font-weight: var(--weight-strong);
+  text-shadow: none;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.simulator-round-pop.sim-result-red strong {
-  background: linear-gradient(180deg, #d44848, #8d171d);
-  box-shadow: 0 8px 22px rgb(0 0 0 / 0.48);
-  color: #ffdfcf;
+.simulator-settlement-win.positive strong {
+  --sim-settlement-value-gradient: linear-gradient(124deg, #ffd09a 0%, #de7359 30%, #70251f 52%, #ef9e73 74%, #84352c 100%);
 }
 
-.simulator-round-pop.sim-result-black strong {
-  background: linear-gradient(180deg, #202020, #030303);
-  box-shadow: 0 8px 22px rgb(0 0 0 / 0.52);
-  color: #f6f1e6;
+.simulator-settlement-win.negative strong {
+  --sim-settlement-value-gradient: linear-gradient(124deg, #d5e5ae 0%, #78b487 30%, #294e3b 52%, #a4c694 74%, #3b654b 100%);
 }
 
-.simulator-round-pop.sim-result-green strong {
-  background: linear-gradient(180deg, #18834b, #07552e);
-  box-shadow: 0 8px 22px rgb(0 0 0 / 0.48);
-  color: #a8ffd4;
+.simulator-settlement-win.zero strong {
+  --sim-settlement-value-gradient: linear-gradient(124deg, #f0d98b 0%, #caa049 30%, #6b4b1e 52%, #dfb65a 74%, #795622 100%);
 }
 
 .config-tool-actions {
@@ -7398,6 +7459,26 @@ html.android .sim-bet-band button {
   flex-wrap: wrap;
   gap: 24px;
   padding: 10px 16px;
+}
+
+.config-game-animation-row {
+  align-items: center;
+  display: flex;
+  gap: 28px;
+  padding: 0 16px;
+}
+
+.config-game-animation-label {
+  color: #b9b4aa;
+  flex: 0 0 auto;
+  font-size: var(--dialog-row-font-size);
+  font-weight: var(--weight-ui);
+  white-space: nowrap;
+}
+
+.config-game-animation-row .config-option-list-inline {
+  gap: 24px;
+  padding: 10px 0;
 }
 
 .config-device-mode-options .config-tool-toggle {
@@ -7645,18 +7726,18 @@ html.android .sim-bet-band button {
   opacity: 0.55;
 }
 
-@keyframes simRoundPopFade {
-  0% { opacity: 0; transform: scale(0.45); }
-  9% { opacity: 1; transform: scale(1.04); }
-  78% { opacity: 0.96; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.16); }
+@keyframes simSettlementOverlayFade {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
-@keyframes simRoundNumberPopFade {
-  0% { opacity: 0; transform: scale(0.45); }
-  9% { opacity: 1; transform: scale(1.04); }
-  86% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.12); }
+@keyframes simSettlementCardFade {
+  0% { opacity: 0; transform: translateY(6px) scale(0.94); }
+  9% { opacity: 1; transform: translateY(0) scale(1); }
+  90% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-3px) scale(1.02); }
 }
 
 @keyframes simWinningNumberRays {
@@ -7667,6 +7748,11 @@ html.android .sim-bet-band button {
 @keyframes simWinningNumberFrame {
   from { opacity: 0.72; }
   to { opacity: 1; }
+}
+
+@keyframes simWinningChipPulse {
+  from { filter: brightness(1.08) saturate(1.04); }
+  to { filter: brightness(1.38) saturate(1.2); }
 }
 
 .simulator-landscape {
@@ -8326,10 +8412,6 @@ html.android .sim-bet-band button {
     grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
   }
 
-  html.android .simulator-round-pop-overlay {
-    bottom: 22.5%;
-  }
-
   html.android .sim-table-felt {
     --sim-dozens-height: 20%;
     --sim-outside-height: 20%;
@@ -8536,6 +8618,7 @@ html.android .sim-bet-band button {
 .simulator-screen:not(.desktop-mode) .simulator-chip-tray {
   gap: 3px;
   min-height: 76px;
+  overflow: visible;
   padding: 11px 0 4px 5px;
 }
 
@@ -8600,26 +8683,18 @@ html.android .sim-bet-band button {
   --sim-mobile-latest-size: 35px;
   --sim-mobile-recent-size: 30px;
   gap: var(--sim-mobile-feed-gap);
-  grid-template-rows: repeat(2, 34px);
+  grid-template-rows: 36px 34px;
   height: 72px;
   margin-left: 0;
+  overflow: visible;
   padding: 0;
+  row-gap: 2px;
+  transform: translateY(-2px);
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-recent-numbers,
 .simulator-screen:not(.desktop-mode) .simulator-log-preview {
   gap: var(--sim-mobile-feed-gap);
-}
-
-html.android .simulator-screen:not(.desktop-mode) .simulator-feed-top .simulator-recent-numbers {
-  position: relative;
-  top: -2px;
-}
-
-html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
-  grid-template-rows: 36px 34px;
-  row-gap: 2px;
-  transform: translateY(-2px);
 }
 
 .simulator-screen:not(.desktop-mode) .simulator-recent-numbers strong,
@@ -8691,7 +8766,7 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
 
 .simulator-screen:not(.desktop-mode) .simulator-bottom-status > div {
   border-radius: 6px;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr);
   min-height: 22px;
   padding: 2px 4px;
 }
@@ -8761,8 +8836,26 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
   width: 100%;
 }
 
-.simulator-screen.desktop-mode .simulator-round-pop-overlay {
-  bottom: calc(100% * 9 / 43);
+.simulator-screen.desktop-mode .simulator-settlement-card {
+  gap: 72px;
+}
+
+.simulator-screen.desktop-mode .simulator-settlement-number {
+  border-width: 3px;
+  flex-basis: 118px;
+  font-size: 54px;
+  height: 118px;
+  width: 118px;
+}
+
+.simulator-screen.desktop-mode .simulator-settlement-copy {
+  gap: 14px;
+  min-width: 260px;
+}
+
+.simulator-screen.desktop-mode .simulator-settlement-line {
+  font-size: 50px;
+  gap: 16px;
 }
 
 .simulator-screen.desktop-mode .sim-table-felt .sim-table-chip {
@@ -8837,10 +8930,78 @@ html:not(.android) .simulator-screen:not(.desktop-mode) .simulator-bottom-feed {
   font-size: 32px;
 }
 
+.sim-outside-progress {
+  bottom: 4px;
+  display: grid;
+  font-family: "Noto Serif SC", "Songti SC", STSong, SimSun, serif;
+  font-size: clamp(16px, 2.4vw, 23px);
+  font-weight: var(--weight-ui);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  left: calc(100% / 3);
+  line-height: 1;
+  pointer-events: none;
+  position: absolute;
+  width: calc(100% / 3);
+  z-index: 9;
+}
+
+.sim-outside-progress > span {
+  align-items: center;
+  background-image:
+    repeating-linear-gradient(117deg, transparent 0 13px, rgb(61 42 12 / 0.48) 13px 14px, transparent 14px 31px),
+    repeating-linear-gradient(71deg, transparent 0 21px, rgb(255 239 180 / 0.28) 21px 22px, transparent 22px 43px),
+    linear-gradient(124deg, #dfc77a 0%, #b98d3d 30%, #795b26 52%, #cda34d 74%, #85652c 100%);
+  background-blend-mode: multiply, screen, normal;
+  background-clip: text;
+  color: transparent;
+  display: flex;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.72));
+  gap: 2px;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sim-outside-progress-current {
+  justify-content: flex-end;
+  padding-right: 7px;
+}
+
+.sim-outside-progress-total {
+  justify-content: flex-start;
+  padding-left: 5px;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-outside-red::before,
+.simulator-screen:not(.desktop-mode) .sim-outside-black::before {
+  height: 33px;
+  width: 48px;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-outside-black::before {
+  transform: translateX(-2px);
+}
+
+.simulator-screen:not(.desktop-mode) .sim-outside-red::before {
+  transform: translateX(2px);
+}
+
 .simulator-screen.desktop-mode .sim-outside-red::before,
 .simulator-screen.desktop-mode .sim-outside-black::before {
   height: 62px;
   width: 104px;
+}
+
+.simulator-screen.desktop-mode .sim-outside-progress {
+  bottom: 10px;
+  font-size: 27px;
+}
+
+.simulator-screen.desktop-mode .sim-outside-progress-current {
+  padding-right: 12px;
+}
+
+.simulator-screen.desktop-mode .sim-outside-progress-total {
+  padding-left: 10px;
 }
 
 .simulator-screen.desktop-mode .simulator-chip-picker {
@@ -9198,7 +9359,7 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
   filter: brightness(1.08) saturate(1.02);
 }
 
-.simulator-screen.desktop-mode .simulator-chip-tray > * {
+.simulator-screen.desktop-mode .simulator-chip-tray > :not(.simulator-settlement-overlay) {
   transform: translateY(var(--sim-desktop-operation-offset-y));
 }
 
@@ -9260,7 +9421,7 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
 .simulator-screen.desktop-mode .simulator-bottom-status > div {
   border-width: 2px;
   border-radius: 8px;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 96px minmax(0, 1fr);
   padding: 8px 16px;
 }
 
@@ -12350,31 +12511,8 @@ html.mobile-portrait-fallback-active .simulator-screen:not(.desktop-mode) .sim-d
   font-size: clamp(20px, 2.45dvh, 30px);
 }
 
-html.mobile-portrait-fallback-active .simulator-round-pop span {
-  font-size: clamp(22px, 4.4dvw, 38px);
-}
-
-html.mobile-portrait-fallback-active .simulator-round-pop.positive span,
-html.mobile-portrait-fallback-active .simulator-round-pop.negative span {
-  font-size: clamp(42px, 9dvw, 76px);
-}
-
-html.mobile-portrait-fallback-active .simulator-round-pop strong {
-  font-size: clamp(72px, 17dvw, 132px);
-}
-
-html.mobile-portrait-fallback-active .simulator-round-pop .simulator-round-number {
-  font-size: clamp(60px, 14dvw, 108px);
-  height: clamp(116px, 25dvw, 178px);
-  width: clamp(116px, 25dvw, 178px);
-}
-
 html.mobile-portrait-fallback-active.android .simulator-main {
   grid-template-rows: minmax(0, 31fr) minmax(0, 9fr);
-}
-
-html.mobile-portrait-fallback-active.android .simulator-round-pop-overlay {
-  bottom: 22.5%;
 }
 
 html.mobile-portrait-fallback-active.android .sim-table-felt {
@@ -12420,6 +12558,7 @@ html.mobile-portrait-fallback-active.android .sim-outside button {
 html.mobile-portrait-fallback-active.android .simulator-chip-tray {
   gap: 3px;
   min-height: 76px;
+  overflow: visible;
   padding: 11px 0 4px 5px;
 }
 
@@ -12486,11 +12625,14 @@ html.mobile-portrait-fallback-active.android .simulator-bottom-feed {
   --sim-mobile-recent-size: 30px;
   align-self: center;
   gap: var(--sim-mobile-feed-gap);
-  grid-template-rows: repeat(2, 34px);
+  grid-template-rows: 36px 34px;
   height: 72px;
   margin-left: 0;
   min-width: 0;
+  overflow: visible;
   padding: 0;
+  row-gap: 2px;
+  transform: translateY(-2px);
 }
 
 html.mobile-portrait-fallback-active.android .simulator-recent-numbers,
@@ -12547,7 +12689,7 @@ html.mobile-portrait-fallback-active.android .simulator-bottom-status {
 
 html.mobile-portrait-fallback-active.android .simulator-bottom-status > div {
   border-radius: 6px;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 38px minmax(0, 1fr);
   min-height: 22px;
   padding: 2px 4px;
 }
@@ -12603,7 +12745,7 @@ html.mobile-portrait-fallback-active .app-shell.mobile-portrait-fallback.simulat
   }
 
   html.mobile-portrait-fallback-active.android .simulator-bottom-status > div {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
   html.mobile-portrait-fallback-active.android .simulator-bottom-status strong {

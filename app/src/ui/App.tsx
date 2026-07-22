@@ -137,6 +137,7 @@ const simulatorDesktopGameRatioKey = "londoner.simulatorDesktopGameRatio";
 const simulatorDesktopAnalysisAspectLegacyKey = "londoner.simulatorDesktopAnalysisAspect";
 const simulatorDesktopAnalysisAspectKey = "londoner.simulatorDesktopAnalysisAspectV2";
 const simulatorDesktopAnalysisZoomKey = "londoner.simulatorDesktopAnalysisZoom";
+const simulatorAnimationSpeedKey = "londoner.simulatorAnimationSpeed";
 const simulatorDesktopDesignWidth = 1920;
 const simulatorDesktopDesignHeight = 1080;
 const simulatorDesktopViewportPadding = 16;
@@ -284,6 +285,7 @@ function sanitizeManualTableId(tableId: string | undefined): string | undefined 
 
 type WindowMode = "classic" | "fibonacci";
 type SimulatorDeviceMode = "auto" | "desktop" | "mobile";
+type SimulatorAnimationSpeed = "slow" | "fast";
 
 function loadSimulatorDeviceMode(): SimulatorDeviceMode {
   const stored = localStorage.getItem(simulatorDesktopModeKey);
@@ -366,6 +368,7 @@ interface SimulatorCallBetDefinition {
 interface SimulatorLog {
   balanceBefore: number;
   balanceAfter: number;
+  bets: SimulatorBet[];
   net: number;
   result: RouletteNumber;
   round: number;
@@ -1266,7 +1269,33 @@ function normalizeSimulatorLog(value: unknown): SimulatorLog | null {
   const stake = typeof item.stake === "number" && Number.isFinite(item.stake) ? item.stake : null;
   const winReturn = typeof item.winReturn === "number" && Number.isFinite(item.winReturn) ? item.winReturn : null;
   if (balanceBefore === null || balanceAfter === null || net === null || result === null || round === null || stake === null || winReturn === null) return null;
-  return { balanceBefore, balanceAfter, net, result, round, stake, winReturn };
+  const bets = Array.isArray(item.bets)
+    ? item.bets.map(normalizeSimulatorBet).filter((bet): bet is SimulatorBet => bet !== null)
+    : [];
+  return { balanceBefore, balanceAfter, bets, net, result, round, stake, winReturn };
+}
+
+function loadSimulatorAnimationSpeed(): SimulatorAnimationSpeed {
+  return localStorage.getItem(simulatorAnimationSpeedKey) === "fast" ? "fast" : "slow";
+}
+
+function replaceSimulatorLogRound(items: readonly SimulatorLog[], next: SimulatorLog): SimulatorLog[] {
+  const previous = items.find((item) => item.round === next.round);
+  const balanceDelta = previous ? next.balanceAfter - previous.balanceAfter : 0;
+  return [
+    next,
+    ...items
+      .filter((item) => item.round !== next.round)
+      .map((item) => (
+        balanceDelta !== 0 && item.round > next.round
+          ? {
+              ...item,
+              balanceAfter: item.balanceAfter + balanceDelta,
+              balanceBefore: item.balanceBefore + balanceDelta,
+            }
+          : item
+      )),
+  ].sort((left, right) => right.round - left.round);
 }
 
 function loadSimulatorState(): PersistedSimulatorState {
@@ -1282,7 +1311,14 @@ function loadSimulatorState(): PersistedSimulatorState {
       ? parsed.betPlacements.map(normalizeSimulatorBetPlacement).filter((item): item is SimulatorBetPlacement => item !== null)
       : [];
     const lastBets = Array.isArray(parsed.lastBets) ? parsed.lastBets.map(normalizeSimulatorBet).filter((item): item is SimulatorBet => item !== null) : [];
-    const log = Array.isArray(parsed.log) ? parsed.log.map(normalizeSimulatorLog).filter((item): item is SimulatorLog => item !== null) : [];
+    const normalizedLog = Array.isArray(parsed.log)
+      ? parsed.log.map(normalizeSimulatorLog).filter((item): item is SimulatorLog => item !== null)
+      : [];
+    const logByRound = new Map<number, SimulatorLog>();
+    for (const item of normalizedLog.sort((left, right) => right.round - left.round)) {
+      if (!logByRound.has(item.round)) logByRound.set(item.round, item);
+    }
+    const log = Array.from(logByRound.values());
     return { balance, bets, betPlacements, lastBets, log, selectedChip };
   } catch {
     return fallback;
@@ -1827,6 +1863,8 @@ export function App() {
   const [draftSimulatorDeviceMode, setDraftSimulatorDeviceMode] = useState<SimulatorDeviceMode>(simulatorDeviceMode);
   const [simulatorDesktopAnalysisZoom, setSimulatorDesktopAnalysisZoom] = useState(loadSimulatorDesktopAnalysisZoom);
   const [draftSimulatorDesktopAnalysisZoom, setDraftSimulatorDesktopAnalysisZoom] = useState(simulatorDesktopAnalysisZoom);
+  const [simulatorAnimationSpeed, setSimulatorAnimationSpeed] = useState<SimulatorAnimationSpeed>(loadSimulatorAnimationSpeed);
+  const [draftSimulatorAnimationSpeed, setDraftSimulatorAnimationSpeed] = useState<SimulatorAnimationSpeed>(simulatorAnimationSpeed);
   const [simulatorDesktopScale, setSimulatorDesktopScale] = useState(1);
   const [simulatorDesktopViewportSize, setSimulatorDesktopViewportSize] = useState(getSimulatorViewportSize);
   const [simulatorDesktopAnalysisOpen, setSimulatorDesktopAnalysisOpen] = useState(true);
@@ -1870,7 +1908,8 @@ export function App() {
     bets: SimulatorBet[];
     id: number;
     net: number;
-    phase: "result" | "net";
+    previousRoundStake: number;
+    previousRoundWinReturn: number;
     result: RouletteNumber;
     stake: number;
     totalBetAmountBeforeSettle: number;
@@ -2005,11 +2044,21 @@ export function App() {
   const simulatorIndex = numbers.length;
   const simulatorNextNumber = redoNumbers.at(-1) ?? null;
   const simulatorLastNumber = numbers.at(-1) ?? null;
+  const simulatorActiveLog = useMemo(
+    () => simulatorLog.filter((item) => item.round <= simulatorIndex).sort((left, right) => right.round - left.round),
+    [simulatorIndex, simulatorLog],
+  );
+  const simulatorCurrentRoundLog = simulatorActiveLog.find((item) => item.round === simulatorIndex) ?? null;
+  const simulatorVisibleLog = simulatorActiveLog.slice(0, 18);
   const simulatorTotalStake = simulatorBets.reduce((sum, bet) => sum + bet.amount, 0);
-  const simulatorTotalBetAmount = simulatorLog.reduce((sum, item) => sum + item.stake, 0) + simulatorTotalStake;
+  const simulatorTotalBetAmount = simulatorActiveLog.reduce((sum, item) => sum + item.stake, 0) + simulatorTotalStake;
   const simulatorDisplayedStake = simulatorRoundPop?.stake ?? simulatorTotalStake;
   const simulatorDisplayedTotalBetAmount = simulatorRoundPop?.totalBetAmountBeforeSettle ?? simulatorTotalBetAmount;
   const simulatorDisplayedBalance = simulatorRoundPop?.balanceBeforePayout ?? simulatorBalance;
+  const simulatorDisplayedPreviousRoundStake = simulatorRoundPop?.previousRoundStake ?? simulatorCurrentRoundLog?.stake ?? 0;
+  const simulatorDisplayedPreviousRoundWinReturn = simulatorRoundPop?.previousRoundWinReturn ?? simulatorCurrentRoundLog?.winReturn ?? 0;
+  const simulatorProgressCurrent = Math.min(simulatorIndex, simulatorNumbers.length);
+  const simulatorSettlementDurationMs = simulatorAnimationSpeed === "slow" ? 5000 : 3000;
   const tableSelectOptions = useMemo(() => {
     const casinoById = new Map(casinoTables.filter((item) => item.parentId === "0").map((item) => [item.id, item.name]));
     return casinoTables
@@ -3160,21 +3209,25 @@ export function App() {
     if (previousIndex === nextIndex) return;
     simulatorProgressRef.current = nextIndex;
 
-    if (simulatorBets.length > 0) {
-      setSimulatorBalance((value) => value + simulatorTotalStake);
-      setSimulatorBets([]);
-      setSimulatorBetPlacements([]);
-    }
-
-    if (nextIndex < previousIndex) {
-      const kept = simulatorLog.filter((item) => item.round <= nextIndex);
-      const removed = simulatorLog.filter((item) => item.round > nextIndex);
-      if (removed.length > 0) {
-        const earliestRemoved = removed.reduce((earliest, item) => (item.round < earliest.round ? item : earliest), removed[0]);
-        setSimulatorBalance(earliestRemoved.balanceBefore);
-        setSimulatorLog(kept);
+    const advancedBySimulatorPlay = simulatorRoundPop !== null
+      && nextIndex === previousIndex + 1
+      && numbers.at(-1) === simulatorRoundPop.result;
+    if (!advancedBySimulatorPlay) {
+      if (simulatorRoundPopTimerRef.current) {
+        clearTimeout(simulatorRoundPopTimerRef.current);
+        simulatorRoundPopTimerRef.current = null;
       }
+      setSimulatorRoundPop(null);
     }
+    setSimulatorBets([]);
+    setSimulatorBetPlacements([]);
+
+    const currentRoundLog = simulatorLog.find((item) => item.round === nextIndex);
+    const latestCompletedLog = simulatorLog
+      .filter((item) => item.round <= nextIndex)
+      .sort((left, right) => right.round - left.round)[0];
+    setSimulatorBalance(latestCompletedLog?.balanceAfter ?? 0);
+    setSimulatorLastBets(currentRoundLog?.bets.map((bet) => ({ ...bet, numbers: [...bet.numbers] })) ?? []);
   }, [numbers.length, simulatorBets.length, simulatorLog, simulatorTotalStake]);
 
   useEffect(() => {
@@ -3364,17 +3417,21 @@ export function App() {
     return `sim-table-chip-${simulatorChips[0]}`;
   }
 
-  function renderSimulatorTableChip(amount: number) {
+  function renderSimulatorTableChip(amount: number, betNumbers: readonly RouletteNumber[]) {
+    const roundClass = simulatorRoundPop
+      ? betNumbers.includes(simulatorRoundPop.result)
+        ? " sim-table-chip-round-hit"
+        : " sim-table-chip-round-miss"
+      : "";
     return amount > 0 ? (
-      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount)}`}>
+      <span className={`sim-table-chip ${getSimulatorTableChipClass(amount)}${roundClass}`}>
         <span className="sim-table-chip-text">{amount}</span>
       </span>
     ) : null;
   }
 
   function renderSimulatorChip(kind: SimulatorBetKind, betNumbers: readonly RouletteNumber[]) {
-    const key = simulatorBetKey(kind, betNumbers);
-    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers));
+    return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers), betNumbers);
   }
 
   function clearSimulatorRoundState(nextProgress = numbers.length) {
@@ -3771,11 +3828,8 @@ export function App() {
 
   function applySimulatorJumpTo200() {
     const targetIndex = 200;
-    setSimulatorBalance(0);
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
-    setSimulatorLastBets([]);
-    setSimulatorLog([]);
     setSimulatorRoundPop(null);
     setNumbers(simulatorNumbers.slice(0, targetIndex));
     setRedoNumbers(simulatorNumbers.slice(targetIndex).reverse());
@@ -3817,7 +3871,8 @@ export function App() {
       bets: settledBets,
       id: popId,
       net,
-      phase: "result",
+      previousRoundStake: simulatorCurrentRoundLog?.stake ?? 0,
+      previousRoundWinReturn: simulatorCurrentRoundLog?.winReturn ?? 0,
       result: simulatorNextNumber,
       stake,
       totalBetAmountBeforeSettle: simulatorTotalBetAmount,
@@ -3827,25 +3882,20 @@ export function App() {
       clearTimeout(simulatorRoundPopTimerRef.current);
     }
     simulatorRoundPopTimerRef.current = setTimeout(() => {
-      setSimulatorRoundPop((current) => (current?.id === popId ? { ...current, phase: "net" } : current));
-      simulatorRoundPopTimerRef.current = setTimeout(() => {
-        setSimulatorRoundPop((current) => (current?.id === popId ? null : current));
-        simulatorRoundPopTimerRef.current = null;
-      }, 2200);
-    }, 1600);
+      setSimulatorRoundPop((current) => (current?.id === popId ? null : current));
+      simulatorRoundPopTimerRef.current = null;
+    }, simulatorSettlementDurationMs);
     setSimulatorBalance(nextBalance);
-    setSimulatorLog((items) => [
-      {
+    setSimulatorLog((items) => replaceSimulatorLogRound(items, {
         balanceBefore,
         balanceAfter: nextBalance,
+        bets: settledBets,
         net,
         result: simulatorNextNumber,
         round: numbers.length + 1,
         stake,
         winReturn,
-      },
-      ...items,
-    ].slice(0, 18));
+      }));
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
     setNumbers([...numbers, simulatorNextNumber]);
@@ -5589,6 +5639,7 @@ export function App() {
     setDraftThreeNumberHighlightMode(threeNumberHighlightMode);
     setDraftSimulatorDeviceMode(simulatorDeviceMode);
     setDraftSimulatorDesktopAnalysisZoom(simulatorDesktopAnalysisZoom);
+    setDraftSimulatorAnimationSpeed(simulatorAnimationSpeed);
     void refreshCasinoTables().then((items) => {
       setDraftCasinoTables(items);
       setDraftSelectedCasinoId("");
@@ -5851,6 +5902,7 @@ export function App() {
       setWindowMode(draftWindowMode);
       setSimulatorDeviceMode(draftSimulatorDeviceMode);
       setSimulatorDesktopAnalysisZoom(draftSimulatorDesktopAnalysisZoom);
+      setSimulatorAnimationSpeed(draftSimulatorAnimationSpeed);
       setThreeNumberHighlightMode(draftThreeNumberHighlightMode);
       localStorage.setItem(windowModeKey, draftWindowMode);
       localStorage.setItem(
@@ -5858,6 +5910,7 @@ export function App() {
         draftSimulatorDeviceMode === "desktop" ? "1" : draftSimulatorDeviceMode === "mobile" ? "0" : "9",
       );
       localStorage.setItem(simulatorDesktopAnalysisZoomKey, draftSimulatorDesktopAnalysisZoom.toFixed(2));
+      localStorage.setItem(simulatorAnimationSpeedKey, draftSimulatorAnimationSpeed);
       localStorage.setItem("londoner.threeNumberHighlightMode", draftThreeNumberHighlightMode);
       setConfigViewOpen(false);
       return;
@@ -7055,7 +7108,7 @@ export function App() {
       ) : null}
       <div className="analysis-home">
       <section className="top-stats-strip" aria-label="统计数据">
-        <strong className="top-stats-count">{numbers.length}</strong>
+        <strong className="top-stats-count">{simulatorProgressCurrent} / {simulatorNumbers.length}</strong>
         <span className="top-stats-roi">
           {canUseSmartSignals ? (
             <i className={`top-stats-hot-dot ${hotSignalStatusClass}`} aria-label={hotSignalStatusLabel} title={hotSignalStatusLabel} />
@@ -9248,19 +9301,22 @@ export function App() {
         <section
           className={`simulator-screen ${simulatorUsesDesktopLayout ? "desktop-mode desktop-split-pane" : "mobile-mode"} ${simulatorUsesDesktopLayout && !simulatorDesktopAnalysisOpen ? "desktop-game-only" : ""}`}
           aria-label="轮盘模拟"
-          style={simulatorUsesDesktopLayout ? ({
-            "--desktop-game-brand-height": `${simulatorDesktopGameBrandHeight}px`,
-            "--desktop-game-brand-width": `${Math.min(simulatorDesktopGameWidth, simulatorDesktopDesignWidth * simulatorDesktopScale)}px`,
-            "--desktop-game-brand-title-size": `${59.04 * simulatorDesktopScale}px`,
-            "--desktop-game-brand-subtitle-size": `${20 * simulatorDesktopScale}px`,
-            "--desktop-game-brand-gap": `${10 * simulatorDesktopScale}px`,
-            "--desktop-game-brand-line-gap": `${52 * simulatorDesktopScale}px`,
-            "--desktop-game-brand-line-height": `${2.94 * simulatorDesktopScale}px`,
-            "--desktop-game-brand-line-offset": `${16 * simulatorDesktopScale}px`,
-            "--simulator-desktop-game-only-offset": `${simulatorDesktopAnalysisOpen ? 0 : 18 * simulatorDesktopScale}px`,
-            "--simulator-desktop-vertical-offset": `${simulatorDesktopGameVerticalOffset}px`,
-            "--simulator-desktop-scale": simulatorDesktopScale,
-          } as CSSProperties) : undefined}
+          style={{
+            "--simulator-settlement-duration": `${simulatorSettlementDurationMs}ms`,
+            ...(simulatorUsesDesktopLayout ? {
+              "--desktop-game-brand-height": `${simulatorDesktopGameBrandHeight}px`,
+              "--desktop-game-brand-width": `${Math.min(simulatorDesktopGameWidth, simulatorDesktopDesignWidth * simulatorDesktopScale)}px`,
+              "--desktop-game-brand-title-size": `${59.04 * simulatorDesktopScale}px`,
+              "--desktop-game-brand-subtitle-size": `${20 * simulatorDesktopScale}px`,
+              "--desktop-game-brand-gap": `${10 * simulatorDesktopScale}px`,
+              "--desktop-game-brand-line-gap": `${52 * simulatorDesktopScale}px`,
+              "--desktop-game-brand-line-height": `${2.94 * simulatorDesktopScale}px`,
+              "--desktop-game-brand-line-offset": `${16 * simulatorDesktopScale}px`,
+              "--simulator-desktop-game-only-offset": `${simulatorDesktopAnalysisOpen ? 0 : 18 * simulatorDesktopScale}px`,
+              "--simulator-desktop-vertical-offset": `${simulatorDesktopGameVerticalOffset}px`,
+              "--simulator-desktop-scale": simulatorDesktopScale,
+            } : {}),
+          } as CSSProperties}
         >
           {simulatorUsesDesktopLayout && simulatorDesktopGameBrandVisible ? (
             <div className="desktop-game-brand" aria-label="Roulette Game, Designed by Sands2018">
@@ -9271,26 +9327,8 @@ export function App() {
             </div>
           ) : null}
           <div
-            className="simulator-landscape"
+            className={`simulator-landscape${simulatorRoundPop ? " settling" : ""}`}
           >
-            {simulatorRoundPop ? (
-              <div className="simulator-round-pop-overlay" aria-hidden="true">
-                <div className={`simulator-round-pop ${simulatorRoundPop.phase === "result" ? `result-phase sim-result-${getNumberColor(simulatorRoundPop.result)}` : simulatorRoundPop.net >= 0 ? "positive" : "negative"}`} key={`${simulatorRoundPop.id}-${simulatorRoundPop.phase}`}>
-                  {simulatorRoundPop.phase === "result" ? (
-                    <>
-                      <strong className="simulator-round-number">{simulatorRoundPop.result}</strong>
-                    </>
-                  ) : (
-                    <>
-                      <span className="simulator-round-settle-line">投注 <strong>{simulatorRoundPop.stake}</strong></span>
-                      <span className={`simulator-round-settle-line simulator-round-win ${simulatorRoundPop.net > 0 ? "positive" : simulatorRoundPop.net < 0 ? "negative" : "zero"}`}>
-                        赢回 <strong>{simulatorRoundPop.winReturn}</strong>
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : null}
             {confirmDialog?.appearance === "simulator-game" ? (
               <div className="simulator-detail-overlay" role="dialog" aria-modal="true" aria-label={confirmDialog.title}>
                 <div className="simulator-detail-panel simulator-confirm-panel">
@@ -9357,7 +9395,7 @@ export function App() {
                   </header>
                   <div className="simulator-detail-grid simulator-settle-detail-grid">
                     <section>
-                      {simulatorLog.length === 0 ? <p>等待开球</p> : (
+                      {simulatorVisibleLog.length === 0 ? <p>等待开球</p> : (
                         <table className="simulator-log-table">
                           <thead>
                             <tr>
@@ -9369,7 +9407,7 @@ export function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {simulatorLog.map((item) => (
+                            {simulatorVisibleLog.map((item) => (
                               <tr key={`${item.round}-${item.result}-${item.balanceAfter}`}>
                                 <td>#{item.round}</td>
                                 <td><strong className={`sim-result-${getNumberColor(item.result)}`}>{item.result}</strong></td>
@@ -9409,7 +9447,7 @@ export function App() {
               </div>
             ) : null}
             <div className="simulator-main">
-              <section className={`simulator-table-wrap${simulatorRacetrackOpen ? " racetrack-open" : ""}`}>
+              <section className={`simulator-table-wrap${simulatorRacetrackOpen ? " racetrack-open" : ""}${simulatorRoundPop ? " settling" : ""}`}>
                 {simulatorRacetrackOpen ? (
                   <div className="simulator-racetrack" aria-label="欧洲轮盘号码盘">
                     <svg
@@ -9565,7 +9603,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("split", "2数 0/3", simulatorZeroThreeSplitBet.numbers, simulatorZeroThreeSplitBet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorZeroThreeSplitBet.numbers) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })()}
@@ -9583,7 +9621,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("zero-trio", bet.label, bet.numbers, bet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount, bet.numbers) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })}
@@ -9600,7 +9638,7 @@ export function App() {
                               onClick={() => placeSimulatorBet("first-four", simulatorFirstFourBet.label, simulatorFirstFourBet.numbers, simulatorFirstFourBet.payout)}
                               type="button"
                             >
-                              {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                              {amount > 0 ? renderSimulatorTableChip(amount, simulatorFirstFourBet.numbers) : <span className="sim-hotspot-mark" />}
                             </button>
                           );
                         })()}
@@ -9641,7 +9679,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, bet.numbers) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9660,7 +9698,7 @@ export function App() {
                                 style={{ left: `${bet.left}%`, top: `${bet.top}%` }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, bet.numbers) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9679,7 +9717,7 @@ export function App() {
                                 style={{ left: `${((index + 0.5) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, bet.numbers) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9698,7 +9736,7 @@ export function App() {
                                 style={{ left: `${((index + 1) / 12) * 100}%`, top: "100%" }}
                                 type="button"
                               >
-                                {amount > 0 ? renderSimulatorTableChip(amount) : <span className="sim-hotspot-mark" />}
+                                {amount > 0 ? renderSimulatorTableChip(amount, bet.numbers) : <span className="sim-hotspot-mark" />}
                               </button>
                             );
                           })}
@@ -9761,11 +9799,38 @@ export function App() {
                         {renderSimulatorChip("outside", bet.numbers)}
                       </button>
                     ))}
+                    <div
+                      aria-label={`当前第 ${simulatorProgressCurrent} 局，共 ${simulatorNumbers.length} 局`}
+                      className="sim-outside-progress"
+                      role="status"
+                    >
+                      <span className="sim-outside-progress-current" aria-hidden="true">
+                        <strong>{simulatorProgressCurrent}</strong>
+                      </span>
+                      <span className="sim-outside-progress-total" aria-hidden="true">
+                        <strong>{simulatorNumbers.length}</strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </section>
 
               <footer className="simulator-chip-tray" aria-label="筹码">
+                {simulatorRoundPop ? (
+                  <div className="simulator-settlement-overlay" aria-hidden="true">
+                    <div className="simulator-settlement-card" key={simulatorRoundPop.id}>
+                      <strong className={`simulator-settlement-number sim-result-${getNumberColor(simulatorRoundPop.result)}`}>
+                        <span>{simulatorRoundPop.result}</span>
+                      </strong>
+                      <div className="simulator-settlement-copy">
+                        <span className="simulator-settlement-line"><span className="simulator-settlement-label">投注</span><strong>{simulatorRoundPop.stake}</strong></span>
+                        <span className={`simulator-settlement-line simulator-settlement-win ${simulatorRoundPop.net > 0 ? "positive" : simulatorRoundPop.net < 0 ? "negative" : "zero"}`}>
+                          <span className="simulator-settlement-label">赢回</span><strong>{simulatorRoundPop.winReturn}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="simulator-chip-picker-wrap">
                   <div className="simulator-chip-picker-label">请选择面值</div>
                   <div className="simulator-chip-picker">
@@ -9906,10 +9971,10 @@ export function App() {
                     >转盘</button>
                   </div>
                 </div>
-                <div className="simulator-bottom-status" aria-label="模拟进度和胜负">
-                  <div onPointerUp={(event) => handleSimulatorStatusPointerUp("progress", event)}>
-                    <span>进度</span>
-                    <strong>{Math.min(simulatorIndex, simulatorNumbers.length)} / {simulatorNumbers.length}</strong>
+                <div className="simulator-bottom-status" aria-label="模拟上一轮、投注和胜负">
+                  <div onPointerUp={(event) => handleSimulatorStatusPointerUp("previous", event)}>
+                    <span>上一轮</span>
+                    <strong>{simulatorDisplayedPreviousRoundStake} / {simulatorDisplayedPreviousRoundWinReturn}</strong>
                   </div>
                   <div onPointerUp={(event) => handleSimulatorStatusPointerUp("stake", event)}>
                     <span>投注</span>
@@ -10045,6 +10110,34 @@ export function App() {
                       />
                       <strong>{Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%</strong>
                     </label>
+                  </section>
+                ) : null}
+                {sharedConnected ? (
+                  <section className="config-card config-bets">
+                    <h2><span>游戏</span></h2>
+                    <div className="config-game-animation-row">
+                      <span className="config-game-animation-label">动画速度</span>
+                      <div className="config-option-list config-option-list-inline" role="radiogroup" aria-label="游戏动画速度">
+                        <label className="config-option-row">
+                          <input
+                            checked={draftSimulatorAnimationSpeed === "slow"}
+                            name="simulator-animation-speed"
+                            onChange={() => setDraftSimulatorAnimationSpeed("slow")}
+                            type="radio"
+                          />
+                          <span>慢</span>
+                        </label>
+                        <label className="config-option-row">
+                          <input
+                            checked={draftSimulatorAnimationSpeed === "fast"}
+                            name="simulator-animation-speed"
+                            onChange={() => setDraftSimulatorAnimationSpeed("fast")}
+                            type="radio"
+                          />
+                          <span>快</span>
+                        </label>
+                      </div>
+                    </div>
                   </section>
                 ) : null}
                 {sharedConnected ? (
