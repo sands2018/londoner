@@ -2918,24 +2918,25 @@ body:has(.app-shell.theme-dark) {
   gap: 6px;
   grid-column: 1 / span 3;
   grid-row: 13;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 12px 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  margin: 6px 14px;
   transform: translateY(4px);
 }
 
 .group-block-dim-buttons button {
   background: #f3efe8;
   border: 1px solid #d8d0c2;
-  border-radius: 50%;
+  border-radius: 999px;
   color: #746654;
   cursor: pointer;
   font-size: 13px;
   font-weight: var(--weight-ui);
-  height: clamp(44px, 12vw, 52px);
+  height: clamp(28px, 7.5vw, 32px);
   line-height: 1;
   min-height: 0;
   padding: 0;
-  width: clamp(44px, 12vw, 52px);
+  width: 100%;
 }
 
 .group-block-dim-buttons button.selected {

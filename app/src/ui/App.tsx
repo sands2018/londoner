@@ -1737,9 +1737,11 @@ export function App() {
   const [numberZoneMode, setNumberZoneMode] = useState(() => localStorage.getItem("londoner.numberZoneMode") || "distance");
   const [sixStatsPanelCollapsed, setSixStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.sixStatsPanelCollapsed") === "1");
   const [threeStatsPanelCollapsed, setThreeStatsPanelCollapsed] = useState(() => localStorage.getItem("londoner.threeStatsPanelCollapsed") === "1");
-  const [threeNumberDimCount, setThreeNumberDimCount] = useState<3 | 4 | 5 | null>(() => {
+  const [threeNumberDimCount, setThreeNumberDimCount] = useState<3 | 4 | 5 | 6 | null>(() => {
     const saved = localStorage.getItem("londoner.threeNumberDimCount");
-    return saved === "3" || saved === "4" || saved === "5" ? Number(saved) as 3 | 4 | 5 : null;
+    return saved === "3" || saved === "4" || saved === "5" || saved === "6"
+      ? Number(saved) as 3 | 4 | 5 | 6
+      : null;
   });
   const [threeNumberHighlightMode, setThreeNumberHighlightMode] = useState<"dim" | "highlight">(() =>
     localStorage.getItem("londoner.threeNumberHighlightMode") === "dim" ? "dim" : "highlight",
@@ -6939,7 +6941,7 @@ export function App() {
                 ))}
               </div>
               <div className="group-block-dim-buttons" aria-label="三数字置灰数量">
-                {([3, 4, 5] as const).map((value) => (
+                {([3, 4, 5, 6] as const).map((value) => (
                   <button
                     aria-pressed={threeNumberDimCount === value}
                     className={threeNumberDimCount === value ? "selected" : ""}
