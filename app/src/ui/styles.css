@@ -7219,7 +7219,7 @@ html.android .sim-bet-band button {
 }
 
 .simulator-feed-actions .sim-feed-racetrack {
-  background: linear-gradient(180deg, #866b55 0%, #684f3b 52%, #463429 100%);
+  background: linear-gradient(180deg, #8c715b 0%, #6e5541 52%, #4c3a2f 100%);
   border-color: rgb(202 169 129 / 0.4);
   color: #f5dfb7;
 }
@@ -8223,8 +8223,8 @@ html.android .sim-bet-band button {
 .simulator-screen:not(.desktop-mode) .sim-table-side-action {
   align-items: center;
   appearance: none;
-  background: linear-gradient(180deg, rgb(62 79 65 / 0.95), rgb(36 52 41 / 0.95));
-  border: 1px solid rgb(244 215 157 / 0.45);
+  background: #253229;
+  border: 1px solid rgb(244 215 157 / 0.28);
   border-radius: 8px;
   color: #d9b56e;
   display: grid;
@@ -8242,33 +8242,83 @@ html.android .sim-bet-band button {
 }
 
 .simulator-screen:not(.desktop-mode) .sim-table-side-action:disabled {
-  background: linear-gradient(180deg, #2d3a32, #151f19);
-  border-color: rgb(255 235 184 / 0.2);
+  background: #253229;
+  border-color: rgb(255 235 184 / 0.13);
   color: rgb(244 234 211 / 0.38);
 }
 
-.simulator-screen:not(.desktop-mode) .sim-table-side-action-200 {
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-stop:disabled {
+  border-color: rgb(244 215 157 / 0.28);
+  color: #d9b56e;
+  opacity: 1;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-play,
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-stop,
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-200,
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-return {
   align-self: end;
-  border-width: 1.5px;
-  font-size: 16px;
-  grid-column: 1;
-  grid-row: 4 / span 2;
+  border-width: 1.25px;
   height: calc(100% - 3px);
-  justify-self: start;
   width: calc(100% - 3px);
 }
 
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-play,
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-stop {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-play,
 .simulator-screen:not(.desktop-mode) .sim-table-side-action-return {
-  align-self: end;
-  border-width: 1.5px;
+  grid-row: 4;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-stop,
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-200 {
+  grid-row: 5;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-200 {
+  font-size: 16px;
+  grid-column: 14;
+  justify-self: end;
+}
+
+.simulator-screen:not(.desktop-mode) .sim-table-side-action-return {
   font-size: 15px;
   grid-column: 14;
-  grid-row: 4 / span 2;
-  height: calc(100% - 3px);
   justify-self: end;
   letter-spacing: 0;
-  width: calc(100% - 3px);
   writing-mode: horizontal-tb;
+}
+
+.sim-table-side-action-play svg {
+  transform: translateX(1px);
+}
+
+.simulator-auto-countdown {
+  display: inline-block;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-ui);
+  line-height: 1;
+  min-width: 2ch;
+  text-align: center;
+}
+
+.sim-table-side-action-play.is-countdown {
+  cursor: default;
+}
+
+.sim-table-side-action svg {
+  height: 15px;
+  width: 15px;
+}
+
+.sim-table-side-action-play svg {
+  height: 17px;
+  width: 17px;
 }
 
 .simulator-screen:not(.desktop-mode) .sim-zero {
@@ -8942,6 +8992,103 @@ html.android .sim-bet-band button {
   border-width: 0 var(--sim-table-line) var(--sim-table-line) 0;
 }
 
+.simulator-screen.desktop-mode .sim-table-side-action {
+  align-items: center;
+  appearance: none;
+  background: #29382e;
+  border: 2px solid rgb(244 215 157 / 0.28);
+  border-radius: 16px;
+  box-sizing: border-box;
+  color: #d9b56e;
+  display: grid;
+  font-family: var(--ui-font-family);
+  font-size: 30px;
+  font-weight: var(--weight-ui);
+  line-height: 1;
+  min-height: 0;
+  min-width: 0;
+  padding: 0 8px;
+  place-items: center;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action:disabled {
+  background: #29382e;
+  border-color: rgb(255 235 184 / 0.13);
+  color: rgb(244 234 211 / 0.38);
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-stop:disabled {
+  border-color: rgb(244 215 157 / 0.28);
+  color: #d9b56e;
+  opacity: 1;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-play,
+.simulator-screen.desktop-mode .sim-table-side-action-stop,
+.simulator-screen.desktop-mode .sim-table-side-action-200,
+.simulator-screen.desktop-mode .sim-table-side-action-return {
+  align-self: end;
+  height: calc(100% - 6px);
+  width: calc(100% - 6px);
+}
+
+.simulator-screen.desktop-mode .simulator-table-wrap {
+  background: transparent;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-play,
+.simulator-screen.desktop-mode .sim-table-side-action-stop {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-play,
+.simulator-screen.desktop-mode .sim-table-side-action-return {
+  grid-row: 4;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-stop,
+.simulator-screen.desktop-mode .sim-table-side-action-200 {
+  grid-row: 5;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-return {
+  grid-column: 14;
+  justify-self: end;
+  letter-spacing: 0;
+  writing-mode: horizontal-tb;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-200 {
+  grid-column: 14;
+  justify-self: end;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action svg {
+  height: 30px;
+  width: 30px;
+}
+
+.simulator-screen.desktop-mode .sim-table-side-action-play svg {
+  height: 34px;
+  transform: translateX(2px);
+  width: 34px;
+}
+
+.simulator-screen.desktop-mode .simulator-auto-countdown {
+  font-size: 30px;
+}
+
+.simulator-screen.desktop-mode .sim-zero,
+.simulator-screen.desktop-mode .sim-outside button:first-child {
+  border-bottom-left-radius: 8px;
+}
+
+.simulator-screen.desktop-mode .sim-row-bets button:last-child,
+.simulator-screen.desktop-mode .sim-outside button:last-of-type {
+  border-bottom-right-radius: 8px;
+}
+
 .simulator-screen.desktop-mode .sim-row-bets button,
 .simulator-screen.desktop-mode .sim-bet-band button {
   font-size: 32px;
@@ -9194,7 +9341,7 @@ html.android .sim-bet-band button {
   background: transparent;
   border: 0;
   border-radius: 0;
-  grid-column: 1 / span 6;
+  grid-column: 1 / -1;
   height: var(--sim-desktop-latest);
   padding: 0;
 }
@@ -9383,9 +9530,10 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
 .simulator-screen.desktop-mode .simulator-recent-numbers {
   gap: var(--sim-desktop-gap);
   grid-template-columns: var(--sim-desktop-latest) repeat(9, var(--sim-desktop-recent));
-  justify-self: start;
+  justify-content: space-between;
+  justify-self: stretch;
   overflow: visible;
-  width: max-content;
+  width: 100%;
 }
 
 .simulator-screen.desktop-mode .simulator-recent-numbers strong {
@@ -9411,6 +9559,10 @@ html.android .simulator-screen:not(.desktop-mode) .simulator-racetrack-cell text
 
 .simulator-screen.desktop-mode .simulator-feed-actions .sim-feed-return {
   background: var(--sim-desktop-primary-action-background);
+}
+
+.simulator-screen.desktop-mode .simulator-feed-actions .sim-feed-reset {
+  background: linear-gradient(180deg, #667c52 0%, #4d693e 52%, #36502f 100%);
 }
 
 .simulator-screen.desktop-mode .simulator-feed-actions > button:nth-child(-n + 4):disabled {

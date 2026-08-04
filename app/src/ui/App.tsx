@@ -9,7 +9,7 @@ import {
   isRouletteNumber,
   type RouletteNumber,
 } from "../core/roulette";
-import { CircleUser, Keyboard, List, Play, SkipBack, SkipForward, Undo2 } from "lucide-react";
+import { CircleUser, Keyboard, List, Play, SkipBack, SkipForward, Square, Undo2 } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -138,6 +138,7 @@ const simulatorDesktopAnalysisAspectLegacyKey = "londoner.simulatorDesktopAnalys
 const simulatorDesktopAnalysisAspectKey = "londoner.simulatorDesktopAnalysisAspectV2";
 const simulatorDesktopAnalysisZoomKey = "londoner.simulatorDesktopAnalysisZoom";
 const simulatorAnimationSpeedKey = "londoner.simulatorAnimationSpeed";
+const simulatorAutoCountdownSeconds = 50;
 const simulatorDesktopDesignWidth = 1920;
 const simulatorDesktopDesignHeight = 1080;
 const simulatorDesktopViewportPadding = 16;
@@ -1901,6 +1902,8 @@ export function App() {
   const [simulatorBetPlacements, setSimulatorBetPlacements] = useState<SimulatorBetPlacement[]>(initialSimulatorState.betPlacements);
   const [simulatorLastBets, setSimulatorLastBets] = useState<SimulatorBet[]>(initialSimulatorState.lastBets);
   const [simulatorLog, setSimulatorLog] = useState<SimulatorLog[]>(initialSimulatorState.log);
+  const [simulatorAutoRunning, setSimulatorAutoRunning] = useState(false);
+  const [simulatorAutoCountdown, setSimulatorAutoCountdown] = useState(simulatorAutoCountdownSeconds);
   const [simulatorDetailOpen, setSimulatorDetailOpen] = useState(false);
   const [simulatorRecentOpen, setSimulatorRecentOpen] = useState(false);
   const [simulatorRacetrackOpen, setSimulatorRacetrackOpen] = useState(false);
@@ -1922,6 +1925,9 @@ export function App() {
   const simulatorProgressRef = useRef(0);
   const simulatorStatusTapRef = useRef<{ at: number; key: string } | null>(null);
   const simulatorRoundPopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const simulatorAutoCountdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const simulatorAutoRunningRef = useRef(false);
+  const simulatorAutoSettleRef = useRef<() => boolean>(() => false);
   const shotVideoRef = useRef<HTMLVideoElement>(null);
   const shotStreamRef = useRef<MediaStream | null>(null);
   const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
@@ -3233,6 +3239,58 @@ export function App() {
   }, [numbers.length, simulatorBets.length, simulatorLog, simulatorTotalStake]);
 
   useEffect(() => {
+    if (simulatorAutoCountdownTimerRef.current) {
+      clearInterval(simulatorAutoCountdownTimerRef.current);
+      simulatorAutoCountdownTimerRef.current = null;
+    }
+
+    if (!simulatorAutoRunning) {
+      simulatorAutoRunningRef.current = false;
+      setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
+      return undefined;
+    }
+
+    if (simulatorRoundPop) {
+      setSimulatorAutoCountdown(0);
+      return undefined;
+    }
+
+    if (simulatorNextNumber === null) {
+      simulatorAutoRunningRef.current = false;
+      setSimulatorAutoRunning(false);
+      setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
+      return undefined;
+    }
+
+    const deadline = Date.now() + simulatorAutoCountdownSeconds * 1000;
+    setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSimulatorAutoCountdown(remaining);
+      if (remaining > 0) return;
+
+      clearInterval(timer);
+      if (simulatorAutoCountdownTimerRef.current === timer) {
+        simulatorAutoCountdownTimerRef.current = null;
+      }
+      if (!simulatorAutoRunningRef.current) return;
+      if (!simulatorAutoSettleRef.current()) {
+        simulatorAutoRunningRef.current = false;
+        setSimulatorAutoRunning(false);
+        setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
+      }
+    }, 250);
+    simulatorAutoCountdownTimerRef.current = timer;
+
+    return () => {
+      clearInterval(timer);
+      if (simulatorAutoCountdownTimerRef.current === timer) {
+        simulatorAutoCountdownTimerRef.current = null;
+      }
+    };
+  }, [simulatorAutoRunning, simulatorIndex, simulatorNextNumber, simulatorRoundPop]);
+
+  useEffect(() => {
     if (predictionTab === "cold" || predictionTab === "overview") {
       setPredictionTab("hotNumber");
       localStorage.setItem("londoner.predictionTab", "hotNumber");
@@ -3291,6 +3349,9 @@ export function App() {
   useEffect(() => () => {
     if (simulatorRoundPopTimerRef.current) {
       clearTimeout(simulatorRoundPopTimerRef.current);
+    }
+    if (simulatorAutoCountdownTimerRef.current) {
+      clearInterval(simulatorAutoCountdownTimerRef.current);
     }
   }, []);
 
@@ -3436,7 +3497,36 @@ export function App() {
     return renderSimulatorTableChip(getSimulatorBetAmount(kind, betNumbers), betNumbers);
   }
 
+  function clearSimulatorAutoCountdownTimer() {
+    if (!simulatorAutoCountdownTimerRef.current) return;
+    clearInterval(simulatorAutoCountdownTimerRef.current);
+    simulatorAutoCountdownTimerRef.current = null;
+  }
+
+  function startSimulatorAutoPlay() {
+    if (simulatorAutoRunningRef.current || simulatorAutoRunning || simulatorRoundPop) return;
+    if (simulatorNextNumber === null) {
+      setNoticeDialog({ title: "模拟", message: "当前数据已经回放结束。" });
+      return;
+    }
+    simulatorAutoRunningRef.current = true;
+    setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
+    setSimulatorAutoRunning(true);
+  }
+
+  function stopSimulatorAutoPlay() {
+    if (!simulatorAutoRunningRef.current && !simulatorAutoRunning) return;
+    simulatorAutoRunningRef.current = false;
+    clearSimulatorAutoCountdownTimer();
+    setSimulatorAutoRunning(false);
+    setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
+  }
+
   function clearSimulatorRoundState(nextProgress = numbers.length) {
+    simulatorAutoRunningRef.current = false;
+    clearSimulatorAutoCountdownTimer();
+    setSimulatorAutoRunning(false);
+    setSimulatorAutoCountdown(simulatorAutoCountdownSeconds);
     if (simulatorRoundPopTimerRef.current) {
       clearTimeout(simulatorRoundPopTimerRef.current);
       simulatorRoundPopTimerRef.current = null;
@@ -3462,6 +3552,7 @@ export function App() {
   }
 
   function confirmSimulatorBettingReset() {
+    if (simulatorAutoRunning) return;
     setConfirmDialog({
       appearance: "simulator-game",
       title: "请确认",
@@ -3595,7 +3686,7 @@ export function App() {
     stopPropagation: () => void;
     target: EventTarget | null;
   }) {
-    const targetElement = event.target instanceof HTMLElement ? event.target : null;
+    const targetElement = event.target instanceof Element ? event.target : null;
     if (targetElement?.closest(".sim-table-side-action")) {
       return;
     }
@@ -3799,13 +3890,14 @@ export function App() {
   }
 
   function clearSimulatorBets() {
-    if (simulatorBets.length === 0) return;
+    if (simulatorRoundPop || simulatorBets.length === 0) return;
     setSimulatorBalance((value) => value + simulatorTotalStake);
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
   }
 
   function undoSimulatorBet() {
+    if (simulatorRoundPop) return;
     const lastPlacement = simulatorBetPlacements.at(-1);
     if (!lastPlacement) return;
     const placements = lastPlacement.actionId === undefined
@@ -3829,6 +3921,7 @@ export function App() {
   }
 
   function applySimulatorJumpTo200() {
+    if (simulatorAutoRunning) return;
     const targetIndex = 200;
     setSimulatorBets([]);
     setSimulatorBetPlacements([]);
@@ -3838,6 +3931,7 @@ export function App() {
   }
 
   function jumpSimulatorTo200() {
+    if (simulatorAutoRunning) return;
     if (simulatorNumbers.length < 200 || simulatorIndex === 200) return;
     const goingForward = simulatorIndex < 200;
     setConfirmDialog({
@@ -3851,11 +3945,11 @@ export function App() {
     });
   }
 
-  function settleSimulatorRound() {
-    if (simulatorRoundPop) return;
+  function settleSimulatorRound(): boolean {
+    if (simulatorRoundPop) return false;
     if (simulatorNextNumber === null) {
       setNoticeDialog({ title: "模拟", message: "当前数据已经回放结束。" });
-      return;
+      return false;
     }
     const winReturn = simulatorBets.reduce(
       (sum, bet) => sum + (bet.numbers.includes(simulatorNextNumber) ? bet.amount * (bet.payout + 1) : 0),
@@ -3902,7 +3996,10 @@ export function App() {
     setSimulatorBetPlacements([]);
     setNumbers([...numbers, simulatorNextNumber]);
     setRedoNumbers(redoNumbers.slice(0, -1));
+    return true;
   }
+
+  simulatorAutoSettleRef.current = settleSimulatorRound;
 
   let audioCtx: AudioContext | null = null;
   function playKeySound() {
@@ -3972,6 +4069,7 @@ export function App() {
   }
 
   function undo() {
+    if (simulatorAutoRunning) return;
     const removed = numbers.at(-1);
     if (removed === undefined) return;
 
@@ -3979,6 +4077,7 @@ export function App() {
     setRedoNumbers([...redoNumbers, removed]);
   }
   function redo() {
+    if (simulatorAutoRunning) return;
     const restored = redoNumbers.at(-1);
     if (restored === undefined) return;
 
@@ -3986,6 +4085,7 @@ export function App() {
     setRedoNumbers(redoNumbers.slice(0, -1));
   }
   function undoAll() {
+    if (simulatorAutoRunning) return;
     if (numbers.length === 0) return;
     setConfirmDialog({
       title: "长退",
@@ -3998,6 +4098,7 @@ export function App() {
     });
   }
   function redoAll() {
+    if (simulatorAutoRunning) return;
     if (redoNumbers.length === 0) return;
     setConfirmDialog({
       title: "长进",
@@ -7595,16 +7696,16 @@ export function App() {
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
             <NumberButton className="zero-key keypad-zero-h" value={0} onClick={addNumber} />
-            <button aria-label="退到头" className="control-button wide-control" onClick={undoAll} disabled={numbers.length === 0}>
+            <button aria-label="退到头" className="control-button wide-control" onClick={undoAll} disabled={simulatorAutoRunning || numbers.length === 0}>
               <SkipBack size={16} />
             </button>
-            <button aria-label="进到底" className="control-button skip-control keypad-redo" onClick={redoAll} disabled={redoNumbers.length === 0}>
+            <button aria-label="进到底" className="control-button skip-control keypad-redo" onClick={redoAll} disabled={simulatorAutoRunning || redoNumbers.length === 0}>
               <SkipForward size={16} />
             </button>
-            <button className="control-button wide-control" onClick={undo} disabled={numbers.length === 0}>
+            <button className="control-button wide-control" onClick={undo} disabled={simulatorAutoRunning || numbers.length === 0}>
               ←
             </button>
-            <button className="control-button wide-control keypad-redo" onClick={redo} disabled={redoNumbers.length === 0}>
+            <button className="control-button wide-control keypad-redo" onClick={redo} disabled={simulatorAutoRunning || redoNumbers.length === 0}>
               →
             </button>
             <button
@@ -7622,21 +7723,21 @@ export function App() {
             {boardRows.flat().map((value) => (
               <NumberButton key={value} value={value} onClick={addNumber} />
             ))}
-            <button aria-label="退到头" className="control-button board-wide-2" onClick={undoAll} disabled={numbers.length === 0}>
+            <button aria-label="退到头" className="control-button board-wide-2" onClick={undoAll} disabled={simulatorAutoRunning || numbers.length === 0}>
               <SkipBack size={16} />
             </button>
-            <button aria-label="进到底" className="control-button" onClick={redoAll} disabled={redoNumbers.length === 0}>
+            <button aria-label="进到底" className="control-button" onClick={redoAll} disabled={simulatorAutoRunning || redoNumbers.length === 0}>
               <SkipForward size={16} />
             </button>
             <NumberButton className="board-wide-2 zero-key" value={0} onClick={addNumber} />
             <button
               className="control-button board-wide-2"
               onClick={undo}
-              disabled={numbers.length === 0}
+              disabled={simulatorAutoRunning || numbers.length === 0}
             >
               ←
             </button>
-            <button className="control-button board-wide-2" onClick={redo} disabled={redoNumbers.length === 0}>
+            <button className="control-button board-wide-2" onClick={redo} disabled={simulatorAutoRunning || redoNumbers.length === 0}>
               →
             </button>
             <button
@@ -7651,7 +7752,7 @@ export function App() {
           </div>
         ) : (
           <div className="digit-entry-grid">
-            <button aria-label="退到头" className="control-button digit-back-all" onClick={undoAll} disabled={numbers.length === 0}>
+            <button aria-label="退到头" className="control-button digit-back-all" onClick={undoAll} disabled={simulatorAutoRunning || numbers.length === 0}>
               <SkipBack size={16} />
             </button>
             <button className="control-button digit-key digit-key-7" onClick={() => appendDigitInput(7)} type="button">7</button>
@@ -7673,17 +7774,17 @@ export function App() {
               value={digitInput}
             />
             <button className="control-button digit-clear" onClick={() => setDigitInput("")} type="button">AC</button>
-            <button className="control-button digit-undo" onClick={undo} disabled={numbers.length === 0}>
+            <button className="control-button digit-undo" onClick={undo} disabled={simulatorAutoRunning || numbers.length === 0}>
               ←
             </button>
-            <button aria-label="进到底" className="control-button digit-redo-all" onClick={redoAll} disabled={redoNumbers.length === 0}>
+            <button aria-label="进到底" className="control-button digit-redo-all" onClick={redoAll} disabled={simulatorAutoRunning || redoNumbers.length === 0}>
               <SkipForward size={16} />
             </button>
             <button className="control-button digit-key digit-key-4" onClick={() => appendDigitInput(4)} type="button">4</button>
             <button className="control-button digit-key digit-key-5" onClick={() => appendDigitInput(5)} type="button">5</button>
             <button className="control-button digit-key digit-key-6" onClick={() => appendDigitInput(6)} type="button">6</button>
             <button className="control-button digit-send" onClick={submitDigitInput} type="button">Enter</button>
-            <button className="control-button digit-redo" onClick={redo} disabled={redoNumbers.length === 0}>
+            <button className="control-button digit-redo" onClick={redo} disabled={simulatorAutoRunning || redoNumbers.length === 0}>
               →
             </button>
             <button className="control-button digit-key digit-key-0" onClick={() => appendDigitInput(0)} type="button">0</button>
@@ -9564,19 +9665,32 @@ export function App() {
                   </div>
                 ) : null}
                 <div className={`sim-table-felt${simulatorRoundPop ? " settling" : ""}`} onClickCapture={handleSimulatorTableClick}>
-                  {simulatorUsesDesktopLayout ? (
-                    <>
-                      <button className="simulator-no-bet-zone simulator-no-bet-zone-a" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                      <button className="simulator-no-bet-zone simulator-no-bet-zone-b" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                      <button className="simulator-no-bet-zone simulator-no-bet-zone-c" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                      <button className="simulator-no-bet-zone simulator-no-bet-zone-d" onClick={(event) => { event.preventDefault(); event.stopPropagation(); }} type="button" aria-label="无下注区域" />
-                    </>
-                  ) : (
-                    <>
-                      <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-200" disabled={simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
-                      <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-return" onClick={handleSimulatorAnalysisAction} type="button">分析</button>
-                    </>
-                  )}
+                  <button
+                    aria-label={simulatorAutoRunning ? `自动游戏，${simulatorAutoCountdown}秒后出号` : "开始自动游戏"}
+                    aria-pressed={simulatorAutoRunning}
+                    className={`simulator-no-bet-zone sim-table-side-action sim-table-side-action-play${simulatorAutoRunning ? " is-countdown" : ""}`}
+                    disabled={!simulatorAutoRunning && simulatorRoundPop !== null}
+                    onClick={startSimulatorAutoPlay}
+                    type="button"
+                  >
+                    {simulatorAutoRunning ? (
+                      <span className="simulator-auto-countdown">{simulatorAutoCountdown}</span>
+                    ) : (
+                      <Play aria-hidden="true" fill="currentColor" size={14} strokeWidth={0} />
+                    )}
+                  </button>
+                  <button
+                    aria-label="停止自动游戏"
+                    aria-pressed={simulatorAutoRunning}
+                    className={`simulator-no-bet-zone sim-table-side-action sim-table-side-action-stop${simulatorAutoRunning ? " is-active" : ""}`}
+                    disabled={!simulatorAutoRunning}
+                    onClick={stopSimulatorAutoPlay}
+                    type="button"
+                  >
+                    <Square aria-hidden="true" fill="currentColor" size={12} strokeWidth={0} />
+                  </button>
+                  <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-return" onClick={handleSimulatorAnalysisAction} type="button">分析</button>
+                  <button className="simulator-no-bet-zone sim-table-side-action sim-table-side-action-200" disabled={simulatorAutoRunning || simulatorNumbers.length < 200} onClick={jumpSimulatorTo200} type="button">200</button>
                   <div className="simulator-table">
                     <div className="sim-zero-zone">
                       <button
@@ -9867,7 +9981,7 @@ export function App() {
                     aria-label="开下一口"
                     className={`sim-action-play${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
                     data-tooltip={simulatorUsesDesktopLayout ? "开下一口" : undefined}
-                    disabled={simulatorRoundPop !== null}
+                    disabled={simulatorAutoRunning || simulatorRoundPop !== null}
                     onClick={settleSimulatorRound}
                     title={simulatorUsesDesktopLayout ? undefined : "开下一口"}
                     type="button"
@@ -9887,22 +10001,13 @@ export function App() {
                         <strong className={`sim-result-${getNumberColor(value)}${index === 0 ? " latest" : ""}`} key={`${numbers.length}-${index}-${value}`}>{value}</strong>
                       ))}
                     </button>
-                    {simulatorUsesDesktopLayout ? (
-                      <button
-                        aria-label="返回分析"
-                        className="sim-feed-return simulator-desktop-tooltip"
-                        data-tooltip="返回分析"
-                        onClick={handleSimulatorAnalysisAction}
-                        type="button"
-                      >分析</button>
-                    ) : null}
                   </div>
                   <div className="simulator-feed-actions simulator-feed-bottom" aria-label="模拟功能">
                     <button
                       aria-label="撤销下注"
                       className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
                       data-tooltip={simulatorUsesDesktopLayout ? "撤销下注" : undefined}
-                      disabled={simulatorBetPlacements.length === 0}
+                      disabled={simulatorRoundPop !== null || simulatorBetPlacements.length === 0}
                       onClick={undoSimulatorBet}
                       title={simulatorUsesDesktopLayout ? undefined : "撤销下注"}
                       type="button"
@@ -9913,6 +10018,7 @@ export function App() {
                       aria-label="清空下注"
                       className={`sim-feed-clear${simulatorUsesDesktopLayout ? " simulator-desktop-tooltip" : ""}`}
                       data-tooltip={simulatorUsesDesktopLayout ? "清空下注" : undefined}
+                      disabled={simulatorRoundPop !== null}
                       onClick={clearSimulatorBets}
                       title={simulatorUsesDesktopLayout ? undefined : "清空下注"}
                       type="button"
@@ -9932,7 +10038,7 @@ export function App() {
                       aria-label="当前赌注加倍"
                       className={simulatorUsesDesktopLayout ? "simulator-desktop-tooltip" : undefined}
                       data-tooltip={simulatorUsesDesktopLayout ? "当前赌注加倍" : undefined}
-                      disabled={simulatorBets.length === 0}
+                      disabled={simulatorRoundPop !== null || simulatorBets.length === 0}
                       onClick={doubleSimulatorBets}
                       title={simulatorUsesDesktopLayout ? undefined : "当前赌注加倍"}
                       type="button"
@@ -9949,16 +10055,6 @@ export function App() {
                     >
                       <List aria-hidden="true" size={16} strokeWidth={2.3} />
                     </button>
-                    {simulatorUsesDesktopLayout ? (
-                      <button
-                        aria-label="跳到第200个号码"
-                        className="sim-feed-200 simulator-desktop-tooltip"
-                        data-tooltip="跳到第200个号码"
-                        disabled={simulatorNumbers.length < 200}
-                        onClick={jumpSimulatorTo200}
-                        type="button"
-                      >200</button>
-                    ) : null}
                     <button
                       aria-label={simulatorRacetrackOpen ? "收起转盘" : "展开转盘"}
                       aria-pressed={simulatorRacetrackOpen}
@@ -9971,6 +10067,16 @@ export function App() {
                       title={simulatorUsesDesktopLayout ? undefined : (simulatorRacetrackOpen ? "收起转盘" : "展开转盘")}
                       type="button"
                     >转盘</button>
+                    {simulatorUsesDesktopLayout ? (
+                      <button
+                        aria-label="清除投注信息"
+                        className="sim-feed-reset simulator-desktop-tooltip"
+                        data-tooltip="清除投注信息"
+                        disabled={simulatorAutoRunning}
+                        onClick={confirmSimulatorBettingReset}
+                        type="button"
+                      >清除</button>
+                    ) : null}
                   </div>
                 </div>
                 <div className="simulator-bottom-status" aria-label="模拟上一轮、投注和胜负">
