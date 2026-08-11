@@ -2918,7 +2918,7 @@ body:has(.app-shell.theme-dark) {
   gap: 6px;
   grid-column: 1 / span 3;
   grid-row: 13;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   margin: 6px 14px;
   transform: translateY(4px);
