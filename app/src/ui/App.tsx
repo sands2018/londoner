@@ -1747,6 +1747,10 @@ export function App() {
   const [threeNumberHighlightMode, setThreeNumberHighlightMode] = useState<"dim" | "highlight">(() =>
     localStorage.getItem("londoner.threeNumberHighlightMode") === "dim" ? "dim" : "highlight",
   );
+  const [snapshotSortMode, setSnapshotSortMode] = useState<"number" | "group" | "three">(() => {
+    const saved = localStorage.getItem("londoner.snapshotSortMode");
+    return saved === "group" || saved === "three" ? saved : "number";
+  });
   const [columnsPanelCollapsed, setColumnsPanelCollapsed] = useState(() => localStorage.getItem("londoner.columnsPanelCollapsed") === "1");
   const [summaryGridCollapsed, setSummaryGridCollapsed] = useState(() => localStorage.getItem("londoner.summaryGridCollapsed") === "1");
   const [hotStatusCollapsed, setHotStatusCollapsed] = useState(() => localStorage.getItem("londoner.hotStatusCollapsed") === "1");
@@ -2732,6 +2736,21 @@ export function App() {
       };
     });
   }, [latestNumber, numbers]);
+  const orderedSnapshotGroups = useMemo(() => {
+    if (snapshotSortMode !== "group") return groupBlockSnapshot;
+    return [...groupBlockSnapshot].sort((left, right) => left.distance - right.distance || left.gi - right.gi);
+  }, [groupBlockSnapshot, snapshotSortMode]);
+  const orderedSnapshotStreets = useMemo(() => {
+    if (snapshotSortMode === "three") {
+      return [...threeNumberSnapshot].sort((left, right) => left.distance - right.distance || left.wi - right.wi);
+    }
+    if (snapshotSortMode === "group") {
+      return orderedSnapshotGroups.flatMap((group) =>
+        threeNumberSnapshot.filter((street) => Math.floor(street.wi / 4) === group.gi),
+      );
+    }
+    return threeNumberSnapshot;
+  }, [orderedSnapshotGroups, snapshotSortMode, threeNumberSnapshot]);
   const rowBlockSnapshot = useMemo(() => {
     const latestRow = latestNumber !== null ? getRowIndex(latestNumber) : null;
     const getMissDistanceBefore = (ri: number, startIndex: number) => {
@@ -7014,6 +7033,11 @@ export function App() {
   }
 
   function StatsNumberZoneTab() {
+    const selectSnapshotSortMode = (mode: "number" | "group" | "three") => {
+      setSnapshotSortMode(mode);
+      localStorage.setItem("londoner.snapshotSortMode", mode);
+    };
+
     return (
       <>
         <div className="tabs tabs-top tabs-solid">
@@ -7022,12 +7046,37 @@ export function App() {
         </div>
         {numberZoneSubTab === "snapshot" ? (
           <div className="group-block-body">
-            <div className="group-block-head" aria-hidden="true">
-              <span>组</span><span>6数字</span><span>3数字</span><span>号码</span>
+            <div className="group-block-head">
+              <button
+                aria-pressed={snapshotSortMode === "group"}
+                className={snapshotSortMode === "group" ? "selected" : ""}
+                onClick={() => selectSnapshotSortMode("group")}
+                type="button"
+              >组{snapshotSortMode === "group" ? <span aria-hidden="true">▼</span> : null}</button>
+              <span className="group-block-head-static">6数字</span>
+              <button
+                aria-pressed={snapshotSortMode === "three"}
+                className={snapshotSortMode === "three" ? "selected" : ""}
+                onClick={() => selectSnapshotSortMode("three")}
+                type="button"
+              >3数字{snapshotSortMode === "three" ? <span aria-hidden="true">▼</span> : null}</button>
+              <button
+                aria-pressed={snapshotSortMode === "number"}
+                className={snapshotSortMode === "number" ? "selected" : ""}
+                onClick={() => selectSnapshotSortMode("number")}
+                type="button"
+              >号码{snapshotSortMode === "number" ? <span aria-hidden="true">▼</span> : null}</button>
             </div>
             <div className="group-block-grid">
-              {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+              {snapshotSortMode !== "number" ? (
+                <>
+                  <div className="group-block-band group-block-band-first" aria-hidden="true" />
+                  <div className="group-block-band group-block-band-second" aria-hidden="true" />
+                  <div className="group-block-band group-block-band-third" aria-hidden="true" />
+                </>
+              ) : null}
+              {orderedSnapshotStreets.map((item, index) => (
+                <div className={`group-block-row${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={`row-${item.wi}`} style={{ gridRow: `${index + 1}` }}>
                   {[chaseThreeStreetStart(item.wi), chaseThreeStreetStart(item.wi) + 1, chaseThreeStreetEnd(item.wi)].map((value) => (
                     <span className={latestNumber === value ? "current" : ""} key={value}>{value}</span>
                   ))}
@@ -7059,21 +7108,21 @@ export function App() {
                   </button>
                 ))}
               </div>
-              {threeNumberSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${item.wi + 1}` }}>
+              {orderedSnapshotStreets.map((item, index) => (
+                <div className={`group-block-cell group-block-x${item.highlighted ? " highlighted" : ""}${threeNumberDimmedSet.has(item.wi) ? (threeNumberHighlightMode === "dim" ? " dimmed" : " highlight-distant") : ""}`} key={`x-${item.wi}`} style={{ gridRow: `${index + 1}` }}>
                   {renderGroupBlockDistance(item)}
                 </div>
               ))}
-              {sixNumberSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`} key={`y-${item.wi}`} style={{ gridRow: `${item.wi + 1} / span 2` }}>
-                  {renderGroupBlockDistance(item)}
-                </div>
-              ))}
-              {groupBlockSnapshot.map((item) => (
-                <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${item.gi * 4 + 1} / span 4` }}>
-                  {renderGroupBlockDistance(item)}
-                </div>
-              ))}
+              {snapshotSortMode === "number" ? sixNumberSnapshot.map((item) => (
+                  <div className={`group-block-cell group-block-y${item.highlighted ? " highlighted" : ""}`} key={`y-${item.wi}`} style={{ gridRow: `${item.wi + 1} / span 2` }}>
+                    {renderGroupBlockDistance(item)}
+                  </div>
+                )) : null}
+              {snapshotSortMode !== "three" ? orderedSnapshotGroups.map((item, index) => (
+                  <div className={`group-block-cell group-block-z${item.highlighted ? " highlighted" : ""}`} key={`z-${item.gi}`} style={{ gridRow: `${index * 4 + 1} / span 4` }}>
+                    {renderGroupBlockDistance(item)}
+                  </div>
+                )) : null}
               <button className="number-zone-trigger" onClick={() => setNumberZoneSubTab("zone")} style={{ gridColumn: "4", gridRow: "1 / 14", opacity: 0, cursor: "pointer" }} title="打开号码区" type="button">号码区</button>
             </div>
           </div>

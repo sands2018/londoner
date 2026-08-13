@@ -1573,6 +1573,7 @@ body:has(.app-shell.theme-dark) {
 /* --- Snapshot --- */
 .app-shell.theme-dark .six-number-screen { background: #121212; }
 .app-shell.theme-dark .group-block-head { color: var(--theme-dark-gold); }
+.app-shell.theme-dark .group-block-head > button.selected { color: #e0b870; }
 .app-shell.theme-dark .group-block-dim-buttons button {
   background: #202020;
   border-color: #343434;
@@ -1584,6 +1585,9 @@ body:has(.app-shell.theme-dark) {
   color: #e0b870;
 }
 .app-shell.theme-dark .group-block-row { background: #222222; border-color: #38342e; border-radius: 10px; }
+.app-shell.theme-dark .group-block-band-first,
+.app-shell.theme-dark .group-block-band-third { background: #1d1d1d; }
+.app-shell.theme-dark .group-block-band-second { background: #121212; }
 .app-shell.theme-dark .group-block-row span { color: #c0c0c0; }
 .app-shell.theme-dark .group-block-row span.current { background: #332d19; color: #e0b870; box-shadow: inset 0 0 0 1px rgba(190, 150, 72, 0.34); }
 .app-shell.theme-dark .group-block-row.highlighted { border-color: rgba(180, 130, 70, 0.44); }
@@ -2912,6 +2916,38 @@ body:has(.app-shell.theme-dark) {
   text-align: center;
 }
 
+.group-block-head > button,
+.group-block-head > .group-block-head-static {
+  align-items: center;
+  align-self: stretch;
+  color: inherit;
+  display: flex;
+  font: inherit;
+  font-weight: inherit;
+  justify-content: center;
+  line-height: inherit;
+  min-width: 0;
+}
+
+.group-block-head > button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  gap: 3px;
+  padding: 0;
+}
+
+.group-block-head > button span {
+  font-size: 8px;
+  line-height: 1;
+  transform: translateY(1px);
+}
+
+.group-block-head > button.selected {
+  color: #8d6428;
+}
+
 .group-block-dim-buttons {
   align-items: center;
   display: grid;
@@ -2945,15 +2981,15 @@ body:has(.app-shell.theme-dark) {
   color: #5b3f1c;
 }
 
-.group-block-head span:nth-child(2) {
+.group-block-head > :nth-child(2) {
   grid-column: 2;
 }
 
-.group-block-head span:nth-child(3) {
+.group-block-head > :nth-child(3) {
   grid-column: 3;
 }
 
-.group-block-head span:nth-child(4) {
+.group-block-head > :nth-child(4) {
   grid-column: 4;
 }
 
@@ -2963,6 +2999,33 @@ body:has(.app-shell.theme-dark) {
   grid-auto-rows: minmax(38px, auto);
   grid-template-columns: minmax(48px, 0.42fr) minmax(52px, 0.46fr) minmax(54px, 0.48fr) minmax(156px, 1.36fr);
   isolation: isolate;
+}
+
+.group-block-grid > :not(.group-block-band) {
+  position: relative;
+  z-index: 1;
+}
+
+.group-block-band {
+  grid-column: 1 / -1;
+  margin-inline: -10px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.group-block-band-first {
+  background: #f4f1ec;
+  grid-row: 1 / span 4;
+}
+
+.group-block-band-second {
+  background: transparent;
+  grid-row: 5 / span 4;
+}
+
+.group-block-band-third {
+  background: #f4f1ec;
+  grid-row: 9 / span 4;
 }
 
 .group-block-row {
