@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, CircleHelp, History, Plus, RotateCcw, Settings2, Trash2, Undo2, Play, Hand, Split, CirclePlus } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, CircleHelp, History, Plus, RotateCcw, Settings2, Trash2, Undo2, Play, Hand, Split, CirclePlus } from "lucide-react";
 import { BlackjackTable, blackjackChips, blackjackMinimum, isSavedBlackjack, type BlackjackAction, type BlackjackHand } from "../../core/blackjack";
 import { PlayingCard, SandsDialog, SandsMark } from "./SandsShared";
 import { animationSpeedKey } from "./displaySettings";
-import { blackjackFrames, blackjackNextFrames, chipColors, dealerDisplayCards, frameDuration } from "./blackjackPresentation";
+import { blackjackFrames, blackjackNextFrames, chipColors, dealerDisplayCards, frameDuration, splitHandState } from "./blackjackPresentation";
 import { ChipStack, FlyingChip, type ChipFlight } from "./BlackjackChips";
 import { useBlackjackMotion, type PlayingFrame } from "./useBlackjackMotion";
 import { BlackjackResult } from "./BlackjackResult";
@@ -134,6 +134,8 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
     advance();
   }
   function act(action: BlackjackAction) { animate(action); }
+  const splitTurn = view.hands.length > 1 && view.phase === "playing";
+  const currentHand = splitTurn && !busy ? view.hands[view.activeHand] : null;
   const result = view.phase === "settled" && resultVisible ? view.lastRound : null;
   const motionLabels = { collect: "收牌", shuffle: "更换牌靴 · 洗牌", deal: "发牌中", reveal: "庄家开牌", split: "分牌", wager: "追加投注", settle: "结算中", result: "本轮结算" };
   const status = message || (busy ? (frame ? motionLabels[frame.motion] : "发牌中")
@@ -147,11 +149,13 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
     </button>;
   }
   function renderHand(hand: BlackjackHand, i: number) {
-    const focused = view.phase === "playing" && view.activeHand === i;
-    return <div key={hand.id} className={`bj-player-hand${focused ? " is-focused" : ""}${hand.result && resultVisible ? ` result-${hand.result}` : ""}`}>
+    const handState = splitHandState(view, i, busy);
+    const stateLabel = handState === "active" ? "当前操作" : handState === "processing" ? "处理中" : handState === "waiting" ? "等待" : "已完成";
+    const focused = view.phase === "playing" && view.activeHand === i && (!handState || handState === "active" || handState === "processing");
+    return <div key={hand.id} role="group" aria-label={view.hands.length > 1 ? `第 ${i + 1} 手，${stateLabel}` : "玩家手牌"} aria-current={handState === "active" ? "true" : undefined} data-hand-state={handState ?? undefined} className={`bj-player-hand${focused ? " is-focused" : ""}${hand.result && resultVisible ? ` result-${hand.result}` : ""}`}>
       <div className="bj-hand-heading"><span>{view.hands.length > 1 ? `第 ${i + 1} 手` : "玩家"}</span>{hand.cards.length > 0 && <strong>{hand.natural ? "BLACKJACK" : hand.total > 21 ? `爆牌 ${hand.total}` : `${hand.soft ? "软 " : ""}${hand.total}`}</strong>}</div>
       <div className="bj-cards" style={{ "--card-count": hand.cards.length } as CSSProperties}>{hand.cards.map((card, index) => <PlayingCard key={card.id} card={card} index={index} />)}</div>
-      <div className="bj-hand-wager"><ChipStack amount={hand.bet} />{format(hand.bet)}{hand.result && resultVisible && <span className={`bj-hand-result ${hand.result}`}>{hand.result === "win" ? "赢" : hand.result === "lose" ? "输" : "和"}</span>}</div>
+      <div className="bj-hand-wager"><ChipStack amount={hand.bet} /><div className="bj-hand-caption"><span>{format(hand.bet)}{hand.result && resultVisible && <span className={`bj-hand-result ${hand.result}`}>{hand.result === "win" ? "赢" : hand.result === "lose" ? "输" : "和"}</span>}</span>{handState && <small className="bj-hand-state">{handState === "active" ? <ChevronDown size={14} aria-hidden="true" /> : handState === "complete" ? <Check size={13} aria-hidden="true" /> : null}{stateLabel}</small>}</div></div>
     </div>;
   }
 
@@ -172,7 +176,7 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
           {view.dealer.cards.length ? dealerDisplayCards(view.dealer.cards).map((card, i) => <PlayingCard key={card.id} card={card} index={i} />) : <><span className="bj-card-placeholder" /><span className="bj-card-placeholder" /></>}
         </div>
       </section>
-      <div className="bj-round-status" role="status" aria-live="polite">{result ? <BlackjackResult key={result.id} round={result} animated={frame?.motion === "result"} /> : <span>{status}</span>}</div>
+      <div className="bj-round-status" role="status" aria-live="polite">{result ? <BlackjackResult key={result.id} round={result} animated={frame?.motion === "result"} /> : currentHand && !message ? <div key={currentHand.id} className="bj-turn-prompt"><span>当前操作</span><strong>第 {view.activeHand + 1} 手</strong><small>{currentHand.soft ? "软 " : ""}{currentHand.total} 点 · 投注 {format(currentHand.bet)}</small></div> : <span>{status}</span>}</div>
       <section className={`bj-player-area${view.hands.length > 1 ? " has-splits" : ""}${view.hands.length > 2 ? " multi-splits" : ""}`} style={{ "--hand-count": Math.max(1, view.hands.length) } as CSSProperties} aria-label="玩家手牌">
         {view.hands.length ? view.hands.map(renderHand) : <div className="bj-empty-seat"><div className="bj-hand-heading"><span>玩家</span></div><div className="bj-cards"><span className="bj-card-placeholder" /><span className="bj-card-placeholder" /></div>{acceptingBets && bettingSpot()}</div>}
       </section>
@@ -180,8 +184,8 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
     </section>
     <section className="bj-controls" aria-label="游戏操作">
       <div className="bj-action-line">
-        <button type="button" className="bj-wager-target" disabled={!acceptingBets || busy} aria-label={`投注 ${view.selectedChip}`} onClick={placeChip}><span>本轮投注{view.insurance > 0 && !acceptingBets ? ` · 保险 ${format(view.insurance)}` : ""}</span><strong>{format(acceptingBets ? view.pendingBet : view.hands.reduce((s, h) => s + h.bet, 0))}</strong><Plus size={18} /></button>
-        {view.phase === "insurance" ? <div className="bj-main-actions insurance"><button type="button" className="sands-button" disabled={busy} onClick={() => act("decline")}>不买保险</button><button type="button" className="sands-button primary" disabled={busy || !view.actions.includes("insurance")} onClick={() => act("insurance")}>保险 {format(view.lastBet / 2)}</button></div> : <div className="bj-main-actions">
+        {splitTurn ? <div id="bj-current-hand" className="bj-action-target"><span>{busy ? "牌桌处理中" : "当前操作"}</span><strong>{busy ? "请稍候" : `第 ${view.activeHand + 1} 手`}{!busy && <small> / {view.hands.length} 手</small>}</strong></div> : <button type="button" className="bj-wager-target" disabled={!acceptingBets || busy} aria-label={`投注 ${view.selectedChip}`} onClick={placeChip}><span>本轮投注{view.insurance > 0 && !acceptingBets ? ` · 保险 ${format(view.insurance)}` : ""}</span><strong>{format(acceptingBets ? view.pendingBet : view.hands.reduce((s, h) => s + h.bet, 0))}</strong><Plus size={18} /></button>}
+        {view.phase === "insurance" ? <div className="bj-main-actions insurance"><button type="button" className="sands-button" disabled={busy} onClick={() => act("decline")}>不买保险</button><button type="button" className="sands-button primary" disabled={busy || !view.actions.includes("insurance")} onClick={() => act("insurance")}>保险 {format(view.lastBet / 2)}</button></div> : <div className="bj-main-actions" role="group" aria-label="手牌操作" aria-describedby={splitTurn ? "bj-current-hand" : undefined}>
           <button type="button" className="sands-button" disabled={busy || !view.actions.includes("hit")} onClick={() => act("hit")}><Plus size={19} />要牌</button>
           <button type="button" className="sands-button" disabled={busy || !view.actions.includes("stand")} onClick={() => act("stand")}><Hand size={18} />停牌</button>
           <button type="button" className="sands-button" disabled={busy || !view.actions.includes("double")} onClick={() => act("double")}><span className="bj-double-icon">×2</span>加倍</button>

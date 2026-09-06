@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Rank } from "@blackjacktrainer/blackjack-simulator/src/types";
 import { Event } from "@blackjacktrainer/blackjack-simulator/src/event-emitter";
 import { BlackjackTable, isSavedBlackjack } from "../../core/blackjack";
-import { blackjackFrames, blackjackNextFrames, dealerDisplayCards, frameDuration, tableCards, wagerChips } from "./blackjackPresentation";
+import { blackjackFrames, blackjackNextFrames, dealerDisplayCards, frameDuration, splitHandState, tableCards, wagerChips } from "./blackjackPresentation";
 
 function rig(ranks: Rank[]) {
   const table = new BlackjackTable();
@@ -113,5 +113,35 @@ describe("blackjack presentation playback", () => {
     expect(wagerChips(100000)).toHaveLength(6);
     expect(frameDuration("deal", true, false)).toBeLessThan(frameDuration("deal", false, false));
     expect(frameDuration("deal", false, true)).toBe(35);
+  });
+  it("identifies the current split hand, then marks it finished when play moves on", () => {
+    const table = rig([Rank.Eight, Rank.Six, Rank.Eight, Rank.Ten, Rank.Three, Rank.Two, Rank.Two, Rank.Three]);
+    table.deal();
+    expect(splitHandState(table.view(), 0, false)).toBeNull();
+    table.act("split");
+    expect([0, 1].map((i) => splitHandState(table.view(), i, false))).toEqual(["active", "waiting"]);
+    expect(splitHandState(table.view(), 0, true)).toBe("processing");
+    table.act("hit");
+    expect(table.view().hands.map((h) => h.total)).toEqual([13, 10]);
+    expect(splitHandState(table.view(), 0, false)).toBe("active");
+    table.act("stand");
+    expect([0, 1].map((i) => splitHandState(table.view(), i, false))).toEqual(["complete", "active"]);
+    const restored = new BlackjackTable(table.save());
+    expect(splitHandState(restored.view(), 1, false)).toBe("active");
+    table.act("hit");
+    expect(table.view().hands.map((h) => h.total)).toEqual([13, 13]);
+    table.act("stand");
+    expect([0, 1].map((i) => splitHandState(table.view(), i, false))).toEqual(["complete", "complete"]);
+    expect(splitHandState(table.view(), 3, false)).toBeNull();
+  });
+  it("follows automatic hand completion after doubling or busting", () => {
+    const doubled = rig([Rank.Eight, Rank.Six, Rank.Eight, Rank.Ten, Rank.Three, Rank.Two, Rank.King]);
+    doubled.deal(); doubled.act("split"); doubled.act("double");
+    expect(doubled.view().hands.map((h) => h.total)).toEqual([21, 10]);
+    expect([0, 1].map((i) => splitHandState(doubled.view(), i, false))).toEqual(["complete", "active"]);
+    const busted = rig([Rank.Eight, Rank.Six, Rank.Eight, Rank.Ten, Rank.Nine, Rank.Two, Rank.King]);
+    busted.deal(); busted.act("split"); busted.act("hit");
+    expect(busted.view().hands[0].total).toBe(27);
+    expect([0, 1].map((i) => splitHandState(busted.view(), i, false))).toEqual(["complete", "active"]);
   });
 });

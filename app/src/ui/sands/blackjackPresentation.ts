@@ -7,6 +7,14 @@ export const dealerDisplayCards = (cards: BlackjackCard[]) => cards.length < 2 ?
 const stake = (v: BlackjackView) => v.hands.reduce((sum, h) => sum + h.bet, 0) + v.insurance;
 const layout = (v: BlackjackView) => v.hands.map((h) => h.cards.map((c) => c.id).join(",")).join("|");
 
+export function splitHandState(view: BlackjackView, index: number, busy: boolean): "active" | "processing" | "waiting" | "complete" | null {
+  const hand = view.hands[index];
+  if (!hand || view.hands.length < 2 || view.phase === "betting") return null;
+  if (view.phase === "settled" || index < view.activeHand || hand.total >= 21 || hand.result) return "complete";
+  if (index > view.activeHand) return "waiting";
+  return busy ? "processing" : "active";
+}
+
 export function blackjackNextFrames({ before, after }: BlackjackPlayback): TableFrame[] {
   const frames: TableFrame[] = [{ view: before, motion: "collect" }];
   if (before.shoeNumber !== after.shoeNumber) frames.push({ view: after, motion: "shuffle" });

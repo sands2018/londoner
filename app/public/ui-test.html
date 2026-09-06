@@ -757,10 +757,62 @@
     .bj-result strong { display:block; font:500 38px/1.1 Georgia,serif; }
     .bj-result.is-revealing strong { animation:bj-result-amount 1.3s .1s ease-out both; }
     @keyframes bj-result-amount { 0% { opacity:0; transform:translateY(9px) scale(.94); filter:brightness(.9); text-shadow:0 2px 4px #00170f80; } 32% { opacity:1; transform:none; filter:brightness(1.22); text-shadow:0 0 14px var(--result-glow),0 2px 4px #00170f80; } 68%,100% { opacity:1; transform:none; filter:brightness(1); text-shadow:0 2px 4px #00170f80; } }
+    .split-preview { display:flex; gap:24px; }
+    .split-preview .bj-player-hand { min-width:140px; padding:14px; border:1px solid #a2bb9b24; border-radius:7px; text-align:center; }
+    .split-preview .bj-player-hand.is-focused { border-color:#dbc17b; background:#bd9a4c16; box-shadow:0 0 0 1px #dbc17b26,inset 0 0 22px #c8a9510b; }
+    .split-preview .bj-hand-state { display:flex; justify-content:center; color:#eed397; font-size:12px; margin-top:10px; }
   </style>
-  <div class="motion-preview"><div class="bj-result is-revealing">本轮获胜<strong>+100</strong><small>投注 100 · 赢回 200</small></div><button class="bj-felt-bet"><span class="bj-chip-stack"><span class="bj-chip-token" style="--chip-color:#47715b;--stack-index:0"><b>50</b></span><span class="bj-chip-token" style="--chip-color:#2e8193;--stack-index:1"><b>20</b></span></span><span><small>投注</small><strong>70</strong></span></button></div>
+  <div class="motion-preview"><div class="split-preview"><div class="bj-player-hand is-focused">第 1 手 · 16 点<small class="bj-hand-state">当前操作</small></div><div class="bj-player-hand">第 2 手 · 12 点<small class="bj-hand-state">等待</small></div></div><div class="bj-result is-revealing">本轮获胜<strong>+100</strong><small>投注 100 · 赢回 200</small></div><button class="bj-felt-bet"><span class="bj-chip-stack"><span class="bj-chip-token" style="--chip-color:#47715b;--stack-index:0"><b>50</b></span><span class="bj-chip-token" style="--chip-color:#2e8193;--stack-index:1"><b>20</b></span></span><span><small>投注</small><strong>70</strong></span></button></div>
+</template>
+<template id="sands-scrollbar-prototype">
+  <style>
+    body { margin:0; max-width:none; padding:24px; min-height:100dvh; background:#05231b; display:grid; place-items:center; }
+    .sands-surface { --sands-scroll-track:#0a211b; --sands-scroll-thumb:#96815a; --sands-scroll-hover:#bba06d; --sands-scroll-active:#d5b77d; color-scheme:dark; }
+    .scroll-preview { width:min(540px,100%); padding:22px; background:#102c23; color:#dcd6bf; border:1px solid #a88f5766; border-radius:7px; }
+    .scroll-preview h2 { font-size:20px; color:#dfc48b; margin:0 0 20px; padding-bottom:13px; border-bottom:1px solid #ac98644a; }
+    .scroll-preview-list { overflow:auto; max-height:50dvh; }
+    .scroll-preview table { width:100%; border-collapse:collapse; font-size:13px; }
+    .scroll-preview td, .scroll-preview th { padding:10px 7px; text-align:right; border-bottom:1px solid #ac986425; }
+    .scroll-preview th { color:#bca777; font-weight:500; }
+@media (forced-colors: none) {
+  .sands-surface, .sands-surface * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sands-scroll-thumb) var(--sands-scroll-track);
+  }
+  @supports selector(::-webkit-scrollbar) {
+    /* Standard scrollbar properties otherwise override the detailed thumb styles. */
+    .sands-surface, .sands-surface * { scrollbar-width: auto; scrollbar-color: auto; }
+    .sands-surface::-webkit-scrollbar, .sands-surface *::-webkit-scrollbar { width: 10px; height: 10px; }
+    .sands-surface::-webkit-scrollbar-track, .sands-surface *::-webkit-scrollbar-track {
+      background: var(--sands-scroll-track);
+      border-radius: 8px;
+    }
+    .sands-surface::-webkit-scrollbar-thumb, .sands-surface *::-webkit-scrollbar-thumb {
+      min-height: 32px;
+      min-width: 32px;
+      background: var(--sands-scroll-thumb);
+      background-clip: padding-box;
+      border: 2px solid transparent;
+      border-radius: 8px;
+    }
+    .sands-surface::-webkit-scrollbar-thumb:hover, .sands-surface *::-webkit-scrollbar-thumb:hover { background-color: var(--sands-scroll-hover); }
+    .sands-surface::-webkit-scrollbar-thumb:active, .sands-surface *::-webkit-scrollbar-thumb:active { background-color: var(--sands-scroll-active); }
+    .sands-surface::-webkit-scrollbar-button, .sands-surface *::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    .sands-surface::-webkit-scrollbar-corner, .sands-surface *::-webkit-scrollbar-corner { background: var(--sands-scroll-track); }
+  }
+}
+  </style>
+  <section class="sands-surface scroll-preview"><h2>结算明细</h2><div class="scroll-preview-list"><table><thead><tr><th>轮次</th><th>投注</th><th>赢回</th><th>赢利</th></tr></thead><tbody></tbody></table></div></section>
 </template>
 <script>
+  if (new URLSearchParams(location.search).get('design') === 'scrollbar') {
+    document.body.replaceChildren(document.getElementById('sands-scrollbar-prototype').content.cloneNode(true));
+    const rows = document.querySelector('.scroll-preview tbody');
+    for (let round = 36; round > 0; round--) {
+      const row = rows.insertRow();
+      [round, 100, round % 3 ? 200 : 0, round % 3 ? '+100' : '-100'].forEach(value => row.insertCell().textContent = value);
+    }
+  }
   if (new URLSearchParams(location.search).get('design') === 'table-motion') {
     document.body.replaceChildren(document.getElementById('sands-table-motion-prototype').content.cloneNode(true));
   }

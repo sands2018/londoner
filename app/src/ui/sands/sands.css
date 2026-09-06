@@ -2,6 +2,11 @@
   --sands-gold: #dfc58a;
   --sands-muted: #96aa9c;
   --sands-line: #ac98644a;
+  --sands-scroll-track: #0a211b;
+  --sands-scroll-thumb: #96815a;
+  --sands-scroll-hover: #bba06d;
+  --sands-scroll-active: #d5b77d;
+  color-scheme: dark;
   color: #e9e8dc;
   font-family: Roboto, "Noto Sans SC", sans-serif;
   font-size: 15px;
@@ -10,6 +15,33 @@
   letter-spacing: 0;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+@media (forced-colors: none) {
+  .sands-surface, .sands-surface * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sands-scroll-thumb) var(--sands-scroll-track);
+  }
+  @supports selector(::-webkit-scrollbar) {
+    /* Standard scrollbar properties otherwise override the detailed thumb styles. */
+    .sands-surface, .sands-surface * { scrollbar-width: auto; scrollbar-color: auto; }
+    .sands-surface::-webkit-scrollbar, .sands-surface *::-webkit-scrollbar { width: 10px; height: 10px; }
+    .sands-surface::-webkit-scrollbar-track, .sands-surface *::-webkit-scrollbar-track {
+      background: var(--sands-scroll-track);
+      border-radius: 8px;
+    }
+    .sands-surface::-webkit-scrollbar-thumb, .sands-surface *::-webkit-scrollbar-thumb {
+      min-height: 32px;
+      min-width: 32px;
+      background: var(--sands-scroll-thumb);
+      background-clip: padding-box;
+      border: 2px solid transparent;
+      border-radius: 8px;
+    }
+    .sands-surface::-webkit-scrollbar-thumb:hover, .sands-surface *::-webkit-scrollbar-thumb:hover { background-color: var(--sands-scroll-hover); }
+    .sands-surface::-webkit-scrollbar-thumb:active, .sands-surface *::-webkit-scrollbar-thumb:active { background-color: var(--sands-scroll-active); }
+    .sands-surface::-webkit-scrollbar-button, .sands-surface *::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    .sands-surface::-webkit-scrollbar-corner, .sands-surface *::-webkit-scrollbar-corner { background: var(--sands-scroll-track); }
+  }
 }
 .sands-surface *, .sands-surface *::before, .sands-surface *::after { box-sizing: border-box; letter-spacing: 0; }
 .sands-surface button { font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -131,6 +163,24 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-player-hand.is-focused { border-bottom-color: #d8bd78; }
 .bj-player-hand.result-win { border-bottom-color: #bd9658; }
 .bj-player-hand.result-lose .bj-cards { opacity: .74; }
+.has-splits .bj-player-hand { border:1px solid #a2bb9b24; border-radius:7px; }
+.has-splits .bj-player-hand.is-focused { border-color:#dbc17b; background:#bd9a4c16; box-shadow:0 0 0 1px #dbc17b26,inset 0 0 22px #c8a9510b; }
+.has-splits .bj-player-hand.is-focused .bj-hand-heading { color:#f0d69b; }
+.has-splits .bj-player-hand[data-hand-state="active"] { animation:bj-hand-focus .55s ease-out; }
+.has-splits .bj-player-hand[data-hand-state="waiting"] .bj-hand-state { color:#9daf9f; }
+.has-splits .bj-player-hand[data-hand-state="complete"] .bj-hand-state { color:#a8b6a8; }
+.has-splits .bj-player-hand[data-hand-state="complete"] .bj-cards { opacity:.74; }
+.has-splits .bj-player-hand.result-win .bj-cards { opacity:1; }
+.has-splits .bj-player-hand.result-win { border-bottom-color:#bd9658; }
+.bj-hand-caption { display:flex; flex-direction:column; gap:2px; min-width:0; text-align:left; }
+.bj-hand-state { display:flex; align-items:center; gap:2px; white-space:nowrap; font-size:11px; color:#eed397; }
+.bj-hand-state svg { flex-shrink:0; }
+.bj-turn-prompt { display:flex; flex-direction:column; align-items:center; gap:3px; animation:bj-turn-prompt .35s ease-out; }
+.bj-turn-prompt > span { font-size:12px; color:#bbbea1; }
+.bj-turn-prompt > strong { font-size:25px; font-weight:500; color:#f0d394; line-height:1.3; }
+.bj-turn-prompt > small { font-size:12px; color:#abbfae; }
+@keyframes bj-hand-focus { from { box-shadow:0 0 0 2px #efd39980,inset 0 0 24px #c8a95122; } to { box-shadow:0 0 0 1px #dbc17b26,inset 0 0 22px #c8a9510b; } }
+@keyframes bj-turn-prompt { from { opacity:.4; transform:translateY(4px); } to { opacity:1; transform:none; } }
 .bj-hand-wager { min-height: 62px; padding-top: 7px; display: flex; justify-content: center; align-items: center; gap: 7px; color: #dbc794; font-size: 12px; }
 .bj-chip-stack { position:relative; width:48px; height:46px; flex-shrink:0; display:inline-block; border:1px solid #cbb57a55; border-radius:50%; }
 .bj-chip-token { display:grid; place-items:center; width:36px; height:36px; border:3px solid var(--chip-color); border-radius:50%; color:#faf4df; background:repeating-conic-gradient(#efe5ceaa 0deg 12deg,transparent 12deg 45deg),var(--chip-color); box-shadow:inset 0 0 0 1px #ffffff44,0 3px 4px #0008; }
@@ -171,6 +221,10 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-main-actions { display: flex; gap: 9px; flex: 1; justify-content: center; }
 .bj-main-actions .sands-button { flex: 1; max-width: 128px; }
 .bj-main-actions.insurance .sands-button { max-width: 210px; }
+.bj-action-target { min-width:150px; padding-right:12px; text-align:left; }
+.bj-action-target > span { display:block; font-size:11px; color:#b9c3a8; }
+.bj-action-target > strong { display:block; font-size:22px; line-height:1.35; font-weight:500; color:#f0d394; white-space:nowrap; }
+.bj-action-target small { font-size:12px; color:#9caf9e; }
 .bj-double-icon { font-size: 17px; }
 .sands-surface .bj-wager-target { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 14px; text-align: left; min-width: 150px; border: 0; background: transparent; color: #e3ce98; padding: 0 12px 0 0; }
 .bj-wager-target > span { color: #aabca7; font-size: 11px; }
@@ -213,6 +267,11 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .is-mobile .bj-hand-heading { font-size: 11px; gap: 7px; }
 .is-mobile .bj-hand-heading strong { font-size: 11px; padding: 1px 6px; }
 .is-mobile .bj-hand-wager { font-size: 11px; min-height: 52px; }
+.is-mobile .bj-hand-state { font-size:10px; }
+.is-mobile .bj-turn-prompt > strong { font-size:23px; }
+.is-mobile .bj-turn-prompt > span, .is-mobile .bj-turn-prompt > small { font-size:11px; }
+.is-mobile .bj-action-target { min-width:0; max-width:210px; }
+.is-mobile .bj-action-target > strong { font-size:20px; }
 .is-mobile .bj-chip-stack { width:40px; height:38px; }
 .is-mobile .bj-chip-token { width:30px; height:30px; border-width:2px; }
 .is-mobile .bj-chip-stack > .bj-chip-token { left:4px; top:calc(5px - var(--stack-index) * 1.5px); }
@@ -332,6 +391,11 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
   .is-mobile .bj-action-line { display: flex; gap: 18px; }
   .is-mobile .bj-wager-target { min-width: 115px; }
   .is-mobile .bj-main-actions .sands-button { min-height: 34px; padding: 4px 10px; }
+  .is-mobile .bj-action-target { min-width:115px; }
+  .is-mobile .bj-action-target > strong { font-size:18px; }
+  .is-mobile .bj-action-target small { font-size:10px; }
+  .is-mobile .bj-hand-state { font-size:9px; }
+  .is-mobile .bj-hand-state svg { width:11px; height:11px; }
   .is-mobile .bj-deal { min-height: 35px; }
   .is-mobile .bj-chips-line { display: flex; padding-top: 10px; gap: 22px; }
   .is-mobile .bj-chips { gap: 12px; width:auto; }
