@@ -27,12 +27,12 @@ const suits: Record<string, string> = { s: "♠", h: "♥", c: "♣", d: "♦" }
 const suitNames: Record<string, string> = { s: "黑桃", h: "红桃", c: "梅花", d: "方块" };
 export function PlayingCard({ card, index = 0 }: { card: BlackjackCard; index?: number }) {
   const symbol = suits[card.suit];
-  return <div className={`bj-card${card.hidden ? " is-hidden" : ""}${card.suit === "h" || card.suit === "d" ? " is-red" : ""}`} style={{ "--deal-order": index, "--card-position": index } as React.CSSProperties} aria-label={card.hidden ? "暗牌" : `${suitNames[card.suit]} ${card.rank}`}>
-    {card.hidden ? <div className="bj-card-back"><SandsMark compact /></div> : <>
+  return <div data-card-id={card.id} className={`bj-card${card.hidden ? " is-hidden" : ""}${card.suit === "h" || card.suit === "d" ? " is-red" : ""}`} style={{ "--card-position": index } as React.CSSProperties} aria-label={card.hidden ? "暗牌" : `${suitNames[card.suit]} ${card.rank}`}>
+    <div className="bj-card-turn"><div className="bj-card-face">{!card.hidden && <>
       <span className="bj-card-corner"><b>{card.rank}</b><span>{symbol}</span></span>
       <span className="bj-card-pip" aria-hidden="true">{symbol}</span>
       <span className="bj-card-corner bottom" aria-hidden="true"><b>{card.rank}</b><span>{symbol}</span></span>
-    </>}
+    </>}</div><div className="bj-card-reverse"><div className="bj-card-back"><SandsMark compact /></div></div></div>
   </div>;
 }
 

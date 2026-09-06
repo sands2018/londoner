@@ -37,7 +37,7 @@ describe("Sands2018 double-deck blackjack", () => {
     expect(t.view().pendingBet).toBe(20);
     t.addChip(10); expect(t.deal()).toBe(true);
     expect(t.addChip(100)).toBe(false);
-    finish(t); t.clearBet(); t.repeatBet(); expect(t.view().pendingBet).toBe(30);
+    finish(t); t.nextRound(); t.repeatBet(); expect(t.view().pendingBet).toBe(30);
     t.clearBet(); for (let i = 0; i < 10; i++) t.addChip(1000);
     expect(t.addChip(1000)).toBe(false);
   });
@@ -122,6 +122,7 @@ describe("Sands2018 double-deck blackjack", () => {
     for (let i = 0; i < 1200; i++) {
       const before = t.view();
       if (before.balance < 100) t.addPracticeCredits();
+      if (t.phase === "settled") t.nextRound();
       t.repeatBet(); expect(t.deal()).toBe(true);
       if (before.shuffleNext) expect(t.view().shoeNumber).toBe(before.shoeNumber + 1);
       finish(t);
@@ -131,6 +132,55 @@ describe("Sands2018 double-deck blackjack", () => {
       expect(isSavedBlackjack(t.save())).toBe(true);
     }
     expect(t.view().shoeNumber).toBeGreaterThan(40);
+  });
+  it("starts the next round with no wager or cards and waits for an explicit deal", () => {
+    const t = rig("8 7 9 T");
+    expect(t.nextRound()).toBe(false);
+    t.deal(); expect(t.nextRound()).toBe(false); finish(t);
+    const before = t.view();
+    expect(before.pendingBet).toBe(0);
+    expect(t.deal()).toBe(false);
+    expect(t.addChip(50)).toBe(false);
+    expect(t.nextRound()).toBe(true);
+    const cleared = t.view();
+    expect(cleared.phase).toBe("betting");
+    expect(cleared.hands).toEqual([]);
+    expect(cleared.dealer.cards).toEqual([]);
+    expect(cleared.pendingBet).toBe(0);
+    expect(cleared.pendingChips).toEqual([]);
+    expect(cleared.balance).toBe(before.balance);
+    expect(cleared.cardsLeft).toBe(before.cardsLeft);
+    expect(cleared.stats).toEqual(before.stats);
+    expect(cleared.history).toEqual(before.history);
+    expect(t.nextRound()).toBe(false);
+    expect(t.deal()).toBe(false);
+    t.addChip(20); expect(t.deal()).toBe(false);
+    t.addChip(10); expect(t.deal()).toBe(true);
+    finish(t); expect(t.view().stats.rounds).toBe(2);
+  });
+  it("persists an empty next round, retains repeat amount, and clears old insurance", () => {
+    const t = rig("8 A 8 T");
+    t.clearBet(); t.addChip(100); t.deal(); t.act("insurance");
+    expect(t.phase).toBe("settled");
+    t.nextRound();
+    const saved = t.save(); expect(isSavedBlackjack(saved)).toBe(true);
+    const restored = new BlackjackTable(saved);
+    expect(restored.view()).toMatchObject({ phase: "betting", pendingBet: 0, insurance: 0, hands: [], lastBet: 100 });
+    expect(restored.deal()).toBe(false);
+    restored.repeatBet(); expect(restored.view().pendingBet).toBe(100);
+    expect(restored.view().balance).toBe(t.view().balance);
+    expect(restored.view().stats.rounds).toBe(1);
+  });
+  it("allows clearing the finished round even when there are no chips left", () => {
+    const t = rig("9 T K A");
+    t.engine.player.balance = 30;
+    t.deal(); expect(t.view().balance).toBe(0);
+    expect(t.nextRound()).toBe(true);
+    expect(t.view().pendingBet).toBe(0);
+    expect(t.deal()).toBe(false);
+    expect(t.addPracticeCredits()).toBe(true);
+    expect(t.view().stats.rounds).toBe(1);
+    expect(t.view().stats.profit).toBe(-30);
   });
   it("rejects malformed stored decks and aliased card locations", () => {
     const t = rig("8 7 9 T"); t.deal(); const saved = t.save();

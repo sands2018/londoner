@@ -19,11 +19,12 @@ export type BlackjackHand = {
 export type BlackjackRound = { id: number; wagered: number; returned: number; profit: number; voided?: boolean };
 export type BlackjackStats = { rounds: number; wagered: number; returned: number; profit: number; wins: number; losses: number; pushes: number };
 export type BlackjackView = {
-  phase: BlackjackPhase; balance: number; pendingBet: number; lastBet: number; selectedChip: number;
+  phase: BlackjackPhase; balance: number; pendingBet: number; pendingChips: number[]; lastBet: number; selectedChip: number;
   shoeNumber: number; cardsLeft: number; shuffleNext: boolean; dealer: BlackjackHand;
   hands: BlackjackHand[]; activeHand: number; insurance: number; actions: BlackjackAction[];
   stats: BlackjackStats; history: BlackjackRound[]; lastRound: BlackjackRound | null;
 };
+export type BlackjackPlayback = { before: BlackjackView; snapshots: BlackjackView[]; after: BlackjackView };
 type SavedHand = { cards: number[]; bet: number; splits: number; winner: HandWinner | null };
 export type SavedBlackjack = {
   version: 1; shoe: { rank: number; suit: number; face: boolean }[]; cardIndex: number;
@@ -91,7 +92,8 @@ export class BlackjackTable {
     }
   }
 
-  private get canBet() { return this.phase === "betting" || this.phase === "settled"; }
+  private get canBet() { return this.phase === "betting"; }
+  private get canManage() { return this.canBet || this.phase === "settled"; }
   private get pendingBet() { return this.pending.reduce((sum, chip) => sum + chip, 0); }
 
   selectChip(chip: number) {
@@ -111,9 +113,16 @@ export class BlackjackTable {
     if (this.canBet && this.lastBet <= this.engine.player.balance) this.pending = [this.lastBet];
   }
 
+  nextRound(): boolean {
+    if (this.phase !== "settled") return false;
+    this.engine.step(Move.Stand);
+    this.pending = [];
+    this.insurance = 0;
+    return true;
+  }
+
   deal(): boolean {
     if (!this.canBet || this.pendingBet < blackjackMinimum || this.pendingBet > 100000 || this.pendingBet > this.engine.player.balance) return false;
-    if (this.phase === "settled") this.engine.step(Move.Stand);
     this.lastBet = this.pendingBet;
     this.engine.betAmount = this.lastBet;
     this.insurance = 0;
@@ -151,6 +160,21 @@ export class BlackjackTable {
     return true;
   }
 
+  // Capture the engine's actual deal/flip/split order, without delaying its
+  // accounting or persisting an incomplete transaction between visual frames.
+  perform(action: BlackjackAction | "deal" | "next"): BlackjackPlayback | null {
+    const before = this.view();
+    const snapshots: BlackjackView[] = [];
+    const capture = () => snapshots.push(this.view(false));
+    this.engine.on(Event.Change, capture);
+    try {
+      if (!(action === "deal" ? this.deal() : action === "next" ? this.nextRound() : this.act(action))) return null;
+      return { before, snapshots, after: this.view() };
+    } finally {
+      this.engine.removeListener(Event.Change, capture);
+    }
+  }
+
   private advance() {
     // Engine steps are synchronous; stop only at an actual player decision.
     for (let i = 0; i < 20; i += 1) {
@@ -172,19 +196,19 @@ export class BlackjackTable {
         wins: this.stats.wins + Number(profit > 0), losses: this.stats.losses + Number(profit < 0),
         pushes: this.stats.pushes + Number(profit === 0),
       };
-      this.pending = this.lastBet <= this.engine.player.balance ? [this.lastBet] : [];
+      this.pending = [];
     }
   }
 
   resetStats(): boolean {
-    if (!this.canBet) return false;
+    if (!this.canManage) return false;
     this.stats = emptyStats();
     this.history = [];
     return true;
   }
 
   addPracticeCredits(): boolean {
-    if (!this.canBet) return false;
+    if (!this.canManage) return false;
     this.engine.player.addChips(blackjackInitialBalance);
     return true;
   }
@@ -199,13 +223,13 @@ export class BlackjackTable {
     };
   }
 
-  view(): BlackjackView {
+  view(includeActions = true): BlackjackView {
     return {
-      phase: this.phase, balance: this.engine.player.balance, pendingBet: this.pendingBet,
+      phase: this.phase, balance: this.engine.player.balance, pendingBet: this.pendingBet, pendingChips: [...this.pending],
       lastBet: this.lastBet, selectedChip: this.selected, shoeNumber: this.shoeNumber,
       cardsLeft: this.engine.shoe.cardCount, shuffleNext: this.engine.shoe.needsReset,
       dealer: this.handView(this.engine.dealer.firstHand), hands: this.engine.player.hands.map((h) => this.handView(h)),
-      activeHand: this.engine.state.focusedHandIndex, insurance: this.insurance, actions: this.actions(),
+      activeHand: this.engine.state.focusedHandIndex, insurance: this.insurance, actions: includeActions ? this.actions() : [],
       stats: { ...this.stats }, history: [...this.history], lastRound: this.history[0] ?? null,
     };
   }

@@ -742,7 +742,28 @@
   </style>
   <main class="sands-prototype"><h1>Sands2018</h1><nav><button>轮盘<small>ROULETTE</small></button><button>二十一点<small>BLACKJACK</small></button></nav></main>
 </template>
+<template id="sands-table-motion-prototype">
+  <style>
+    body { margin:0; max-width:none; padding:0; background:#06251d; color:#ddc58c; }
+    .motion-preview { min-height:100dvh; display:grid; place-content:center; gap:40px; }
+    .bj-chip-stack { position:relative; width:48px; height:46px; flex-shrink:0; display:inline-block; border:1px solid #cbb57a55; border-radius:50%; }
+    .bj-chip-token { display:grid; place-items:center; width:36px; height:36px; border:3px solid var(--chip-color); border-radius:50%; color:#faf4df; background:repeating-conic-gradient(#efe5ceaa 0deg 12deg,transparent 12deg 45deg),var(--chip-color); box-shadow:inset 0 0 0 1px #ffffff44,0 3px 4px #0008; }
+    .bj-chip-token > b { display:grid; place-items:center; width:75%; height:75%; border:1px solid #dfd3b8aa; border-radius:50%; background:var(--chip-color); font:500 10px/1 sans-serif; }
+    .bj-chip-stack > .bj-chip-token { position:absolute; left:5px; top:calc(7px - var(--stack-index) * 2px); transform:rotate(calc(var(--stack-index) * 13deg)); }
+    .bj-felt-bet { display:flex; justify-content:center; align-items:center; gap:16px; min-width:184px; min-height:72px; margin:6px auto 0; padding:5px 18px; color:#dfca93; border:1px solid #bda26855; border-radius:40px; background:#0a2c2255; }
+    .bj-felt-bet small { display:block; font:11px sans-serif; color:#a2b9a8; }
+    .bj-felt-bet strong { display:block; font:500 22px sans-serif; }
+    .bj-result { --result-color:#efd295; --result-glow:#e5bb6266; color:var(--result-color); border:0; background:none; text-align:center; padding:12px 24px; }
+    .bj-result strong { display:block; font:500 38px/1.1 Georgia,serif; }
+    .bj-result.is-revealing strong { animation:bj-result-amount 1.3s .1s ease-out both; }
+    @keyframes bj-result-amount { 0% { opacity:0; transform:translateY(9px) scale(.94); filter:brightness(.9); text-shadow:0 2px 4px #00170f80; } 32% { opacity:1; transform:none; filter:brightness(1.22); text-shadow:0 0 14px var(--result-glow),0 2px 4px #00170f80; } 68%,100% { opacity:1; transform:none; filter:brightness(1); text-shadow:0 2px 4px #00170f80; } }
+  </style>
+  <div class="motion-preview"><div class="bj-result is-revealing">本轮获胜<strong>+100</strong><small>投注 100 · 赢回 200</small></div><button class="bj-felt-bet"><span class="bj-chip-stack"><span class="bj-chip-token" style="--chip-color:#47715b;--stack-index:0"><b>50</b></span><span class="bj-chip-token" style="--chip-color:#2e8193;--stack-index:1"><b>20</b></span></span><span><small>投注</small><strong>70</strong></span></button></div>
+</template>
 <script>
+  if (new URLSearchParams(location.search).get('design') === 'table-motion') {
+    document.body.replaceChildren(document.getElementById('sands-table-motion-prototype').content.cloneNode(true));
+  }
   if (new URLSearchParams(location.search).get('design') === 'sands') {
     const preview = document.getElementById('sands-lobby-prototype').content.cloneNode(true);
     document.body.replaceChildren(preview);
