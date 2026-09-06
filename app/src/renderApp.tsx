@@ -1,0 +1,16 @@
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "@fontsource/roboto/latin-400.css";
+import "@fontsource/roboto/latin-500.css";
+import "@fontsource/libre-baskerville/latin-700.css";
+import "@fontsource/noto-sans-sc/chinese-simplified-400.css";
+import "@fontsource/noto-sans-sc/chinese-simplified-500.css";
+import "@fontsource/noto-serif-sc/chinese-simplified-700.css";
+import { SandsApp } from "./ui/sands/SandsApp";
+import "./ui/styles.css";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <SandsApp />
+  </StrictMode>,
+);

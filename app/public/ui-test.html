@@ -730,5 +730,23 @@
 <p class="label-row">新124 超高频: label=#eee4e8 chase=#f2ecee / text=#4e4050</p>
 <p class="label-row">repeat-filter-panel: bg=#f7f3f8 / border=#e5dcec / text=#685a78</p>
 
+<template id="sands-lobby-prototype">
+  <style>
+    body { margin:0; max-width:none; padding:0; background:#06251d; color:#ddc58c; font-family:Georgia,serif; }
+    .sands-prototype { min-height:100dvh; display:grid; place-content:center; gap:48px; background:linear-gradient(#031b14a0,#031b14a0),url('./assets/sands/emerald-felt.webp') center/cover; }
+    .sands-prototype h1 { margin:0; text-align:center; font-size:64px; font-weight:400; }
+    .sands-prototype nav { display:grid; grid-template-columns:repeat(2,minmax(0,320px)); gap:24px; padding:24px; }
+    .sands-prototype button { min-height:200px; color:#e5cfa0; background:#102e25c9; border:1px solid #8b794950; border-radius:6px; font-size:27px; font-family:inherit; }
+    .sands-prototype small { display:block; margin-top:12px; font-size:12px; }
+    @media(max-width:600px) { .sands-prototype h1 {font-size:42px;} .sands-prototype nav {gap:12px;} .sands-prototype button {font-size:23px;} }
+  </style>
+  <main class="sands-prototype"><h1>Sands2018</h1><nav><button>轮盘<small>ROULETTE</small></button><button>二十一点<small>BLACKJACK</small></button></nav></main>
+</template>
+<script>
+  if (new URLSearchParams(location.search).get('design') === 'sands') {
+    const preview = document.getElementById('sands-lobby-prototype').content.cloneNode(true);
+    document.body.replaceChildren(preview);
+  }
+</script>
 </body>
 </html>

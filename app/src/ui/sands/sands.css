@@ -1,0 +1,269 @@
+.sands-surface {
+  --sands-gold: #dfc58a;
+  --sands-muted: #96aa9c;
+  --sands-line: #ac98644a;
+  color: #e9e8dc;
+  font-family: Roboto, "Noto Sans SC", sans-serif;
+  font-size: 15px;
+  font-weight: var(--weight-regular, 400);
+  line-height: 1.5;
+  letter-spacing: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.sands-surface *, .sands-surface *::before, .sands-surface *::after { box-sizing: border-box; letter-spacing: 0; }
+.sands-surface button { font: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sands-surface button:disabled { opacity: .32; cursor: default; }
+.sands-surface button:focus-visible, .sands-surface a:focus-visible { outline: 2px solid #efcf86; outline-offset: 4px; }
+.sands-surface strong, .sands-surface b { font-weight: var(--weight-strong, 500); }
+.sands-surface h1, .sands-surface h2, .sands-surface h3, .sands-surface p { margin: 0; }
+.sands-surface .sands-icon { width: 36px; height: 36px; min-width: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; color: #cbb889; border-radius: 5px; }
+.sands-surface .sands-icon:hover:not(:disabled) { background: #d7c58b12; border-color: var(--sands-line); color: #f3dda4; }
+html.sands-game-page, html.sands-game-page body { background: #05231b; }
+.sands-loading { min-height: 100dvh; display: grid; place-items: center; background: #05231b; color: #e1c587; font: 32px Georgia, serif; }
+.sands-blackjack-host { width: 100%; height: 100dvh; overflow: hidden; }
+.sands-lobby { height: 100dvh; min-height: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 26px 48px 22px; overflow: auto; background: #06251d url('/assets/sands/emerald-felt.webp') center/cover; isolation: isolate; position: relative; }
+.sands-lobby::before { content: ""; position: absolute; inset: 0; background: #021c15b8; z-index: -1; }
+.sands-lobby-nav { display: flex; align-items: center; justify-content: space-between; color: #c7b77f; font-size: 12px; border-bottom: 1px solid #bba87420; padding-bottom: 14px; }
+.sands-lobby-content { align-self: center; justify-self: center; width: min(100%, 756px); padding: 52px 0 64px; text-align: center; }
+.sands-lobby h1 { margin: 0; }
+.sands-wordmark { display: inline-flex; flex-direction: column; align-items: center; gap: 24px; color: #dac28c; }
+.sands-monogram { width: 88px; height: 88px; }
+.sands-brand-name { font: 64px/1.15 "Libre Baskerville", Georgia, serif; color: #e7d3a2; text-shadow: 0 2px 1px #0004; white-space: nowrap; }
+.sands-brand-name > span { color: #bea36e; }
+.sands-wordmark.compact { flex-direction: row; gap: 10px; }
+.compact .sands-monogram { width: 30px; height: 34px; }
+.compact .sands-brand-name { font-size: 19px; }
+.sands-brand-divider { display: flex; align-items: center; justify-content: center; gap: 13px; margin: 32px auto 48px; }
+.sands-brand-divider > span { width: 62px; height: 1px; background: #b29e5e66; }
+.sands-brand-divider i { width: 5px; height: 5px; background: #c1ac76; transform: rotate(45deg); }
+.sands-game-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.sands-surface .sands-game-choice { display: grid; grid-template-columns: 1fr auto; grid-template-rows: 138px auto; gap: 24px 12px; align-items: center; padding: 32px; border: 1px solid #b4a16a5c; border-radius: 6px; background: #0e2b23cb; box-shadow: inset 0 0 0 5px #09221d99, 0 12px 28px #00140d33; color: #d5bc81; text-align: left; transition: background .2s, border-color .2s, transform .2s; }
+.sands-surface .sands-game-choice:hover { background: #183d30e8; border-color: #d5ba73b0; transform: translateY(-3px); }
+.sands-game-choice > svg:first-child, .sands-card-emblem { grid-column: 1 / -1; justify-self: center; }
+.sands-roulette-emblem { width: 138px; height: 138px; filter: drop-shadow(0 6px 9px #0004); }
+.sands-choice-label { display: flex; flex-direction: column; gap: 6px; }
+.sands-choice-label strong { font: 26px/1.3 "Noto Serif SC", serif; color: #e5d3a9; }
+.sands-choice-label small { font-size: 10px; color: #9ca99a; }
+.sands-card-emblem { width: 148px; height: 138px; position: relative; --card-width: 77px; }
+.sands-card-emblem .bj-card { position: absolute; left: 10px; top: 10px; transform: rotate(-13deg); animation: none; }
+.sands-card-emblem .bj-card + .bj-card { left: 62px; top: 15px; transform: rotate(12deg); }
+.sands-lobby-footer { display: flex; justify-content: space-between; align-items: center; color: #90a295; font-size: 12px; border-top: 1px solid #bba87420; padding-top: 16px; }
+.sands-lobby.is-mobile { padding: max(14px, var(--app-safe-area-top, env(safe-area-inset-top))) 22px max(20px, var(--app-safe-area-bottom, env(safe-area-inset-bottom))); }
+.sands-lobby.is-mobile .sands-lobby-content { padding: 48px 0; }
+.sands-lobby.is-mobile .sands-monogram { width: 72px; height: 72px; }
+.sands-lobby.is-mobile .sands-brand-name { font-size: 40px; }
+.sands-lobby.is-mobile .sands-game-choices { gap: 12px; }
+.sands-lobby.is-mobile .sands-game-choice { padding: 20px 16px; grid-template-rows: 105px auto; gap: 22px 6px; }
+.sands-lobby.is-mobile .sands-roulette-emblem { width: 100px; height: 100px; }
+.sands-lobby.is-mobile .sands-card-emblem { transform: scale(.78); transform-origin: center; width: 120px; height: 115px; }
+.sands-lobby.is-mobile .sands-card-emblem .bj-card { left: 0; }
+.sands-lobby.is-mobile .sands-card-emblem .bj-card + .bj-card { left: 50px; }
+.sands-lobby.is-mobile .sands-choice-label strong { font-size: 22px; }
+.sands-lobby.is-mobile .sands-choice-label small { font-size: 9px; }
+.sands-lobby.is-mobile .sands-game-choice > svg:last-child { width: 17px; }
+.sands-lobby.is-mobile .sands-lobby-footer { font-size: 11px; }
+
+.bj-game { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: auto; background: linear-gradient(#0322199c, #0322199c), url('/assets/sands/emerald-felt.webp') center/cover; }
+.bj-header { height: 72px; flex: 0 0 72px; padding: 0 32px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: #071f18bb; border-bottom: 1px solid var(--sands-line); }
+.bj-header h1 { color: #d3bc84; font: 22px "Noto Serif SC", serif; }
+.bj-header-left, .bj-header-actions { display: flex; align-items: center; gap: 12px; }
+.bj-header-actions { justify-content: end; gap: 6px; }
+.bj-meta { display: flex; justify-content: space-between; gap: 16px; padding: 12px 40px; color: #9bb2a0; font-size: 11px; }
+.bj-meta > span { display: flex; gap: 10px; align-items: center; }
+.bj-meta i, .bj-round-status i { display: inline-block; width: 3px; height: 3px; background: currentColor; border-radius: 50%; }
+.bj-meta b { min-width: 45px; font-variant-numeric: tabular-nums; }
+.bj-shoe-meter { width: 66px; height: 3px; background: #d3c39720; display: block; }
+.bj-shoe-meter > span { display: block; height: 100%; background: #b29f6a; transition: width .3s; }
+.bj-table { flex: 1 0 340px; min-height: 340px; position: relative; width: 100%; max-width: 1380px; margin: 0 auto; display: grid; grid-template-rows: auto minmax(58px, 1fr) auto; justify-items: center; padding: 12px 42px 20px; }
+.bj-table-print { position: absolute; inset: 32% 10% auto; border-top: 1px solid #ceb27233; border-radius: 50%; min-height: 48%; padding-top: 18px; color: #c8bb8336; text-align: center; pointer-events: none; }
+.bj-table-print span { font: 20px "Libre Baskerville", serif; }
+.bj-table-print small { display: block; margin-top: 9px; font-size: 10px; }
+.bj-dealer { --card-width: calc(var(--fitted-card-width, 100px) * .82); z-index: 1; width: min(100%, 560px); }
+.bj-hand-heading { display: flex; justify-content: center; gap: 12px; align-items: center; color: #b3c5b7; font-size: 12px; height: 26px; margin-bottom: 8px; white-space: nowrap; }
+.bj-hand-heading strong { min-width: 30px; padding: 1px 9px; background: #061c164d; border: 1px solid #d1bf802b; color: #e2d5ad; border-radius: 3px; font-size: 13px; }
+.bj-cards { display: flex; justify-content: center; align-items: center; min-height: calc(var(--card-width, 100px) * 1.4); padding-right: 0; margin-inline: auto; }
+.bj-cards:has(.bj-card) { position: relative; display: block; width: min(100%, calc(var(--card-width, 100px) * (1 + (var(--card-count, 2) - 1) * .65))); height: calc(var(--card-width, 100px) * 1.4); }
+.bj-cards > .bj-card { position: absolute; left: calc(var(--card-position) * (100% - var(--card-width, 100px)) / max(1, var(--card-count, 2) - 1)); top: 0; margin: 0; }
+.bj-card { width: var(--card-width, 100px); aspect-ratio: 5 / 7; flex-shrink: 0; position: relative; color: #1e2a27; background: #f4f1e8; border: 1px solid #f7f5ef; border-radius: 5px; box-shadow: 0 4px 9px #001b16a6, inset 0 0 0 3px #fefcf8; animation: bj-deal-in .3s both; animation-delay: calc(var(--deal-order, 0) * 80ms); }
+.bj-card + .bj-card { margin-left: calc(var(--card-width, 100px) * -.35); }
+.bj-cards > .bj-card + .bj-card { margin-left: 0; }
+.bj-card.is-red { color: #a73d44; }
+.bj-card-corner { position: absolute; left: 7%; top: 4%; display: flex; align-items: center; flex-direction: column; gap: 0; line-height: 1.02; font-family: "Noto Sans SC", sans-serif; }
+.bj-card-corner b { font-size: calc(var(--card-width, 100px) * .235); }
+.bj-card-corner > span { font-size: calc(var(--card-width, 100px) * .2); }
+.bj-card-corner.bottom { top: auto; left: auto; bottom: 4%; right: 7%; transform: rotate(180deg); }
+.bj-card-pip { position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--card-width, 100px) * .48); line-height: 1; }
+.bj-card-back { position: absolute; inset: 4px; border: 1px solid #c6ac745e; display: grid; place-items: center; background: repeating-linear-gradient(45deg, #a28f5c19 0 1px, transparent 1px 7px), repeating-linear-gradient(-45deg, #a28f5c19 0 1px, transparent 1px 7px), #123c33; border-radius: 2px; }
+.bj-card-back .compact .sands-brand-name { display: none; }
+.bj-card-back .compact .sands-monogram { width: calc(var(--card-width, 100px) * .48); height: calc(var(--card-width, 100px) * .6); }
+.bj-card-placeholder { width: var(--card-width, 100px); aspect-ratio: 5 / 7; border: 1px solid #b6bb9133; border-radius: 5px; background: #0b322c24; }
+.bj-card-placeholder + .bj-card-placeholder { margin-left: 8px; }
+.bj-round-status { align-self: center; z-index: 1; display: flex; min-height: 58px; flex-direction: column; align-items: center; justify-content: center; color: #d9c18b; text-align: center; padding: 8px; font-size: 14px; }
+.bj-round-status > strong { font: 28px/1.3 "Libre Baskerville", serif; }
+.bj-round-status > small { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #b5c3ac; }
+.is-desktop .bj-round-status { flex-direction: row; gap: 16px; min-height: 48px; padding: 4px; }
+.is-desktop .bj-table { padding-top: 8px; padding-bottom: 12px; }
+.bj-player-area { --card-width: var(--fitted-card-width, 100px); z-index: 1; display: grid; grid-template-columns: repeat(var(--hand-count, 1), minmax(0, 1fr)); gap: 34px; align-items: end; justify-content: center; width: min(100%, calc(var(--hand-count, 1) * 320px)); }
+.bj-player-hand { border-bottom: 2px solid transparent; padding: 0 10px 4px; max-width: 100%; min-width: 0; }
+.bj-player-hand.is-focused { border-bottom-color: #d8bd78; }
+.bj-player-hand.result-win { border-bottom-color: #bd9658; }
+.bj-player-hand.result-lose { opacity: .74; }
+.bj-hand-wager { min-height: 27px; padding-top: 7px; display: flex; justify-content: center; align-items: center; gap: 7px; color: #dbc794; font-size: 12px; }
+.bj-mini-chip { width: 15px; height: 15px; background: var(--chip-color); border: 2px dashed #e3d7bdb3; box-shadow: 0 0 0 1px #bcb19b80; border-radius: 50%; }
+.bj-hand-result { padding-left: 5px; }
+.sands-surface .win { color: #edc183; }
+.sands-surface .lose { color: #9fbeb0; }
+.bj-table-limit, .bj-cut-note { position: absolute; bottom: 20px; font-size: 10px; color: #a2b398; }
+.bj-table-limit { left: 40px; }
+.bj-cut-note { right: 40px; }
+.bj-controls { flex: 0 0 auto; padding: 17px max(32px, calc((100% - 1120px) / 2)) 14px; border-top: 1px solid #bca36938; background: #06271ea6; }
+.bj-action-line { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.sands-surface .sands-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 10px 20px; min-height: 44px; border: 1px solid #a9945e66; border-radius: 5px; color: #dccc9d; background: #264538; white-space: nowrap; }
+.sands-surface .sands-button:hover:not(:disabled) { background: #345641; border-color: #d3b979; }
+.sands-surface .sands-button.primary { color: #243326; border-color: #d9c08b; background: linear-gradient(160deg, #dfc690, #b69a5d); box-shadow: inset 0 1px #fae9b7; }
+.sands-surface .sands-button.primary:hover:not(:disabled) { background: #e4ce9c; }
+.sands-surface .bj-deal { min-width: 128px; font-weight: 500; }
+.bj-main-actions { display: flex; gap: 9px; flex: 1; justify-content: center; }
+.bj-main-actions .sands-button { flex: 1; max-width: 128px; }
+.bj-main-actions.insurance .sands-button { max-width: 210px; }
+.bj-double-icon { font-size: 17px; }
+.sands-surface .bj-wager-target { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 14px; text-align: left; min-width: 150px; border: 0; background: transparent; color: #e3ce98; padding: 0 12px 0 0; }
+.bj-wager-target > span { color: #aabca7; font-size: 11px; }
+.bj-wager-target strong { font-size: 23px; line-height: 1.3; grid-column: 1; }
+.bj-wager-target > svg { grid-column: 2; grid-row: 1 / 3; border: 1px solid #c5b47966; border-radius: 50%; width: 28px; height: 28px; padding: 4px; }
+.bj-chips-line { display: flex; align-items: center; justify-content: center; gap: 34px; padding-top: 20px; }
+.bj-chips { display: flex; gap: 15px; align-items: center; }
+.sands-surface .bj-chip { width: 51px; height: 51px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; padding: 0; background: repeating-conic-gradient(#efe5ceaa 0deg 12deg, transparent 12deg 45deg), var(--chip-color); border: 3px solid var(--chip-color); box-shadow: inset 0 0 0 1px #ffffff44, 0 3px 5px #0006; color: #faf4df; transition: transform .15s, box-shadow .15s; }
+.bj-chip span { background: var(--chip-color); border: 1px solid #dfd3b8aa; border-radius: 50%; width: 75%; height: 75%; display: grid; place-items: center; font-size: 13px; }
+.sands-surface .bj-chip.selected { transform: translateY(-4px); box-shadow: 0 0 0 2px #dfc686, 0 5px 9px #0005; }
+.bj-bet-tools { display: flex; gap: 4px; border-left: 1px solid #aaa47740; padding-left: 20px; }
+.bj-stats { flex: 0 0 auto; display: flex; gap: 48px; justify-content: center; align-items: center; padding: 13px 32px max(13px, var(--app-safe-area-bottom, env(safe-area-inset-bottom))); background: #061e18ed; border-top: 1px solid #ac986425; }
+.bj-stats > div:not(.bj-stats-tools) { display: flex; flex-direction: column; gap: 2px; min-width: 94px; }
+.bj-stats span { color: #8ca498; font-size: 11px; display: flex; align-items: center; }
+.bj-stats strong { font-size: 19px; line-height: 1.2; color: #e2d0a0; font-variant-numeric: tabular-nums; }
+.bj-stats .bj-balance { min-width: 130px; }
+.bj-balance .sands-icon { width: 22px; min-width: 22px; height: 18px; margin-left: 4px; }
+.bj-stats-tools { display: flex; gap: 5px; }
+
+.bj-game.is-mobile { min-height: 0; }
+.is-mobile .bj-header { height: 58px; flex-basis: 58px; padding: max(0px, var(--app-safe-area-top, env(safe-area-inset-top))) 12px 0; }
+.is-mobile .bj-header h1 { font-size: 17px; }
+.is-mobile .bj-header-left { gap: 4px; }
+.is-mobile .bj-header .sands-monogram { display: none; }
+.is-mobile .bj-header .sands-brand-name { font-size: 13px; }
+.is-mobile .bj-header-actions { gap: 0; }
+.is-mobile .bj-header .sands-icon { width: 31px; min-width: 31px; height: 32px; }
+.is-mobile .bj-meta { padding: 9px 17px; font-size: 9px; gap: 8px; }
+.is-mobile .bj-meta > span { gap: 6px; }
+.is-mobile .bj-shoe-meter { width: 30px; }
+.is-mobile .bj-meta b { min-width: 38px; }
+.is-mobile .bj-table { flex-basis: 308px; min-height: 308px; padding: 12px 18px 22px; }
+.is-mobile .bj-dealer { --card-width: calc(var(--fitted-card-width, 80px) * .82); }
+.is-mobile .bj-player-area { --card-width: var(--fitted-card-width, 80px); gap: 12px; }
+.is-mobile .bj-player-hand { padding: 0 5px 4px; }
+.is-mobile .bj-player-area.multi-splits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+.is-mobile .bj-player-area.multi-splits .bj-hand-heading { height: 18px; margin-bottom: 4px; }
+.is-mobile .bj-table:has(.multi-splits) { flex-basis: 445px; min-height: 445px; }
+.is-mobile .bj-hand-heading { font-size: 11px; gap: 7px; }
+.is-mobile .bj-hand-heading strong { font-size: 11px; padding: 1px 6px; }
+.is-mobile .bj-hand-wager { font-size: 11px; min-height: 22px; }
+.is-mobile .bj-table-print { inset: 34% 5% auto; }
+.is-mobile .bj-table-print > span { font-size: 13px; }
+.is-mobile .bj-table-print small { font-size: 8px; }
+.is-mobile .bj-table-limit { left: 18px; bottom: 10px; font-size: 8px; }
+.is-mobile .bj-cut-note { right: 18px; bottom: 10px; font-size: 8px; }
+.is-mobile .bj-round-status { font-size: 12px; }
+.is-mobile .bj-round-status > strong { font-size: 25px; }
+.is-mobile .bj-round-status > small { font-size: 10px; }
+.is-mobile .bj-controls { padding: 12px 15px 15px; }
+.is-mobile .bj-action-line { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 12px; }
+.is-mobile .bj-main-actions { grid-column: 1 / -1; grid-row: 2; gap: 7px; }
+.is-mobile .bj-main-actions .sands-button { min-width: 0; max-width: none; padding: 9px 6px; gap: 5px; font-size: 14px; }
+.is-mobile .bj-deal { grid-column: 2; grid-row: 1; min-width: 0; min-height: 41px; padding: 7px 14px; }
+.is-mobile .bj-wager-target { min-width: 0; max-width: 210px; }
+.is-mobile .bj-wager-target strong { font-size: 22px; }
+.is-mobile .bj-chips-line { display: grid; grid-template-columns: 1fr; gap: 10px; padding-top: 17px; }
+.is-mobile .bj-chips { justify-content: space-between; gap: 5px; }
+.is-mobile .bj-chip { width: 43px; height: 43px; }
+.is-mobile .bj-chip span { font-size: 11px; }
+.is-mobile .bj-bet-tools { border: 0; padding: 0; justify-content: center; gap: 28px; }
+.is-mobile .bj-bet-tools .sands-icon { height: 28px; }
+.is-mobile .bj-stats { padding: 12px 15px max(12px, var(--app-safe-area-bottom, env(safe-area-inset-bottom))); justify-content: space-between; gap: 9px; }
+.is-mobile .bj-stats > div:not(.bj-stats-tools) { min-width: 0; }
+.is-mobile .bj-stats .bj-round-count { display: none; }
+.is-mobile .bj-stats strong { font-size: 16px; }
+.is-mobile .bj-stats span { font-size: 10px; }
+.is-mobile .bj-stats-tools { flex-direction: column; gap: 0; }
+.is-mobile .bj-stats-tools .sands-icon { width: 27px; min-width: 27px; height: 25px; }
+
+.sands-modal { width: min(540px, calc(100% - 28px)); max-height: calc(100dvh - 32px); padding: 0; background: #102c23; color: #dcd6bf; border: 1px solid #a88f5766; border-radius: 7px; box-shadow: 0 20px 70px #0007; }
+.sands-modal::backdrop { background: #00140fba; backdrop-filter: blur(4px); }
+.sands-modal-inner { padding: 22px; }
+.sands-modal header { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--sands-line); padding-bottom: 13px; margin-bottom: 20px; }
+.sands-modal h2 { color: #dfc48b; font: 20px "Noto Serif SC", serif; }
+.sands-modal h3 { font-size: 15px; font-weight: 500; color: #d3bb84; margin-bottom: 14px; }
+.sands-settings-section { margin-bottom: 24px; }
+.sands-radio-options { display: flex; flex-wrap: wrap; gap: 16px 20px; }
+.sands-radio-options .config-option-row { min-height: 28px; font-size: 14px; padding: 0; color: #d3d8c7; }
+.sands-radio-options .config-option-row::before { border-color: #a18f68; }
+.sands-radio-options .config-option-row:has(input:checked)::before { border-color: #dbc38b; background-color: #d6b875; }
+.sands-radio-options .config-option-row:focus-within { outline: 1px solid #dbc38b; outline-offset: 4px; }
+.sands-speed-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+.sands-modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.sands-confirm-copy { font-size: 14px; line-height: 1.85; }
+.bj-rules dl { margin: 0; }
+.bj-rules dl > div { padding: 10px 0; border-bottom: 1px solid #bba16e22; }
+.bj-rules dt { font-size: 13px; color: #d4bd89; margin-bottom: 4px; }
+.bj-rules dd { margin: 0; font-size: 12px; line-height: 1.85; color: #acbcb0; }
+.bj-rules a { display: inline-block; margin-top: 20px; font-size: 11px; color: #c7b178; }
+.bj-history-summary { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; margin-bottom: 18px; }
+.bj-history-scroll { max-height: 50dvh; overflow: auto; }
+.bj-history-scroll table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.bj-history-scroll th { color: #bca777; font-weight: 500; }
+.bj-history-scroll td, .bj-history-scroll th { padding: 10px 7px; text-align: right; border-bottom: 1px solid #ac986425; }
+.bj-history-scroll td:first-child, .bj-history-scroll th:first-child { text-align: left; }
+.roulette-lobby-return { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 0; color: #bca575; background: transparent; padding: 0; cursor: pointer; flex-shrink: 0; }
+.top-stats-count:has(.roulette-lobby-return) { display: flex; align-items: center; gap: 6px; }
+.desktop-game-brand button.roulette-brand-return { color: inherit; background: transparent; border: 0; padding: 0; text-align: inherit; cursor: pointer; }
+@keyframes bj-deal-in { from { opacity: 0; translate: 20px -24px; } to { opacity: 1; translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .bj-card { animation: none; } .sands-surface * { transition: none !important; } }
+@media (max-width: 360px) {
+  .sands-lobby.is-mobile { padding-left: 16px; padding-right: 16px; }
+  .sands-lobby.is-mobile .sands-brand-name { font-size: 34px; }
+  .sands-lobby.is-mobile .sands-game-choice { padding: 18px 12px; }
+  .is-mobile .bj-chip { width: 37px; height: 37px; }
+  .is-mobile .bj-chip span { font-size: 10px; }
+}
+@media (min-width: 650px) and (max-height: 600px) {
+  .bj-game.is-mobile { min-height: 0; }
+  .is-mobile .bj-header { height: 42px; flex-basis: 42px; }
+  .is-mobile .bj-meta { padding: 5px 22px; }
+  .is-mobile .bj-table { display: grid; grid-template-columns: 1fr 120px 1.4fr; grid-template-rows: 1fr; min-height: 130px; flex-basis: 130px; padding: 0 30px 8px; align-items: center; }
+  .is-mobile .bj-table:has(.multi-splits) { min-height: 174px; flex-basis: 174px; }
+  .is-mobile .bj-dealer, .is-mobile .bj-player-area { --card-width: 58px; }
+  .is-mobile .bj-player-area.multi-splits { display: flex; --card-width: 44px; gap: 7px; }
+  .is-mobile .bj-player-hand { padding: 0 3px 2px; }
+  .is-mobile .bj-player-area.has-splits { --card-width: 49px; }
+  .is-mobile .bj-table-print, .is-mobile .bj-table-limit, .is-mobile .bj-cut-note { display: none; }
+  .is-mobile .bj-controls { padding: 8px 22px; }
+  .is-mobile .bj-action-line { display: flex; gap: 18px; }
+  .is-mobile .bj-wager-target { min-width: 115px; }
+  .is-mobile .bj-main-actions .sands-button { min-height: 34px; padding: 4px 10px; }
+  .is-mobile .bj-deal { min-height: 35px; }
+  .is-mobile .bj-chips-line { display: flex; padding-top: 10px; gap: 22px; }
+  .is-mobile .bj-chips { gap: 12px; }
+  .is-mobile .bj-chip { width: 34px; height: 34px; }
+  .is-mobile .bj-chip span { font-size: 10px; }
+  .is-mobile .bj-bet-tools { gap: 12px; }
+  .is-mobile .bj-stats { padding: 7px 30px; justify-content: center; gap: 44px; }
+  .is-mobile .bj-stats-tools { flex-direction: row; gap: 6px; }
+  .is-mobile .bj-stats .bj-round-count { display: flex; }
+  .sands-lobby.is-mobile .sands-lobby-content { padding: 20px 0; width: min(100%, 600px); }
+  .sands-lobby.is-mobile .sands-wordmark { flex-direction: row; gap: 14px; }
+  .sands-lobby.is-mobile .sands-monogram { width: 45px; height: 45px; }
+  .sands-lobby.is-mobile .sands-brand-divider { margin: 14px 0 20px; }
+  .sands-lobby.is-mobile .sands-game-choice { grid-template-columns: 62px 1fr auto; grid-template-rows: 1fr; gap: 16px; padding: 12px 18px; }
+  .sands-lobby.is-mobile .sands-roulette-emblem { width: 62px; height: 62px; grid-column: 1; }
+  .sands-lobby.is-mobile .sands-card-emblem { width: 62px; height: 62px; transform: scale(.47); grid-column: 1; }
+}

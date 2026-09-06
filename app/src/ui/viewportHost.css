@@ -1,0 +1,28 @@
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #121212;
+}
+
+.viewport-host {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.viewport-host iframe {
+  position: absolute;
+  display: block;
+  border: 0;
+  transform-origin: top left;
+}
+
+/* Composite the viewport before fractional scaling to avoid a light edge seam. */
+.viewport-host.simulating-iphone iframe {
+  will-change: transform;
+}

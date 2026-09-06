@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
+import { iphoneViewportKey, loadSimulateIPhone, saveSimulateIPhone } from "./iphoneViewport";
+import { displaySettingsEvent, readDisplaySettings } from "./sands/displaySettings";
 import { useLayoutEffect } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import {
@@ -9,7 +11,7 @@ import {
   isRouletteNumber,
   type RouletteNumber,
 } from "../core/roulette";
-import { CircleUser, Keyboard, List, Play, SkipBack, SkipForward, Square, Undo2 } from "lucide-react";
+import { CircleUser, Home, Keyboard, List, Play, SkipBack, SkipForward, Square, Undo2 } from "lucide-react";
 import {
   calculateColRowCompare,
   calculateColRowExplore,
@@ -1694,7 +1696,7 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 const savedLoginKey = "londoner.sharedLogin";
 const onlySupportedKeyboardMode: KeyboardMode = "digits";
 
-export function App() {
+export function App({ active = true, onReturnToLobby }: { active?: boolean; onReturnToLobby?: () => void } = {}) {
   const [numbers, setNumbers] = useState<RouletteNumber[]>([]);
   const [redoNumbers, setRedoNumbers] = useState<RouletteNumber[]>([]);
   const [lastSavedNumbers, setLastSavedNumbers] = useState<RouletteNumber[]>([]);
@@ -1868,6 +1870,8 @@ export function App() {
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [simulatorDeviceMode, setSimulatorDeviceMode] = useState<SimulatorDeviceMode>(loadSimulatorDeviceMode);
   const [draftSimulatorDeviceMode, setDraftSimulatorDeviceMode] = useState<SimulatorDeviceMode>(simulatorDeviceMode);
+  const [simulateIPhone, setSimulateIPhone] = useState(loadSimulateIPhone);
+  const [draftSimulateIPhone, setDraftSimulateIPhone] = useState(simulateIPhone);
   const [simulatorDesktopAnalysisZoom, setSimulatorDesktopAnalysisZoom] = useState(loadSimulatorDesktopAnalysisZoom);
   const [draftSimulatorDesktopAnalysisZoom, setDraftSimulatorDesktopAnalysisZoom] = useState(simulatorDesktopAnalysisZoom);
   const [simulatorAnimationSpeed, setSimulatorAnimationSpeed] = useState<SimulatorAnimationSpeed>(loadSimulatorAnimationSpeed);
@@ -1967,7 +1971,7 @@ export function App() {
   const canUseSmartSignals = sharedConnected;
   const canUseQuality124 = canUseSmartSignals && ["ww", "wzs"].includes(sharedUsernameNormalized);
   const canUseSimulator = sharedConnected && ["ww", "wzs", "srx", "sxr", "ybh"].includes(sharedUsernameNormalized);
-  const simulatorDesktopMode = simulatorDeviceMode === "desktop" || (simulatorDeviceMode === "auto" && detectDesktopDevice());
+  const simulatorDesktopMode = !simulateIPhone && (simulatorDeviceMode === "desktop" || (simulatorDeviceMode === "auto" && detectDesktopDevice()));
   const simulatorUsesDesktopLayout = simulatorDesktopMode;
   const simulatorDesktopWorkspaceActive = canUseSimulator && simulatorOpen && simulatorUsesDesktopLayout;
   const simulatorDesktopAnalysisZoomMultiplier = simulatorDeviceMode === "desktop" ? simulatorDesktopAnalysisZoom : 1;
@@ -3015,22 +3019,41 @@ export function App() {
 
   useEffect(() => {
     const updateDesktopViewport = () => setSimulatorDesktopViewportSize(getSimulatorViewportSize());
+    const readSharedDisplay = () => {
+      const shared = readDisplaySettings();
+      setSimulateIPhone(shared.iphone);
+      setSimulatorDeviceMode(shared.mode);
+      setSimulatorAnimationSpeed(shared.speed);
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === iphoneViewportKey || event.key === null) setSimulateIPhone(loadSimulateIPhone());
+    };
 
     updateDesktopViewport();
     window.addEventListener("resize", updateDesktopViewport);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(displaySettingsEvent, readSharedDisplay);
     window.visualViewport?.addEventListener("resize", updateDesktopViewport);
     return () => {
       window.removeEventListener("resize", updateDesktopViewport);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(displaySettingsEvent, readSharedDisplay);
       window.visualViewport?.removeEventListener("resize", updateDesktopViewport);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("android", !simulateIPhone && /android/i.test(navigator.userAgent));
+    root.classList.toggle("iphone", simulateIPhone || /iphone/i.test(navigator.userAgent));
+  }, [simulateIPhone]);
 
   useEffect(() => {
     const orientation = screen.orientation as (ScreenOrientation & {
       lock?: (mode: "portrait-primary") => Promise<void>;
     }) | undefined;
 
-    if (simulatorUsesDesktopLayout || typeof orientation?.lock !== "function") return;
+    if (!active || simulateIPhone || simulatorUsesDesktopLayout || typeof orientation?.lock !== "function") return;
 
     const lockPortrait = () => {
       void orientation.lock?.("portrait-primary").catch(() => undefined);
@@ -3046,10 +3069,10 @@ export function App() {
       window.removeEventListener("pointerdown", lockPortrait, { capture: true });
       document.removeEventListener("visibilitychange", lockWhenVisible);
     };
-  }, [simulatorUsesDesktopLayout]);
+  }, [active, simulateIPhone, simulatorUsesDesktopLayout]);
 
   useEffect(() => {
-    if (simulatorUsesDesktopLayout) {
+    if (!active || simulateIPhone || simulatorUsesDesktopLayout) {
       setMobilePortraitFallbackRotation(null);
       return undefined;
     }
@@ -3070,7 +3093,7 @@ export function App() {
       window.visualViewport?.removeEventListener("resize", updateFallbackRotation);
       orientation?.removeEventListener("change", updateFallbackRotation);
     };
-  }, [simulatorUsesDesktopLayout]);
+  }, [active, simulateIPhone, simulatorUsesDesktopLayout]);
 
   useEffect(() => {
     const className = "mobile-portrait-fallback-active";
@@ -3344,7 +3367,7 @@ export function App() {
 
   useEffect(() => {
     const handleSimulatorShortcut = (event: KeyboardEvent) => {
-      if (!canUseSimulator || event.key !== "F12") return;
+      if (!active || !canUseSimulator || event.key !== "F12") return;
       const target = event.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
         return;
@@ -3363,7 +3386,11 @@ export function App() {
 
     window.addEventListener("keydown", handleSimulatorShortcut);
     return () => window.removeEventListener("keydown", handleSimulatorShortcut);
-  }, [canUseSimulator, simulatorDesktopAnalysisOpen, simulatorOpen, simulatorUsesDesktopLayout]);
+  }, [active, canUseSimulator, simulatorDesktopAnalysisOpen, simulatorOpen, simulatorUsesDesktopLayout]);
+
+  useEffect(() => {
+    if (!active) stopSimulatorAutoPlay();
+  }, [active]);
 
   useEffect(() => () => {
     if (simulatorRoundPopTimerRef.current) {
@@ -5760,6 +5787,7 @@ export function App() {
     setDraftWindowMode(windowMode);
     setDraftThreeNumberHighlightMode(threeNumberHighlightMode);
     setDraftSimulatorDeviceMode(simulatorDeviceMode);
+    setDraftSimulateIPhone(simulateIPhone);
     setDraftSimulatorDesktopAnalysisZoom(simulatorDesktopAnalysisZoom);
     setDraftSimulatorAnimationSpeed(simulatorAnimationSpeed);
     void refreshCasinoTables().then((items) => {
@@ -6023,6 +6051,8 @@ export function App() {
     if (configTab === "other") {
       setWindowMode(draftWindowMode);
       setSimulatorDeviceMode(draftSimulatorDeviceMode);
+      setSimulateIPhone(draftSimulateIPhone);
+      saveSimulateIPhone(draftSimulateIPhone);
       setSimulatorDesktopAnalysisZoom(draftSimulatorDesktopAnalysisZoom);
       setSimulatorAnimationSpeed(draftSimulatorAnimationSpeed);
       setThreeNumberHighlightMode(draftThreeNumberHighlightMode);
@@ -6033,6 +6063,7 @@ export function App() {
       );
       localStorage.setItem(simulatorDesktopAnalysisZoomKey, draftSimulatorDesktopAnalysisZoom.toFixed(2));
       localStorage.setItem(simulatorAnimationSpeedKey, draftSimulatorAnimationSpeed);
+      window.dispatchEvent(new Event(displaySettingsEvent));
       localStorage.setItem("londoner.threeNumberHighlightMode", draftThreeNumberHighlightMode);
       setConfigViewOpen(false);
       return;
@@ -7260,7 +7291,7 @@ export function App() {
       ) : null}
       <div className="analysis-home">
       <section className="top-stats-strip" aria-label="统计数据">
-        <strong className="top-stats-count">{simulatorProgressCurrent} / {simulatorNumbers.length}</strong>
+        <strong className="top-stats-count">{onReturnToLobby && <button type="button" className="roulette-lobby-return" title="返回大厅" aria-label="返回大厅" onClick={onReturnToLobby}><Home size={18} /></button>}{simulatorProgressCurrent} / {simulatorNumbers.length}</strong>
         <span className="top-stats-roi">
           {canUseSmartSignals ? (
             <i className={`top-stats-hot-dot ${hotSignalStatusClass}`} aria-label={hotSignalStatusLabel} title={hotSignalStatusLabel} />
@@ -9472,10 +9503,10 @@ export function App() {
         >
           {simulatorUsesDesktopLayout && simulatorDesktopGameBrandVisible ? (
             <div className="desktop-game-brand" aria-label="Roulette Game, Designed by Sands2018">
-              <div className="desktop-game-brand-copy">
+              <button type="button" className="desktop-game-brand-copy roulette-brand-return" title="返回大厅" onClick={onReturnToLobby}>
                 <strong><span className="desktop-game-brand-title">Roulette Game</span></strong>
                 <span className="desktop-game-brand-subtitle">Designed by Sands2018</span>
-              </div>
+              </button>
             </div>
           ) : null}
           <div
@@ -10233,42 +10264,60 @@ export function App() {
                     </label>
                   </div>
                 </section>
-                {sharedConnected ? (
-                  <section className="config-card config-bets">
-                    <h2><span>显示</span></h2>
-                    <div className="config-device-mode-options" role="radiogroup" aria-label="设备模式">
-                      {([
-                        ["auto", "自动"],
-                        ["desktop", "电脑"],
-                        ["mobile", "手机"],
-                      ] as const).map(([value, label]) => (
-                        <label className="config-option-row config-tool-toggle" key={value}>
-                          <input
-                            checked={draftSimulatorDeviceMode === value}
-                            name="simulator-device-mode"
-                            onChange={() => setDraftSimulatorDeviceMode(value)}
-                            type="radio"
-                          />
-                          <span>{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <label className={`config-analysis-scale${draftSimulatorDeviceMode === "desktop" ? "" : " disabled"}`}>
-                      <span>缩放</span>
+                <section className="config-card config-bets">
+                  <h2><span>显示</span></h2>
+                  {sharedConnected ? (
+                    <>
+                      <div className="config-device-mode-options" role="radiogroup" aria-label="设备模式">
+                        {([
+                          ["auto", "自动"],
+                          ["desktop", "电脑"],
+                          ["mobile", "手机"],
+                          ["iphone", "模拟iPhone"],
+                        ] as const).map(([value, label]) => (
+                          <label className="config-option-row config-tool-toggle" key={value}>
+                            <input
+                              aria-label={label}
+                              checked={value === "iphone" ? draftSimulateIPhone : !draftSimulateIPhone && draftSimulatorDeviceMode === value}
+                              name="simulator-device-mode"
+                              onChange={() => {
+                                setDraftSimulateIPhone(value === "iphone");
+                                if (value !== "iphone") setDraftSimulatorDeviceMode(value);
+                              }}
+                              type="radio"
+                              value={value}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <label className={`config-analysis-scale${draftSimulatorDeviceMode === "desktop" && !draftSimulateIPhone ? "" : " disabled"}`}>
+                        <span>缩放</span>
+                        <input
+                          aria-valuetext={`${Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%`}
+                          disabled={draftSimulatorDeviceMode !== "desktop" || draftSimulateIPhone}
+                          max={simulatorDesktopAnalysisZoomMaximum}
+                          min={simulatorDesktopAnalysisZoomMinimum}
+                          onChange={(event) => setDraftSimulatorDesktopAnalysisZoom(Number.parseFloat(event.target.value))}
+                          step={simulatorDesktopAnalysisZoomStep}
+                          type="range"
+                          value={draftSimulatorDesktopAnalysisZoom}
+                        />
+                        <strong>{Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%</strong>
+                      </label>
+                    </>
+                  ) : (
+                    <label className="config-option-row config-iphone-toggle">
                       <input
-                        aria-valuetext={`${Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%`}
-                        disabled={draftSimulatorDeviceMode !== "desktop"}
-                        max={simulatorDesktopAnalysisZoomMaximum}
-                        min={simulatorDesktopAnalysisZoomMinimum}
-                        onChange={(event) => setDraftSimulatorDesktopAnalysisZoom(Number.parseFloat(event.target.value))}
-                        step={simulatorDesktopAnalysisZoomStep}
-                        type="range"
-                        value={draftSimulatorDesktopAnalysisZoom}
+                        aria-label="模拟iPhone"
+                        checked={draftSimulateIPhone}
+                        onChange={(event) => setDraftSimulateIPhone(event.target.checked)}
+                        type="checkbox"
                       />
-                      <strong>{Math.round(draftSimulatorDesktopAnalysisZoom * 100)}%</strong>
+                      <span>模拟iPhone</span>
                     </label>
-                  </section>
-                ) : null}
+                  )}
+                </section>
                 {sharedConnected ? (
                   <section className="config-card config-bets">
                     <h2><span>游戏</span></h2>
