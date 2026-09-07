@@ -9,7 +9,7 @@ const layout = (v: BlackjackView) => v.hands.map((h) => h.cards.map((c) => c.id)
 
 export function fitBlackjackCards(height: number, reserved: number, desktop: boolean, handCount: number) {
   const rows = !desktop && handCount > 2 ? 2 : 1;
-  const minimum = desktop ? 80 : handCount > 2 ? 44 : handCount > 1 ? 56 : 64;
+  const minimum = desktop ? 60 : handCount > 2 ? 44 : handCount > 1 ? 56 : 64;
   const maximum = desktop ? 138 : handCount > 1 ? 72 : 90;
   const cardHeightRatio = 1.4 * (.82 + rows);
   const minHeight = Math.ceil(reserved + minimum * cardHeightRatio);

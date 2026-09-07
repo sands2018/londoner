@@ -25,12 +25,25 @@ describe("blackjack presentation playback", () => {
 
   it("fits larger desktop cards and two rows of mobile split hands independently", () => {
     expect(fitBlackjackCards(600, 240, true, 1).width).toBe(138);
-    expect(fitBlackjackCards(360, 260, true, 4).width).toBe(80);
+    expect(fitBlackjackCards(360, 260, true, 4).width).toBe(60);
     expect(fitBlackjackCards(360, 260, false, 2).width).toBe(56);
     const four = fitBlackjackCards(445, 300, false, 4);
     expect(four.width).toBe(44);
     expect(four.minHeight).toBe(Math.ceil(300 + 44 * 1.4 * 2.82));
     expect(fitBlackjackCards(650, 260, false, 4).width).toBe(72);
+  });
+
+  it("lets short desktop tables shrink further without changing larger layouts", () => {
+    const compact = fitBlackjackCards(400, 240, true, 1);
+    expect(compact.width).toBe(62.5);
+    expect(compact.minHeight).toBe(393);
+    for (const handCount of [1, 2, 4]) {
+      const minimum = fitBlackjackCards(360, 240, true, handCount);
+      expect(minimum.width).toBe(60);
+      expect(minimum.minHeight).toBe(393);
+    }
+    expect(fitBlackjackCards(582, 236, true, 1).width).toBe(135.5);
+    expect(fitBlackjackCards(450, 236, true, 1).width).toBe(83.5);
   });
 
   it("deals player/dealer/player/hole in order, with only visible point totals", () => {
