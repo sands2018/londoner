@@ -96,6 +96,32 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .sands-lobby.is-mobile .sands-game-choice > svg:last-child { width: 17px; }
 .sands-lobby.is-mobile .sands-lobby-footer { font-size: 11px; }
 
+.sands-lobby .sands-lobby-content { width:min(100%,860px); padding:24px 0; }
+.sands-lobby h1 .sands-wordmark { flex-direction:row; gap:18px; }
+.sands-lobby h1 .sands-monogram { width:60px; height:68px; }
+.sands-lobby h1 .sands-brand-name { font-size:44px; }
+.sands-lobby .sands-brand-divider { margin:18px auto 24px; }
+.sands-lobby .sands-game-choices { gap:16px; }
+.sands-lobby .sands-game-choice { grid-template-rows:88px auto; gap:16px 12px; padding:22px 26px; }
+.sands-lobby .sands-roulette-emblem { width:90px; height:90px; }
+.sands-lobby .sands-card-emblem { transform:scale(.64); transform-origin:center; width:148px; height:90px; }
+.sands-lobby .sands-card-emblem .bj-card { top:-17px; }
+.sands-lobby .sands-dice-emblem { grid-column:1/-1; justify-self:center; }
+.sands-lobby .sands-choice-label strong { font-size:23px; }
+.sands-lobby .is-upcoming:disabled { opacity:.65; cursor:default; }
+.sands-lobby.is-mobile .sands-lobby-content { padding:18px 0; }
+.sands-lobby.is-mobile h1 .sands-wordmark { gap:12px; }
+.sands-lobby.is-mobile h1 .sands-monogram { width:40px; height:48px; }
+.sands-lobby.is-mobile h1 .sands-brand-name { font-size:30px; }
+.sands-lobby.is-mobile .sands-brand-divider { margin:14px auto 20px; }
+.sands-lobby.is-mobile .sands-game-choices { gap:12px; }
+.sands-lobby.is-mobile .sands-game-choice { grid-template-rows:70px auto; gap:12px 4px; padding:14px 12px; }
+.sands-lobby.is-mobile .sands-roulette-emblem { width:72px; height:72px; }
+.sands-lobby.is-mobile .sands-card-emblem { transform:scale(.5); width:125px; height:70px; }
+.sands-lobby.is-mobile .sands-dice-emblem { transform:scale(.75); width:135px; height:70px; }
+.sands-lobby.is-mobile .sands-choice-label strong { font-size:20px; }
+.sands-lobby.is-mobile .sands-choice-label small { font-size:8px; }
+
 .bj-game { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: auto; background: linear-gradient(#0322199c, #0322199c), url('/assets/sands/emerald-felt.webp') center/cover; }
 .bj-header { height: 72px; flex: 0 0 72px; padding: 0 32px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: #071f18bb; border-bottom: 1px solid var(--sands-line); }
 .bj-header h1 { color: #d3bc84; font: 22px "Noto Serif SC", serif; }
@@ -446,4 +472,5 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
   .sands-lobby.is-mobile .sands-game-choice { grid-template-columns: 62px 1fr auto; grid-template-rows: 1fr; gap: 16px; padding: 12px 18px; }
   .sands-lobby.is-mobile .sands-roulette-emblem { width: 62px; height: 62px; grid-column: 1; }
   .sands-lobby.is-mobile .sands-card-emblem { width: 62px; height: 62px; transform: scale(.47); grid-column: 1; }
+  .sands-lobby.is-mobile .sands-dice-emblem { width: 62px; height: 62px; transform: scale(.47); grid-column: 1; }
 }

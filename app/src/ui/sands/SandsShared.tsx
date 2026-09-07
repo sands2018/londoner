@@ -12,12 +12,13 @@ export function SandsMark({ compact = false }: { compact?: boolean }) {
   </span>;
 }
 
-export function SandsDialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function SandsDialog({ title, onClose, children, showTitle = true, className = "" }: { title: string; onClose: () => void; children: ReactNode; showTitle?: boolean; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => { ref.current?.showModal(); }, []);
-  return <dialog ref={ref} className="sands-modal sands-surface" aria-label={title} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  return <dialog ref={ref} className={`sands-modal sands-surface ${className}`} aria-label={title} onCancel={onClose} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
     <div className="sands-modal-inner">
-      <header><h2>{title}</h2><button type="button" className="sands-icon" aria-label="关闭" title="关闭" onClick={onClose}><X size={20} /></button></header>
+      {showTitle ? <header><h2>{title}</h2><button type="button" className="sands-icon" aria-label="关闭" title="关闭" onClick={onClose}><X size={20} /></button></header>
+        : <div className="sands-modal-close-row"><button type="button" className="sands-icon" aria-label="关闭" title="关闭" onClick={onClose}><X size={20} /></button></div>}
       {children}
     </div>
   </dialog>;

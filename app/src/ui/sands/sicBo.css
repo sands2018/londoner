@@ -1,0 +1,210 @@
+.sic-host { width:100%; height:100dvh; overflow:hidden; position:relative; background:#05231b; }
+.sic-game { --sic-line:#ae985b88; --sic-die-size:22px; display:grid; grid-template-rows:94px minmax(0,1fr) 100px; position:absolute; inset:0 auto auto 0; transform-origin:top left; overflow:hidden; background:linear-gradient(#03221966,#03221966),url('/assets/sands/emerald-felt.webp') center/cover; }
+.sic-header { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:20px; padding:8px 24px; border-bottom:1px solid #ac98643d; background:#062219bb; }
+.sic-brand, .sic-header-actions, .sic-dice-tray, .sic-round-display { display:flex; align-items:center; }
+.sic-brand { gap:12px; }
+.sic-brand h1 { font:22px "Noto Serif SC",serif; color:#dfc58a; }
+.sic-brand .sands-monogram { width:25px; height:29px; }
+.sic-brand .sands-brand-name { font-size:16px; }
+.sic-header-actions { justify-content:flex-end; gap:6px; }
+.sic-header-actions > span { font-size:12px; color:#aeb99f; margin-right:12px; white-space:nowrap; }
+.sic-round-display { justify-content:center; gap:20px; min-width:300px; }
+.sic-dice-tray { --sic-die-size:44px; gap:9px; padding:8px 12px; border-bottom:1px solid #c1ac6744; }
+.sic-die { display:inline-grid; width:var(--sic-die-size); height:var(--sic-die-size); flex:0 0 var(--sic-die-size); grid-template:repeat(3,1fr)/repeat(3,1fr); gap:9%; padding:14%; border:1px solid #d9d2bd; border-radius:18%; color:#1d302a; background:linear-gradient(135deg,#fffdf3,#e0dac7); box-shadow:inset 1px 1px 1px #fff,0 2px 2px #00140c50; vertical-align:middle; }
+.sic-die { padding:calc(var(--sic-die-size) * .14); }
+.sic-die.is-red { color:#a93639; }
+.sic-die i { width:100%; height:100%; border-radius:50%; }
+.sic-die .pip { background:currentColor; box-shadow:inset 0 1px 1px #0003; }
+.sic-roll-caption { width:112px; display:flex; flex-direction:column; gap:2px; }
+.sic-roll-caption strong { font:24px/1.1 "Libre Baskerville",serif; color:#ecd28f; white-space:nowrap; }
+.sic-roll-caption span { font-size:12px; color:#b7bfa5; }
+.sic-game[data-phase="rolling"] .sic-dice-tray .sic-die { animation:sic-tumble .26s ease-in-out infinite alternate; }
+.sic-game[data-phase="rolling"] .sic-dice-tray .sic-die:nth-child(2) { animation-delay:-.1s; }
+.sic-game[data-phase="rolling"] .sic-dice-tray .sic-die:nth-child(3) { animation-delay:-.18s; }
+@keyframes sic-tumble { from { transform:translate(-3px,-3px) rotate(-18deg); } to { transform:translate(3px,2px) rotate(18deg); } }
+.sic-board { width:100%; max-width:1420px; margin:auto; height:100%; padding:12px 20px; display:grid; grid-template-rows:2fr repeat(4,1fr); gap:6px; min-height:0; }
+.sic-crown { display:grid; grid-template-columns:2fr repeat(3,1fr) 2fr repeat(3,1fr) 2fr; grid-template-rows:1fr 1fr; gap:4px; min-height:0; }
+.sic-bet[data-bet="small"] { grid-column:1; grid-row:1/3; }
+.sic-bet[data-bet="big"] { grid-column:9; grid-row:1/3; }
+.sic-bet[data-bet="any-triple"] { grid-column:5; grid-row:1/3; }
+.sic-bet[data-bet="odd"] { grid-column:2/5; grid-row:2; }
+.sic-bet[data-bet="even"] { grid-column:6/9; grid-row:2; }
+.sic-band { display:grid; gap:4px; min-height:0; }
+.sic-totals { grid-template-columns:repeat(14,minmax(0,1fr)); }
+.sic-doubles, .sic-singles { grid-template-columns:repeat(6,minmax(0,1fr)); }
+.sic-pairs { grid-template-columns:repeat(15,minmax(0,1fr)); }
+.sands-surface .sic-bet { position:relative; min-width:0; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 6px; color:#e2d5ae; border:1px solid var(--sic-line); border-radius:4px; background:#12523d73; touch-action:manipulation; transition:background .16s,box-shadow .16s; }
+.sic-bet > .sic-bet-face { display:flex; justify-content:center; align-items:center; gap:4px; min-height:24px; width:100%; }
+.sic-bet-face > strong { font:24px/1 "Libre Baskerville",serif; }
+.sic-bet[data-kind="small"], .sic-bet[data-kind="big"] { background:#1e55429c; }
+.sic-bet[data-kind="small"] .sic-bet-face > strong, .sic-bet[data-kind="big"] .sic-bet-face > strong { font:32px "Noto Serif SC",serif; }
+.sic-bet[data-kind="any-triple"] { background:#66563899; }
+.sic-bet[data-kind="any-triple"] .sic-bet-face { flex-direction:column; gap:5px; }
+.sic-bet[data-kind="any-triple"] .sic-bet-face > strong { font:21px "Noto Serif SC",serif; }
+.sic-bet-subtitle { font-size:11px; color:#bfbc94; }
+.sic-bet[data-kind="triple"] { --sic-die-size:17px; background:#51413677; }
+.sic-bet[data-kind="odd"], .sic-bet[data-kind="even"] { flex-direction:row; gap:14px; }
+.sic-bet[data-kind="odd"] .sic-bet-face, .sic-bet[data-kind="even"] .sic-bet-face { width:auto; }
+.sic-bet[data-kind="odd"] strong, .sic-bet[data-kind="even"] strong { font:19px "Noto Serif SC",serif; }
+.sic-bet[data-kind="double"] { --sic-die-size:20px; background:#153e377d; }
+.sic-bet[data-kind="pair"] { --sic-die-size:19px; background:#153e377d; }
+.sic-bet[data-kind="single"] { --sic-die-size:32px; background:#20574699; }
+.sic-bet-footer { height:21px; width:100%; display:flex; justify-content:center; align-items:center; min-width:0; }
+.sic-bet-footer > small { color:#b7b99a; font:11px/1.1 Roboto,sans-serif; white-space:nowrap; }
+.sic-bet.has-bet .sic-bet-footer { justify-content:space-between; gap:2px; }
+.sic-bet[data-kind="odd"] .sic-bet-footer, .sic-bet[data-kind="even"] .sic-bet-footer { width:auto; }
+.sic-stake { display:grid; place-items:center; min-width:28px; height:23px; border:2px dashed #e6d6a899; border-radius:12px; background:var(--chip-color); color:#fff6da; box-shadow:0 2px 3px #0006; font:500 10px/1 Roboto,sans-serif; padding:0 2px; animation:sic-place .22s ease-out; }
+@keyframes sic-place { from { transform:translateY(-7px) scale(1.18); opacity:.4; } to { transform:none; opacity:1; } }
+.sands-surface .sic-bet:disabled { opacity:1; }
+@media (hover:hover) { .sands-surface .sic-bet:hover:not(:disabled) { background:#497255b3; box-shadow:inset 0 0 0 1px #ead393; } }
+.sic-bet.has-bet { border-color:#ceba80; background:#476145aa; }
+.sic-game:is([data-phase="result"],[data-phase="revealing"]) .sic-bet.is-winner { background:#88723ead; border-color:#f6d685; box-shadow:inset 0 0 16px #e7bf5a38,0 0 9px #efc55b35; }
+.sic-game:is([data-phase="result"],[data-phase="revealing"]) .sic-bet.has-bet:not(.is-winner) .sic-stake { opacity:.7; filter:saturate(.6); }
+.sic-bet.is-under-minimum { border-color:#cd8877; border-style:dashed; }
+.sic-dock { position:relative; display:flex; align-items:center; gap:22px; padding:10px 24px; background:#051e18d9; border-top:1px solid #bca36960; }
+.sic-chips-area { flex:1; min-width:0; max-width:480px; margin-left:auto; }
+.sic-wager-label { display:flex; gap:12px; align-items:baseline; margin-bottom:5px; color:#a2b7a4; font-size:11px; }
+.sic-wager-label strong { font-size:16px; color:#e5cf95; }
+.sic-chips { display:flex; gap:9px; align-items:center; }
+.sic-game .sic-chips .bj-chip { width:44px; height:44px; }
+.sic-tools { display:grid; grid-template-columns:repeat(2,34px); gap:2px; }
+.sic-tools .sands-icon { width:34px; min-width:34px; height:30px; }
+.sic-tools .sands-icon span { font-size:17px; }
+.sic-game .sic-roll { min-width:110px; min-height:48px; font-size:17px; padding:8px 16px; }
+.sic-statistics { display:flex; flex-direction:column; gap:3px; min-width:190px; margin-right:auto; }
+.sic-statistics > div { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; color:#97ae9d; line-height:1.4; }
+.sic-statistics strong { font:15px/1.1 Roboto,sans-serif; color:#e4d198; }
+.sic-statistics .sic-profit.negative, .sic-settlement.negative strong { color:#98c9b8; }
+.sic-statistics .sic-profit.positive { color:#f0d391; }
+.sic-statistics button { border:0; padding:0; background:none; color:inherit; display:flex; align-items:center; gap:5px; }
+.sic-stat-tools { display:grid; grid-template-columns:repeat(2,34px); gap:2px; }
+.sic-stat-tools .sands-icon { width:34px; height:32px; min-width:34px; }
+.sic-settlement { position:absolute; inset:0; z-index:5; display:flex; justify-content:center; align-items:center; gap:30px; color:#e9ce89; background:#031e17ed; pointer-events:none; }
+.sic-settlement > strong { font:34px/1 "Libre Baskerville",serif; animation:sic-result .4s ease-out both; }
+.sic-game .sic-settlement > strong { color:#f0d391; }
+.sic-game .sic-settlement.negative > strong { color:#98c9b8; }
+.sic-settlement > div { display:grid; grid-template-columns:auto auto; gap:4px 20px; font-size:15px; }
+.sic-settlement b { text-align:right; color:#f1dcab; }
+@keyframes sic-result { from { opacity:0; transform:translateY(8px) scale(.94); } to { opacity:1; transform:none; } }
+.sic-notice { position:absolute; bottom:105px; left:50%; transform:translateX(-50%); z-index:6; padding:6px 16px; color:#f0d99d; background:#0a251ef0; border:1px solid #b99e62; border-radius:4px; font-size:13px; white-space:nowrap; }
+.sic-history-scroll { max-height:55dvh; overflow:auto; }
+.sic-history-row { padding:10px 0; border-bottom:1px solid #ac98643d; }
+.sic-history-row summary { display:grid; grid-template-columns:42px 80px 1fr 1fr; gap:10px; align-items:center; cursor:pointer; font-size:13px; }
+.sic-history-dice { display:flex; --sic-die-size:19px; gap:4px; }
+.sic-history-row summary > strong, .sic-history-row summary > span:last-child { text-align:right; }
+.sic-history-bets { display:grid; grid-template-columns:1fr auto auto; gap:6px 14px; padding:12px 8px 2px; font-size:12px; color:#b6c0ac; }
+.sic-history-bet { display:contents; }
+.sic-history-rule { font-size:12px; color:#b9a773; margin:10px 8px 0; }
+.sic-history-head { display:grid; grid-template-columns:42px 80px 1fr 1fr; gap:10px; font-size:12px; padding:8px 0; color:#b9a773; }
+.sic-history-head span:nth-last-child(-n+2) { text-align:right; }
+.sic-history-empty { padding:26px 0; text-align:center; color:#a7b7a5; }
+.sic-rules-table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
+.sic-rules-table td { padding:7px 4px; border-bottom:1px solid #ac98642a; }
+.sic-rules-table td:last-child { text-align:right; color:#dfc58a; }
+.sic-rules-copy { color:#bfccbb; font-size:13px; line-height:1.8; }
+.sic-rules-copy a { color:#d7bd7c; }
+.sic-table-options { font-size:11px; color:#bdc5aa; display:flex; flex-direction:column; gap:4px; white-space:nowrap; }
+.sic-table-options label { display:flex; align-items:center; gap:5px; }
+.sands-surface .sic-table-options select { font:inherit; color:#e3ce94; background:#123c2e; border:1px solid #ae985b88; border-radius:4px; padding:2px 3px; }
+.sic-result-summary { display:flex; align-items:center; gap:20px; height:44px; font-size:14px; color:#c9bc94; }
+.sic-result-summary strong { font:25px/1 "Libre Baskerville",serif; color:#f0d391; }
+.sic-result-summary .negative { color:#98c9b8; }
+.sic-setting-minimum { margin-top:14px; }
+.sic-settings-note, .sic-stats-scope { font-size:12px; line-height:1.6; color:#a9b7a3; margin:12px 0; }
+.sic-report-table { width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
+.sic-report-table th { font-weight:var(--weight-ui); color:#b9a773; text-align:right; padding:10px 6px; font-size:12px; }
+.sic-report-table td { text-align:right; padding:9px 6px; border-bottom:1px solid #ac98642a; }
+.sic-report-table :is(th,td):first-child { text-align:left; }
+.sands-modal.sic-recent-modal { width:min(220px,calc(100% - 28px)); }
+.sic-recent-modal .sands-modal-inner { padding:10px 18px 18px; }
+.sic-recent-modal .sands-modal-close-row { display:flex; justify-content:flex-end; height:28px; margin-bottom:4px; }
+.sic-recent-modal .sands-modal-close-row .sands-icon { width:28px; min-width:28px; height:28px; }
+.sic-recent-list { list-style:none; margin:0; padding:0; font-variant-numeric:tabular-nums; }
+.sic-recent-list li { display:grid; grid-template-columns:repeat(3,30px) 54px; justify-content:center; align-items:center; gap:4px; height:36px; text-align:center; border:0; }
+.sic-recent-list span { font:var(--weight-ui) 26px/1 Roboto,sans-serif; }
+.sic-recent-list b { font-size:20px; font-weight:var(--weight-ui); white-space:nowrap; }
+.sic-recent-list .is-latest span { font-size:32px; }
+.sic-recent-list .is-latest b { font-size:24px; }
+.sic-outcome-big { color:#ef8b82; }
+.sic-outcome-small { color:#ebcf7a; }
+.sic-outcome-triple { color:#d0b8dc; }
+.sic-distribution { color:#cbd2be; }
+.sic-stats-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid #ac986455; }
+.sands-surface .sic-stats-tabs button { padding:10px 2px; min-width:0; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:#abb9a6; font-size:13px; font-weight:var(--weight-ui); white-space:nowrap; }
+.sands-surface .sic-stats-tabs button[aria-selected="true"] { color:#f0d391; border-bottom-color:#d6b976; background:#cdb5730d; }
+.sic-stats-panel { height:min(330px,calc(100dvh - 232px)); min-height:100px; overflow:auto; padding-top:6px; scrollbar-gutter:stable; }
+.sic-stats-panel[hidden] { display:none; }
+.sic-percentage { position:relative; display:inline-block; width:100%; min-width:64px; padding:2px 0; }
+.sic-percentage > span { position:absolute; inset:0 auto 0 0; background:#47644b; border-radius:2px; }
+.sic-percentage b { position:relative; font-weight:var(--weight-ui); }
+.sic-total-distribution { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 20px; height:100%; max-height:248px; }
+.sic-total-column { display:grid; grid-template-rows:repeat(8,minmax(0,1fr)); min-height:0; }
+.sic-total-row { display:grid; grid-template-columns:24px minmax(0,1fr); gap:6px; align-items:center; min-height:0; border-bottom:1px solid #ac98642a; }
+.sic-total-distribution strong { color:#dfc58a; font-size:14px; line-height:1; font-weight:var(--weight-ui); }
+.sic-total-distribution .sic-percentage { min-width:0; padding:0; font-size:12px; line-height:1; }
+.sands-dice-emblem { display:block; width:140px; height:90px; position:relative; --sic-die-size:47px; }
+.sands-dice-emblem .sic-die { position:absolute; top:20px; left:4px; transform:rotate(-16deg); }
+.sands-dice-emblem .sic-die:nth-child(2) { left:45px; top:3px; transform:rotate(9deg); }
+.sands-dice-emblem .sic-die:nth-child(3) { left:86px; top:28px; transform:rotate(22deg); }
+.sic-game.is-mobile { grid-template-rows:48px minmax(0,1fr) 72px; }
+.is-mobile .sic-header { padding:3px 10px; gap:10px; }
+.is-mobile .sic-brand { gap:6px; }
+.is-mobile .sic-brand .sands-wordmark { display:none; }
+.is-mobile .sic-brand h1 { font-size:18px; }
+.is-mobile .sic-table-options { font-size:9px; gap:0; }
+.is-mobile .sic-table-options label { gap:3px; }
+.is-mobile .sic-header .sands-icon { width:28px; height:28px; min-width:28px; }
+.is-mobile .sic-header .sands-icon svg { width:18px; height:18px; }
+.is-mobile .sic-header-actions { gap:2px; }
+.is-mobile .sic-header-actions > span { font-size:10px; margin-right:3px; }
+.is-mobile .sic-round-display { gap:10px; min-width:220px; }
+.is-mobile .sic-dice-tray { --sic-die-size:29px; gap:6px; padding:3px 8px; }
+.is-mobile .sic-roll-caption { width:86px; }
+.is-mobile .sic-roll-caption strong { font-size:18px; }
+.is-mobile .sic-roll-caption span { font-size:10px; }
+.is-mobile .sic-board { padding:5px 8px; gap:3px; }
+.is-mobile .sic-crown, .is-mobile .sic-band { gap:2px; }
+.is-mobile .sic-bet { padding:2px 3px; gap:1px; border-radius:3px; }
+.is-mobile .sic-bet.has-bet { padding-left:2px; padding-right:2px; }
+.is-mobile .sic-bet.has-bet .sic-bet-footer { gap:1px; }
+.is-mobile .sic-bet > .sic-bet-face { gap:2px; min-height:15px; }
+.is-mobile .sic-bet-face > strong { font-size:19px; }
+.is-mobile .sic-bet[data-kind="small"] strong, .is-mobile .sic-bet[data-kind="big"] strong { font-size:24px; }
+.is-mobile .sic-bet[data-kind="any-triple"] .sic-bet-face > strong { font-size:15px; }
+.is-mobile .sic-bet[data-kind="any-triple"] .sic-bet-face { gap:2px; }
+.is-mobile .sic-bet-subtitle { font-size:9px; }
+.is-mobile .sic-bet[data-kind="triple"] { --sic-die-size:12px; }
+.is-mobile .sic-bet[data-kind="double"] { --sic-die-size:17px; }
+.is-mobile .sic-bet[data-kind="pair"] { --sic-die-size:14px; }
+.is-mobile .sic-bet[data-kind="single"] { --sic-die-size:22px; }
+.is-mobile .sic-bet[data-kind="odd"], .is-mobile .sic-bet[data-kind="even"] { gap:8px; }
+.is-mobile .sic-bet[data-kind="odd"] strong, .is-mobile .sic-bet[data-kind="even"] strong { font-size:15px; }
+.is-mobile .sic-bet-footer { height:14px; }
+.is-mobile .sic-bet[data-kind="double"], .is-mobile .sic-bet[data-kind="single"] { flex-direction:row; gap:6px; }
+.is-mobile .sic-bet[data-kind="double"] .sic-bet-face, .is-mobile .sic-bet[data-kind="single"] .sic-bet-face { width:auto; }
+.is-mobile .sic-bet[data-kind="double"] .sic-bet-footer, .is-mobile .sic-bet[data-kind="single"] .sic-bet-footer { width:auto; }
+.is-mobile .sic-bet-footer > small { font-size:9px; }
+.is-mobile .sic-stake { min-width:22px; height:17px; border-width:1px; font-size:9px; }
+.is-mobile .sic-dock { gap:10px; padding:5px 9px; }
+.is-mobile .sic-chips-area { max-width:none; }
+.is-mobile .sic-chips { gap:6px; }
+.is-mobile.sic-game .sic-chips .bj-chip { width:32px; height:32px; border-width:2px; }
+.is-mobile.sic-game .sic-chips .bj-chip span { font-size:10px; }
+.is-mobile .sic-wager-label { margin-bottom:3px; font-size:10px; }
+.is-mobile .sic-wager-label strong { font-size:13px; }
+.is-mobile .sic-tools { grid-template-columns:repeat(2,27px); gap:2px; }
+.is-mobile .sic-tools .sands-icon { width:27px; min-width:27px; height:26px; }
+.is-mobile .sic-tools .sands-icon svg { width:17px; height:17px; }
+.is-mobile.sic-game .sic-roll { min-width:80px; min-height:40px; padding:6px 10px; font-size:15px; }
+.is-mobile .sic-statistics { min-width:142px; gap:2px; }
+.is-mobile .sic-statistics > div { font-size:10px; }
+.is-mobile .sic-statistics strong { font-size:12px; }
+.is-mobile .sic-stat-tools .sands-icon { width:27px; height:27px; min-width:27px; }
+.is-mobile .sic-stat-tools { grid-template-columns:repeat(2,27px); }
+.is-mobile .sic-result-summary { gap:12px; height:32px; font-size:12px; }
+.is-mobile .sic-result-summary strong { font-size:20px; }
+.is-mobile .sic-stat-tools .sands-icon svg { width:18px; height:18px; }
+.is-mobile .sic-settlement > strong { font-size:26px; }
+.is-mobile .sic-settlement > div { font-size:13px; }
+.is-mobile .sic-notice { bottom:76px; font-size:11px; }
+@media (prefers-reduced-motion:reduce) { .sic-game *, .sic-game *::before, .sic-game *::after { animation:none !important; transition:none !important; } }
