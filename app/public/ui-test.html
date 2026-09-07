@@ -769,12 +769,15 @@
     body { margin:0; max-width:none; padding:24px; background:#05231b; color:#dfc58a; }
     .sizing-preview { min-height:calc(100dvh - 48px); display:grid; place-content:center; gap:28px; }
     .sizing-preview-cards, .sizing-preview-chips, .sands-radio-options { display:flex; justify-content:center; align-items:center; gap:12px; }
-    .sizing-preview-card { width:138px; aspect-ratio:5/7; border:3px solid #fefcf8; border-radius:5px; background:#f4f1e8; color:#1e2a27; padding:8px; font-size:28px; }
-    .sizing-preview-chips i { width:50px; aspect-ratio:1; border:3px solid #ac9864; border-radius:50%; display:grid; place-items:center; font:13px sans-serif; }
+    .sizing-preview-card { width:148px; aspect-ratio:5/7; border:3px solid #fefcf8; border-radius:5px; background:#f4f1e8; color:#1e2a27; padding:8px; font-size:28px; }
+    .sizing-preview-chips i { width:46px; aspect-ratio:1; border:3px solid #ac9864; border-radius:50%; display:grid; place-items:center; font:13px sans-serif; }
+    .sizing-preview-header { height:64px; display:flex; align-items:center; justify-content:space-between; gap:48px; padding:0 32px; background:#071f18bb; border-bottom:1px solid #ac98644a; font:20px serif; }
+    .sizing-preview-actions { display:flex; justify-content:center; gap:8px; }
+    .sizing-preview-actions button { width:116px; min-height:40px; padding:7px 16px; border:1px solid #a9945e66; border-radius:5px; color:#dccc9d; background:#264538; font:15px/1.5 sans-serif; }
     .sands-radio-options .config-option-row { display:flex; align-items:center; gap:8px; min-height:28px; font-size:14px; padding:0; color:#d3d8c7; border:0; background:transparent; }
     @media (max-width:600px) { .sizing-preview-card { width:90px; font-size:21px; } }
   </style>
-  <div class="sizing-preview"><div class="sizing-preview-cards"><div class="sizing-preview-card">K</div><div class="sizing-preview-card">8</div></div><div class="sizing-preview-chips"><i>10</i><i>20</i><i>30</i><i>50</i></div><div class="sands-radio-options"><label class="config-option-row"><input type="radio" name="preview-mode" checked>自动</label><label class="config-option-row"><input type="radio" name="preview-mode">电脑</label><label class="config-option-row"><input type="radio" name="preview-mode">手机</label></div></div>
+  <div class="sizing-preview"><header class="sizing-preview-header"><span>Sands2018</span><span>二十一点</span></header><div class="sizing-preview-cards"><div class="sizing-preview-card">K</div><div class="sizing-preview-card">8</div></div><div class="sizing-preview-actions"><button>要牌</button><button>停牌</button><button>加倍</button><button>分牌</button></div><div class="sizing-preview-chips"><i>10</i><i>20</i><i>30</i><i>50</i></div><div class="sands-radio-options"><label class="config-option-row"><input type="radio" name="preview-mode" checked>自动</label><label class="config-option-row"><input type="radio" name="preview-mode">电脑</label><label class="config-option-row"><input type="radio" name="preview-mode">手机</label></div></div>
 </template>
 <template id="sands-scrollbar-prototype">
   <style>

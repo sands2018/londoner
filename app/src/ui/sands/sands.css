@@ -101,7 +101,14 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-header h1 { color: #d3bc84; font: 22px "Noto Serif SC", serif; }
 .bj-header-left, .bj-header-actions { display: flex; align-items: center; gap: 12px; }
 .bj-header-actions { justify-content: end; gap: 6px; }
+.is-desktop .bj-header { height: 64px; flex-basis: 64px; }
+.is-desktop .bj-header h1 { font-size: 20px; }
+.is-desktop .bj-header .sands-brand-name { font-size: 18px; }
+.is-desktop .bj-header .sands-monogram { width: 28px; height: 32px; }
+.is-desktop .bj-header .sands-icon { width: 32px; min-width: 32px; height: 32px; }
+.is-desktop .bj-header .sands-icon > svg { width: 20px; height: 20px; }
 .bj-meta { display: flex; justify-content: space-between; gap: 16px; padding: 12px 40px; color: #9bb2a0; font-size: 11px; }
+.is-desktop .bj-meta { padding-top: 10px; padding-bottom: 10px; }
 .bj-meta > span { display: flex; gap: 10px; align-items: center; }
 .bj-meta i, .bj-round-status i { display: inline-block; width: 3px; height: 3px; background: currentColor; border-radius: 50%; }
 .bj-meta b { min-width: 45px; font-variant-numeric: tabular-nums; }
@@ -233,12 +240,21 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-wager-target strong { font-size: 23px; line-height: 1.3; grid-column: 1; }
 .bj-wager-target > svg { grid-column: 2; grid-row: 1 / 3; border: 1px solid #c5b47966; border-radius: 50%; width: 28px; height: 28px; padding: 4px; }
 .bj-chips-line { display: flex; align-items: center; justify-content: center; gap: 34px; padding-top: 20px; }
-.is-desktop .bj-controls { padding-top: 14px; padding-bottom: 10px; }
-.is-desktop .bj-chips-line { padding-top: 12px; }
+.is-desktop .bj-controls { padding-top: 12px; padding-bottom: 8px; }
+.is-desktop .bj-controls .sands-button { min-height: 40px; padding: 7px 16px; gap: 8px; }
+.is-desktop .bj-main-actions { gap: 8px; }
+.is-desktop .bj-main-actions .sands-button { max-width: 116px; }
+.is-desktop .bj-main-actions.insurance .sands-button { max-width: 196px; }
+.is-desktop .bj-deal { min-width: 116px; }
+.is-desktop .bj-double-icon { font-size: 16px; }
+.is-desktop .bj-wager-target strong, .is-desktop .bj-action-target > strong { font-size: 21px; }
+.is-desktop .bj-bet-tools .sands-icon { width: 32px; min-width: 32px; height: 32px; }
+.is-desktop .bj-bet-tools .sands-icon > svg { width: 19px; height: 19px; }
+.is-desktop .bj-chips-line { padding-top: 10px; }
 .is-desktop .bj-chips { gap: 12px; }
 .bj-chips { display: flex; gap: 15px; align-items: center; }
 .sands-surface .bj-chip { width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; padding: 0; background: repeating-conic-gradient(#efe5ceaa 0deg 12deg, transparent 12deg 45deg), var(--chip-color); border: 3px solid var(--chip-color); box-shadow: inset 0 0 0 1px #ffffff44, 0 3px 5px #0006; color: #faf4df; transition: transform .15s, box-shadow .15s; }
-.is-desktop .bj-chip { width: 50px; height: 50px; }
+.is-desktop .bj-chip { width: 46px; height: 46px; }
 .bj-chip span { background: var(--chip-color); border: 1px solid #dfd3b8aa; border-radius: 50%; width: 75%; height: 75%; display: grid; place-items: center; font-size: 13px; }
 .sands-surface .bj-chip.selected { transform: translateY(-4px); box-shadow: 0 0 0 2px #dfc686, 0 5px 9px #0005; }
 .bj-bet-tools { display: flex; gap: 4px; border-left: 1px solid #aaa47740; padding-left: 20px; }
@@ -250,6 +266,8 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-balance .sands-icon { width: 22px; min-width: 22px; height: 18px; margin-left: 4px; }
 .bj-stats-tools { display: flex; gap: 5px; }
 .bj-stats-tools .sands-icon { width:44px; min-width:44px; height:44px; border:1px solid #ac986444; border-radius:6px; background:#17352b; }
+.is-desktop .bj-stats-tools .sands-icon { width: 40px; min-width: 40px; height: 40px; }
+.is-desktop .bj-stats-tools .sands-icon > svg { width: 22px; height: 22px; }
 
 .bj-game.is-mobile { min-height: 0; }
 .is-mobile .bj-header { height: 58px; flex-basis: 58px; padding: max(0px, var(--app-safe-area-top, env(safe-area-inset-top))) 12px 0; }

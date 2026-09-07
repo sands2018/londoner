@@ -24,7 +24,8 @@ describe("blackjack presentation playback", () => {
   });
 
   it("fits larger desktop cards and two rows of mobile split hands independently", () => {
-    expect(fitBlackjackCards(600, 240, true, 1).width).toBe(138);
+    expect(fitBlackjackCards(600, 240, true, 1).width).toBe(141);
+    expect(fitBlackjackCards(650, 240, true, 1).width).toBe(148);
     expect(fitBlackjackCards(360, 260, true, 4).width).toBe(60);
     expect(fitBlackjackCards(360, 260, false, 2).width).toBe(56);
     const four = fitBlackjackCards(445, 300, false, 4);
