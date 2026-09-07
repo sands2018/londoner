@@ -823,6 +823,9 @@
   if (new URLSearchParams(location.search).get('design') === 'sicbo') {
     const base = location.pathname.replace(/ui-test\.html$/, '');
     const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `${base}src/ui/sands/sicBo.css`; document.head.append(css);
+    const stakePreview = document.createElement('style');
+    stakePreview.textContent = '.sic-stake { position:absolute; right:4px; bottom:4px; z-index:1; box-sizing:border-box; width:40px; min-width:40px; height:40px; aspect-ratio:1; border-radius:50%; padding:0; font-size:11px; pointer-events:none; } .is-mobile .sic-stake { right:2px; bottom:2px; width:32px; min-width:32px; height:32px; font-size:10px; }';
+    document.head.append(stakePreview);
     document.body.style.cssText = 'margin:0;padding:0;max-width:none;background:#05231b;color:#dfc58a';
     const main = document.createElement('main'); main.className = 'sic-game sands-surface is-desktop'; main.style.cssText = 'width:100vw;height:100vh';
     main.innerHTML = '<header class="sic-header">Sands2018 · 骰宝<div>1 · 4 · 6</div><span>第 1 轮</span></header><section class="sic-board"><div class="sic-crown"></div><div class="sic-band sic-doubles"></div><div class="sic-band sic-totals"></div><div class="sic-band sic-pairs"></div><div class="sic-band sic-singles"></div></section><footer class="sic-dock">10　20　30　50　100　500　1000</footer>';
@@ -831,6 +834,10 @@
       sicBoBets.forEach(b => {
         const button = document.createElement('button'); button.className = 'sic-bet'; button.dataset.bet = b.id; button.dataset.kind = b.kind;
         button.innerHTML = `<span class="sic-bet-face"><strong>${b.total ?? (b.faces.length ? b.faces.join(' · ') : b.label)}</strong></span><span class="sic-bet-footer"><small>${b.odds}:1</small></span>`;
+        if (['small', 'triple-3', 'any-triple', 'double-4', 'total-10', 'pair-3-4', 'single-6'].includes(b.id)) {
+          button.classList.add('has-bet');
+          button.querySelector('.sic-bet-footer').insertAdjacentHTML('beforeend', '<span class="sic-stake" style="--chip-color:#645079">1000</span>');
+        }
         if (b.kind === 'triple') { const i = b.faces[0] - 1; button.style.gridColumn = i < 3 ? i + 2 : i + 3; button.style.gridRow = 1; }
         const group = {double:'sic-doubles',total:'sic-totals',pair:'sic-pairs',single:'sic-singles'}[b.kind] || 'sic-crown';
         main.querySelector(`.${group}`).append(button);
@@ -840,6 +847,9 @@
   if (new URLSearchParams(location.search).get('design') === 'sicbo-stats') {
     const base = location.pathname.replace(/ui-test\.html$/, '');
     ['sands.css', 'sicBo.css'].forEach(name => { const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `${base}src/ui/sands/${name}`; document.head.append(css); });
+    const recentPreview = document.createElement('style');
+    recentPreview.textContent = '.sic-recent-list b { transform:translateX(2px); } .sic-outcome-big { color:#f57569; } .sic-outcome-small { color:#f2ce58; }';
+    document.head.append(recentPreview);
     document.body.innerHTML = '<main class="sands-surface" style="max-width:220px;margin:30px auto;padding:18px;background:#123027"><ol class="sic-recent-list"><li class="sic-outcome-big is-latest"><span>4</span><span>5</span><span>6</span><b>大</b></li><li class="sic-outcome-small"><span>1</span><span>2</span><span>3</span><b>小</b></li><li class="sic-outcome-triple"><span>3</span><span>3</span><span>3</span><b>围骰</b></li></ol></main>';
   }
   if (new URLSearchParams(location.search).get('design') === 'sizing') {

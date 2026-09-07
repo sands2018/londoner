@@ -141,7 +141,7 @@ export function SicBoGame({ desktop, active, onLobby, onSettings }: { desktop: b
     return <button key={bet.id} type="button" className={`sic-bet${amount ? " has-bet" : ""}${win ? " is-winner" : ""}${invalidBets.includes(bet.id) ? " is-under-minimum" : ""}`} data-bet={bet.id} data-kind={bet.kind} style={style} disabled={busy}
       aria-label={`${bet.label}，赔率${odds}，最低下注${minimum}${amount ? `，已押${amount}` : ""}`} title={`${bet.label} · ${odds} · 最低 ${minimum}${amount ? ` · 已押 ${format(amount)}` : ""}`} onClick={() => place(bet.id)}>
       <span className="sic-bet-face">{bet.faces.map((value, i) => <DiceFace key={i} value={value} />)}{bet.kind === "total" ? <strong>{bet.total}</strong> : !bet.faces.length && <><strong>{bet.label}</strong>{["small", "big", "any-triple"].includes(bet.kind) && <span className="sic-bet-subtitle">{bet.kind === "small" ? "4—10" : bet.kind === "big" ? "11—17" : "三个相同"}</span>}</>}</span>
-      <span className="sic-bet-footer"><small>{odds}</small>{amount > 0 && <span key={amount} className="sic-stake" style={{ "--chip-color": chipColor(amount) } as CSSProperties} aria-hidden="true">{compact(amount)}</span>}</span>
+      <span className="sic-bet-footer"><small>{odds}</small>{amount > 0 && <span key={amount} className="sic-stake" data-long={compact(amount).length > 4 || undefined} style={{ "--chip-color": chipColor(amount) } as CSSProperties} aria-hidden="true">{compact(amount)}</span>}</span>
     </button>;
   }
   const get = (id: string) => betMap.get(id)!;

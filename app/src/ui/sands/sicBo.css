@@ -51,9 +51,9 @@
 .sic-bet[data-kind="single"] { --sic-die-size:32px; background:#20574699; }
 .sic-bet-footer { height:21px; width:100%; display:flex; justify-content:center; align-items:center; min-width:0; }
 .sic-bet-footer > small { color:#b7b99a; font:11px/1.1 Roboto,sans-serif; white-space:nowrap; }
-.sic-bet.has-bet .sic-bet-footer { justify-content:space-between; gap:2px; }
 .sic-bet[data-kind="odd"] .sic-bet-footer, .sic-bet[data-kind="even"] .sic-bet-footer { width:auto; }
-.sic-stake { display:grid; place-items:center; min-width:28px; height:23px; border:2px dashed #e6d6a899; border-radius:12px; background:var(--chip-color); color:#fff6da; box-shadow:0 2px 3px #0006; font:500 10px/1 Roboto,sans-serif; padding:0 2px; animation:sic-place .22s ease-out; }
+.sic-stake { position:absolute; right:4px; bottom:4px; z-index:1; display:grid; place-items:center; box-sizing:border-box; width:40px; min-width:40px; height:40px; aspect-ratio:1; border:2px dashed #e6d6a899; border-radius:50%; background:var(--chip-color); color:#fff6da; box-shadow:0 2px 3px #0006; font:500 11px/1 Roboto,sans-serif; padding:0; white-space:nowrap; pointer-events:none; animation:sic-place .22s ease-out; }
+.sic-stake[data-long] { font-size:10px; }
 @keyframes sic-place { from { transform:translateY(-7px) scale(1.18); opacity:.4; } to { transform:none; opacity:1; } }
 .sands-surface .sic-bet:disabled { opacity:1; }
 @media (hover:hover) { .sands-surface .sic-bet:hover:not(:disabled) { background:#497255b3; box-shadow:inset 0 0 0 1px #ead393; } }
@@ -122,11 +122,11 @@
 .sic-recent-list { list-style:none; margin:0; padding:0; font-variant-numeric:tabular-nums; }
 .sic-recent-list li { display:grid; grid-template-columns:repeat(3,30px) 54px; justify-content:center; align-items:center; gap:4px; height:36px; text-align:center; border:0; }
 .sic-recent-list span { font:var(--weight-ui) 26px/1 Roboto,sans-serif; }
-.sic-recent-list b { font-size:20px; font-weight:var(--weight-ui); white-space:nowrap; }
+.sic-recent-list b { font-size:20px; font-weight:var(--weight-ui); white-space:nowrap; transform:translateX(2px); }
 .sic-recent-list .is-latest span { font-size:32px; }
 .sic-recent-list .is-latest b { font-size:24px; }
-.sic-outcome-big { color:#ef8b82; }
-.sic-outcome-small { color:#ebcf7a; }
+.sic-outcome-big { color:#f57569; }
+.sic-outcome-small { color:#f2ce58; }
 .sic-outcome-triple { color:#d0b8dc; }
 .sic-distribution { color:#cbd2be; }
 .sic-stats-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-bottom:1px solid #ac986455; }
@@ -165,8 +165,6 @@
 .is-mobile .sic-board { padding:5px 8px; gap:3px; }
 .is-mobile .sic-crown, .is-mobile .sic-band { gap:2px; }
 .is-mobile .sic-bet { padding:2px 3px; gap:1px; border-radius:3px; }
-.is-mobile .sic-bet.has-bet { padding-left:2px; padding-right:2px; }
-.is-mobile .sic-bet.has-bet .sic-bet-footer { gap:1px; }
 .is-mobile .sic-bet > .sic-bet-face { gap:2px; min-height:15px; }
 .is-mobile .sic-bet-face > strong { font-size:19px; }
 .is-mobile .sic-bet[data-kind="small"] strong, .is-mobile .sic-bet[data-kind="big"] strong { font-size:24px; }
@@ -184,7 +182,8 @@
 .is-mobile .sic-bet[data-kind="double"] .sic-bet-face, .is-mobile .sic-bet[data-kind="single"] .sic-bet-face { width:auto; }
 .is-mobile .sic-bet[data-kind="double"] .sic-bet-footer, .is-mobile .sic-bet[data-kind="single"] .sic-bet-footer { width:auto; }
 .is-mobile .sic-bet-footer > small { font-size:9px; }
-.is-mobile .sic-stake { min-width:22px; height:17px; border-width:1px; font-size:9px; }
+.is-mobile .sic-stake { right:2px; bottom:2px; width:32px; min-width:32px; height:32px; border-width:1px; font-size:10px; }
+.is-mobile .sic-stake[data-long] { font-size:8px; }
 .is-mobile .sic-dock { gap:10px; padding:5px 9px; }
 .is-mobile .sic-chips-area { max-width:none; }
 .is-mobile .sic-chips { gap:6px; }
