@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Rank } from "@blackjacktrainer/blackjack-simulator/src/types";
 import { Event } from "@blackjacktrainer/blackjack-simulator/src/event-emitter";
 import { BlackjackTable, isSavedBlackjack } from "../../core/blackjack";
-import { blackjackFrames, blackjackNextFrames, dealerDisplayCards, frameDuration, splitHandState, tableCards, wagerChips } from "./blackjackPresentation";
+import { blackjackFrames, blackjackNextFrames, dealerDisplayCards, fitBlackjackCards, frameDuration, splitHandState, tableCards, wagerChips } from "./blackjackPresentation";
 
 function rig(ranks: Rank[]) {
   const table = new BlackjackTable();
@@ -13,6 +13,26 @@ function rig(ranks: Rank[]) {
 }
 
 describe("blackjack presentation playback", () => {
+  it("keeps readable cards when controls or enlarged text leave little table space", () => {
+    const short = fitBlackjackCards(360, 260, false, 1);
+    expect(short.width).toBe(64);
+    expect(short.minHeight).toBeGreaterThan(420);
+    const largerText = fitBlackjackCards(360, 330, false, 1);
+    expect(largerText.width).toBe(64);
+    expect(largerText.minHeight).toBeGreaterThan(short.minHeight);
+    expect(fitBlackjackCards(570, 260, false, 1).width).toBe(90);
+  });
+
+  it("fits larger desktop cards and two rows of mobile split hands independently", () => {
+    expect(fitBlackjackCards(600, 240, true, 1).width).toBe(138);
+    expect(fitBlackjackCards(360, 260, true, 4).width).toBe(80);
+    expect(fitBlackjackCards(360, 260, false, 2).width).toBe(56);
+    const four = fitBlackjackCards(445, 300, false, 4);
+    expect(four.width).toBe(44);
+    expect(four.minHeight).toBe(Math.ceil(300 + 44 * 1.4 * 2.82));
+    expect(fitBlackjackCards(650, 260, false, 4).width).toBe(72);
+  });
+
   it("deals player/dealer/player/hole in order, with only visible point totals", () => {
     const table = rig([Rank.Nine, Rank.Six, Rank.Eight, Rank.Ten]);
     const playback = table.perform("deal")!;

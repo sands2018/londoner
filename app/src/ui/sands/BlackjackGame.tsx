@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ChevronDown, CircleHelp, History, Plus, RotateCcw, Se
 import { BlackjackTable, blackjackChips, blackjackMinimum, isSavedBlackjack, type BlackjackAction, type BlackjackHand } from "../../core/blackjack";
 import { PlayingCard, SandsDialog, SandsMark } from "./SandsShared";
 import { animationSpeedKey } from "./displaySettings";
-import { blackjackFrames, blackjackNextFrames, chipColors, dealerDisplayCards, frameDuration, splitHandState } from "./blackjackPresentation";
+import { blackjackFrames, blackjackNextFrames, chipColors, dealerDisplayCards, fitBlackjackCards, frameDuration, splitHandState } from "./blackjackPresentation";
 import { ChipStack, FlyingChip, type ChipFlight } from "./BlackjackChips";
 import { useBlackjackMotion, type PlayingFrame } from "./useBlackjackMotion";
 import { BlackjackResult } from "./BlackjackResult";
@@ -51,27 +51,32 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
     const element = tableRef.current;
     if (!element || !active) return;
     const fit = () => {
+      if (!element.clientWidth || !element.clientHeight) return;
       if (!desktop && matchMedia("(min-width:650px) and (max-height:600px)").matches) return;
       const splitRows = !desktop && view.hands.length > 2 ? 2 : 1;
-      const maxSize = desktop ? 118 : view.hands.length > 1 ? 72 : 90;
       const dealer = element.querySelector<HTMLElement>(".bj-dealer")!;
       const player = element.querySelector<HTMLElement>(".bj-player-area")!;
       const status = element.querySelector<HTMLElement>(".bj-round-status")!;
       const dealerCards = dealer.querySelector<HTMLElement>(".bj-cards")!;
       const playerCards = player.querySelector<HTMLElement>(".bj-cards")!;
       const style = getComputedStyle(element);
-      // Reserve the real controls/status heights before fitting the cards.
+      // Keep a readable card size; a short viewport may scroll instead of crushing the cards.
       const reserved = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + status.offsetHeight
         + dealer.offsetHeight - dealerCards.offsetHeight + player.offsetHeight - playerCards.offsetHeight * splitRows + 4;
-      const width = Math.floor(Math.max(32, Math.min(maxSize, (element.clientHeight - reserved) / (1.4 * (.82 + splitRows)))) * 2) / 2;
+      const { width, minHeight } = fitBlackjackCards(element.clientHeight, reserved, desktop, view.hands.length);
       const previous = parseFloat(element.style.getPropertyValue("--fitted-card-width"));
       if (!Number.isFinite(previous) || Math.abs(previous - width) >= 1) element.style.setProperty("--fitted-card-width", `${width}px`);
+      element.style.setProperty("--bj-table-min-height", `${minHeight}px`);
     };
     fit();
-    const observer = new ResizeObserver(fit);
+    let scheduled = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(scheduled);
+      scheduled = requestAnimationFrame(fit);
+    });
     observer.observe(element);
     element.querySelectorAll(".bj-dealer, .bj-player-area, .bj-round-status").forEach((child) => observer.observe(child));
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); cancelAnimationFrame(scheduled); };
   }, [active, desktop, view.hands.length]);
   useBlackjackMotion(tableRef, view, frame, active);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);

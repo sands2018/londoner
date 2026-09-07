@@ -69,12 +69,12 @@ function SandsSettings({ onClose }: { onClose: () => void }) {
   return <SandsDialog title="配置 · 其它" onClose={onClose}>
     <section className="sands-settings-section"><h3>显示</h3>
       <div className="sands-radio-options" role="radiogroup" aria-label="设备模式">
-        {([ ["auto", "自动"], ["desktop", "电脑"], ["mobile", "手机"], ["iphone", "模拟iPhone"] ] as const).map(([value, label]) => <label className="config-option-row config-tool-toggle" key={value}>
+        {([ ["auto", "自动"], ["desktop", "电脑"], ["mobile", "手机"], ["iphone", "模拟iPhone"] ] as const).map(([value, label]) => <label className="config-option-row" key={value}>
           <input type="radio" name="sands-display-mode" aria-label={label} checked={value === "iphone" ? draft.iphone : !draft.iphone && draft.mode === value} onChange={() => setDraft({ ...draft, iphone: value === "iphone", mode: value === "iphone" ? draft.mode : value })} /><span>{label}</span>
         </label>)}
       </div>
     </section>
-    <section className="sands-settings-section"><h3>游戏</h3><div className="sands-speed-row"><span>动画速度</span><div className="sands-radio-options" role="radiogroup" aria-label="动画速度">{([ ["slow", "慢"], ["fast", "快"] ] as const).map(([value, label]) => <label className="config-option-row config-tool-toggle" key={value}><input type="radio" name="sands-speed" checked={draft.speed === value} onChange={() => setDraft({ ...draft, speed: value })} /><span>{label}</span></label>)}</div></div></section>
+    <section className="sands-settings-section"><h3>游戏</h3><div className="sands-speed-row"><span>动画速度</span><div className="sands-radio-options" role="radiogroup" aria-label="动画速度">{([ ["slow", "慢"], ["fast", "快"] ] as const).map(([value, label]) => <label className="config-option-row" key={value}><input type="radio" name="sands-speed" checked={draft.speed === value} onChange={() => setDraft({ ...draft, speed: value })} /><span>{label}</span></label>)}</div></div></section>
     <footer className="sands-modal-actions"><button type="button" className="sands-button" onClick={onClose}>取消</button><button type="button" className="sands-button primary" onClick={() => { writeDisplaySettings(draft); onClose(); }}>保存</button></footer>
   </SandsDialog>;
 }

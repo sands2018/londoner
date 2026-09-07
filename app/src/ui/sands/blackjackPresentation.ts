@@ -7,6 +7,16 @@ export const dealerDisplayCards = (cards: BlackjackCard[]) => cards.length < 2 ?
 const stake = (v: BlackjackView) => v.hands.reduce((sum, h) => sum + h.bet, 0) + v.insurance;
 const layout = (v: BlackjackView) => v.hands.map((h) => h.cards.map((c) => c.id).join(",")).join("|");
 
+export function fitBlackjackCards(height: number, reserved: number, desktop: boolean, handCount: number) {
+  const rows = !desktop && handCount > 2 ? 2 : 1;
+  const minimum = desktop ? 80 : handCount > 2 ? 44 : handCount > 1 ? 56 : 64;
+  const maximum = desktop ? 138 : handCount > 1 ? 72 : 90;
+  const cardHeightRatio = 1.4 * (.82 + rows);
+  const minHeight = Math.ceil(reserved + minimum * cardHeightRatio);
+  const width = Math.floor(Math.max(minimum, Math.min(maximum, (Math.max(height, minHeight) - reserved) / cardHeightRatio)) * 2) / 2;
+  return { width, minHeight };
+}
+
 export function splitHandState(view: BlackjackView, index: number, busy: boolean): "active" | "processing" | "waiting" | "complete" | null {
   const hand = view.hands[index];
   if (!hand || view.hands.length < 2 || view.phase === "betting") return null;

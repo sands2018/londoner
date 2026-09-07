@@ -13,8 +13,8 @@
   font-weight: var(--weight-regular, 400);
   line-height: 1.5;
   letter-spacing: 0;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
 }
 @media (forced-colors: none) {
   .sands-surface, .sands-surface * {
@@ -107,7 +107,7 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-meta b { min-width: 45px; font-variant-numeric: tabular-nums; }
 .bj-shoe-meter { width: 66px; height: 3px; background: #d3c39720; display: block; }
 .bj-shoe-meter > span { display: block; height: 100%; background: #b29f6a; transition: width .3s; }
-.bj-table { flex: 1 0 360px; min-height: 360px; position: relative; width: 100%; max-width: 1380px; margin: 0 auto; display: grid; grid-template-rows: auto minmax(96px, 1fr) auto; justify-items: center; padding: 12px 42px 20px; }
+.bj-table { flex: 1 0 360px; min-height: max(360px, var(--bj-table-min-height, 0px)); position: relative; width: 100%; max-width: 1380px; margin: 0 auto; display: grid; grid-template-rows: auto minmax(96px, 1fr) auto; justify-items: center; padding: 12px 42px 20px; }
 .bj-table-print { position: absolute; inset: 32% 10% auto; border-top: 1px solid #ceb27233; border-radius: 50%; min-height: 48%; padding-top: 18px; color: #c8bb8336; text-align: center; pointer-events: none; }
 .bj-table-print span { font: 20px "Libre Baskerville", serif; }
 .bj-table-print small { display: block; margin-top: 9px; font-size: 10px; }
@@ -157,7 +157,9 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 @keyframes bj-result-icon { from { opacity:0; transform:translateY(5px) scale(.9); } to { opacity:1; transform:none; } }
 @keyframes bj-chip-win { 25%,65% { filter:brightness(1.4) drop-shadow(0 0 7px #e6c26f99); transform:translateY(-4px); } 100% { filter:none; transform:none; } }
 @keyframes bj-chip-lose { 45% { opacity:.45; transform:translateY(4px); } 100% { opacity:.7; transform:none; } }
-.is-desktop .bj-table { padding-top: 8px; padding-bottom: 12px; }
+.is-desktop .bj-table { padding-top: 8px; padding-bottom: 12px; grid-template-rows: auto minmax(88px, 1fr) auto; }
+.is-desktop .bj-round-status { min-height: 88px; }
+.is-desktop .bj-hand-heading { height: 22px; margin-bottom: 6px; }
 .bj-player-area { --card-width: var(--fitted-card-width, 100px); z-index: 1; display: grid; grid-template-columns: repeat(var(--hand-count, 1), minmax(0, 1fr)); gap: 34px; align-items: end; justify-content: center; width: min(100%, calc(var(--hand-count, 1) * 320px)); }
 .bj-player-hand { border-bottom: 2px solid transparent; padding: 0 10px 4px; max-width: 100%; min-width: 0; }
 .bj-player-hand.is-focused { border-bottom-color: #d8bd78; }
@@ -231,8 +233,12 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .bj-wager-target strong { font-size: 23px; line-height: 1.3; grid-column: 1; }
 .bj-wager-target > svg { grid-column: 2; grid-row: 1 / 3; border: 1px solid #c5b47966; border-radius: 50%; width: 28px; height: 28px; padding: 4px; }
 .bj-chips-line { display: flex; align-items: center; justify-content: center; gap: 34px; padding-top: 20px; }
+.is-desktop .bj-controls { padding-top: 14px; padding-bottom: 10px; }
+.is-desktop .bj-chips-line { padding-top: 12px; }
+.is-desktop .bj-chips { gap: 12px; }
 .bj-chips { display: flex; gap: 15px; align-items: center; }
 .sands-surface .bj-chip { width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; padding: 0; background: repeating-conic-gradient(#efe5ceaa 0deg 12deg, transparent 12deg 45deg), var(--chip-color); border: 3px solid var(--chip-color); box-shadow: inset 0 0 0 1px #ffffff44, 0 3px 5px #0006; color: #faf4df; transition: transform .15s, box-shadow .15s; }
+.is-desktop .bj-chip { width: 50px; height: 50px; }
 .bj-chip span { background: var(--chip-color); border: 1px solid #dfd3b8aa; border-radius: 50%; width: 75%; height: 75%; display: grid; place-items: center; font-size: 13px; }
 .sands-surface .bj-chip.selected { transform: translateY(-4px); box-shadow: 0 0 0 2px #dfc686, 0 5px 9px #0005; }
 .bj-bet-tools { display: flex; gap: 4px; border-left: 1px solid #aaa47740; padding-left: 20px; }
@@ -257,13 +263,13 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .is-mobile .bj-meta > span { gap: 6px; }
 .is-mobile .bj-shoe-meter { width: 30px; }
 .is-mobile .bj-meta b { min-width: 38px; }
-.is-mobile .bj-table { flex-basis: 360px; min-height: 360px; padding: 12px 18px 22px; }
+.is-mobile .bj-table { flex-basis: 360px; min-height: max(360px, var(--bj-table-min-height, 0px)); padding: 12px 18px 22px; }
 .is-mobile .bj-dealer { --card-width: calc(var(--fitted-card-width, 80px) * .82); }
 .is-mobile .bj-player-area { --card-width: var(--fitted-card-width, 80px); gap: 12px; }
 .is-mobile .bj-player-hand { padding: 0 5px 4px; }
 .is-mobile .bj-player-area.multi-splits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
 .is-mobile .bj-player-area.multi-splits .bj-hand-heading { height: 18px; margin-bottom: 4px; }
-.is-mobile .bj-table:has(.multi-splits) { flex-basis: 445px; min-height: 445px; }
+.is-mobile .bj-table:has(.multi-splits) { flex-basis: 445px; min-height: max(445px, var(--bj-table-min-height, 0px)); }
 .is-mobile .bj-hand-heading { font-size: 11px; gap: 7px; }
 .is-mobile .bj-hand-heading strong { font-size: 11px; padding: 1px 6px; }
 .is-mobile .bj-hand-wager { font-size: 11px; min-height: 52px; }
@@ -326,7 +332,7 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .sands-modal h3 { font-size: 15px; font-weight: 500; color: #d3bb84; margin-bottom: 14px; }
 .sands-settings-section { margin-bottom: 24px; }
 .sands-radio-options { display: flex; flex-wrap: wrap; gap: 16px 20px; }
-.sands-radio-options .config-option-row { min-height: 28px; font-size: 14px; padding: 0; color: #d3d8c7; }
+.sands-radio-options .config-option-row { min-height: 28px; font-size: 14px; padding: 0; color: #d3d8c7; border: 0; background: transparent; }
 .sands-radio-options .config-option-row::before { border-color: #a18f68; }
 .sands-radio-options .config-option-row:has(input:checked)::before { border-color: #dbc38b; background-color: #d6b875; }
 .sands-radio-options .config-option-row:focus-within { outline: 1px solid #dbc38b; outline-offset: 4px; }
@@ -354,6 +360,16 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
   .sands-lobby.is-mobile .sands-game-choice { padding: 18px 12px; }
   .is-mobile .bj-chip { width:min(40px,calc((100% - 30px) / 7)); height:auto; }
   .is-mobile .bj-chip span { font-size: 10px; }
+}
+@media (max-width: 649px) and (max-height: 760px) {
+  .is-mobile .bj-table { padding-top: 8px; padding-bottom: 14px; grid-template-rows: auto minmax(64px, 1fr) auto; }
+  .is-mobile .bj-round-status { min-height: 64px; }
+  .is-mobile .bj-hand-wager { min-height: 46px; }
+  .is-mobile .bj-table-limit, .is-mobile .bj-cut-note { bottom: 1px; }
+  .is-mobile .bj-controls { padding-top: 10px; padding-bottom: 12px; }
+  .is-mobile .bj-action-line { gap: 8px; }
+  .is-mobile .bj-chips-line { padding-top: 13px; gap: 8px; }
+  .is-mobile .bj-stats { padding-top: 9px; padding-bottom: max(9px, var(--app-safe-area-bottom, env(safe-area-inset-bottom))); }
 }
 @media (min-width: 650px) and (max-height: 600px) {
   .bj-game.is-mobile { min-height: 0; }
