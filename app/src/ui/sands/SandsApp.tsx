@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
-import { ArrowRight, LockKeyhole, Settings2 } from "lucide-react";
+import { ArrowRight, Settings2 } from "lucide-react";
 import { BlackjackGame } from "./BlackjackGame";
 import { PlayingCard, RouletteEmblem, SandsDialog, SandsMark } from "./SandsShared";
 import { readDisplaySettings, useDisplaySettings, writeDisplaySettings } from "./displaySettings";
@@ -10,14 +10,16 @@ import "./sicBo.css";
 
 const RouletteApp = lazy(() => import("../App").then(({ App }) => ({ default: App })));
 const SicBoGame = lazy(() => import("./SicBoGame").then(({ SicBoGame }) => ({ default: SicBoGame })));
-type Page = "lobby" | "roulette" | "blackjack" | "sicbo";
-const pageFromHash = (): Page => location.hash === "#roulette" ? "roulette" : location.hash === "#blackjack" ? "blackjack" : location.hash === "#sicbo" ? "sicbo" : "lobby";
+const BaccaratGame = lazy(() => import("./BaccaratGame").then(({ BaccaratGame }) => ({ default: BaccaratGame })));
+type Page = "lobby" | "roulette" | "blackjack" | "sicbo" | "baccarat";
+const pageFromHash = (): Page => location.hash === "#roulette" ? "roulette" : location.hash === "#blackjack" ? "blackjack" : location.hash === "#sicbo" ? "sicbo" : location.hash === "#baccarat" ? "baccarat" : "lobby";
 
 export function SandsApp() {
   const [page, setPage] = useState<Page>(pageFromHash);
   const [visitedRoulette, setVisitedRoulette] = useState(page === "roulette");
   const [visitedBlackjack, setVisitedBlackjack] = useState(page === "blackjack");
   const [visitedSicBo, setVisitedSicBo] = useState(page === "sicbo");
+  const [visitedBaccarat, setVisitedBaccarat] = useState(page === "baccarat");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const display = useDisplaySettings();
   useEffect(() => {
@@ -29,7 +31,8 @@ export function SandsApp() {
     if (page === "roulette") setVisitedRoulette(true);
     if (page === "blackjack") setVisitedBlackjack(true);
     if (page === "sicbo") setVisitedSicBo(true);
-    const title = page === "lobby" ? "Sands2018" : `${page === "roulette" ? "轮盘" : page === "sicbo" ? "骰宝" : "二十一点"} · Sands2018`;
+    if (page === "baccarat") setVisitedBaccarat(true);
+    const title = page === "lobby" ? "Sands2018" : `${page === "roulette" ? "轮盘" : page === "sicbo" ? "骰宝" : page === "baccarat" ? "百家乐" : "二十一点"} · Sands2018`;
     document.title = title;
     if (window.parent !== window) window.parent.document.title = title;
   }, [page]);
@@ -59,9 +62,9 @@ export function SandsApp() {
           <button type="button" className="sands-game-choice" onClick={() => navigate("sicbo")} aria-label="骰宝">
             <DiceEmblem /><span className="sands-choice-label"><strong>骰宝</strong><small>SIC BO</small></span><ArrowRight size={21} />
           </button>
-          <button type="button" className="sands-game-choice is-upcoming" disabled aria-label="百家乐，尚未开放" title="百家乐尚未开放">
+          <button type="button" className="sands-game-choice" onClick={() => navigate("baccarat")} aria-label="百家乐">
             <span className="sands-card-emblem"><PlayingCard card={{ id: "lobby-seven", rank: "7", suit: "d", hidden: false }} /><PlayingCard card={{ id: "lobby-two", rank: "2", suit: "c", hidden: false }} /></span>
-            <span className="sands-choice-label"><strong>百家乐</strong><small>BACCARAT · 尚未开放</small></span><LockKeyhole size={20} />
+            <span className="sands-choice-label"><strong>百家乐</strong><small>BACCARAT</small></span><ArrowRight size={21} />
           </button>
         </div>
       </div>
@@ -75,6 +78,9 @@ export function SandsApp() {
     </div>}
     {visitedSicBo && <div className="sic-host" hidden={page !== "sicbo"}>
       <Suspense fallback={<div className="sands-loading">骰宝</div>}><SicBoGame desktop={display.desktop} active={page === "sicbo"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></Suspense>
+    </div>}
+    {visitedBaccarat && <div className="bac-host" hidden={page !== "baccarat"}>
+      <Suspense fallback={<div className="sands-loading">百家乐</div>}><BaccaratGame desktop={display.desktop} active={page === "baccarat"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></Suspense>
     </div>}
     {settingsOpen && <SandsSettings onClose={() => setSettingsOpen(false)} />}
   </>;

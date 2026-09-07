@@ -7,7 +7,8 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:baccarat:ui": "node --import tsx e2e/baccarat.mjs"
   },
   "dependencies": {
     "@blackjacktrainer/blackjack-simulator": "0.35.14",
@@ -15,6 +16,8 @@
     "@fontsource/noto-sans-sc": "^5.2.9",
     "@fontsource/noto-serif-sc": "^5.3.0",
     "@fontsource/roboto": "^5.2.10",
+    "baccarat-engine": "1.1.5",
+    "events": "3.3.0",
     "lucide-react": "^0.468.0",
     "random-js": "2.1.0",
     "react": "^19.0.0",

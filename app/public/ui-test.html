@@ -820,6 +820,49 @@
   <section class="sands-surface scroll-preview"><h2>结算明细</h2><div class="scroll-preview-list"><table><thead><tr><th>轮次</th><th>投注</th><th>赢回</th><th>赢利</th></tr></thead><tbody></tbody></table></div></section>
 </template>
 <script>
+  if (new URLSearchParams(location.search).get('design') === 'baccarat') {
+    const base = location.pathname.replace(/ui-test\.html$/, '');
+    ['sands.css', 'baccarat.css'].forEach(name => { const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `${base}src/ui/sands/${name}`; document.head.append(css); });
+    document.body.style.cssText = 'margin:0;padding:0;max-width:none;background:#05231b';
+    document.body.innerHTML = '<main class="sands-surface bac-game is-desktop"><header class="bac-header"><span>Sands2018</span><h1>百家乐</h1><span>八副牌 · 佣金制</span></header><div class="bac-workspace"><section class="bac-table"><div class="bac-meta"><span>牌靴 1</span><span>MIN 20</span></div><div class="bac-hands"><div class="bac-hand player"><header>闲 <strong>8</strong></header><div class="bac-cards"><div class="bj-card-placeholder"></div><div class="bj-card-placeholder"></div></div></div><div class="bac-hand banker"><header>庄 <strong>6</strong></header><div class="bac-cards"><div class="bj-card-placeholder"></div><div class="bj-card-placeholder"></div></div></div></div><div class="bac-outcome"><strong>闲赢</strong><span>投注 100 · 赢回 200</span></div><div class="bac-bets"><button class="bac-bet player">闲 <small>1:1</small></button><button class="bac-bet tie">和 <small>8:1</small></button><button class="bac-bet banker">庄 <small>0.95:1</small></button><button class="bac-bet player-pair">闲对 <small>11:1</small></button><button class="bac-bet banker-pair">庄对 <small>11:1</small></button></div></section><aside class="bac-road-sidebar">本靴路单</aside></div><section class="bac-dock">10　20　30　50　100　500　1000</section><footer class="bac-footer">可用筹码 10,100　累计投注 100　累计赢利 +100</footer></main>';
+  }
+  if (new URLSearchParams(location.search).get('design') === 'baccarat') {
+    const previewStyle = document.createElement('style');
+    previewStyle.textContent = `
+      .bac-game.is-mobile { grid-template-rows:48px minmax(0,1fr) 108px 56px; }
+      .is-mobile .bac-workspace { grid-template-rows:minmax(256px,1fr) auto; gap:8px; padding:8px 10px; overflow-y:auto; }
+      .is-mobile .bac-table { grid-template-rows:18px minmax(0,1fr) 40px 82px; }
+      .is-mobile .bac-hands { --card-width:min(94px,calc((100cqw - 28px) / 4.32),calc((100cqh - 190px) / 1.4)); }
+      .is-mobile .bac-bets { grid-template-rows:1fr 30px; }
+      .is-mobile .bac-road-sidebar { display:block; min-width:0; overflow:visible; padding:4px 0 0; border-left:0; border-top:1px solid var(--sands-line); }
+      .is-mobile .bac-road-sidebar > header, .is-mobile .bac-road-sidebar > p { display:none; }
+      .is-mobile .bac-road-sidebar .bac-road { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 12px; }
+      .is-mobile .bac-road-sidebar .bac-road-tabs { margin:0; gap:14px; }
+      .is-mobile .bac-road-sidebar .bac-road-tabs button { padding:4px 0; font-size:12px; }
+      .is-mobile .bac-road-sidebar .bac-road-panel { grid-column:1/-1; grid-row:2; }
+      .is-mobile .bac-road-sidebar .bac-road-grid { --road-size:18px; }
+      .is-mobile .bac-road-sidebar .bac-road-mark { font-size:10px; }
+      .is-mobile .bac-road-sidebar .bac-road-counts { grid-column:2; grid-row:1; align-self:center; justify-content:flex-end; margin:0; gap:10px; font-size:10px; }
+      .is-mobile .bac-dock { grid-template-rows:40px 40px; padding:8px 10px; gap:8px; }
+      .is-mobile.bac-game .bac-chips .bj-chip { max-width:40px; }
+      .is-mobile .bac-footer { padding:5px 10px; }
+      @media (orientation:landscape) and (max-height:600px) {
+        .bac-game.is-mobile { grid-template-rows:42px minmax(0,1fr) 66px 44px; }
+        .is-mobile .bac-workspace { grid-template-columns:minmax(0,1fr) 184px; grid-template-rows:minmax(0,1fr); padding:6px 12px; gap:12px; }
+        .is-mobile .bac-table { grid-template-rows:20px minmax(0,1fr) 40px; gap:0 12px; }
+        .is-mobile .bac-hands { --card-width:min(80px,calc((100cqw - 70px) / 8.5),calc((100cqh - 114px) / 1.4)); }
+        .is-mobile .bac-road-sidebar { padding:0 0 0 10px; border-top:0; border-left:1px solid var(--sands-line); }
+        .is-mobile .bac-road-sidebar .bac-road { grid-template-columns:minmax(0,1fr); gap:6px; }
+        .is-mobile .bac-road-sidebar .bac-road-counts { grid-column:1; grid-row:3; justify-content:space-between; }
+        .is-mobile .bac-dock { grid-template-rows:1fr; padding:8px 12px; gap:12px; }
+        .is-mobile .bac-footer { padding:3px 12px; }
+      }
+    `;
+    document.head.append(previewStyle);
+    document.querySelector('.bac-game').classList.toggle('is-mobile', innerWidth < 900);
+    document.querySelector('.bac-game').classList.toggle('is-desktop', innerWidth >= 900);
+    document.querySelector('.bac-road-sidebar').innerHTML = '<header>本靴路单 <small>24 局</small></header><section class="bac-road"><div class="bac-road-tabs"><button aria-selected="true">珠盘路</button><button>大路</button></div><div class="bac-road-panel"><div class="bac-road-grid beads" style="--road-columns:18">' + Array.from({length:24}, (_,i) => `<span class="bac-road-mark ${i%3?'player':'banker'}" style="grid-row:${i%6+1};grid-column:${Math.floor(i/6)+1}"><b>${i%3?'闲':'庄'}</b></span>`).join('') + '</div></div><div class="bac-road-counts"><span class="player">闲 16</span><span class="banker">庄 8</span><span class="tie">和 0</span></div></section>';
+  }
   if (new URLSearchParams(location.search).get('design') === 'sicbo') {
     const base = location.pathname.replace(/ui-test\.html$/, '');
     const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `${base}src/ui/sands/sicBo.css`; document.head.append(css);
