@@ -5,7 +5,7 @@ import { dealBaccarat, nextBaccaratRound, readBaccaratState } from '../src/core/
 const bundledBrowsers = fileURLToPath(new URL('../.playwright-browsers', import.meta.url));
 if (!process.env.PLAYWRIGHT_BROWSERS_PATH && existsSync(bundledBrowsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = bundledBrowsers;
 import assert from 'node:assert/strict';
-const { chromium } = await import('@playwright/test');
+const { chromium, expect } = await import('@playwright/test');
 import { freshBaccarat } from '../src/core/baccarat.ts';
 const browser = await chromium.launch();
 const errors = [];
@@ -245,7 +245,7 @@ try {
     Object.defineProperty(document,'visibilityState',{configurable:true,value:'hidden'});
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  assert.equal(await f.locator('.bac-game').getAttribute('data-phase'),'result');
+  await expect(f.locator('.bac-game')).toHaveAttribute('data-phase','result');
   await page.clock.runFor(10000);
   assert.equal(await f.evaluate(()=>localStorage.getItem('sands2018.baccarat.v1')),persisted);
   await context.close();

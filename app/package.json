@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "test:baccarat:ui": "node --import tsx e2e/baccarat.mjs"
+    "test:baccarat:ui": "node --import tsx e2e/baccarat.mjs",
+    "test:poker:ui": "node --import tsx e2e/poker.mjs",
+    "test:loading:ui": "node e2e/loading.mjs"
   },
   "dependencies": {
     "@blackjacktrainer/blackjack-simulator": "0.35.14",

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { lazy, useEffect, useLayoutEffect, useState } from "react";
+import { GameLoader } from "./GameLoader";
 import { ArrowRight, Settings2 } from "lucide-react";
 import { BlackjackGame } from "./BlackjackGame";
 import { PlayingCard, RouletteEmblem, SandsDialog, SandsMark } from "./SandsShared";
@@ -11,8 +12,11 @@ import "./sicBo.css";
 const RouletteApp = lazy(() => import("../App").then(({ App }) => ({ default: App })));
 const SicBoGame = lazy(() => import("./SicBoGame").then(({ SicBoGame }) => ({ default: SicBoGame })));
 const BaccaratGame = lazy(() => import("./BaccaratGame").then(({ BaccaratGame }) => ({ default: BaccaratGame })));
-type Page = "lobby" | "roulette" | "blackjack" | "sicbo" | "baccarat";
-const pageFromHash = (): Page => location.hash === "#roulette" ? "roulette" : location.hash === "#blackjack" ? "blackjack" : location.hash === "#sicbo" ? "sicbo" : location.hash === "#baccarat" ? "baccarat" : "lobby";
+const HoldemGame = lazy(() => import("./HoldemGame").then(({ HoldemGame }) => ({ default: HoldemGame })));
+const ThreeCardPokerGame = lazy(() => import("./ThreeCardPokerGame").then(({ ThreeCardPokerGame }) => ({ default: ThreeCardPokerGame })));
+const pageTitles = { roulette: "轮盘", blackjack: "二十一点", sicbo: "骰宝", baccarat: "百家乐", holdem: "德州扑克", threecard: "三张牌扑克" };
+type Page = "lobby" | keyof typeof pageTitles;
+const pageFromHash = (): Page => Object.hasOwn(pageTitles, location.hash.slice(1)) ? location.hash.slice(1) as Page : "lobby";
 
 export function SandsApp() {
   const [page, setPage] = useState<Page>(pageFromHash);
@@ -20,6 +24,8 @@ export function SandsApp() {
   const [visitedBlackjack, setVisitedBlackjack] = useState(page === "blackjack");
   const [visitedSicBo, setVisitedSicBo] = useState(page === "sicbo");
   const [visitedBaccarat, setVisitedBaccarat] = useState(page === "baccarat");
+  const [visitedHoldem, setVisitedHoldem] = useState(page === "holdem");
+  const [visitedThreeCard, setVisitedThreeCard] = useState(page === "threecard");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const display = useDisplaySettings();
   useEffect(() => {
@@ -32,9 +38,16 @@ export function SandsApp() {
     if (page === "blackjack") setVisitedBlackjack(true);
     if (page === "sicbo") setVisitedSicBo(true);
     if (page === "baccarat") setVisitedBaccarat(true);
-    const title = page === "lobby" ? "Sands2018" : `${page === "roulette" ? "轮盘" : page === "sicbo" ? "骰宝" : page === "baccarat" ? "百家乐" : "二十一点"} · Sands2018`;
+    if (page === "holdem") setVisitedHoldem(true);
+    if (page === "threecard") setVisitedThreeCard(true);
+    const title = page === "lobby" ? "Sands2018" : `${pageTitles[page]} · Sands2018`;
     document.title = title;
-    if (window.parent !== window) window.parent.document.title = title;
+    if (window.parent !== window) {
+      window.parent.document.title = title;
+      // The outer viewport host must reload the game currently open in its frame.
+      const outer = window.parent.location;
+      window.parent.history.replaceState(window.parent.history.state, "", `${outer.pathname}${outer.search}${location.hash}`);
+    }
   }, [page]);
   useLayoutEffect(() => {
     document.documentElement.classList.toggle("android", !display.iphone && /android/i.test(navigator.userAgent));
@@ -66,21 +79,35 @@ export function SandsApp() {
             <span className="sands-card-emblem"><PlayingCard card={{ id: "lobby-seven", rank: "7", suit: "d", hidden: false }} /><PlayingCard card={{ id: "lobby-two", rank: "2", suit: "c", hidden: false }} /></span>
             <span className="sands-choice-label"><strong>百家乐</strong><small>BACCARAT</small></span><ArrowRight size={21} />
           </button>
+          <button type="button" className="sands-game-choice" onClick={() => navigate("holdem")} aria-label="德州扑克">
+            <span className="sands-card-emblem"><PlayingCard card={{ id: "lobby-poker-ace", rank: "A", suit: "s", hidden: false }} /><PlayingCard card={{ id: "lobby-poker-ace-red", rank: "A", suit: "h", hidden: false }} /></span>
+            <span className="sands-choice-label"><strong>德州扑克</strong><small>TEXAS HOLD’EM</small></span><ArrowRight size={21} />
+          </button>
+          <button type="button" className="sands-game-choice" onClick={() => navigate("threecard")} aria-label="三张牌扑克">
+            <span className="sands-card-emblem is-three"><PlayingCard card={{ id: "lobby-three-queen", rank: "Q", suit: "s", hidden: false }} /><PlayingCard card={{ id: "lobby-three-king", rank: "K", suit: "s", hidden: false }} /><PlayingCard card={{ id: "lobby-three-ace", rank: "A", suit: "s", hidden: false }} /></span>
+            <span className="sands-choice-label"><strong>三张牌扑克</strong><small>THREE CARD POKER</small></span><ArrowRight size={21} />
+          </button>
         </div>
       </div>
       <footer className="sands-lobby-footer"><span>私人牌桌</span><span>虚拟筹码 · 仅供娱乐</span></footer>
     </main>}
     {visitedRoulette && <div hidden={page !== "roulette"}>
-      <Suspense fallback={<div className="sands-loading">Sands2018</div>}><RouletteApp active={page === "roulette"} onReturnToLobby={() => navigate("lobby")} /></Suspense>
+      <GameLoader title="轮盘"><RouletteApp active={page === "roulette"} onReturnToLobby={() => navigate("lobby")} /></GameLoader>
     </div>}
     {visitedBlackjack && <div className="sands-blackjack-host" hidden={page !== "blackjack"}>
       <BlackjackGame desktop={display.desktop} active={page === "blackjack"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} />
     </div>}
     {visitedSicBo && <div className="sic-host" hidden={page !== "sicbo"}>
-      <Suspense fallback={<div className="sands-loading">骰宝</div>}><SicBoGame desktop={display.desktop} active={page === "sicbo"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></Suspense>
+      <GameLoader title="骰宝"><SicBoGame desktop={display.desktop} active={page === "sicbo"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></GameLoader>
     </div>}
     {visitedBaccarat && <div className="bac-host" hidden={page !== "baccarat"}>
-      <Suspense fallback={<div className="sands-loading">百家乐</div>}><BaccaratGame desktop={display.desktop} active={page === "baccarat"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></Suspense>
+      <GameLoader title="百家乐"><BaccaratGame desktop={display.desktop} active={page === "baccarat"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></GameLoader>
+    </div>}
+    {visitedHoldem && <div className="poker-host" hidden={page !== "holdem"}>
+      <GameLoader title="德州扑克"><HoldemGame desktop={display.desktop} active={page === "holdem"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></GameLoader>
+    </div>}
+    {visitedThreeCard && <div className="poker-host" hidden={page !== "threecard"}>
+      <GameLoader title="三张牌扑克"><ThreeCardPokerGame desktop={display.desktop} active={page === "threecard"} onLobby={() => navigate("lobby")} onSettings={() => setSettingsOpen(true)} /></GameLoader>
     </div>}
     {settingsOpen && <SandsSettings onClose={() => setSettingsOpen(false)} />}
   </>;

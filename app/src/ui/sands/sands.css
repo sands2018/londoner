@@ -53,6 +53,14 @@
 .sands-surface .sands-icon:hover:not(:disabled) { background: #d7c58b12; border-color: var(--sands-line); color: #f3dda4; }
 html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .sands-loading { min-height: 100dvh; display: grid; place-items: center; background: #05231b; color: #e1c587; font: 32px Georgia, serif; }
+.sands-load-status { align-content:center; gap:16px; padding:24px; text-align:center; }
+.sands-load-status h1 { margin:0; font:32px Georgia,serif; }
+.sands-load-status p, .sands-load-status small, .sands-load-status details { max-width:440px; margin:0; font:14px/1.6 Roboto,"Noto Sans SC",sans-serif; color:#bdcaba; }
+.sands-load-status small { font-size:12px; }
+.sands-load-status .sands-button { min-width:160px; font:var(--weight-ui,500) var(--action-button-font-size,15px)/1.4 Roboto,"Noto Sans SC",sans-serif; }
+.sands-load-status details { width:100%; font-size:12px; }
+.sands-load-status summary { cursor:pointer; }
+.sands-load-status pre { white-space:pre-wrap; overflow-wrap:anywhere; text-align:left; padding:12px; border:1px solid #b4a06b55; border-radius:6px; }
 .sands-blackjack-host { width: 100%; height: 100dvh; overflow: hidden; }
 .sands-lobby { height: 100dvh; min-height: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 26px 48px 22px; overflow: auto; background: #06251d url('/assets/sands/emerald-felt.webp') center/cover; isolation: isolate; position: relative; }
 .sands-lobby::before { content: ""; position: absolute; inset: 0; background: #021c15b8; z-index: -1; }
@@ -120,6 +128,9 @@ html.sands-game-page, html.sands-game-page body { background: #05231b; }
 .sands-lobby.is-mobile .sands-card-emblem { transform:scale(.5); width:125px; height:70px; }
 .sands-lobby.is-mobile .sands-dice-emblem { transform:scale(.75); width:135px; height:70px; }
 .sands-lobby.is-mobile .sands-choice-label strong { font-size:20px; }
+.sands-lobby.is-desktop .sands-game-choices { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.sands-lobby .sands-card-emblem.is-three .bj-card:nth-child(2) { left:38px; transform:rotate(0); }
+.sands-lobby .sands-card-emblem.is-three .bj-card:nth-child(3) { left:76px; transform:rotate(13deg); }
 .sands-lobby.is-mobile .sands-choice-label small { font-size:8px; }
 
 .bj-game { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: auto; background: linear-gradient(#0322199c, #0322199c), url('/assets/sands/emerald-felt.webp') center/cover; }

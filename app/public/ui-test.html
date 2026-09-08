@@ -4,6 +4,206 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>信号卡片 - UI 调色</title>
+<style id="loading-preview-styles" media="not all">
+/* LOADING_STYLES_START */
+.sands-load-status { align-content:center; gap:16px; padding:24px; text-align:center; }
+.sands-load-status h1 { margin:0; font:32px Georgia,serif; }
+.sands-load-status p, .sands-load-status small, .sands-load-status details { max-width:440px; margin:0; font:14px/1.6 Roboto,"Noto Sans SC",sans-serif; color:#bdcaba; }
+.sands-load-status small { font-size:12px; }
+.sands-load-status .sands-button { min-width:160px; font:var(--weight-ui,500) var(--action-button-font-size,15px)/1.4 Roboto,"Noto Sans SC",sans-serif; }
+.sands-load-status details { width:100%; font-size:12px; }
+.sands-load-status summary { cursor:pointer; }
+.sands-load-status pre { white-space:pre-wrap; overflow-wrap:anywhere; text-align:left; padding:12px; border:1px solid #b4a06b55; border-radius:6px; }
+/* LOADING_STYLES_END */
+</style>
+<style id="poker-preview-styles" media="not all">
+/* POKER_STYLES_START */
+.poker-host { width:100%; height:100dvh; overflow:auto; background:#05241c; }
+.poker-game { transform-origin:top left; height:100dvh; min-height:570px; display:grid; grid-template-rows:56px minmax(0,1fr) auto 62px; background:linear-gradient(#04251c66,#04251c66),url('/assets/sands/emerald-felt.webp') center/cover; }
+.poker-header { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:8px 24px; gap:12px; border-bottom:1px solid var(--sands-line); background:#06231cdd; }
+.poker-brand, .poker-header-tools { display:flex; align-items:center; gap:10px; }
+.poker-header-tools { justify-content:flex-end; }
+.poker-brand .sands-monogram { display:none; }
+.poker-header h1 { font:24px "Noto Serif SC",serif; color:var(--sands-gold); }
+.poker-workspace { display:grid; grid-template-columns:minmax(0,1fr) 236px; padding:16px 24px; gap:24px; width:100%; max-width:1520px; margin:auto; height:100%; min-height:0; overflow:auto; }
+.poker-sidebar { min-width:0; min-height:0; border-left:1px solid var(--sands-line); padding:10px 0 0 20px; overflow:auto; }
+.poker-sidebar h2 { font-size:16px; color:var(--sands-gold); margin-bottom:18px; }
+.poker-sidebar p, .poker-sidebar li { font-size:12px; color:#aabbab; }
+.poker-sidebar ol { list-style:none; padding:0; margin:14px 0; }
+.poker-sidebar li { padding:5px 0; border-bottom:1px solid #bba87418; }
+.poker-sidebar li:last-child { color:#e5d2a3; }
+.poker-table-meta { display:flex; align-items:center; justify-content:space-between; color:var(--sands-muted); font-size:11px; gap:8px; }
+.poker-cards { display:flex; justify-content:center; gap:7px; min-height:calc(var(--card-width,70px) * 1.4); }
+.poker-cards > .bj-card + .bj-card, .poker-cards > .bj-card-placeholder + .bj-card-placeholder { margin-left:0; }
+.poker-cards .poker-card-wrap { flex-shrink:0; }
+.poker-cards .bj-card { --card-turn-duration:320ms; animation:poker-card-in .4s ease-out both; }
+.poker-cards .is-best .bj-card-face { box-shadow:0 0 0 2px #e5c16b,0 4px 12px #001c16; }
+@keyframes poker-card-in { from { opacity:0; transform:translate(22px,-24px) rotate(6deg); } to { opacity:1; transform:none; } }
+.holdem-felt { min-width:0; min-height:350px; container-type:size; display:grid; grid-template-rows:22px minmax(0,1fr); --seat-card-width:min(53px,max(30px,calc((100cqh - 190px) / 5))); }
+.holdem-table { position:relative; min-width:0; min-height:0; display:grid; grid-template-columns:1fr 1.5fr 1fr; grid-template-rows:minmax(0,1fr) minmax(0,1.12fr) minmax(0,1.2fr); gap:8px 14px; padding:6px 12px; }
+.holdem-table::before { content:""; position:absolute; inset:14% 2%; border:2px solid #b9a16b54; border-radius:46%; box-shadow:inset 0 0 0 7px #04291eb0,inset 0 0 45px #00191070; pointer-events:none; }
+.holdem-seat { position:relative; min-width:0; display:grid; align-content:center; justify-items:center; gap:5px; padding:5px; border:1px solid transparent; border-radius:9px; --card-width:var(--seat-card-width); }
+.holdem-seat header { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; font-size:13px; line-height:1.3; }
+.holdem-seat header strong { color:#e4cca0; }
+.holdem-seat header small { font-size:10px; color:#aebdad; }
+.holdem-position { display:grid; place-items:center; min-width:21px; height:21px; padding:0 3px; border-radius:50%; background:#e2c88e; color:#15392d; font-size:10px; }
+.holdem-seat .poker-cards { gap:4px; }
+.holdem-seat > small { min-height:18px; color:#c5b27b; font-size:11px; text-align:center; }
+.holdem-seat.is-acting { border-color:#c5a663; background:#0a3028e0; box-shadow:0 0 18px #dfc07715; }
+.holdem-seat.is-folded .poker-cards { opacity:.28; }
+.holdem-seat.is-winner { border-color:#d2b86f; background:#54603b66; }
+.holdem-seat.seat-0 { grid-column:2; grid-row:3; --card-width:calc(var(--seat-card-width) * 1.36); }
+.holdem-seat.seat-1 { grid-column:1; grid-row:3; }
+.holdem-seat.seat-2 { grid-column:1; grid-row:1; }
+.holdem-seat.seat-3 { grid-column:2; grid-row:1; }
+.holdem-seat.seat-4 { grid-column:3; grid-row:1; }
+.holdem-seat.seat-5 { grid-column:3; grid-row:3; }
+.holdem-center { grid-column:1/-1; grid-row:2; position:relative; display:grid; align-content:center; justify-items:center; gap:9px; --card-width:calc(var(--seat-card-width) * 1.2); }
+.holdem-pot { display:flex; align-items:baseline; gap:10px; color:#e3cd95; font-size:12px; }
+.holdem-pot strong { font:24px "Libre Baskerville",serif; }
+.holdem-center > small { font-size:12px; color:#c7cbb6; }
+.poker-controls { padding:12px 24px; background:#06251eee; border-top:1px solid var(--sands-line); }
+.poker-turn { min-height:24px; font-size:13px; color:#ddc58c; text-align:center; margin-bottom:8px; }
+.holdem-controls-row { display:grid; grid-template-columns:1fr 1.25fr; gap:24px; max-width:1120px; margin:0 auto; }
+.holdem-actions { display:flex; justify-content:center; gap:8px; }
+.holdem-actions .sands-button { flex:1; min-width:0; padding:9px 12px; }
+.poker-controls .poker-skip { display:flex; margin:6px auto 0; min-height:30px; padding:4px 12px; font-size:12px; }
+.sands-surface .poker-allin { color:#e2b59b; border-color:#b888624d; }
+.holdem-raise { display:grid; grid-template-columns:minmax(0,1fr) 92px auto; align-items:center; gap:12px; }
+.holdem-raise input[type="range"] { width:100%; min-width:0; accent-color:#cfb473; }
+.holdem-raise label { font-size:10px; color:#b3bd9f; }
+.holdem-raise input[type="number"] { width:100%; display:block; border:1px solid var(--sands-line); border-radius:4px; padding:4px; font:14px Roboto,sans-serif; color:#ead1a0; background:#092a21; }
+.poker-footer { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) auto; gap:16px; align-items:center; padding:8px 24px; background:#041e18f2; border-top:1px solid var(--sands-line); }
+.poker-footer > div { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.poker-footer span { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--sands-muted); }
+.poker-footer strong { font-size:19px; color:#e2cd97; }
+.poker-footer nav { display:flex; gap:4px; }
+.poker-footer .poker-topup { width:20px; height:20px; min-width:20px; }
+.poker-game .win, .poker-report .win { color:#a8d1a6; }
+.poker-game .lose, .poker-report .lose { color:#d69784; }
+.poker-notice { position:fixed; z-index:20; bottom:190px; left:50%; transform:translateX(-50%); width:max-content; max-width:90%; padding:10px 14px; background:#173c30f5; border:1px solid #b69f65; border-radius:5px; color:#e8c488; font-size:13px; text-align:center; }
+.poker-report { font-size:13px; color:#c6d1ba; line-height:1.8; }
+.poker-report p + p { margin-top:10px; }
+.poker-report table, .poker-paytable { width:100%; border-collapse:collapse; margin:10px 0; font-size:12px; }
+.poker-report th, .poker-report td, .poker-paytable td, .poker-paytable th { padding:5px; text-align:left; border-bottom:1px solid var(--sands-line); font-weight:var(--weight-ui,500); }
+.poker-report th, .poker-paytable th, .poker-report a { color:#ddc38b; }
+.poker-report details { border-bottom:1px solid var(--sands-line); padding:7px 0; }
+.poker-report summary { cursor:pointer; display:flex; justify-content:space-between; gap:12px; }
+.poker-report .history-cards { --card-width:42px; justify-content:flex-start; margin:10px 0; flex-wrap:wrap; }
+.poker-report .poker-cards .bj-card { animation:none; }
+.poker-report .poker-history-player { display:flex; justify-content:space-between; gap:8px; font-size:12px; }
+.poker-report dl > div { display:flex; justify-content:space-between; padding:5px 0; }
+.poker-report dd { margin:0; color:#e3cc97; }
+.three-table { min-width:0; min-height:0; container-type:size; display:grid; grid-template-rows:minmax(0,1fr) 50px minmax(0,1fr) 70px; gap:8px; --card-width:min(110px,calc((100cqh - 214px) / 2.8)); }
+.three-hand { display:grid; justify-items:center; align-content:center; gap:6px; min-height:0; }
+.three-hand h2 { font:19px "Noto Serif SC",serif; color:#d9c58c; }
+.three-hand > small { font-size:12px; min-height:18px; color:#aebba7; }
+.three-outcome { display:grid; align-content:center; justify-items:center; gap:3px; color:#dfc58a; }
+.three-outcome strong { font:24px "Noto Serif SC",serif; }
+.three-outcome small { font-size:12px; }
+.three-bets { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.sands-surface .three-bet { display:grid; align-content:center; justify-items:center; gap:2px; min-width:0; padding:5px; border:1px solid #b49f665e; border-radius:5px; background:#18483766; color:#d9c799; line-height:1.2; }
+.three-bet strong { font-size:17px; }
+.three-bet small { font-size:10px; color:#a7b6a0; }
+.three-bet b { font-size:14px; }
+.sands-surface .three-bet.has-bet { border-color:#ccad6a; background:#646b3c55; }
+.sands-surface .three-bet:disabled { opacity:1; cursor:default; }
+.three-controls-row { display:flex; align-items:center; justify-content:space-between; gap:20px; max-width:1080px; margin:auto; }
+.poker-chips { display:flex; align-items:center; gap:12px; }
+.poker-game .poker-chips .bj-chip { width:44px; height:44px; }
+.poker-game .poker-chips .bj-chip span { font-size:11px; }
+.three-tools, .three-decisions { display:flex; align-items:center; gap:6px; }
+.three-decisions { min-width:220px; justify-content:flex-end; }
+.three-decisions .sands-button { flex:1; }
+.poker-game.is-mobile { min-height:570px; grid-template-rows:48px minmax(0,1fr) auto 56px; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.is-mobile .poker-header { padding:6px 10px; gap:4px; }
+.is-mobile .poker-header h1 { font-size:19px; }
+.is-mobile .poker-brand { gap:3px; }
+.is-mobile .poker-brand .sands-brand-name { font-size:14px; }
+.is-mobile .poker-header-tools { gap:0; }
+.is-mobile .poker-header .sands-icon { width:27px; min-width:27px; height:30px; }
+.is-mobile .poker-header svg { width:18px; height:18px; }
+.is-mobile .poker-workspace { grid-template-columns:minmax(0,1fr); padding:8px; gap:0; overflow:auto; }
+.is-mobile .poker-sidebar { display:none; }
+.is-mobile .holdem-felt { min-height:356px; grid-template-rows:18px minmax(0,1fr); }
+.is-mobile .poker-table-meta { font-size:9px; }
+.is-mobile .holdem-table { grid-template-columns:1fr 1.25fr 1fr; grid-template-rows:minmax(96px,1fr) minmax(106px,1fr) minmax(116px,1fr); gap:4px; padding:4px 0; }
+.is-mobile .holdem-table::before { inset:14% 0; }
+.is-mobile .holdem-seat { --card-width:34px; padding:3px; gap:3px; }
+.is-mobile .holdem-seat header { font-size:11px; gap:3px; }
+.is-mobile .holdem-seat header small { font-size:9px; }
+.is-mobile .holdem-position { min-width:17px; height:17px; font-size:8px; }
+.is-mobile .holdem-seat > small { font-size:9px; min-height:14px; }
+.is-mobile .holdem-seat.seat-0 { --card-width:48px; }
+.is-mobile .holdem-center { --card-width:min(52px,calc((100vw - 50px) / 5)); gap:5px; }
+.is-mobile .holdem-center > small { font-size:10px; }
+.is-mobile .holdem-pot { gap:7px; font-size:10px; }
+.is-mobile .holdem-pot strong { font-size:18px; }
+.is-mobile .poker-cards { gap:4px; }
+.is-mobile .poker-controls { padding:8px; }
+.is-mobile .poker-turn { font-size:11px; min-height:17px; margin-bottom:5px; }
+.is-mobile .holdem-controls-row { grid-template-columns:minmax(0,1fr); gap:6px; }
+.is-mobile .holdem-actions .sands-button, .is-mobile .holdem-raise .sands-button { min-height:35px; padding:6px; font-size:12px; }
+.is-mobile .holdem-raise { grid-template-columns:minmax(0,1fr) 72px 88px; gap:8px; }
+.is-mobile .holdem-raise input[type="number"] { font-size:12px; padding:2px; }
+.is-mobile .holdem-raise label { font-size:9px; }
+.is-mobile .poker-footer { padding:5px 10px; gap:8px; }
+.is-mobile .poker-footer strong { font-size:14px; }
+.is-mobile .poker-footer span { font-size:9px; gap:3px; }
+.is-mobile .poker-footer nav { gap:0; }
+.is-mobile .poker-footer nav .sands-icon { width:26px; min-width:26px; height:28px; }
+.is-mobile .poker-footer nav svg { width:18px; height:18px; }
+.is-mobile .three-table { min-height:336px; grid-template-rows:minmax(0,1fr) 42px minmax(0,1fr) 58px; gap:6px; --card-width:min(96px,calc((100cqh - 202px) / 2.8)); }
+.is-mobile .three-hand { gap:4px; }
+.is-mobile .three-hand h2 { font-size:16px; }
+.is-mobile .three-hand > small { font-size:10px; min-height:15px; }
+.is-mobile .three-outcome strong { font-size:20px; }
+.is-mobile .three-outcome small { font-size:10px; }
+.is-mobile .three-bets { gap:5px; }
+.is-mobile .three-bet strong { font-size:14px; }
+.is-mobile .three-bet small { font-size:9px; }
+.is-mobile .three-bet b { font-size:12px; }
+.is-mobile .three-controls-row { display:grid; grid-template-columns:1fr auto; gap:8px; }
+.is-mobile .poker-chips { gap:7px; }
+.is-mobile.poker-game .poker-chips .bj-chip { width:36px; height:36px; border-width:2px; }
+.is-mobile .three-tools { gap:0; }
+.is-mobile .three-tools .sands-icon { width:24px; min-width:24px; height:30px; }
+.is-mobile .three-tools svg { width:18px; height:18px; }
+.is-mobile .three-decisions { grid-column:1/-1; min-width:0; }
+.is-mobile .three-decisions .sands-button { min-height:36px; padding:6px 12px; font-size:13px; }
+@media (orientation:landscape) and (max-height:600px) {
+  .poker-game.is-mobile { min-height:350px; grid-template-rows:42px minmax(0,1fr) auto 42px; }
+  .poker-game.is-mobile.holdem-game { grid-template-columns:minmax(0,1fr) 220px; grid-template-rows:42px minmax(0,1fr) 42px; }
+  .is-mobile.holdem-game .poker-header, .is-mobile.holdem-game .poker-footer { grid-column:1/-1; }
+  .is-mobile.holdem-game .poker-controls { grid-column:2; grid-row:2; overflow:auto; border-left:1px solid var(--sands-line); }
+  .is-mobile.holdem-game .poker-workspace { grid-column:1; grid-row:2; }
+  .is-mobile .holdem-felt { min-height:250px; }
+  .is-mobile .holdem-controls-row { grid-template-columns:minmax(0,1fr); gap:12px; }
+  .is-mobile.holdem-game .holdem-actions { flex-direction:column; }
+  .is-mobile.holdem-game .holdem-raise { grid-template-columns:1fr 1fr; }
+  .is-mobile.holdem-game .holdem-raise input[type="range"] { grid-column:1/-1; }
+  .is-mobile .holdem-table { grid-template-columns:repeat(5,minmax(0,1fr)); grid-template-rows:84px minmax(132px,1fr); }
+  .is-mobile .holdem-seat { --card-width:24px; }
+  .is-mobile .holdem-seat.seat-0 { grid-column:1/3; grid-row:2; --card-width:48px; }
+  .is-mobile .holdem-seat.seat-1 { grid-column:1; grid-row:1; }
+  .is-mobile .holdem-seat.seat-2 { grid-column:2; grid-row:1; }
+  .is-mobile .holdem-seat.seat-3 { grid-column:3; grid-row:1; }
+  .is-mobile .holdem-seat.seat-4 { grid-column:4; grid-row:1; }
+  .is-mobile .holdem-seat.seat-5 { grid-column:5; grid-row:1; }
+  .is-mobile .holdem-center { grid-column:3/-1; grid-row:2; --card-width:min(38px,calc((100cqw * .6 - 28px) / 5)); }
+  .is-mobile .three-table { min-height:176px; grid-template-columns:1fr 1fr; grid-template-rows:minmax(0,1fr) 32px 44px; --card-width:min(62px,calc((100cqh - 117px) / 1.4)); }
+  .is-mobile .three-hand.dealer { grid-column:2; grid-row:1; }
+  .is-mobile .three-hand.player { grid-column:1; grid-row:1; }
+  .is-mobile .three-outcome { grid-column:1/-1; grid-row:2; display:flex; gap:12px; }
+  .is-mobile .three-bets { grid-column:1/-1; grid-row:3; }
+  .is-mobile .three-bet { display:flex; gap:12px; }
+  .is-mobile .three-controls-row { display:flex; gap:12px; }
+  .is-mobile .three-decisions { min-width:190px; }
+  .is-mobile .poker-turn { margin-bottom:3px; }
+  .is-mobile .poker-footer > div { flex-direction:row; align-items:center; gap:8px; }
+}
+/* POKER_STYLES_END */
+</style>
 <style>
   :root {
     --dot-size: 12px;
@@ -912,6 +1112,31 @@
   if (new URLSearchParams(location.search).get('design') === 'sands') {
     const preview = document.getElementById('sands-lobby-prototype').content.cloneNode(true);
     document.body.replaceChildren(preview);
+  }
+</script>
+<script>
+  if (new URLSearchParams(location.search).get('design') === 'loading') {
+    document.querySelectorAll('style').forEach(style => style.media='not all');
+    document.getElementById('loading-preview-styles').media='all';
+    const css=document.createElement('link');css.rel='stylesheet';css.href=location.pathname.replace(/ui-test\.html$/, '')+'src/ui/sands/sands.css';document.head.append(css);
+    document.body.style.cssText='margin:0;padding:0;max-width:none';
+    document.body.innerHTML='<div class="sands-surface sands-loading sands-load-status"><h1>骰宝</h1><p>加载时间较长，可以重新加载后再试。</p><button class="sands-button primary">重新加载</button><small>已保存的筹码和记录会保留</small></div>';
+  }
+  if (['holdem', 'threecard'].includes(new URLSearchParams(location.search).get('design'))) {
+    const kind = new URLSearchParams(location.search).get('design');
+    document.querySelectorAll('style').forEach(style => { if (style.id !== 'poker-preview-styles') style.disabled = true; });
+    const prototypeStyle = document.getElementById('poker-preview-styles');
+    prototypeStyle.textContent = prototypeStyle.textContent.replace("url('/assets/sands/emerald-felt.webp')", "url('/londoner/assets/sands/emerald-felt.webp')");
+    const css = document.createElement('link'); css.rel='stylesheet'; css.href=location.pathname.replace(/ui-test\.html$/, '') + 'src/ui/sands/sands.css'; document.head.append(css);
+    document.getElementById('poker-preview-styles').media='all';
+    const cards = (n, hidden=false) => '<div class="poker-cards">' + Array.from({length:n},(_,i)=>`<div class="poker-card-wrap"><div class="bj-card${hidden?' is-hidden':''}"><div class="bj-card-turn"><div class="bj-card-face"><span class="bj-card-corner"><b>${['A','K','Q','J','10'][i]}</b><span>♠</span></span><span class="bj-card-pip">♠</span></div><div class="bj-card-reverse"><div class="bj-card-back">S</div></div></div></div></div>`).join('')+'</div>';
+    const head = `<header class="poker-header"><div class="poker-brand">‹　Sands2018</div><h1>${kind==='holdem'?'德州扑克':'三张牌扑克'}</h1><div class="poker-header-tools">?　⚙</div></header>`;
+    const footer = '<footer class="poker-footer"><div><span>筹码余额</span><strong>9,900</strong></div><div><span>已玩局数</span><strong>12</strong></div><div><span>累计赢利</span><strong>+180</strong></div><nav>◷　↻</nav></footer>';
+    const seats = ['你','林先生','Anna','陈先生','Marco','苏小姐'].map((name,i)=>`<section class="holdem-seat seat-${i}${i===0?' is-acting':''}"><header><strong>${name}</strong><small>10,000</small></header>${cards(2,i!==0)}<small>${i===0?'你的手牌':'跟注 100'}</small></section>`).join('');
+    const holdem = `<div class="poker-workspace"><section class="holdem-felt"><div class="poker-table-meta"><span>无限注 · 盲注50/100</span><span>第12局 · 六人桌</span></div><div class="holdem-table">${seats}<div class="holdem-center"><div class="holdem-pot"><span>底池</span><strong>600</strong><span>翻牌</span></div>${cards(5)}<small>你的牌型 · 一对</small></div></div></section><aside class="poker-sidebar"><h2>本局动态</h2><ol><li>林先生 小盲50</li><li>Anna 大盲100</li><li>陈先生 跟注100</li><li>Marco 跟注100</li><li>苏小姐 过牌</li></ol></aside></div><section class="poker-controls"><div class="poker-turn">轮到你 · 可以过牌</div><div class="holdem-controls-row"><div class="holdem-actions"><button class="sands-button">弃牌</button><button class="sands-button primary">过牌</button><button class="sands-button">全下</button></div><div class="holdem-raise"><input type="range"><label>本轮加注至<input type="number" value="200"></label><button class="sands-button">确认加注</button></div></div></section>`;
+    const three = `<div class="poker-workspace"><section class="three-table"><section class="three-hand dealer"><h2>庄家</h2>${cards(3,true)}<small>Q高牌或以上合格</small></section><div class="three-outcome"><strong>跟注还是弃牌？</strong><small>继续需跟注100</small></div><section class="three-hand player"><h2>你的手牌</h2>${cards(3)}<small>同花顺</small></section><div class="three-bets">${['底注','对子奖','跟注'].map((t,i)=>`<button class="three-bet"><strong>${t}</strong><small>${['ANTE','PAIR PLUS','PLAY'][i]}</small><b>100</b></button>`).join('')}</div></section><aside class="poker-sidebar"><h2>玩法与赔率</h2><p>底注和跟注净赢1:1</p></aside></div><section class="poker-controls"><div class="poker-turn">继续跟注与底注等额；弃牌失去底注和对子奖</div><div class="three-controls-row"><div class="poker-chips">${[20,50,100,500,1000].map(n=>`<button class="bj-chip" style="--chip-color:#42694f"><span>${n}</span></button>`).join('')}</div><div class="three-tools">↶　↻</div><div class="three-decisions"><button class="sands-button">弃牌</button><button class="sands-button primary">跟注100</button></div></div></section>`;
+    document.body.style.cssText='margin:0;padding:0;max-width:none';
+    document.body.innerHTML=`<main class="sands-surface poker-game ${kind==='holdem'?'holdem-game':'three-game'} ${innerWidth>=900?'is-desktop':'is-mobile'}">${head}${kind==='holdem'?holdem:three}${footer}</main>`;
   }
 </script>
 </body>
