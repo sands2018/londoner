@@ -7309,9 +7309,9 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
               </span>
             </>
           ) : null}
-          <span className="top-stats-user-area" onClick={() => { if (sharedConnected) { setConfirmDialog({ title: "退出登录", message: "确定要退出登录吗？", confirmText: "退出", onConfirm: () => { setSharedConnected(false); setSharedUsername(""); setSharedPassword(""); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); } }); } else { setSharedLoginOpen(true); } }} role="button" tabIndex={0}>
+          <button type="button" className="top-stats-user-area" aria-label={sharedConnected ? "账户与退出" : "登录"} onClick={() => { if (sharedConnected) { setConfirmDialog({ title: "退出登录", message: "确定要退出登录吗？", confirmText: "退出", onConfirm: () => { setSharedConnected(false); setSharedUsername(""); setSharedPassword(""); setSharedSessions([]); setSelectedSharedSessionIds([]); localStorage.removeItem(savedLoginKey); } }); } else { setSharedLoginOpen(true); } }}>
             <CircleUser className={`top-stats-user${sharedConnected ? " logged-in" : ""}`} size={16} />
-          </span>
+          </button>
         </span>
       </section>
       <section className="signal-strip" aria-label="行组状态" onClick={() => setSeparateColRows((value) => { const nv = !value; localStorage.setItem("londoner.separateColRows", nv ? "1" : "0"); return nv; })}>

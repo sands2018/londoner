@@ -164,7 +164,7 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
     </div>;
   }
 
-  return <main className={`sands-surface bj-game ${desktop ? "is-desktop" : "is-mobile"}`} data-busy={busy} data-motion={frame?.motion ?? "idle"} style={{ ...(desktop ? { width: viewport.width / desktopScale, height: viewport.height / desktopScale, transform: `scale(${desktopScale})`, transformOrigin: "top left" } : {}), "--card-turn-duration": `${frame?.duration ? frame.duration * .8 : 0}ms`, "--result-duration": `${frame?.motion === "result" ? frame.duration : 1700}ms` } as CSSProperties} aria-label="二十一点游戏">
+  return <main className={`sands-surface bj-game ${desktop ? "is-desktop" : "is-mobile"}`} data-phase={view.phase} data-busy={busy} data-motion={frame?.motion ?? "idle"} style={{ ...(desktop ? { width: viewport.width / desktopScale, height: viewport.height / desktopScale, transform: `scale(${desktopScale})`, transformOrigin: "top left" } : {}), "--card-turn-duration": `${frame?.duration ? frame.duration * .8 : 0}ms`, "--result-duration": `${frame?.motion === "result" ? frame.duration : 1700}ms` } as CSSProperties} aria-label="二十一点游戏">
     <header className="bj-header">
       <div className="bj-header-left"><button type="button" className="sands-icon" aria-label="返回大厅" title="返回大厅" onClick={onLobby}><ArrowLeft size={22} /></button><SandsMark compact /></div>
       <h1>二十一点</h1>
@@ -203,7 +203,7 @@ export function BlackjackGame({ desktop, active, onLobby, onSettings }: { deskto
       </div>
     </section>
     <footer className="bj-stats">
-      <div className="bj-balance"><span>可用筹码 <button type="button" title="补充虚拟筹码" aria-label="补充虚拟筹码" className="sands-icon" disabled={!ready || busy} onClick={() => setDialog("credits")}><CirclePlus size={16} /></button></span><strong>{format(view.balance)}</strong></div>
+      <button type="button" title="补充虚拟筹码" aria-label="补充虚拟筹码" className="bj-balance sands-balance-button" disabled={!ready || busy} onClick={() => setDialog("credits")}><span>可用筹码 <CirclePlus size={16} /></span><strong>{format(view.balance)}</strong></button>
       <div><span>累计投注</span><strong>{format(view.stats.wagered)}</strong></div><div><span>累计赢利</span><strong className={view.stats.profit > 0 ? "win" : view.stats.profit < 0 ? "lose" : ""}>{signed(view.stats.profit)}</strong></div>
       <div className="bj-round-count"><span>轮次</span><strong>{view.stats.rounds}</strong></div>
       <div className="bj-stats-tools"><button type="button" className="sands-icon" aria-label="结算明细" title="结算明细" onClick={() => setDialog("history")}><History size={24} /></button><button type="button" className="sands-icon" aria-label="重置统计" title="重置统计" disabled={!ready || busy} onClick={() => setDialog("reset")}><RotateCcw size={23} /></button></div>

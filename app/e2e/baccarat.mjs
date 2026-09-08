@@ -33,7 +33,7 @@ try {
     const checkLayout=async()=>{
       const metrics=await f.locator('.bac-game').evaluate(el=>{
         const rect=el.getBoundingClientRect();
-        const buttons=[...el.querySelectorAll('.bac-bet,.bac-chips button,.bac-deal,.bac-footer button')];
+        const buttons=[...el.querySelectorAll('.bac-bet,.bac-deal,.bac-footer button')];
         return {horizontal:el.scrollWidth-el.clientWidth,vertical:rect.bottom-innerHeight,
           controls:buttons.every(b=>{const r=b.getBoundingClientRect();return r.width>=20&&r.height>=20&&r.left>=0&&r.top>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1;}),
           cardWidths:[...el.querySelectorAll('.bac-cards > .bj-card')].map(c=>c.getBoundingClientRect().width)};
@@ -42,6 +42,14 @@ try {
       assert.ok(metrics.vertical<=1,`${name} vertical overflow: ${JSON.stringify(metrics)}`);
       assert.ok(metrics.controls,`${name} controls offscreen: ${JSON.stringify(metrics)}`);
       assert.ok(metrics.cardWidths.every(w=>w>=45),`${name} cards too small: ${JSON.stringify(metrics)}`);
+      // Larger chips scroll on narrow phones; each one must become fully reachable.
+      for(const chip of await f.locator('.bac-chips button').all()) {
+        await chip.scrollIntoViewIfNeeded();
+        const r=await chip.boundingBox();
+        const viewport=await f.evaluate(()=>({width:innerWidth,height:innerHeight}));
+        assert.ok(r.width>=20&&r.height>=20&&r.x>=-1&&r.y>=-1&&r.x+r.width<=viewport.width+1&&r.y+r.height<=viewport.height+1,`${name} chip unreachable: ${JSON.stringify(r)}`);
+      }
+      await f.locator('.bac-chips').evaluate(el=>{el.scrollLeft=0;});
     };
     await checkLayout();
     await f.getByRole('button',{name:'10 筹码',exact:true}).click();

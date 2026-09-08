@@ -1,5 +1,18 @@
 # Sands2018 browser checks
 
+## Mobile touch controls
+
+Run `npm run test:touch:ui` against the dev server, or set
+`TOUCH_URL=http://localhost:4173` for a production preview. `TOUCH_ONLY=small`
+(also `android`, `iphone`, `landscape`, `desktop`) limits the viewport sweep.
+The checks cover all six games, 44px mobile utility buttons, balance top-up
+areas, edge taps, report dialogs, settings options, roulette analysis and its
+simulator toolbar. Simulator login is mocked in isolated browser storage and
+all shared-data RPC requests are intercepted; no real account is used.
+Dense roulette betting targets keep their existing geometry. Narrow chip trays
+and simulator toolbars scroll horizontally. The matching style prototype is
+`ui-test.html?design=touch`; screenshots go to `test-results/sands/`.
+
 ## Loading and deployment recovery
 
 After `npm run build`, run `npm run test:loading:ui`. The runner starts its own

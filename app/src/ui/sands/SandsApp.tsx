@@ -8,6 +8,7 @@ import { DiceEmblem } from "./DiceFace";
 import { readSicBoSettings, writeSicBoSettings } from "./sicBoSettings";
 import "./sands.css";
 import "./sicBo.css";
+import "./touchControls.css";
 
 const RouletteApp = lazy(() => import("../App").then(({ App }) => ({ default: App })));
 const SicBoGame = lazy(() => import("./SicBoGame").then(({ SicBoGame }) => ({ default: SicBoGame })));
@@ -53,7 +54,8 @@ export function SandsApp() {
     document.documentElement.classList.toggle("android", !display.iphone && /android/i.test(navigator.userAgent));
     document.documentElement.classList.toggle("iphone", display.iphone || /iphone/i.test(navigator.userAgent));
     document.documentElement.classList.toggle("sands-game-page", page !== "roulette");
-  }, [display.iphone, page]);
+    document.documentElement.classList.toggle("sands-mobile-ui", !display.desktop);
+  }, [display.iphone, display.desktop, page]);
   function navigate(next: Page) {
     location.hash = next === "lobby" ? "lobby" : next;
     setPage(next);

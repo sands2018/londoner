@@ -76,7 +76,7 @@ export function PokerCards({ cards, hand, hidden = false, visible = cards.length
 export function PokerFooter({ balance, rounds, profit, disabled, onCredits, onHistory, onStats, onReset }: {
   balance: number; rounds: number; profit: number; disabled: boolean; onCredits: () => void; onHistory: () => void; onStats: () => void; onReset: () => void;
 }) {
-  return <footer className="poker-footer"><div><span>筹码余额 <button type="button" className="sands-icon poker-topup" aria-label="补充虚拟筹码" title="补充虚拟筹码" disabled={disabled} onClick={onCredits}><CirclePlus size={14} /></button></span><strong>{pokerFormat(balance)}</strong></div>
+  return <footer className="poker-footer"><button type="button" className="sands-balance-button" aria-label="补充虚拟筹码" title="补充虚拟筹码" disabled={disabled} onClick={onCredits}><span>筹码余额 <CirclePlus size={14} /></span><strong>{pokerFormat(balance)}</strong></button>
     <div><span>已玩局数</span><strong>{rounds}</strong></div><div><span>累计赢利</span><strong className={profit < 0 ? "lose" : "win"}>{pokerSigned(profit)}</strong></div>
     <nav aria-label="记录与统计"><button type="button" className="sands-icon" title="历史记录" aria-label="历史记录" onClick={onHistory}><History size={21} /></button><button type="button" className="sands-icon" title="统计" aria-label="统计" onClick={onStats}><ChartNoAxesColumnIncreasing size={21} /></button><button type="button" className="sands-icon" title="重置统计" aria-label="重置统计" disabled={disabled} onClick={onReset}><RotateCcw size={21} /></button></nav></footer>;
 }
