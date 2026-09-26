@@ -11,7 +11,8 @@
     "test:baccarat:ui": "node --import tsx e2e/baccarat.mjs",
     "test:poker:ui": "node --import tsx e2e/poker.mjs",
     "test:loading:ui": "node e2e/loading.mjs",
-    "test:touch:ui": "node e2e/touch.mjs"
+    "test:touch:ui": "node e2e/touch.mjs",
+    "test:home-stats:ui": "node e2e/homeStatsScopes.mjs"
   },
   "dependencies": {
     "@blackjacktrainer/blackjack-simulator": "0.35.14",

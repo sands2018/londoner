@@ -2,6 +2,7 @@
 import { flushSync } from "react-dom";
 import { iphoneViewportKey, loadSimulateIPhone, saveSimulateIPhone } from "./iphoneViewport";
 import { displaySettingsEvent, readDisplaySettings } from "./sands/displaySettings";
+import { homeStatsScopeInputs, homeStatsScopesKey, readHomeStatsScopes, validateHomeStatsScopeInputs } from "./homeStatsScopes";
 import { useLayoutEffect } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import {
@@ -1718,6 +1719,10 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
     localStorage.getItem(windowModeKey) === "fibonacci" ? "fibonacci" : "classic",
   );
   const [statsScope, setStatsScope] = useState(21);
+  const [homeStatsScopes, setHomeStatsScopes] = useState(() => {
+    try { return readHomeStatsScopes(localStorage.getItem(homeStatsScopesKey)); }
+    catch { return readHomeStatsScopes(null); }
+  });
   const [colRowScope, setColRowScope] = useState(() => {
     const stored = Number.parseInt(localStorage.getItem(colRowScopeKey) ?? "", 10);
     return classicColRowScopes.includes(stored) ? stored : 72;
@@ -1938,11 +1943,13 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
   const simulatorAutoSettleRef = useRef<() => boolean>(() => false);
   const shotVideoRef = useRef<HTMLVideoElement>(null);
   const shotStreamRef = useRef<MediaStream | null>(null);
-  const [configTab, setConfigTab] = useState<"game" | "other" | "table">("game");
+  const [configTab, setConfigTab] = useState<"game" | "interval" | "other" | "table">("game");
   const [configTableTab, setConfigTableTab] = useState<"local" | "shared">("local");
   const [rhythmRowsOnly, setRhythmRowsOnly] = useState(() => localStorage.getItem("londoner.rhythmRowsOnly") !== "false");
   const [rhythmMode, setRhythmMode] = useState(() => localStorage.getItem("londoner.rhythmMode") || (rhythmRowsOnly ? "仅行" : "全部"));
   const [draftWindowMode, setDraftWindowMode] = useState<WindowMode>(windowMode);
+  const [draftHomeStatsUseDefault, setDraftHomeStatsUseDefault] = useState(homeStatsScopes.useDefault);
+  const [draftHomeStatsValues, setDraftHomeStatsValues] = useState(() => homeStatsScopeInputs(homeStatsScopes.values));
   const [draftThreeNumberHighlightMode, setDraftThreeNumberHighlightMode] = useState<"dim" | "highlight">(threeNumberHighlightMode);
   const [draftCasinoTables, setDraftCasinoTables] = useState<CasinoTable[]>([]);
   const [draftSelectedCasinoId, setDraftSelectedCasinoId] = useState("");
@@ -2225,9 +2232,12 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
   const [gameSettingsRevision, setGameSettingsRevision] = useState(0);
 
   const statScopes = useMemo(
-    () => (windowMode === "fibonacci" ? fibonacciStatScopes : classicStatScopes),
-    [windowMode],
+    () => homeStatsScopes.useDefault
+      ? (windowMode === "fibonacci" ? fibonacciStatScopes : classicStatScopes)
+      : [...homeStatsScopes.values, -1],
+    [windowMode, homeStatsScopes],
   );
+  const draftHomeStatsValidation = validateHomeStatsScopeInputs(draftHomeStatsValues);
   const colRowScopes = useMemo(
     () => (windowMode === "fibonacci" ? fibonacciColRowScopes : classicColRowScopes),
     [windowMode],
@@ -5785,6 +5795,8 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
   function openConfigView() {
     reloadGameConfigState();
     setDraftWindowMode(windowMode);
+    setDraftHomeStatsUseDefault(homeStatsScopes.useDefault);
+    setDraftHomeStatsValues(homeStatsScopeInputs(homeStatsScopes.values));
     setDraftThreeNumberHighlightMode(threeNumberHighlightMode);
     setDraftSimulatorDeviceMode(simulatorDeviceMode);
     setDraftSimulateIPhone(simulateIPhone);
@@ -6048,15 +6060,26 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
   }
 
   function saveConfigView() {
-    if (configTab === "other") {
+    if (configTab === "interval") {
+      if (!draftHomeStatsUseDefault && draftHomeStatsValidation.error) return;
+      const nextHomeStatsScopes = {
+        useDefault: draftHomeStatsUseDefault,
+        values: draftHomeStatsValidation.values ?? homeStatsScopes.values,
+      };
+      localStorage.setItem(homeStatsScopesKey, JSON.stringify(nextHomeStatsScopes));
+      setHomeStatsScopes(nextHomeStatsScopes);
       setWindowMode(draftWindowMode);
+      localStorage.setItem(windowModeKey, draftWindowMode);
+      setConfigViewOpen(false);
+      return;
+    }
+    if (configTab === "other") {
       setSimulatorDeviceMode(draftSimulatorDeviceMode);
       setSimulateIPhone(draftSimulateIPhone);
       saveSimulateIPhone(draftSimulateIPhone);
       setSimulatorDesktopAnalysisZoom(draftSimulatorDesktopAnalysisZoom);
       setSimulatorAnimationSpeed(draftSimulatorAnimationSpeed);
       setThreeNumberHighlightMode(draftThreeNumberHighlightMode);
-      localStorage.setItem(windowModeKey, draftWindowMode);
       localStorage.setItem(
         simulatorDesktopModeKey,
         draftSimulatorDeviceMode === "desktop" ? "1" : draftSimulatorDeviceMode === "mobile" ? "0" : "9",
@@ -7557,10 +7580,12 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
               max={maxBisectionCount}
             />
           </div>
-          <div className="scope-row" onClick={(e) => e.stopPropagation()}>
+          <div className={`scope-row${homeStatsScopes.useDefault ? "" : " home-stats-custom-scopes"}`} style={homeStatsScopes.useDefault ? undefined : { "--home-stats-scope-count": statScopes.length } as CSSProperties} onClick={(e) => e.stopPropagation()}>
             {statScopes.map((value) => (
               <button
                 className={value === statsScope ? "selected" : ""}
+                aria-pressed={value === statsScope}
+                title={value < 0 ? "全部" : String(value)}
                 key={value}
                 onClick={() => setStatsScope(value)}
                 type="button"
@@ -10213,10 +10238,11 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
             <div className={`config-screen-main ${configTab !== "table" ? "config-screen-main-actions" : ""}`}>
               <div className="tabs tabs-top">
                 <button className={configTab === "game" ? "selected" : ""} onClick={() => setConfigTab("game")} type="button">打法</button>
+                <button className={configTab === "interval" ? "selected" : ""} onClick={() => setConfigTab("interval")} type="button">区间</button>
                 <button className={configTab === "table" ? "selected" : ""} onClick={() => setConfigTab("table")} type="button">桌子</button>
                 <button className={configTab === "other" ? "selected" : ""} onClick={() => setConfigTab("other")} type="button">其它</button>
               </div>
-              {configTab === "other" ? (
+              {configTab === "interval" ? (
               <div className="config-body config-body-natural" style={{ gridTemplateColumns: "1fr" }}>
                 <section className="config-card config-bets">
                   <h2><span>统计窗口</span></h2>
@@ -10241,6 +10267,45 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
                     </label>
                   </div>
                 </section>
+                <section className="config-card config-bets home-stats-config" aria-labelledby="home-stats-config-title">
+                  <h2 id="home-stats-config-title"><span>首页基础数据区间</span></h2>
+                  <div className="home-stats-options">
+                    <button type="button" role="switch" className="home-stats-default" aria-checked={draftHomeStatsUseDefault} onClick={() => setDraftHomeStatsUseDefault((value) => !value)}>
+                      <span className="home-stats-default-track" aria-hidden="true" />
+                      <span>使用默认</span>
+                    </button>
+                    {!draftHomeStatsUseDefault && (
+                      <div className="home-stats-interval-fields">
+                        {draftHomeStatsValues.map((value, index) => (
+                          <label key={index}>
+                            <span>区间 {index + 1}</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              autoComplete="off"
+                              aria-label={`第 ${index + 1} 个区间`}
+                              aria-invalid={draftHomeStatsValidation.invalidIndex === index}
+                              aria-describedby={draftHomeStatsValidation.error ? "home-stats-interval-error" : undefined}
+                              value={value}
+                              onChange={(event) => setDraftHomeStatsValues((values) => values.map((item, i) => i === index ? event.target.value : item))}
+                            />
+                          </label>
+                        ))}
+                        <label>
+                          <span>区间 8</span>
+                          <input type="text" value="全部" readOnly aria-label="全部区间" />
+                        </label>
+                      </div>
+                    )}
+                    {!draftHomeStatsUseDefault && draftHomeStatsValidation.error && (
+                      <p id="home-stats-interval-error" className="home-stats-hint is-error" role="alert">{draftHomeStatsValidation.error}</p>
+                    )}
+                  </div>
+                </section>
+              </div>
+              ) : configTab === "other" ? (
+              <div className="config-body config-body-natural" style={{ gridTemplateColumns: "1fr" }}>
                 <section className="config-card config-bets">
                   <h2><span>快照</span></h2>
                   <div className="config-option-list config-option-list-inline">
@@ -10556,7 +10621,7 @@ export function App({ active = true, onReturnToLobby }: { active?: boolean; onRe
             </div>
             {configTab !== "table" ? (
               <footer className="config-actions">
-                <button onClick={saveConfigView} type="button">确定</button>
+                <button onClick={saveConfigView} disabled={configTab === "interval" && !draftHomeStatsUseDefault && draftHomeStatsValidation.error !== null} type="button">确定</button>
                 <button onClick={() => setConfigViewOpen(false)} type="button">取消</button>
                 {configTab === "game" ? <button onClick={openBetsManage} type="button">管理</button> : null}
               </footer>

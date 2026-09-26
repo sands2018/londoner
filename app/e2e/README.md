@@ -1,5 +1,26 @@
 # Sands2018 browser checks
 
+## Home basic statistics intervals
+
+Run `npm run test:home-stats:ui` against the dev server, or set
+`HOME_STATS_URL=http://localhost:4175` for a production preview. The runner uses
+isolated browser storage and fixed roulette data to check the configuration tab
+order (打法 / 区间 / 桌子 / 其它), the two cards moved into 区间, default sequences,
+seven editable custom interval fields plus a readonly All field, actual counts,
+input validation, cancellation, reload persistence, and desktop/phone layouts.
+Custom intervals may contain 0–7 strictly increasing positive integers: empty
+fields are allowed only at the end. Checks cover five values plus All, an
+All-only home row, restoring all seven fields after reload, rejection of interior
+gaps, fallback when the selected interval is removed, and preserving an empty
+custom list while switching defaults on and off. Custom home buttons stay left
+aligned with a maximum layout width of 56px, including the All-only state;
+phone targets remain at least 44px, and crowded rows scroll without overflowing
+the page. Long interval labels retain their full values in button titles. It also
+checks that each tab saves only its own settings, invalid interval drafts do not
+block saving 其它, and changing the global statistics window leaves active custom
+home intervals intact. The style
+prototype is `ui-test.html?design=home-stats`; screenshots go to `test-results/`.
+
 ## Mobile touch controls
 
 Run `npm run test:touch:ui` against the dev server, or set
